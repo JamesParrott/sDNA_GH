@@ -1,0 +1,8 @@
+C# code to .gha:
+Install Visual Studio 2017 community edition with VB / C# / .Net workflow https://developer.rhino3d.com/guides/grasshopper/installing-tools-windows/#fnref:3
+Install Rhino & templates [ as above] https://developercommunity.visualstudio.com/t/net-framework-48-sdk-and-targeting-pack-in-visual/580235
+Install .Net v4.8 https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48
+Change .csproj target to v4.8 https://stackoverflow.com/questions/58000123/visual-studio-cant-target-net-framework-4-8
+
+GHPython for .ghuser:
+Select GHPython component.   Optionally compile to .ghpy.  File -> Create User Object
