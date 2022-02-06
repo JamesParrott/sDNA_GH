@@ -287,7 +287,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     return shapefile_path_to_write_to, fields, attribute_table_data, my_list
     # Todo:  optionally, return my_list
 
-def get_fields_and_records_from_shapefile(shapefile_path, rhino_file_path):
+def get_fields_and_records_from_shapefile(shapefile_path):
     with shp.Reader(shapefile_path) as r:
         fields = r.fields
         recs = r.records()

@@ -220,8 +220,6 @@ from .custom_python_modules.options_manager import (
                                     ,override_namedtuple_with_ini_file
 )
 
-print(opts['options'].message)
-
 ####################################################################################################################
 # First options options_manager.override (3), user's installation specific options over (4), hardcoded defaults above
 #
@@ -260,8 +258,6 @@ else:
 #
 #
 
-print(opts['options'].message)
-
 #if 'logger' in globals() and isinstance(logger, wrapper_logging.logging.Logger): 
 #    pass
 #else:      
@@ -299,7 +295,9 @@ class WriteableFlushableList(list):
 logger = WriteableFlushableList()
 
 
-from .custom_python_modules import wrapper_pyshp
+from .custom_python_modules.wrapper_pyshp import (get_fields_and_records_from_shapefile
+                                                 ,get_unique_filename_if_not_overwrite
+                                                 ,write_from_iterable_to_shapefile_writer)
 
 #def function_imported_by_GHsDNA_launcher(ghenv, f_name, Geom, Data, opts):
     #type(ghenv, bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict) -> bool, str, Rhino_Geom, datatree, str
@@ -591,17 +589,17 @@ def Write_Links_Data_To_Shapefile(ghenv, f_name, Geom, Data, opts_at_call):
         if shp_file == None:
             shp_file = Rhino.RhinoDoc.ActiveDoc.Path[:-4] + opts['options'].shp_file_extension
                                 # file extensions are actually optional in PyShp, but just to be safe and future proof we slice out '.3dm'
-        return wrapper_pyshp.write_from_iterable_to_shapefile_writer(    my_iter 
-                                                                        ,shp_file 
-                                                                        ,shape_mangler
-                                                                        ,key_finder
-                                                                        ,key_matcher
-                                                                        #,key_mangler
-                                                                        #,value_mangler
-                                                                        ,value_demangler
-                                                                        ,shape
-                                                                        ,options
-                                                                        )
+        return write_from_iterable_to_shapefile_writer(  my_iter 
+                                                        ,shp_file 
+                                                        ,shape_mangler
+                                                        ,key_finder
+                                                        ,key_matcher
+                                                        #,key_mangler
+                                                        #,value_mangler
+                                                        ,value_demangler
+                                                        ,shape
+                                                        ,options
+                                                        )
 
 
     #output(opts['options'].uuid_length)
@@ -609,11 +607,17 @@ def Write_Links_Data_To_Shapefile(ghenv, f_name, Geom, Data, opts_at_call):
     OK, shp_filename, cached_fields, cached_user_data, cached_geometry = write_to_shapefile_with_rhino_doc_as_default(Geom)
     return OK, shp_filename, cached_geometry, cached_user_data, None
 
-def Read_Links_Data_From_Shapefile(ghenv, sDNA_output_shp_file, cached_geometry, Data, opts_at_call):
-    cached_sDNA_fields, cached_sDNA_outputs = wrapper_pyshp.get_fields_and_records_from_shapefile( sDNA_output_shp_file 
-                                                                                                  ,Rhino.RhinoDoc.ActiveDoc
-                                                                                                  ,opts_at_call['options']
-                                                                                                  )
+def Read_Links_Data_From_Shapefile( ghenv
+                                   ,sDNA_output_shp_file
+                                   ,cached_geometry
+                                   ,Data
+                                   ,opts_at_call
+                                   ):
+    (cached_sDNA_fields
+    ,cached_sDNA_outputs) = get_fields_and_records_from_shapefile( 
+                                                           sDNA_output_shp_file
+                                                           )
+
     sDNA_output_field_names = [ x[0] for x in cached_sDNA_fields ]
 
     #Rhino_object_uuid_index = sDNA_output_field_names.index(opts['options'].uuid_shp_file_field_name)
@@ -874,17 +878,17 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
         if shp_file == None:
             shp_file = Rhino.RhinoDoc.ActiveDoc.Path[:-4] + options.shp_file_extension
                                 # file extensions are actually optional in PyShp, but just to be safe and future proof we slice out '.3dm'
-        return wrapper_pyshp.write_from_iterable_to_shapefile_writer(    my_iter 
-                                                                        ,shp_file 
-                                                                        ,shape_mangler
-                                                                        ,key_finder
-                                                                        ,key_matcher
-                                                                        #,key_mangler
-                                                                        #,value_mangler
-                                                                        ,value_demangler
-                                                                        ,shape
-                                                                        ,options
-                                                                        )
+        return write_from_iterable_to_shapefile_writer(  my_iter 
+                                                        ,shp_file 
+                                                        ,shape_mangler
+                                                        ,key_finder
+                                                        ,key_matcher
+                                                        #,key_mangler
+                                                        #,value_mangler
+                                                        ,value_demangler
+                                                        ,shape
+                                                        ,options
+                                                        )
 
     #output(options.uuid_length)
 
@@ -895,7 +899,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
                           ,shp_output_file = default_sDNA_prepped_shp_file_name
                           ,options = options 
                           ):
-        shp_output_file = wrapper_pyshp.get_unique_filename_if_not_overwrite(shp_output_file,options)
+        shp_output_file = get_unique_filename_if_not_overwrite(shp_output_file,options)
         command = options.python_exe + " -u " + '"' + options.sDNA_prepare + '"' + " -i " + shp_input_file + " -o " + shp_output_file
         output(command)
         call( command )
@@ -909,7 +913,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
                            ,shp_output_file = default_sDNA_output_shp_file_name
                            ,options = options
                            ):
-        shp_output_file = wrapper_pyshp.get_unique_filename_if_not_overwrite(shp_output_file,options)
+        shp_output_file = get_unique_filename_if_not_overwrite(shp_output_file,options)
         command =  options.python_exe + " -u " + '"' + options.sDNA_integral + '"' + " -i " + shp_input_file + " -o " + shp_output_file
         output(command)
         call( command)            
@@ -923,10 +927,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
 
     
 
-    cached_sDNA_fields, cached_sDNA_outputs = wrapper_pyshp.get_fields_and_records_from_shapefile( sDNA_output_shp_file 
-                                                                                                  ,Rhino.RhinoDoc.ActiveDoc
-                                                                                                  ,options
-                                                                                                  )
+    cached_sDNA_fields, cached_sDNA_outputs = get_fields_and_records_from_shapefile( sDNA_output_shp_file )
     sDNA_output_field_names = [ x[0] for x in cached_sDNA_fields ]
 
     #Rhino_object_uuid_index = sDNA_output_field_names.index(options.uuid_shp_file_field_name)
@@ -1108,7 +1109,7 @@ def fill_in_invalid_file_names(  args_dict
                                 + opts_at_call['options'].shp_file_extension
                     }
     if unique_file_name_func == None:
-        unique_file_name_func = wrapper_pyshp.get_unique_filename_if_not_overwrite
+        unique_file_name_func = get_unique_filename_if_not_overwrite
 
     assert is_invalid('')
     for key in keys:
