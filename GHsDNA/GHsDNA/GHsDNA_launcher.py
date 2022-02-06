@@ -13,6 +13,7 @@ __license__ = {  'Python standard library modules and ' : 'Python Software Found
 GHsDNA_subfolder = 'GHsDNA' 
 GHsDNA_package = 'GHsDNA'               
 reload_config_and_other_modules_if_already_loaded = False
+GHsDNA_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\GHsDNA']
 
 #######################################################################################################################
 # Please note!
@@ -38,7 +39,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import ghpythonlib.treehelpers as th
 
-from os.path import isfile, join, split, dirname
+from os.path import isfile, isdir, join, split, dirname
 # import logging
 from importlib import import_module
 
@@ -80,7 +81,12 @@ class WriteableFlushableList(list):
     #type: ( str) -> None
     # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     #
-        self.append(s)
+        if isinstance(s,str):
+            self.append(s)
+        else:
+            self.extend(s)
+
+
     def flush(self):  
     #type: () -> None
         pass  # A flush method is needed by logging
@@ -93,14 +99,14 @@ def output(s, level='INFO', inst = None):     # e.g. inst is an instance of this
     message_with_level = level + ' : ' + message
     #print(message_with_level)
     try:
-        GHsDNA.tools.output(message, level, inst)
+        GHsDNA.tools.output("From GHsDNA output " + message, level, inst)
     except:
         try:
-            getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())(message)
+            getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())("from logging " + message)
         except:
-            #print(message_with_level)
+            print(message_with_level + " bare print")
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
-                inst.a.write(message_with_level)
+                inst.a.write(message_with_level + " via inst")
     return message_with_level
 
 def strict_import(  module_name = ''
@@ -117,10 +123,10 @@ def strict_import(  module_name = ''
     output(module_name,'DEBUG')
     if module_name in sys.modules:   # sys.modules is also shared between GHPython components 
                                     # and is even saved until Rhino is closed.
-        output('Module ' + module_name + ' already in sys.modules.  ','INFO')
+        output('Module ' + module_name + ' already in sys.modules.  ','DEBUG')
         if reload_config_and_other_modules_if_already_loaded:
-            output('Reloading ' +  module_name  + '.... ','INFO')
-            reload(sys.modules[module_name]) 
+            output('Reloading ' +  module_name  + '.... ','DEBUG')
+            reload(sys.modules[module_name]) # type: ignore
         return sys.modules[module_name]
     #
     #
@@ -168,7 +174,7 @@ def load_modules(m_names, path_lists):
     if any(name.startswith('.') or '..' in name for name in m_names):
         raise ImportError( output('Relative import attempted, but not supported','CRITICAL') )
 
-    output('Testing paths : ' + '\n'.join(map(str,path_lists)),'INFO')
+    output('Testing paths : ' + '\n'.join(map(str,path_lists)),'DEBUG')
     output('Type(path_lists) : ' + type(path_lists).__name__,'DEBUG')
 
 
@@ -179,28 +185,28 @@ def load_modules(m_names, path_lists):
         #output('Type(test_paths) : ' + type(test_paths).__name__,'DEBUG')
 
         for path in test_paths:
-            output('Type(path) : ' + type(path).__name__,'DEBUG')
+            output('Type(path) : ' + type(path).__name__ + ' path == ' + path,'DEBUG')
             if isfile(path):
                 path = dirname(path)
             if all(any(isfile(join(path, name.replace('.', os.sep) + ending)) 
                         for ending in ['.py','.pyc'] )
                             for name in m_names):
                 # We haven't checked every folder in a package has an __init__.py
-                output('Importing ' + str(m_names) + ' from ' + path,'INFO')
+                output('Importing ' + str(m_names) +' ','DEBUG')
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
     return None
 
 
-def load_sDNA(sDNA_folder, options):
-    
-    if sDNA_folder == None:
-        try:
-            sDNA_folder = split(options.sDNA_UISpec_path)[0]     #os.path.split
-        except:
-            sDNA_folder = '' #default_sDNAUISpec_path
-    runsdnacommand = strict_import('runsdnacommand',sDNA_folder,'')
-    sDNAUISpec = strict_import('sDNAUISpec',sDNA_folder,'') 
-    return runsdnacommand, sDNAUISpec
+#def load_sDNA(sDNA_folder, metas):
+#    
+#    if sDNA_folder == None:
+#        try:
+#            sDNA_folder = split(metas.sDNA_UISpec_path)[0]     #os.path.split
+#        except:
+#            sDNA_folder = '' #default_sDNAUISpec_path
+#    runsdnacommand = strict_import('runsdnacommand',sDNA_folder,'')
+#    sDNAUISpec = strict_import('sDNAUISpec',sDNA_folder,'') 
+#    return runsdnacommand, sDNAUISpec
 
 # runsdnacommand, sDNAUISpec = load_sDNA()
 
@@ -273,9 +279,9 @@ def convert_data_tree_to_nested_list(self, data_tree):
 
 class MyComponent(component):
 
-    global GHsDNA
-    GHsDNA_search_paths = [join(Grasshopper.Folders.DefaultAssemblyFolder, GHsDNA_subfolder)
-                          ,r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00\GHsDNA']
+    global GHsDNA, GHsDNA_search_paths, component_tool, log_file
+    GHsDNA_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder, GHsDNA_subfolder) ]
+                          
     GHsDNA.tools, GHsDNA_path = load_modules('GHsDNA.tools', GHsDNA_search_paths)
 
 
@@ -283,54 +289,92 @@ class MyComponent(component):
     local_metas = GHsDNA.tools.local_metas   # immutable.  Can be set on groups of components using the default section of a project config.ini
     tools_dict = GHsDNA.tools.tools_dict
 
-    global component_tool
+    #output( ' opts[options].log_file == ' + opts['options'].log_file
+    #   +' opts[options].logger_file_level  == ' +' '+opts['options'].logger_file_level
+    #   +' opts[options].logger_console_level) == ' +' '+opts['options'].logger_console_level, 'DEBUG')
 
 
+    class_logger_name = "MyComponent"
+    if GHsDNA.tools.logger.__class__.__name__ == 'WriteableFlushableList':
+        log_file = (  ghdoc.Path.rpartition('.')[0]  #type: ignore
+                    + opts['options'].log_file_suffix + '_tracker1'
+                    + '.log' ) 
+        log_file_dir = split(log_file)[0]
+        if isdir(log_file_dir):
+            GHsDNA.tools.logger = GHsDNA.tools.wrapper_logging.new_Logger( 
+                                            'GHsDNA'
+                                            ,log_file 
+                                            ,opts['options'].logger_file_level
+                                            ,opts['options'].logger_console_level
+                                            )
+        else:
+            pass
+            output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
+
+    logger = GHsDNA.tools.logger.getChild( class_logger_name)
+   
+
+
+    my_tools = None
 
     def update_tools(self):
+        self.my_tools = GHsDNA.tools.tool_factory( self.nick_name
+                                                  ,name_map
+                                                  ,self.opts)
+
+
+    def update_name(self):
         global name_map
         
-        self.nick_name = ghenv.Component.NickName if component_tool==None else component_tool
-        self.logger = GHsDNA.tools.wrapper_logging.logging.getLogger(self.nick_name)
+        self.nick_name = ghenv.Component.NickName if component_tool==None else component_tool # type: ignore
+        self.logger = self.logger.getChild(self.nick_name)
+        self.update_tools()
+
+
+        
+    def update_sDNA(self):
         output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
-        output("self.opts[options].sDNA == "+ str(self.opts['options'].sDNA)+' ','DEBUG')
+        output("self.opts[metas].sDNA == "+ str(self.opts['metas'].sDNA)+' ','DEBUG')
+
         if hasattr(self,'sDNA'):
-            print('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' '+'DEBUG')
-        if not hasattr(self,'sDNA') or self.sDNA != self.opts['options'].sDNA:
-            self.UISpec, self.run, path = load_modules(self.opts['options'].sDNA, self.opts['options'].sDNA_search_paths)
-            print('Self has attr UISpec == ' + str(hasattr(self,'UISpec'))+' ' + 'DEBUG')
-            print('Self has attr run == ' + str(hasattr(self,'run'))+' ' +'DEBUG')
+            output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
+        
+        sDNA = self.opts['metas'].sDNA
 
-            self.sDNA = self.opts['options'].sDNA
+        if not hasattr(self,'sDNA') or self.sDNA != sDNA:
+            self.UISpec, self.run, path = load_modules(sDNA, self.opts['metas'].sDNA_search_paths)
+
+            output('Self has attr UISpec == ' + str(hasattr(self,'UISpec'))+' ' , 'DEBUG')
+            output('Self has attr run == ' + str(hasattr(self,'run'))+' ' ,'DEBUG')
+
+            self.sDNA = sDNA
             self.sDNA_path = path
-            self.opts['options'] = self.opts['options']._replace(sDNA = self.sDNA
-                                                                ,sDNA_path = path
-                                                                ,UISpec = self.UISpec
-                                                                ,run = self.run)  
-            #
-            # Initialise caches if necessary:
-            GHsDNA.tools.opts.setdefault(self.sDNA,{})
-            GHsDNA.tools.get_syntax_dict.setdefault(self.sDNA,{})
-            GHsDNA.tools.input_spec_dict.setdefault(self.sDNA,{})
+            self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
+                                                                ,sDNA_path = path 
+                                                             )
+            self.opts['options'] = self.opts['options']._replace(  UISpec = self.UISpec
+                                                                  ,run = self.run 
+                                                                  )  
 
 
-        self.opts = GHsDNA.tools.opts if self.local_metas.sync_to_shared_global_opts else self.opts.copy()
 
-        self.my_tools = GHsDNA.tools.tool_factory( self.nick_name, name_map, self.opts)
+
 
 
     def __init__(self):
 
-        self.logger = GHsDNA.tools.wrapper_logging.logging.getLogger("MyComponent Class : ")
         
         self.a = WriteableFlushableList()
-        GHsDNA.tools.wrapper_logging.add_custom_file_to_logger(GHsDNA.tools.logger, self.a, 'INFO')
+        GHsDNA.tools.wrapper_logging.add_custom_file_to_logger( self.logger
+                                                               ,self.a
+                                                               ,self.opts['options'].logger_custom_level)
 
         #runsdnacommand, sDNAUISpec = load_sDNA(options)
 
 
-        
-        self.update_tools()
+        self.update_sDNA()
+        self.update_name()
+
         component.__init__(self)
 
   
@@ -345,15 +389,25 @@ class MyComponent(component):
         # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
         #if not 'opts' in globals():
         #    global opts
+        #reload(GHsDNA.tools) # type: ignore
         self.a = WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
-        args_dict = {key.Name : val for key, val in zip(ghenv.Component.Params.Input[1:], args) }
+        args_dict = {key.Name : val for key, val in zip(ghenv.Component.Params.Input[1:], args) } # type: ignore
         
         external_opts = args_dict.get('opts',{})
         external_local_metas = args_dict.get('local_metas',{})
-        print('#1 self.local_metas == ' + str(self.local_metas))
+        #print('#1 self.local_metas == ' + str(self.local_metas))
+        
+        if self.nick_name != ghenv.Component.NickName:  # type: ignore
+            self.update_name()
+            output( ' Tools in ' + self.nick_name + ' changed to : ' 
+                            + str(self.my_tools),'WARNING' )
+        
+        
         synched = self.local_metas.sync_to_shared_global_opts
+        old_sDNA = self.opts['metas'].sDNA
 
-        print('#1.05 self.local_metas == ' + str(self.local_metas))
+
+        #print('#1.05 self.local_metas == ' + str(self.local_metas))
 
         #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.read_from_shared_global_opts:
         #    self.opts = GHsDNA.tools.opts.copy() 
@@ -364,14 +418,20 @@ class MyComponent(component):
                                                           ,self.local_metas 
                                                           ,external_local_metas
                                                           ,self.nick_name)
-        print('#2 self.local_metas == ' + str(self.local_metas))
+        #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
         #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.write_to_shared_global_opts:
         #    GHsDNA.tools.override_all_opts(args_dict, GHsDNA.tools.opts, self.local_metas, self.nick_name)
         
         if self.opts['metas'].allow_components_to_change_type: 
-            assert False
-            if self.nick_name != ghenv.Component.NickName or self.local_metas.sync_to_shared_global_opts != synched:
+            #assert False
+            
+            if self.local_metas.sync_to_shared_global_opts != synched:
+                self.opts = GHsDNA.tools.opts if self.local_metas.sync_to_shared_global_opts else self.opts.copy()
+
+            if self.opts['metas'].sDNA != old_sDNA:
+                self.update_sDNA()
                 self.update_tools()
+
                 
         #load_GHsDNA()
         #reload(tools)
@@ -388,15 +448,32 @@ class MyComponent(component):
         # And if we have to delete links based on deletion flag or can leave that to sDNA
         ############################################################################################
         #
+        Defined_tools = [y for z in self.tools_dict.values() for y in z]
+        Undefined_tools = [x for x in self.my_tools if x not in Defined_tools]
+
+        if Undefined_tools:
+            output('Defined_tools == ' + str(Defined_tools), 'DEBUG')
+            output('Undefined tools == ' + str(Undefined_tools), 'DEBUG')
+            raise ValueError(output('Tool function not in cache, possibly ' 
+                                    + 'unsupported.  Check input tool_name '
+                                    +'if sDNAGeneral, else tool_factory '
+                                    ,'ERROR',self))
+
 
         if go in [True, [True]]: # [True] in case go set to List Access in GH component but only connected to a normal boolean
             returncode = 999
+            output("whoop whoop, retcode == " + str(returncode),'DEBUG')
+            assert isinstance(self.my_tools, list)
             for tool in self.my_tools:
-                returncode, f_name, Geom, Data, tmp_a = tool(ghenv, f_name, Geom, Data, self.opts, args)
-                if isinstance(tmp_a, str):
-                    self.a.write(tmp_a)
-                else:
-                    self.a = self.a.__add__(tmp_a)
+                output("Tool name == " + tool.__name__ + " Tool == " + str(tool),'DEBUG')
+                returncode, f_name, Geom, Data, tmp_a = tool( ghenv # type: ignore
+                                                             ,f_name
+                                                             ,Geom
+                                                             ,Data
+                                                             ,self.opts ) 
+                
+                self.a.write(tmp_a)
+
                 if returncode != 0:
                     break
 

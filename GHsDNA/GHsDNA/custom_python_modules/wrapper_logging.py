@@ -68,11 +68,11 @@ def new_Logger(  logger_name = 'main'
     # https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook
     # Logging to multiple destinations
     # set up logging to file - see previous section for more details
-    logging.basicConfig( level=getattr(logging,file_logging_level)
-                        ,format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-                        ,datefmt='%m-%d %H:%M'
-                        ,filename=file_name
-                        ,filemode='w')
+    logging.basicConfig( level = getattr(logging, file_logging_level)
+                        ,format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+                        ,datefmt = '%m-%d %H:%M'
+                        ,filename = file_name
+                        ,filemode = 'w')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler(sys_stdout)
     console.setLevel(getattr(logging,console_logging_level))

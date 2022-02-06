@@ -45,7 +45,7 @@ def override_ordereddict_with_dict( d_lesser
                                    ,od_greater
                                    ,strict = True
                                    ,check_types = False
-                                   ,add_in_new_options_keys = True
+                                   ,add_in_new_options_keys = False
                                    ,**kwargs):
     #type: (dict, OrderedDict, bool, bool, bool, dict) -> OrderedDict
     #
@@ -58,8 +58,8 @@ def override_ordereddict_with_dict( d_lesser
         new_od = od_greater.copy() 
     
     if check_types:
-        for key in d_lesser:
-            if key in new_od and type(d_lesser[key]) != type(new_od[key]):
+        for key in d_lesser.viewkeys() & new_od:  #.keys():
+            if type(d_lesser[key]) != type(new_od[key]):
                 del new_od[key]
     
     if version_info.major > 3 or (version_info.major == 3 and version_info.minor >= 9) :
@@ -79,13 +79,13 @@ def override_ordereddict_with_dict( d_lesser
 def override_namedtuple_with_dict( nt_lesser
                                   ,d_greater
                                   ,strict = True
-                                  ,check_types = False  #types of dict values
+                                  ,check_types = True  #types of dict values
                                   ,**kwargs):  
     #type (dict, namedtuple, Boolean, Boolean, Boolean) -> namedtuple
     #
     if strict and not isinstance(d_greater, dict):
         return nt_lesser
-    elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:
+    elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:  #.viewkeys doesn't have .issubset method ipy 2.7
         return nt_lesser._replace(**d_greater)
     else:
         newDict = override_ordereddict_with_dict(nt_lesser._asdict(), d_greater, strict, check_types, **kwargs)
@@ -119,7 +119,7 @@ def readline_generator(fp):
     yield ''
 
 def setup_config( file_path
-                 ,dump_all_in_default_section = True
+                 ,dump_all_in_default_section = False
                  ,empty_lines_in_values = False
                  ,interpolation = None
                  ,**kwargs):
@@ -137,13 +137,15 @@ def setup_config( file_path
         f = open(file_path,'rU')
         f_gen = readline_generator(f)
 
-        if version_info.major < 3 or (version_info.major ==3 and version_info.minor < 2) :  #  ConfigParser.readfp deprecated in Python 3.2
-            config.read_file(f_gen)
-        else:
+        if version_info.major < 3 or (version_info.major ==3 and version_info.minor < 2) :  
             class G():
                 pass
             G.readline = f_gen.next
             config.readfp(G)
+        #  ConfigParser.readfp deprecated in Python 3.2 but read_file not available before then
+        else:
+            config.read_file(f_gen)
+
     else:
         result = config.read(file_path)
         if not result:
@@ -151,15 +153,15 @@ def setup_config( file_path
 
     return config
 
-def type_coercer_factory(val, config, d = None, **kwargs):
+def type_coercer_factory(old_val, config, d = None, **kwargs):
     # type (any, Class, dict) -> function
     if d == None or not isinstance(d,dict) or any(
         [not isinstance(k,type) for k in d]) or any(
         [not hasattr(config,v) for v in ['get'] + d.values()]):
             d = {bool : config.getboolean, int : config.getint, float : config.getfloat}
-    for key in d:
-        if isinstance(val, key):
-            return d[key]
+    for k, v in d.items():
+        if isinstance(old_val, k):
+            return v
     return config.get     # TODO:  Fix: Trying to override a list or a dict will replace it with a string.
 
 def override_namedtuple_with_config(     nt_lesser
@@ -174,13 +176,22 @@ def override_namedtuple_with_config(     nt_lesser
 
     old_dict = nt_lesser._asdict()
     new_dict = {}
-
-
-    for key, value in config[section_name].items():
+    #print('Parsing config file...  '+'INFO')
+    for key, value in config.items(section_name):
+        message = key + ' : ' + value
         if key in old_dict:   
-            new_dict[key] = value if leave_as_strings else type_coercer_factory(old_dict[key],config)(section_name,key,**kwargs)
+            new_dict[key] = value if leave_as_strings else type_coercer_factory(
+                                                             old_dict[key]
+                                                            ,config 
+                                                           )(section_name
+                                                            ,key
+                                                            )
+            message += '  old_dict[key]) == ' + str(old_dict[key]) + (
+                  '   type(old_dict[key]) == ' + type(old_dict[key]).__name__ )
         else:
             new_dict[key] = value    # Let override_namedtuple_with_dict decide whether to exclude new keys or not
+        #print(message+'  '+'DEBUG')
+
 
     return override_namedtuple_with_dict(nt_lesser, new_dict, strict = False, **kwargs)      
                                                                                  # We know new_dict is a dict so strict == False.
@@ -205,7 +216,6 @@ def override_namedtuple_with_ini_file(   nt_lesser
 
 def override_namedtuple( nt_lesser
                         ,overrides_list
-                        ,override_funcs_dict = None
                         ,**kwargs
                         ):                        
     # type(list(object), namedtuple, Boolean, Boolean, Boolean, Class -> namedtuple
@@ -229,15 +239,15 @@ def override_namedtuple( nt_lesser
     if not isinstance(overrides_list,list):
         overrides_list=[overrides_list]
     
-    if not isinstance(override_funcs_dict,dict) or any(
-        [not isinstance(k,type) for k in override_funcs_dict]) or any(
-        [not v in globals() for v in override_funcs_dict.values()]):
-            override_funcs_dict = {  dict : override_namedtuple_with_dict 
-                                    ,str : override_namedtuple_with_ini_file
-                                    ,ConfigParser.RawConfigParser : override_namedtuple_with_config
-                                    ,ConfigParser.ConfigParser : override_namedtuple_with_config
-                                    ,nt_lesser.__class__ : override_namedtuple_with_namedtuple  
-                                  }
+    #if not isinstance(override_funcs_dict,dict) or any(
+    #    [not isinstance(k,type) for k in override_funcs_dict]) or any(
+    #    [not v in globals() for v in override_funcs_dict.values()]):
+    override_funcs_dict = {  dict : override_namedtuple_with_dict 
+                            ,str : override_namedtuple_with_ini_file
+                            ,ConfigParser.RawConfigParser : override_namedtuple_with_config
+                            ,ConfigParser.ConfigParser : override_namedtuple_with_config
+                            ,nt_lesser.__class__ : override_namedtuple_with_namedtuple  
+                            }
 
 
 
