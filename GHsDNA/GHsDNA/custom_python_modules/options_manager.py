@@ -4,7 +4,7 @@
 # Functions to manage options data structures, e.g. fix dictionaries into named tuples
 #
 __author__ = 'James Parrott'
-__version__ = '0.00'
+__version__ = '0.01'
 #
 # No logging here so that we can use wrapper_logger before the options object is fixed
 #
@@ -16,10 +16,9 @@ if version_info.major >= 3 : # version > '3':   # if Python 3
 else:   # e.g.  Python 2
     import ConfigParser    
 
-
-
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
+
 if __name__=='__main__':
     sys_path += [join(sys_path[0], '..')]
 
@@ -70,7 +69,7 @@ def override_ordereddict_with_dict( d_lesser
                                                     # The values of od_greater take priority if the keys clash
                                                     # But the order of the keys is as for d_lesser (Iron Python 2.7.11)
                                                     #
-                                                    # Extra keys in od_greater are added to od_lesser
+                                                    # Extra keys in new_od are added to d_lesser
 
     # PEP 0584
     # PEP 468
@@ -158,7 +157,8 @@ def type_coercer_factory(old_val, config, d = None, **kwargs):
     if d == None or not isinstance(d,dict) or any(
         [not isinstance(k,type) for k in d]) or any(
         [not hasattr(config,v) for v in ['get'] + d.values()]):
-            d = {bool : config.getboolean, int : config.getint, float : config.getfloat}
+            d = OrderedDict([(bool, config.getboolean), (int, config.getint), (float, config.getfloat)]) 
+            # Need ordering - isinstance(True, int) == True 
     for k, v in d.items():
         if isinstance(old_val, k):
             return v
@@ -179,15 +179,21 @@ def override_namedtuple_with_config(     nt_lesser
     #print('Parsing config file...  '+'INFO')
     for key, value in config.items(section_name):
         message = key + ' : ' + value
-        if key in old_dict:   
-            new_dict[key] = value if leave_as_strings else type_coercer_factory(
-                                                             old_dict[key]
-                                                            ,config 
-                                                           )(section_name
-                                                            ,key
-                                                            )
-            message += '  old_dict[key]) == ' + str(old_dict[key]) + (
-                  '   type(old_dict[key]) == ' + type(old_dict[key]).__name__ )
+        if not leave_as_strings and key in old_dict:   
+            try:
+                getter = type_coercer_factory( old_dict[key],  config )
+                new_dict[key] = getter( section_name,  key )
+            except:
+                message += (".  failed to parse value in field "
+                            + key
+                            +'  old_dict[key]) == ' 
+                            + str(old_dict[key]) 
+                            +'   type(old_dict[key]) == ' 
+                            + type(old_dict[key]).__name__ 
+                            + 'getter = ' + getter.__name__
+                           ) 
+                raise TypeError(message)
+
         else:
             new_dict[key] = value    # Let override_namedtuple_with_dict decide whether to exclude new keys or not
         #print(message+'  '+'DEBUG')

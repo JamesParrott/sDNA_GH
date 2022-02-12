@@ -2,60 +2,42 @@
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.01'
-__copyright__ = 'Cardiff University'
-__license__ = {  'Python standard library modules and ' : 'Python Software Foundation 2.7.18' # https://docs.python.org/2.7/license.html
-                ,'wrapper_logging' : 'Python Software Foundation 2.7.18'
-                ,'wrapper_pyshp' : 'MIT' # https://pypi.org/project/pyshp/ 
-                ,'sDNAUISpec.py' : 'MIT' # https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/LICENSE.md
-                ,'everything else' : 'same as for sDNA ' # https://sdna.cardiff.ac.uk/sdna/legal-license/ 
-              }
 
-
-from json import tool
 import sys, os  
-from os.path import join, split, isfile, dirname, abspath #, isdir
+from os.path import join, split, isfile, dirname
 from re import match
 from subprocess import call
 from time import asctime
 from collections import namedtuple, OrderedDict
+from itertools import chain, izip, cycle
+import inspect
+
 if sys.version < '3.3':
     from collections import Hashable
 else:
     from collections.abc import Hashable
 
-import Rhino
-import scriptcontext as sc
-import rhinoscriptsyntax as rs
 
-from .third_party_python_modules import shapefile as shp
-
-
-def make_regex_inverse_of_format_string(pattern):
-    # type (str) -> str
-    the_specials = '.^$*+?[]|():!#<='
-    for c in the_specials:
-        pattern = pattern.replace(c,'\\' + c)
-    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
-    return r'\A' + pattern + r'\Z'
 
 def get_stem_and_folder(path):
     if isfile(path):
         path=dirname(path)
     return split(path)
 
-#print("Hi everybody!")
 class HardcodedMetas(): 
-    #current_working_dir =  sys.path[0]  # where am I?
     config_file_path = r'config.ini'
     add_in_new_options_keys = False
     allow_components_to_change_type = False
     typecheck_opts_namedtuples = True
     typecheck_opts_fields = True
     sDNA = ('sDNAUISpec','runsdnacommand')
-    sDNA_path = ''
+    sDNA_path = ''  # Read only.  Determined after loading sDNAUISpec to which ever below
+                    # it is found in.
+                    # after loading, assert opts['metas'].sDNA_path == dirname(opts['options'].UISpec.__file__)
     sDNA_UISpec_path = r'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
     sDNA_search_paths = [sDNA_UISpec_path, join(os.getenv('APPDATA'),'sDNA')]
     sDNA_search_paths += [join(os.getenv('APPDATA'), get_stem_and_folder(sDNA_search_paths[0])[1]) ]
+    auto_update_Rhino_doc_path = True
     #share_installation_defaults_key = "GHsDNA_installation_default_options"
     #share_sDNA_tools_key = "sDNA_UI_Spec_tools"
     #if all(['ghdoc' in globals, hasattr(ghdoc,'Path'), isfile(ghdoc.Path)]):    
@@ -70,36 +52,26 @@ class HardcodedMetas():
 #    append_iterable_values_do_not_overwrite = True # TODO: implement this!
 #    allocate_misnamed_GH_component_input_names_in_order = False # TODO: implement this!
 #    allocate_all_GH_component_input_names_in_order = False # TODO: implement this!
-#    modules_subdirectories = [   r'third_party_python_modules'   # all pushed to sys.path
+#    modules_subdirectories = [   r'third_party_python_modules'   
 #                                ,r'custom_python_modules'
 #                                ] 
-#    custom_module_search_paths = [   r'C:\Users\James\AppData\Roaming\Grasshopper\Libraries'
-#                                    ,r'C:\Users\James\AppData\Roaming\Grasshopper'
-#                                    ,r'C:\Users\James\AppData\Roaming\Grasshopper\UserObjects'
-#                                    ,r'C:\Users\James\AppData\Roaming\Grasshopper\AutoSave'
-#                                    ,r'C:\Users\James\Downloads\GHsDNA'
-#                                    ,r'C:\Users\James\Downloads'
-#                                    ,r'C:\Users\James'
-#                                    ,r'C:\Users\James\AppData\Roaming\GHsDNA'
-#                                    ,r'C:\Program files\GHsDNA'
-#                                    ,r'C:\Program Files (x86)\GHsDNA'
-#                                    ,r'C:\GHsDNA'
-#                                    ,r'C:\Users\James\AppData\Roaming\McNeel\Rhinoceros\7.0\scripts'
-#                                    ,r'C:\Users\James\AppData\Roaming\McNeel\Rhinoceros\packages\7.0'
-#                                ]        
 
 class HardcodedOptions():            
+    ####################################################################################
+    #System
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8'
     rhino_executable = r'C:\Program Files\Rhino 7\System\Rhino.exe'
     UISpec = None
     run = None
-
+    Rhino_doc_path = ''  # tbc by loader
     sDNA_prepare = r'C:\Program Files (x86)\sDNA\bin\sdnaprepare.py'
     sDNA_integral = r'C:\Program Files (x86)\sDNA\bin\sdnaintegral.py'
     python_exe = r'C:\Python27\python.exe' # Default installation path of Python 2.7.3 release (32 bit ?) http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
                                             # linked from sDNA manual https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html
-    tool_name="main_sequence"
+    
+    ####################################################################################
+    #Logging    
     log_file_suffix = '_GHsDNA'
     log_file = __file__.rpartition('.')[0] + log_file_suffix + '.log'
     #os.getenv('APPDATA'),'Grasshopper','Libraries','GHsDNA','GHsDNA.log')
@@ -108,6 +80,18 @@ class HardcodedOptions():
     logger_file_level = 'DEBUG'
     logger_console_level = 'DEBUG'
     logger_custom_level = 'WARNING'
+
+    ####################################################################################
+    #GDM
+    read_overides_Data_from_Usertext = True
+    merge_Usertext_subdicts_instead_of_overwriting = True
+    use_initial_links_if_too_many_in_list = True
+    use_initial_data_if_too_many_in_list = True
+    ####################################################################################
+    #Shapefiles
+    shp_file_shape_type = 'POLYLINEZ'
+    read_from_Rhino_if_no_shp_data = False
+    cache_iterable_to_shp = False
     shp_file_extension = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
     supply_sDNA_file_names = True
     shape_file_to_write_Rhino_data_to_from_GHsDNA = r'C:\Users\James\Documents\Rhino\Grasshopper\GHsDNA_shapefiles\t6.shp' # None means Rhino .3dm filename is used.
@@ -117,30 +101,37 @@ class HardcodedOptions():
     prepped_shp_file_suffix = "_prepped"
     output_shp_file_suffix = "_output"
     duplicate_file_name_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    max_new_files_to_make = 20
     suppress_overwrite_warning = False     
     uuid_shp_file_field_name = 'Rhino3D_' # 'object_identifier_UUID_'     
-    uuid_length = 36 # 32 in 5 blocks with 4 seperators.
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
     calculate_smallest_field_sizes = True
+    delete_shapefile_after_reading = True
     global_shp_file_field_size = 30
     global_shp_number_of_decimal_places = 10
     shp_file_field_size_num_extra_chars = 2
-    use_memo = False
     enforce_yyyy_mm_dd = False
     use_str_decimal = True
     do_not_convert_floats = True
     decimal_module_prec = 12
     shp_record_max_decimal = 4
+    ####################################################################################
+    #Writing and Reading Usertext to/from Rhino
+    create_new_links_layer_from_shapefile = True
+    max_new_UserText_keys_to_make = 20
     #
     #
-    rhino_user_text_key_format_str_to_read = 'sDNA_{name}_type={fieldtype}_size={size}'  #30,000 characters tested!
-    sDNA_output_user_text_key_format_str_to_read = 'sDNA_output_{name}_run_time={datetime}'  #30,000 characters tested!
-    #
-    rhino_user_text_key_pattern = make_regex_inverse_of_format_string(rhino_user_text_key_format_str_to_read)
+    rhino_user_text_key_format_str_to_read = 'sDNA input name={name} type={fieldtype} size={size}'  #30,000 characters tested!
+    sDNA_output_user_text_key_format_str_to_read = 'sDNA output={name} run time={datetime}'  #30,000 characters tested!
+    ####################################################################################
+    #Plotting results
     sDNA_output_abbrev_to_graph = 'BtE'
+    ####################################################################################
+    #Test
     message = 'Solid.  Solid as a rock!'
 
 class HardcodedLocalMetas():
-    sync_to_shared_global_opts = True
+    sync_to_shared_global_opts = True    # Needs to be true to
     read_from_shared_global_opts = True
     write_to_shared_global_opts = False  
 
@@ -220,6 +211,8 @@ from .custom_python_modules.options_manager import (
                                     ,override_namedtuple_with_ini_file
 )
 
+
+
 ####################################################################################################################
 # First options options_manager.override (3), user's installation specific options over (4), hardcoded defaults above
 #
@@ -292,15 +285,16 @@ class WriteableFlushableList(list):
 
 # 'a' in Grasshopper to be added by Launcher 
 
-logger = WriteableFlushableList()
+if 'logger' not in globals():
+    logger = WriteableFlushableList()
 
 
-from .custom_python_modules.wrapper_pyshp import (get_fields_and_records_from_shapefile
+from .custom_python_modules.wrapper_pyshp import (get_fields_recs_and_shapes_from_shapefile
                                                  ,get_unique_filename_if_not_overwrite
                                                  ,write_from_iterable_to_shapefile_writer)
 
-#def function_imported_by_GHsDNA_launcher(ghenv, f_name, Geom, Data, opts):
-    #type(ghenv, bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict) -> bool, str, Rhino_Geom, datatree, str
+#def function_imported_by_GHsDNA_launcher(f_name, Geom, Data, opts):
+    #type(bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict) -> bool, str, Rhino_Geom, datatree, str
 # return ran_OK, output_file_path, Geometry, Data, a
 
 #def override_namedtuple( user_args_dict
@@ -314,46 +308,8 @@ from .custom_python_modules.wrapper_pyshp import (get_fields_and_records_from_sh
 #                        ):
 #type() -> namedtuple
 
-###############################################################################################################
-# Override (3) user installation specific options with (2) previously updated options in Grasshopper definition 
-# from another GHsDNA component
-#new_nt = options_manager.override_namedtuple_with_namedtuple(installation_nt, old_nt_or_dict, add_in_new_options_keys=True, check_types = True, strict = False)
-#new_metas = options_manager.override_namedtuple_with_namedtuple(test_metas, new_metas, add_in_new_options_keys=True, check_types = True, strict = False)
-#new_options = options_manager.override_namedtuple_with_namedtuple(test_options, new_options, True, add_in_new_options_keys=True, check_types = True, strict = False)
-                                                            # Both must have an _asdict() method.  See note 1) above.
-                                                            # Assume both came from a previous call to this function
-                                                            # and so already contain hardcoded and installation options
-                                                            # i.e.  no fields are missing.
 
-#if 'config_file_path' in args_metas:
-#    ###########################################################################################################################
-#    # Override (2) previously updated options in Grasshopper definition with (1) latest (e.g. different) project file's options
-#    new_metas = options_manager.override_namedtuple_with_ini_file(  args_metas[config_file_path]
-#                                                                   ,new_metas
-#                                                                   ,opts['metas'].add_in_new_options_keys
-#                                                                   ,False
-#                                                                   ,'Metas'
-#                                                                   ,False
-#                                                                   ,None
-#                                                                   )
-#    new_options = options_manager.override_namedtuple_with_ini_file( args_metas[config_file_path]
-#                                                                    ,new_options
-#                                                                    ,opts['metas'].add_in_new_options_keys
-#                                                                    ,False
-#                                                                    ,'Metas'
-#                                                                    ,False
-#                                                                    ,None
-#                                                                    )
-# Note, the order of the processing of hardcoded and installation config.ini options is unlikely to matter but
-# the user may expect arg_metas (processed below) to occur before project config.ini options_manager.overrides new_options (processed above)
-# TODO: Nice to have.  Switch this order if a meta is changed (need to always check for this meta in higher priorities first, 
-# before overriding lower priority options).
 
-#######################################################################################################################
-# Override (1) latest project file's options with (0) options arguments directly supplied to the Grasshopper component
-#new_metas = options_manager.override_namedtuple_with_dict(args_metas, new_metas, True, 'Metas')
-#new_options = options_manager.override_namedtuple_with_dict(args_options, new_options, True, 'Options')
-#return new_nt
 
 def override_all_opts( args_dict
                       ,local_opts
@@ -361,7 +317,7 @@ def override_all_opts( args_dict
                       ,local_metas
                       ,external_local_metas
                       ,name):
-    #type (dict, dict(namedtuple), str) -> dict(namedtuple)
+    #type (dict, dict(namedtuple), dict(namedtuple), namedtuple, namedtuple, dict, str) -> namedtuple
     #
     # 1) We assume opts has been built from a previous GHPython launcher component and call to this very function.  This
     # trusts the user and our components somewhat, in so far as we assume metas and options in opts have not been crafted to have
@@ -391,7 +347,9 @@ def override_all_opts( args_dict
     for (arg_name, arg_val) in args_dict.items():  # local_metass() will be full of all our other variables.
         if arg_val != None:  # Unconnected input variables in a Grasshopper component are None.  
                          # No sDNA tool inputspec default, no metas and no options default is None.
-                         #If None values are needed as specifiable inputs, we need to e.g. test ghenv for an input variable's connectedness
+                         #If None values are needed as specifiable inputs, we would 
+                         # need to e.g. test ghenv for an input variable's connectedness
+                         # so we don't support this
             if arg_name in metas._fields:      
                 args_metas[arg_name] = arg_val
             elif arg_name in options._fields:   
@@ -491,7 +449,7 @@ def override_all_opts( args_dict
 
     #overrides_list = lambda key : [external_opts.get(key,{}).get(sDNA(), {}), config_file_reader, sub_args_dict.get(key, {})]
     if local_metas.sync_to_shared_global_opts:
-        dict_to_update = opts 
+        dict_to_update = opts # the opts in module's global scope, outside this function
     else:
         dict_to_update = local_opts
         #if local_metas.read_from_shared_global_opts:
@@ -544,117 +502,608 @@ def override_all_opts( args_dict
 
     return local_metas
 
+# Load primary meta.
+override_all_opts(  dict(config_file_path = default_metas.config_file_path) 
+# just to retrieve hardcoded primary meta (installation config file location)
+                    ,opts #  mutates opts
+                    ,{}       #external_opts
+                    ,local_metas 
+                    ,empty_NT #external_local_metas
+                    ,'')
 
 
 
 
 
-def start_and_end_points(curve, rs): # curve : Rhino.Geometry.Curve https://developer.rhino3d.com/api/RhinoCommon/html/T_Rhino_Geometry_Curve.htm
-    #type: (...)->list(list(float,3),list(float,3))
-    return [list(rs.CurveStartPoint(curve)),list(rs.CurveEndPoint(curve))]
-
-def pattern_match_key_names(x):
-    #type: (str)-> str / None
-    return match(opts['options'].rhino_user_text_key_pattern,x)
 
 
+def report(s):
+    #type(str)->str
+    return output(str(s)+' ','DEBUG')
 
-def Read_Network_Links(ghenv, f_name, Geom, Data, opts_at_call):
+def report_value(x, x_val = None):
+    # type(type[any]) -> str
+    if x_val == None:
+        if type(x).__name__ == 'generator':
+            x_val = " Generator " # don't use up now just for reporting
+        else:
+            x_val = x
+
+    c = inspect.currentframe().f_back.f_locals.items()
+    names = [var_name for var_name, var_val in c if var_val is x]
+    # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+
+
+    return report(str(names) + ' == ' + str(x_val)+' ')
+
+def make_regex_inverse_of_format_string(pattern):
+    # type (str) -> str
+    the_specials = '.^$*+?[]|():!#<='
+    for c in the_specials:
+        pattern = pattern.replace(c,'\\' + c)
+    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
+    return r'\A' + pattern + r'\Z'
+
+
+def convert_dictionary_to_data_tree(nested_dict):
+    # type(dict) -> DataTree
+    import ghpythonlib.treehelpers as th
+        
+    User_Text_Keys = [[key for key in link_dict] for link_dict in nested_dict]
+    User_Text_Values = [[val for val in link_dict.values()] for link_dict in nested_dict]
+    
+    Data =  th.list_to_tree([[User_Text_Keys, User_Text_Values]])
+    Geometry = nested_dict.keys()  # Multi-polyline-links aren't unpacked.
+    return Data, Geometry
+    #layerTree = []
+
+
+def override_gdm_with_gdm(lesser, override, opts):  
+    # overwrite ?
+    # call update on the sub dicts?:
+    if opts['options'].merge_Usertext_subdicts_instead_of_overwriting:
+        for key in override:
+            if key in lesser:
+                lesser[key].update(override[key])
+            else:
+                lesser[key] = override[key]
+    else:
+        lesser.update(**override)
+    return lesser
+
+def make_obj_key(x, *args):
+    # type(str) -> str
+    return x.ToString()  # Group names do also 
+                         # have a ToString() method, even 
+                         # though they're already strings
+
+def get_obj_keys(obj):
+    # type(str) -> list
+    import rhinoscriptsyntax as rs
+    return rs.GetUserText(obj)
+
+def get_obj_val(obj, key):
+    # type(str, str) -> str
+    import rhinoscriptsyntax as rs
+    return rs.GetUserText(obj, key)
+
+def write_obj_val(obj, key, val):
+    # type(str, str) -> str
+    import rhinoscriptsyntax as rs
+    return rs.SetUserText(obj, key, val, False)
+
+def get_val_list(val_getter = get_obj_val):
+    # type(function) -> function
+    def f(obj, keys):
+        # type(str, list) -> list
+
+        return [val_getter(obj, key) for key in keys]
+    return f
+
+def get_key_val_tuples( keys_getter = get_obj_keys
+                          ,val_getter = get_obj_val):
+    # type(function) -> function
+    def f(obj):
+        # type(str, list) -> list
+        keys = keys_getter(obj)
+        return ( (key, val_getter(obj, key)) for key in keys)
+    return f
+
+def is_group(x):
+    #type( str ) -> boolean
+    import rhinoscriptsyntax as rs
+    return rs.IsGroup(x)   
+
+def get_all_groups():
+    #type( None ) -> list
+    import rhinoscriptsyntax as rs
+    return rs.GroupNames()
+
+def get_members_of_a_group(group):
+    #type(str) -> list
+    import rhinoscriptsyntax as rs
+    return rs.ObjectsByGroup(group)
+
+def make_new_group(group_name = None):
+    #type(str) -> str
+    import rhinoscriptsyntax as rs
+    return rs.AddGroup(group_name)
+
+def add_objects_to_group(objs, group_name):
+    #type(list, str) -> int
+    import rhinoscriptsyntax as rs
+    return rs.AddObjectsToGroup(objs, group_name)    
+
+Rhino_obj_converter_Shp_file_shape_map = dict( NULL = None
+                                            ,POINT = 'PointCoordinates'
+                                            ,MULTIPATCH = 'MeshVertices'  # Unsupported.  Complicated.  TODO!  
+                                            ,POLYLINE = 'PolylineVertices'
+                                            ,POLYGON = 'PolylineVertices'   
+                                            ,MULTIPOINT = 'PointCloudPoints'  # Unsupported.  Needs chaining to list or POINT
+                                            ,POINTZ = 'PointCoordinates'
+                                            ,POLYLINEZ = 'PolylineVertices'
+                                            ,POLYGONZ = 'PolylineVertices'  
+                                            ,MULTIPOINTZ = 'PointCloudPoints'  #see MULTIPOINT
+                                            ,POINTM = 'PointCoordinates'
+                                            ,POLYLINEM = 'PolylineVertices'
+                                            ,POLYGONM = 'PolylineVertices'    
+                                            ,MULTIPOINTM = 'PointCloudPoints'  #see MULTIPOINT
+                                            )  
+
+def get_points_list_from_Rhino_obj(x, shp_type):
+    #type(str, dict) -> list
+    import rhinoscriptsyntax as rs
+    f = getattr(rs, Rhino_obj_converter_Shp_file_shape_map[shp_type])
+    return [list(y) for y in f(x)]
+
+Rhino_obj_checker_Shp_file_shape_map = dict( NULL = None
+                                            ,POINT = 'IsPoint'
+                                            ,MULTIPATCH = 'IsMesh'    # Unsupported.  Complicated.  TODO!
+                                            ,POLYLINE = 'IsPolyline'
+                                            ,POLYGON = 'IsPolyline'   #Doesn't check closed
+                                            ,MULTIPOINT = 'IsPoint'   # Need to define lambda l : any(IsPoint(x) for x in l)
+                                            ,POINTZ = 'IsPoint'
+                                            ,POLYLINEZ = 'IsPolyline'
+                                            ,POLYGONZ = 'IsPolyline'   #Doesn't check closed
+                                            ,MULTIPOINTZ = 'IsPoints'  # see MULTIPOINT
+                                            ,POINTM = 'IsPoint'
+                                            ,POLYLINEM = 'IsPolyline'
+                                            ,POLYGONM = 'IsPolyline'   #Doesn't check closed 
+                                            ,MULTIPOINTM = 'IsPoints'  # see MULTIPOINT
+                                            )  
+
+def check_is_specified_obj_type(obj, shp_type):   #e.g. polyline
+    # type(str) -> bool
+    import rhinoscriptsyntax as rs
+    return getattr(rs, Rhino_obj_checker_Shp_file_shape_map[ shp_type] )( obj )
+
+Rhino_obj_getter_code_Shp_file_shape_map = dict( NULL = None
+                                            ,POINT = 1          # Untested.  TODO
+                                            ,MULTIPATCH = 32    # Unsupported.  Complicated.  TODO!
+                                            ,POLYLINE = 4
+                                            ,POLYGON = 4  
+                                            ,MULTIPOINT = 2     # Untested.  TODO
+                                            ,POINTZ = 1         
+                                            ,POLYLINEZ = 4
+                                            ,POLYGONZ = 4   
+                                            ,MULTIPOINTZ = 2 
+                                            ,POINTM = 1
+                                            ,POLYLINEM = 4
+                                            ,POLYGONM = 4  
+                                            ,MULTIPOINTM = 2                                              )  
+
+def get_all_shp_type_Rhino_objects(shp_type):
+    #type (None) -> list
+    import rhinoscriptsyntax as rs
+    def f():
+        return rs.ObjectsByType( Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
+                                ,select=False
+                                ,state=0)
+    return f
+
+Rhino_obj_adder_Shp_file_shape_map = dict( NULL = None
+                                ,POINT = 'AddPoint'
+                                ,MULTIPATCH = 'AddMesh'    # Unsupported.  Complicated.  TODO!
+                                ,POLYLINE = 'AddPolyline'
+                                ,POLYGON = 'AddPolyline'   # check Pyshp closes them
+                                ,MULTIPOINT = 'AddPoints'
+                                ,POINTZ = 'AddPoint'
+                                ,POLYLINEZ = 'AddPolyline'
+                                ,POLYGONZ = 'AddPolyline'   # check Pyshp closes them
+                                ,MULTIPOINTZ = 'AddPoints'
+                                ,POINTM = 'AddPoint'
+                                ,POLYLINEM = 'AddPolyline'
+                                ,POLYGONM = 'AddPolyline'    # check Pyshp closes them
+                                ,MULTIPOINTM = 'AddPoints'
+                                )  
+
+def get_groups_links_and_key_val_tuples( 
+                              options = opts['options']
+                             ,obj_getter = get_all_shp_type_Rhino_objects
+                             ,group_getter = get_all_groups
+                             ,group_member_getter = get_members_of_a_group
+                             ,key_val_tuples_getter = get_key_val_tuples()
+                             ,shp_type = 'POLYLINEZ'
+                            ):
+    #type(function, function, function) -> function
+    shp_type = options.shp_file_shape_type            
+    def generator(obj):
+        #type( type[any]) -> list, list
+        #
+        # Groups first search.  If a special Usertext key on member objects 
+        # is used to indicate links, then an objects first search 
+        # is necessary instead.  This would be better for reading shapefiles.
+
+        members_of_all_groups = []
+        groups = group_getter()
+        for group in groups:
+            group_members = group_member_getter(group)
+            if ( group_members and
+                 any(check_is_specified_obj_type(x, shp_type) 
+                                             for x in group_members) ):
+                members_of_all_groups += group_members
+                key_val_tuples = chain( *( key_val_tuples_getter(member)
+                                                for member in group_members ) 
+                                       )
+                yield group, key_val_tuples
+
+        objs = obj_getter(shp_type)
+        for obj in objs:
+            if obj not in members_of_all_groups:
+                key_val_tuples = key_val_tuples_getter(obj)
+                yield obj, key_val_tuples
+        return  # For the avoidance of doubt
+
+    return generator()
+
+
+def make_gdm(main_iterable
+            ,object_hasher = make_obj_key ): 
+    #type(namedtuple, function, function)-> dict   
+
+    gdm = OrderedDict(  ( ( object_hasher(obj, key_val_tuples)
+                            ,OrderedDict(  key_val_tuples) )   
+                            for obj, key_val_tuples in main_iterable
+                            ) 
+                        )
+
+    return gdm
+    
+
+def convert_Data_tree_and_Geom_list_to_dictionary(Data, Geom, options):
+    # type (type[any], list, dict)-> dict
+    import ghpythonlib.treehelpers as th
+    import rhinoscriptsyntax as rs 
+
+    if (not isinstance(Geom, list) or
+       any( not rs.IsObject(x) and not is_group(x) for x in Geom) ):
+        return {}
+    elif not isinstance(Data, th.Tree): 
+        return {obj : {} for obj in Geom}
+    else:
+        l = th.tree_to_list(Data)
+
+        if len(l) == 2:
+            [key_lists, val_lists] = l
+        elif len(l) > 2:
+            output('Data tree has more than two branches.  '
+                    'Using first two for keys and vals.  ', 'WARNING')
+            key_lists = l[0]
+            val_lists = l[1]
+        else:
+            raise ValueError(output('Data tree has less than two branches '
+                                    +' (e.g. no keys?).  ', 'ERROR'))
+            # raise Error won't re-initialise the component.
+
+        
+
+
+        component_inputs_gen_exp = (  (obj, zip(key_list, val_list)) 
+                                        for obj, key_list, val_list in 
+                                        izip(Geom, key_lists, val_lists)  )
+
+        geom_data_map = make_gdm(component_inputs_gen_exp  
+                                ,make_obj_key
+                                )
+
+        #geom_data_map = make_gdm( izip(Geom, imap( izip, key_lists, val_lists)), make_obj_key)
+
+        return geom_data_map
+
+
+def read_objects_groups_and_Usertext_from_Rhino(f_name, gdm, opts_at_call):
+    #type(type[any], str, dict, dict) -> int, str, dict, dict
+    import Rhino
+    import scriptcontext as sc
+    import rhinoscriptsyntax as rs
+
+    options = opts_at_call['options']
+
     try:
         ghdoc     # type: ignore
     except:
+        global ghdoc
         ghdoc = sc.doc  
-    sc.doc = Rhino.RhinoDoc.ActiveDoc # type: ignore # ActiveDoc may change on Macs - TODO: only call once or accept argument
-    #
-    #
-    #############################################################################
-    # Main import of rhino objects
-    rhino_doc_curves = rs.ObjectsByType(4, select=False, state=0)
-    return True, f_name, rhino_doc_curves, Data, None
 
-def Write_Links_Data_To_Shapefile(ghenv, f_name, Geom, Data, opts_at_call):
+    sc.doc = Rhino.RhinoDoc.ActiveDoc # type: ignore 
+    # ActiveDoc may change on Macs - TODO: only call once or accept argument
+    output('Starting Read_Network_Links','DEBUG')
 
-    def write_to_shapefile_with_rhino_doc_as_default( my_iter 
-                                                ,shp_file = opts['options'].shape_file_to_write_Rhino_data_to_from_GHsDNA # None is Hardcoded default val
-                                                ,shape_mangler = start_and_end_points
-                                                ,key_finder = lambda x : rs.GetUserText(x,None)
-                                                ,key_matcher = pattern_match_key_names
-                                                #,key_mangler = lambda x : opts['options'].rhino_user_text_key_format_str_to_read.format(name = x)
-                                                #,value_mangler = rs.SetUserText
-                                                ,value_demangler = rs.GetUserText
-                                                ,shape = "POLYLINEZ"
-                                                ,options = opts['options']
-                                                ):
+    rhino_groups_and_objects = make_gdm(get_groups_links_and_key_val_tuples(options))
 
-        if shp_file == None:
-            shp_file = Rhino.RhinoDoc.ActiveDoc.Path[:-4] + opts['options'].shp_file_extension
-                                # file extensions are actually optional in PyShp, but just to be safe and future proof we slice out '.3dm'
-        return write_from_iterable_to_shapefile_writer(  my_iter 
-                                                        ,shp_file 
-                                                        ,shape_mangler
-                                                        ,key_finder
-                                                        ,key_matcher
-                                                        #,key_mangler
-                                                        #,value_mangler
-                                                        ,value_demangler
-                                                        ,shape
-                                                        ,options
-                                                        )
+    if opts_at_call['options'].read_overides_Data_from_Usertext:
+        read_Usertext_as_tuples = get_key_val_tuples()
+        for obj in gdm:
+            gdm[obj].update(read_Usertext_as_tuples(obj))
+
+    override_gdm_with_gdm(rhino_groups_and_objects, gdm, opts_at_call)
+
+    return 0, f_name, rhino_groups_and_objects, None
 
 
-    #output(opts['options'].uuid_length)
+def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
+    #type(type[any], str, dict, dict) -> int, str, dict, dict
+    
+    import rhinoscriptsyntax as rs
+    
+    options = opts_at_call['options']
 
-    OK, shp_filename, cached_fields, cached_user_data, cached_geometry = write_to_shapefile_with_rhino_doc_as_default(Geom)
-    return OK, shp_filename, cached_geometry, cached_user_data, None
 
-def Read_Links_Data_From_Shapefile( ghenv
-                                   ,sDNA_output_shp_file
-                                   ,cached_geometry
-                                   ,Data
+    shp_type = options.shp_file_shape_type            
+    
+    if geom_data_map == {} and options.read_from_Rhino_if_no_shp_data:
+        retcode, ret_f_name, geom_data_map = (
+              read_objects_groups_and_Usertext_from_Rhino(   f_name
+                                                            ,{}
+                                                            ,opts_at_call
+                                                          )
+        )
+
+    def pattern_match_key_names(x):
+        #type: (str)-> str / None
+        format_string = options.rhino_user_text_key_format_str_to_read
+        pattern = make_regex_inverse_of_format_string( format_string )
+        m = match(pattern, x) 
+        return m.group('name') if m else None #, m.group('fieldtype'), 
+                                              # m.group('size') if m else None
+                                              # can get 
+                                              # (literal_text, field_name, 
+                                              #                  f_spec, conv) 
+                                              # from iterating over
+                                              # string.Formatter.parse(
+                                              #                 format_string)
+
+    def get_list_of_lists_from_tuple(tupl):
+        obj = tupl[0]
+        if check_is_specified_obj_type(obj, shp_type):
+            return [get_points_list_from_Rhino_obj(y, shp_type) for y in obj]
+        else:
+            return None
+
+    def shape_IDer(tupl):
+        return tupl[0].ToString() # uuid
+
+    def find_keys(tupl):
+        return tupl[1].keys() #rs.GetUserText(x,None)
+
+    def get_data_item(tupl, key):
+        return tupl[1][key]
+
+    if f_name == None:  
+        try:
+            f_name = options.Rhino_doc_path.rpartition('.')[0] + options.shp_file_extension
+                        # file extensions are actually optional in PyShp, 
+                        # but just to be safe and future proof we remove
+                        # '.3dm'                                        
+        except:
+            f_name = options.shape_file_to_write_Rhino_data_to_from_GHsDNA
+
+    shp_type = options.shp_file_shape_type            
+                         
+    (retcode, filename, fields, user_data, geometry_data_iterable) = ( 
+                         write_from_iterable_to_shapefile_writer(
+                                            geom_data_map.items() #my_iter 
+                                            ,f_name #shp_file 
+                                            ,get_list_of_lists_from_tuple # shape_mangler, e.g. start_and_end_points
+                                            ,shape_IDer
+                                            ,find_keys # key_finder
+                                            ,pattern_match_key_names #key_matcher
+                                            ,get_data_item #value_demangler e.g. rs.GetUserText
+                                            ,shp_type #"POLYLINEZ" #shape
+                                            ,options #options
+                         )
+    ) 
+    return retcode, filename, geom_data_map, None
+
+
+
+
+
+def make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(
+                     options = opts['options']
+                    ,make_new_group = make_new_group
+                    ,add_objects_to_group = add_objects_to_group
+                    ,Rhino_obj_adder_Shp_file_shape_map = Rhino_obj_adder_Shp_file_shape_map
+                    ):
+    import rhinoscriptsyntax as rs
+    rhino_obj_maker = getattr(rs, Rhino_obj_adder_Shp_file_shape_map[options.shp_file_shape_type])
+    def f(l, rec):
+        objs_list = []
+        for points_list in l:
+            objs_list += [rhino_obj_maker(points_list).ToString() ] 
+    # Creates not necessarily returned Rhino object as intentional side effect
+        if len(objs_list) > 1:
+            new_group_name = make_new_group()
+            add_objects_to_group(objs_list, new_group_name)
+            return new_group_name
+        elif len(objs_list)==1:
+            return objs_list[0]
+        else: 
+            return None
+    return f
+
+def get_shape_file_rec_ID(options = opts['options']): 
+    import rhinoscriptsyntax as rs 
+
+    def f(l, rec):
+        shp_file_obj_ID = rec._asdict().get(options.uuid_shp_file_field_name, '')
+        if rs.IsObject(shp_file_obj_ID) or is_group(shp_file_obj_ID):
+            return shp_file_obj_ID
+        else:
+            g = make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(options)
+            rhino_obj_or_group_name = g(l, rec)
+            return rhino_obj_or_group_name
+    return f
+
+
+
+def Read_Links_Data_From_Shapefile( f_name
+                                   ,geom_data_map 
                                    ,opts_at_call
                                    ):
-    (cached_sDNA_fields
-    ,cached_sDNA_outputs) = get_fields_and_records_from_shapefile( 
-                                                           sDNA_output_shp_file
-                                                           )
+    #type(type[any], str, dict, dict) -> int, str, dict, dict
+    import rhinoscriptsyntax as rs
+    options = opts_at_call['options']
 
-    sDNA_output_field_names = [ x[0] for x in cached_sDNA_fields ]
+    ( fields
+     ,recs
+     ,shapes ) = get_fields_recs_and_shapes_from_shapefile( f_name )
 
-    #Rhino_object_uuid_index = sDNA_output_field_names.index(opts['options'].uuid_shp_file_field_name)
+    field_names = [ x[0] for x in fields ]
+
+
+    if options.create_new_links_layer_from_shapefile: 
+        obj_key_maker = make_list_of_rhino_objs_from_shapefile_geometry_pts_lists( options ) 
+        shapes_to_output = shapes
+    else:          
+        obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
+        # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
+      
+        if sys.version_info.major < 3:
+            shapes_to_output = geom_data_map.viewkeys()  
+        else: 
+            shapes_to_output = geom_data_map.keys() 
+
+    shp_file_gen_exp  = (  (shape, zip(field_names, rec)) for (shape, rec) in 
+                                           izip(shapes_to_output, recs)  )              
+
+    gdm = make_gdm( shp_file_gen_exp
+                   ,obj_key_maker 
+                   )
+
+    override_gdm_with_gdm(gdm, geom_data_map, opts_at_call)
+
+    if options.delete_shapefile_after_reading and isfile(f_name):
+        os.remove(f_name)
+
+
+    return 0, f_name, gdm, None
+
+
+
+    #keys=[]
+    #if options.create_new_links_layer_from_shapefile:
+    #    Geometry =  [] # only overwrites local variable in this function
+    #    rs.AddLayer(name = split(f_name)[1] ) #.rpartition('.')[0])
+    #    for link in shapes:
+    #        if len(link) > 1:   #multi-polyline link
+    #            new_group = rs.AddGroup()
+    #            polylines = []
+    #            for list_of_points_lists in link:
+    #                polylines += rs.AddPolyline( list_of_points_lists )
+    #            rs.AddObjectsToGroup(polylines, new_group)
+    #            Geometry += new_group
+    #        else:          # single polyline link (pyshp returns nested)
+    #            Geometry += rs.AddPolyline(link[0])
+    #    keys = Geometry
+    #elif options.uuid_shp_file_field_name in field_names:
+    #    ID_index = field_names.index( options.uuid_shp_file_field_name )    
+    #    keys = [rec[ID_index] for rec in recs]
+    #if keys:
+    #    Data = OrderedDict(   ( key, dict(zip(field_names, rec)) ) 
+    #                                        for key, rec in zip(keys, recs)   )
+    #else:
+    #    Data = [ dict(zip(field_names, rec)) for rec in recs]
+    #
+    # return 0, f_name, gdm, opts_at_call
+
+
+
+def Write_Links_Data_To_Rhino_File( f_name     #Bake_Geom_and_Data
+                                   ,geom_data_map  # nested dict
+                                   ,opts_at_call
+                                   ):
+    #type(type[any], str, dict, dict) -> int, str, dict, dict
+
+    import scriptcontext as sc
+    import rhinoscriptsyntax as rs
+
+    options = opts_at_call['options']
     date_time_of_run = asctime()
 
-    #Write sDNA data to Rhino userdata
-    for rhino_obj, record in zip(cached_geometry ,cached_sDNA_outputs):
-        existing_keys = rs.GetUserText(rhino_obj)
-        for (output_val, sDNA_output_field_info) in zip(record, cached_sDNA_fields):
-            output_abbrev, type_code, field_length, decimal_length = sDNA_output_field_info
-            s = opts['options'].sDNA_output_user_text_key_format_str_to_read
-            UserText_key_name = s.format(name = output_abbrev, datetime = date_time_of_run)
-            if not opts['options'].overwrite_UserText:
-                i = 2
-                tmp = UserText_key_name + opts['options'].duplicate_UserText_key_suffix.format(i)
-                while tmp in existing_keys:
-                    i+=1
-                    tmp = UserText_key_name + opts['options'].duplicate_UserText_key_suffix.format(i)
+    def write_dict_to_UserText_on_obj(d, rhino_obj):
+        if not rs.IsObject(rhino_obj) or not isinstance(d, dict):
+            return
+
+        existing_keys = get_obj_keys(rhino_obj)
+        
+        if options.uuid_shp_file_field_name in d:
+            obj = d.pop( options.uuid_shp_file_field_name )
+        
+        for key, val in d:
+
+            s = options.sDNA_output_user_text_key_format_str_to_read
+            UserText_key_name = s.format(name = key, datetime = date_time_of_run)
+            
+            if not options.overwrite_UserText:
+
+                for i in range(0, options.max_new_UserText_keys_to_make):
+                    tmp = UserText_key_name + options.duplicate_UserText_key_suffix.format(i)
+                    if tmp not in existing_keys:
+                        break
                 UserText_key_name = tmp
             else:
-                if not opts['options'].suppress_overwrite_warning:
+                if not options.suppress_overwrite_warning:
                     output( "UserText key == " 
                             + UserText_key_name 
                             +" overwritten on object with guid " 
                             + str(rhino_obj)
                             ,'WARNING'
-                          )
-            rs.SetUserText(rhino_obj, UserText_key_name, str(output_val))
-    return True, sDNA_output_shp_file, cached_geometry ,cached_sDNA_outputs, None
+                            )
+            write_obj_val(rhino_obj, UserText_key_name, str( val ))
+
+    for key, val in geom_data_map.items():
+        if is_group(key):
+            group_members = get_members_of_a_group(key)
+        else:
+            group_members = [key]
+        for member in group_members:
+            write_dict_to_UserText_on_obj(val, member)
+
+
+    return 0, f_name, geom_data_map, None
     
 ###################################################################################################
 #                                                                           # TODO: Fix interface - fields
-def Plot_Data_On_Links(ghenv, f_name, cached_geometry, cached_sDNA_outputs, cached_sDNA_fields):
+def Plot_Data_On_Links(f_name, geom_data_map, opts):
+    #type(type[any], str, dict, dict) -> int, str, dict, dict
 
-    sDNA_output_to_plot_index = 10 #sDNA_output_abbrevs.index('TPBtE') #sDNA_output_field_names.index(opts['options'].sDNA_output_abbrev_to_graph )
-    output ("Plotting field == " + str(cached_sDNA_fields[sDNA_output_to_plot_index]))
-    data_points = [x[sDNA_output_to_plot_index] for x in cached_sDNA_outputs]
+    import Rhino
+    import scriptcontext as sc
+    import rhinoscriptsyntax as rs
+
+    options = opts['options']
+
+    field = options.write_from_iterable_to_shapefile_writer
+
+    keys = (geom_data_map.viewkeys() 
+                    if sys.version_info.major < 3 else geom_data_map.keys())
+
+    vals = (geom_data_map.viewvalues() 
+                    if sys.version_info.major < 3 else geom_data_map.values())
+
+    output ("Plotting field == " + field,'INFO')
+    data_points = [ d[field] for d in vals ]
     data_max = max(data_points)
     data_min = min(data_points)
     rgb_max = (155, 0, 0) #990000
@@ -678,7 +1127,7 @@ def Plot_Data_On_Links(ghenv, f_name, cached_geometry, cached_sDNA_outputs, cach
         z += y_max*((x - x_mid)*(x - x_min)/((x_max - x_mid)*(x_max - x_min)))
         return max(0, min( z, 255))
 
-    def change_line_thickness(obj,width,rel_or_abs = False):  #The default value in Rhino for wireframes is zero so rel_or_abs==True will not be effective if the width has not already been increased.
+    def change_line_thickness(obj, width, rel_or_abs = False):  #The default value in Rhino for wireframes is zero so rel_or_abs==True will not be effective if the width has not already been increased.
         x = rs.coercerhinoobject(obj, True, True)
         x.Attributes.PlotWeightSource = Rhino.DocObjects.ObjectPlotWeightSource.PlotWeightFromObject
         if rel_or_abs:
@@ -689,11 +1138,11 @@ def Plot_Data_On_Links(ghenv, f_name, cached_geometry, cached_sDNA_outputs, cach
 
     new_width = 4
 
-    for rhino_obj, record in zip(cached_geometry ,cached_sDNA_outputs):
+    for rhino_obj, d in geom_data_map.items():
         #change_line_thickness(rhino_obj, new_width)
         #rs.ObjectColor(rhino_obj, map_f_to_tuples(interpolate, record[sDNA_output_to_plot_index], data_min, data_max, rgb_min, rgb_max))
         rs.ObjectColor(rhino_obj, map_f_to_three_tuples( three_point_quadratic_spline
-                                                        ,record[sDNA_output_to_plot_index]
+                                                        ,d[field]
                                                         ,data_min
                                                         ,0.5*(data_min + data_max)
                                                         ,data_max
@@ -703,22 +1152,24 @@ def Plot_Data_On_Links(ghenv, f_name, cached_geometry, cached_sDNA_outputs, cach
                                                         )
                         )
 
-    rs.ObjectColorSource(cached_geometry,1)  # 1 => colour from object
-    rs.ObjectPrintColorSource(cached_geometry,2)  # 2 => colour from object
-    rs.ObjectPrintWidthSource(cached_geometry,1)  # 1 => print width from object
-    rs.ObjectPrintWidth(cached_geometry,new_width) # width in mm
+    rs.ObjectColorSource(keys, 1)  # 1 => colour from object
+    rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
+    rs.ObjectPrintWidthSource(keys, 1)  # 1 => print width from object
+    rs.ObjectPrintWidth(keys, new_width) # width in mm
     #rs._commanPrint Display (Model Viewports) ( State=On  Color=Display  Thickness=15 ): Thickness=20
     rs.Command('_PrintDisplay _State=_On Color=Display Thickness=8 ')
     #rs.Command('Print Display (Model Viewports) ( State=On  Color=Display  Thickness=8 )')
 
     sc.doc.Views.Redraw()
-    sc.doc=ghdoc# type: ignore
+    sc.doc = ghdoc# type: ignore
 
-    return True, f_name, cached_geometry, cached_sDNA_outputs, None
+    return 0, f_name, geom_data_map, None
                   
-def main_sequence(ghenv, f_name, Geom, Data, opts):
-    #type(class,bool,tuple(str)) -> WriteableFlushableList
-    print("Starting main sequence... ")
+
+###############################################################################
+def main_sequence(ghenv, f_name, gdm, opts):
+    #type(type[any], str, , type[any], type[any], dict) -> bool, str, type[any], type[any], WriteableFlushableList
+    output('Starting main sequence... ','INFO')
     metas, options = opts['metas'], opts['options']
     #a = WriteableFlushableList()                                     
 
@@ -799,11 +1250,11 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
     ###############################################################################
     # Custom module imports
     #
-    from .third_party_python_modules import shapefile as shp
+    #from .third_party_python_modules import shapefile as shp
     #shp = import_module_or_search_for_it('shapefile')
     #output("options.uuid_length == " + str(options.uuid_length))
     #wrapper_pyshp = import_module_or_search_for_it('wrapper_pyshp')
-    from .custom_python_modules import wrapper_pyshp
+    #from .custom_python_modules import wrapper_pyshp
     ###############################################################################
 
 
@@ -834,7 +1285,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
     #
     def start_and_end_points(curve): # curve : Rhino.Geometry.Curve https://developer.rhino3d.com/api/RhinoCommon/html/T_Rhino_Geometry_Curve.htm
         #type: (Rhino.Geometry.Curve)->list(list(float,3),list(float,3))
-        return [list(rs.CurveStartPoint(curve)),list(rs.CurveEndPoint(curve))]
+        return [[list(rs.CurveStartPoint(curve)),list(rs.CurveEndPoint(curve))]]
     #
     #
     #
@@ -861,7 +1312,10 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
     #
     def pattern_match_key_names(x):
         #type: (str)-> str / None
-        return match(options.rhino_user_text_key_pattern,x)
+        format_string = options.rhino_user_text_key_format_str_to_read
+        pattern = make_regex_inverse_of_format_string( format_string )
+        m = match(pattern, x)
+        return m.group('name') if m else None
 
     def write_to_shapefile_with_rhino_doc_as_default( my_iter = rhino_doc_curves 
                                                     ,shp_file = options.shape_file_to_write_Rhino_data_to_from_GHsDNA # None is Hardcoded default val
@@ -871,12 +1325,12 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
                                                     #,key_mangler = lambda x : options.rhino_user_text_key_format_str_to_read.format(name = x)
                                                     #,value_mangler = rs.SetUserText
                                                     ,value_demangler = rs.GetUserText
-                                                    ,shape = "POLYLINEZ"
+                                                    ,shape = 'POLYLINEZ'
                                                     ,options = options
                                                     ):
 
         if shp_file == None:
-            shp_file = Rhino.RhinoDoc.ActiveDoc.Path[:-4] + options.shp_file_extension
+            shp_file = options.Rhino_doc_path[:-4] + options.shp_file_extension
                                 # file extensions are actually optional in PyShp, but just to be safe and future proof we slice out '.3dm'
         return write_from_iterable_to_shapefile_writer(  my_iter 
                                                         ,shp_file 
@@ -892,7 +1346,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
 
     #output(options.uuid_length)
 
-    shp_filename, cached_fields, cached_user_data, cached_geometry = write_to_shapefile_with_rhino_doc_as_default()
+    ret_code, shp_filename, cached_fields, cached_user_data, cached_geometry = write_to_shapefile_with_rhino_doc_as_default()
     default_sDNA_prepped_shp_file_name = shp_filename[:-4] + options.prepped_shp_file_suffix + options.shp_file_extension
 
     def call_sDNA_prepare (shp_input_file = shp_filename
@@ -927,15 +1381,15 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
 
     
 
-    cached_sDNA_fields, cached_sDNA_outputs = get_fields_and_records_from_shapefile( sDNA_output_shp_file )
-    sDNA_output_field_names = [ x[0] for x in cached_sDNA_fields ]
+    sDNA_fields, sDNA_recs, sDNA_shapes = get_fields_recs_and_shapes_from_shapefile( sDNA_output_shp_file )
+    sDNA_field_names = [ x[0] for x in sDNA_fields ]
 
-    #Rhino_object_uuid_index = sDNA_output_field_names.index(options.uuid_shp_file_field_name)
+    #Rhino_object_uuid_index = sDNA_field_names.index(options.uuid_shp_file_field_name)
     date_time_of_run = asctime()
 
-    for rhino_obj, record in zip(cached_geometry ,cached_sDNA_outputs):
+    for rhino_obj, record in zip(cached_geometry ,sDNA_recs):
         existing_keys = rs.GetUserText(rhino_obj)
-        for (output_val, sDNA_output_field_info) in zip(record, cached_sDNA_fields):
+        for (output_val, sDNA_output_field_info) in zip(record, sDNA_fields):
             output_abbrev, type_code, field_length, decimal_length = sDNA_output_field_info
             s = options.sDNA_output_user_text_key_format_str_to_read
             UserText_key_name = s.format(name = output_abbrev, datetime = date_time_of_run)
@@ -952,9 +1406,9 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
             rs.SetUserText(rhino_obj, UserText_key_name, str(output_val))
     # 
     ############################################################################################################
-    sDNA_output_to_plot_index = 10 #sDNA_output_abbrevs.index('TPBtE') #sDNA_output_field_names.index(options.sDNA_output_abbrev_to_graph )
-    output ("Plotting field == " + str(cached_sDNA_fields[sDNA_output_to_plot_index]))
-    data_points = [x[sDNA_output_to_plot_index] for x in cached_sDNA_outputs]
+    sDNA_output_to_plot_index = 10 #sDNA_output_abbrevs.index('TPBtE') #sDNA_field_names.index(options.sDNA_output_abbrev_to_graph )
+    output ("Plotting field == " + str(sDNA_fields[sDNA_output_to_plot_index]))
+    data_points = [x[sDNA_output_to_plot_index] for x in sDNA_recs]
     data_max = max(data_points)
     data_min = min(data_points)
     rgb_max = (155, 0, 0) #990000
@@ -989,7 +1443,7 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
 
     new_width = 4
 
-    for rhino_obj, record in zip(cached_geometry ,cached_sDNA_outputs):
+    for rhino_obj, record in zip(cached_geometry ,sDNA_recs):
         #change_line_thickness(rhino_obj, new_width)
         #rs.ObjectColor(rhino_obj, map_f_to_tuples(interpolate, record[sDNA_output_to_plot_index], data_min, data_max, rgb_min, rgb_max))
         rs.ObjectColor(rhino_obj, map_f_to_three_tuples( three_point_quadratic_spline
@@ -1014,10 +1468,9 @@ def main_sequence(ghenv, f_name, Geom, Data, opts):
     sc.doc.Views.Redraw()
     sc.doc=ghdoc
 
-    return True, sDNA_output_shp_file, cached_geometry ,cached_sDNA_outputs, None
+    return 0, sDNA_output_shp_file, cached_geometry, None, #sDNA_recs, None
 #
 ###############################################################################
-
 
 def list_contains(check_list, name, name_map):
     # type( MyComponent, list(str), str, dict(str, str) ) -> bool
@@ -1038,7 +1491,7 @@ def no_name_clashes(name_map, list_of_names_lists):
 
 
 
-def cache_syntax_and_UISpec(name, tool_name, local_opts):    
+def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):    
     # type(str, dict) -> str, dict, function
 
     # global opts instead of local_opts is intentional 
@@ -1046,7 +1499,7 @@ def cache_syntax_and_UISpec(name, tool_name, local_opts):
     sDNA, UISpec = local_opts['metas'].sDNA, local_opts['options'].UISpec
     # 
     #
-    def update_or_init(cache, defaults):
+    def update_or_init(cache, defaults, name):
         if name in cache and sDNA in cache[name]:
             if isinstance(defaults, dict):
                 defaults.update(cache[name][sDNA]._asdict())
@@ -1062,7 +1515,7 @@ def cache_syntax_and_UISpec(name, tool_name, local_opts):
     if hasattr(UISpec, tool_name):
         get_syntax = getattr(UISpec, tool_name).getSyntax     
         # not called until component executes in RunScript
-        update_or_init( get_syntax_dict,  get_syntax )
+        update_or_init( get_syntax_dict,  get_syntax,  tool_name )
 
         input_spec = getattr( UISpec,  tool_name ).getInputSpec()
         defaults_dict = { varname : default for (    varname
@@ -1072,12 +1525,11 @@ def cache_syntax_and_UISpec(name, tool_name, local_opts):
                                                     ,default
                                                     ,required
                                                 ) in input_spec  }
-        update_or_init( opts,  defaults_dict )
-            # Tool options are stored per name, whether that's a tool_name
-            # or a nick_name
+        update_or_init( opts,  defaults_dict,  nick_name )
+        # Tool options are stored per nick_name, which may equal tool_name
     else:
-        update_or_init( opts,  empty_NT )
-        update_or_init( get_syntax_dict,  empty_NT )
+        update_or_init( opts,  empty_NT,  nick_name )
+        update_or_init( get_syntax_dict,  empty_NT,  tool_name )
     return 
 
 class FakeProgress():
@@ -1085,48 +1537,18 @@ class FakeProgress():
     def setPercentage(self,*args):
         pass
 
-def is_invalid(x):
-    #type(str)->bool
-    return not isinstance(x,str) or x !='' and not x.isspace() # isfile
-
-def fill_in_invalid_file_names(  args_dict
-                                ,tool_name
-                                ,opts_at_call
-                                ,keys = ['input', 'output']
-                                ,is_invalid = is_invalid 
-                                ,new_names = None
-                                ,unique_file_name_func = None ):
-    #type (dict, str, list, function, list, function) -> dict   
-    if new_names == None:
-        new_name = Rhino.RhinoDoc.ActiveDoc.Path.rpartition('.')[0] 
-        output_suffix =  opts_at_call['options'].output_shp_file_suffix
-        if tool_name == 'sDNAPrepare':
-            output_suffix = opts_at_call['options'].prepped_shp_file_suffix 
-        new_names = {'input' : new_name 
-                                + opts_at_call['options'].shp_file_extension
-                     ,'output' : new_name 
-                                + output_suffix 
-                                + opts_at_call['options'].shp_file_extension
-                    }
-    if unique_file_name_func == None:
-        unique_file_name_func = get_unique_filename_if_not_overwrite
-
-    assert is_invalid('')
-    for key in keys:
-        if is_invalid(args_dict.get(key,'')):    # '' Needs to be invalid
-            args_dict[key] = unique_file_name_func(new_names[key])
-    return args_dict
-
-
-tools_dict=dict( Read_Network_Links = [Read_Network_Links]
-                ,Write_Links_Data_To_Shapefile = [Write_Links_Data_To_Shapefile]
+tools_dict=dict( read_objects_groups_and_Usertext_from_Rhino = [read_objects_groups_and_Usertext_from_Rhino]
+                ,Write_Objects_and_Data_To_Shapefile = [write_objects_and_data_to_shapefile]
                 ,Read_Links_Data_From_Shapefile = [Read_Links_Data_From_Shapefile]
                 ,Plot_Data_On_Links = [Plot_Data_On_Links]
                 ,main_sequence = [main_sequence]
                 )
 
-support_component_names = list(tools_dict.keys()) # In some Python 3.x, keys() is a dict view
-                                                  # not a list
+support_component_names = list(tools_dict.keys()) # In Python 3, .keys() and 
+                                                  # .values() are dict views
+                                                  # not lists
+
+support_component_names = list(tools_dict.keys())
 
 special_names =           [  'sDNA_general'
                             ]
@@ -1136,7 +1558,7 @@ special_names =           [  'sDNA_general'
 
 def component_names_factory(name_map): # name_map is unknown in this module so 
                                        # create closure. Call it from outside.
-    def return_component_names(ghenv, f_name, Geom, Data, local_opts):
+    def return_component_names(f_name, gdm, local_opts):
         UISpec = local_opts['options'].UISpec
         
         sDNA_tool_names = [Tool.__name__ for Tool in UISpec.get_tools()]
@@ -1164,14 +1586,14 @@ def component_names_factory(name_map): # name_map is unknown in this module so
         #        not likely a user will expect
         #        correct results if they alter name_map to include a non-trivial cycle.
         if not all(valid_name_map_vals.values()):
-            vals_in_name_map_with_no_Tools = [key for key, val in valid_name_map_vals if not val]
-            output('Invalid name_map: ' + ' '.join(str(vals_in_name_map_with_no_Tools)) + 
+            vals_in_name_map_with_no_Tools = [key for (key, val) in valid_name_map_vals.items() if not val]
+            output('Invalid name_map: ' + ' '.join(map(str,vals_in_name_map_with_no_Tools)) + 
                     '.  Adjust name_map to point to known functions or lists thereof.  ','CRITICAL')
         else:
             output('Name_map validated successfully.  ','INFO')
         assert all(valid_name_map_vals.values())
         #return special_names + support_component_names + sDNA_tool_names, None, None, None, self.a 
-        return True, None, None, names_list, ' Returned component names OK '
+        return 0, None, {}, names_list
 
 
     return [return_component_names]
@@ -1183,13 +1605,13 @@ def get_specific_tool(tool_name, nick_name, local_opts):
     UISpec = local_opts['options'].UISpec
 
     #if tool_name in support_component_names:
-    #    def support_tool_wrapper(ghenv, f_name, Geom, Data, opts):  
-    #        return globals()[tool_name](ghenv, f_name, Geom, Data)
+    #    def support_tool_wrapper(f_name, Geom, Data, opts):  
+    #        return globals()[tool_name](f_name, Geom, Data)
     #    tools_dict[tool_name] = support_tool_wrapper   
         #
         #
     if hasattr(UISpec, tool_name): 
-        def run_sDNA_wrapper(ghenv, f_name, Geom, Data, opts_at_call):
+        def run_sDNA_wrapper(f_name, gdm, opts_at_call):
             #type(Class, dict(namedtuple), str, Class, DataTree)-> Boolean, str
             #global opts # - deliberate to access global 
             #
@@ -1198,25 +1620,52 @@ def get_specific_tool(tool_name, nick_name, local_opts):
             (sDNA, UISpec, run ) = ( opts_at_call['metas'].sDNA
                                     ,opts_at_call['options'].UISpec
                                     ,opts_at_call['run'].run )
+            
+            options = opts_at_call['options']
 
-            if isinstance(f_name, str) and isfile(f_name):
-                opts_at_call[nick_name][sDNA] = opts_at_call[nick_name][sDNA]._replace(input = f_name)
+            dot_shp = options.shp_file_extension
 
+            input_file = opts_at_call[nick_name][sDNA].input
+            if (not isinstance(input_file, str)) or not isfile(input_file): 
+                if (isinstance(f_name, str) and isfile(f_name)
+                    and f_name.rpartition('.')[2]==dot_shp[1:]):
+                    input_file = f_name
+                else:
+                    default_file_name = (options.Rhino_doc_path.rpartition('.')[0] 
+                                                                    + dot_shp)
+                    if (options.supply_sDNA_file_names and 
+                                              isfile(default_file_name) ): 
+                        input_file = default_file_name
+                    else:
+                        pass # e.g. could call write_from_iterable_to_shapefile_writer
+                opts_at_call[nick_name][sDNA] = opts_at_call[nick_name][sDNA]._replace(input = input_file)
+
+
+            output_file = opts_at_call[nick_name][sDNA].output
+            if output_file == '':
+                output_suffix =  options.output_shp_file_suffix
+                if tool_name == 'sDNAPrepare':
+                    output_suffix = options.prepped_shp_file_suffix   
+                output_file = input_file.rpartition('.')[0] + output_suffix + dot_shp
+
+            output_file = get_unique_filename_if_not_overwrite(output_file, opts_at_call)
+            opts_at_call[nick_name][sDNA] = opts_at_call[nick_name][sDNA]._replace(output = output_file)
+
+            
 
             syntax = get_syntax_dict[tool_name][sDNA]( opts_at_call[nick_name][sDNA]._asdict() )   
                                                       #opts[nick_name] was initialised to defaults in 
                                                       # in cache_syntax_and_UISpec
-            
-            if opts_at_call['options'].supply_sDNA_file_names:
-                syntax = fill_in_invalid_file_names(syntax, tool_name, opts_at_call)
 
             return_code = run.runsdnacommand(    syntax
                                                 ,sdnapath = dirname(UISpec.__file__)  #opts['options'].sDNA_UISpec_path
                                                 ,progress = FakeProgress()
-                                                ,pythonexe = opts_at_call['options'].python_exe
+                                                ,pythonexe = options.python_exe
                                                 ,pythonpath = None)   # TODO:  Work out if this is important or not! 
                                                                     # os.environ["PYTHONPATH"] not found in Iron Python
-            return return_code==0, getattr( opts_at_call[nick_name],  'output' ), Geom, Data, None
+            # To allow auto reading the shapefile afterwards, the returned Data == None == None to end
+            # the input GDM's round trip, in favour of Data and Geometry read from the sDNA analysis just now completed.
+            return return_code==0, getattr( opts_at_call[nick_name],  'output' ), None, None
         return [run_sDNA_wrapper]
     else:
         return [None]
@@ -1230,13 +1679,11 @@ def tool_factory(nick_name, name_map, local_opts):
     sDNA = local_opts['metas'].sDNA
 
                             
-    def tool_factory_wrapper(ghenv, f_name, Geom, Data, opts_at_call):
+    def tool_factory_wrapper(f_name, gdm, opts_at_call):
         return tool_factory( opts_at_call['options'].tool_name
-                            ,name_map
-                            ,opts_at_call )( ghenv
-                                            ,f_name
-                                            ,Geom
-                                            ,Data
+                            ,name_map # so technically a closure, but only to 
+                            ,opts_at_call )(f_name # conform to tool interface
+                                            ,gdm
                                             ,opts_at_call )
  
     if isinstance(nick_name, Hashable):
@@ -1278,195 +1725,3 @@ if      '__file__' in dir(__builtins__)  and  __name__ in __file__ and '__main__
 else:
     pass
 
-
-
-    ###############################################################################
-    # Functions (hidden from module imports)
-    #
-    ###############################################################################
-"""     ap=ArgumentParser()
-    lower_case_hex_digit_pattern = r'[a-f|\d]'
-    uuid_pattern_no_hyphens = lower_case_hex_digit_pattern + r'{32}'
-    grasshopper_compiled_component___name___pattern = r'\APython_'+uuid_pattern_no_hyphens + r'\Z'
-    # This regex will match __test_name__='Python_d396a1fb0e6441508fa6555b4d306ff5' for example
-    #TODO: Test for Rhinoscript (not in GH, BSOC?)
-    # we could assert ap.prog == 'GHsDNA.py' but perhaps the user has renamed this file.
-    #
-    if (__name__ == '__main__' and ap.prog == '') or match(grasshopper_compiled_component___name___pattern,__name__):
-        logger.info("We're neither ina  module nor being run as a script.  We're probably in a Grasshopper component.  ")
-        main_sequence(True)
- 
-    else:
-        #running in a script        
-        logger.info('First if block.  Running module as script e.g. from the command line')
-
-    if __name__ == '__main__':  # Name is still '__main__' in an uncompiled grasshopper component as well as in scripts.
-        if ap.prog != '':   
-            logger.info('Second if block.  Running module as script e.g. from the command line')
-            #ap.add_argument('Rhino_file',help='The .3dm file defining the spatial network',type=str)
-            #ap.add_argument('output_file',help='The name of the .shp file (suite) to write the results from sDNA to',type=str)
-            #args=ap.parse_args()
-            #TODO Use command line args to run test definitions, e.g. if '--test True'
-            test_cases = import_module_or_search_for_it('test_cases')
-        else:  
-            pass # code to run only if in an uncompiled grasshopper component
-                # in an uncompiled grasshopper component ap.prog == '' (also when imported as a module)
-            logger.info('Running module in an uncompiled grasshopper component (plain source in a python component in a .gh file)')
-    else:
-
-        if match(grasshopper_compiled_component___name___pattern,__name__):
-            logger.info('Running module in a compiled grasshopper component (in a .ghpy file within a .gh file)')
-            pass
-            # code to run only if in a compiled grasshopper component
-        else:
-            pass         
-            logger.error(  'Running module in a module import.  __name__ == '
-                         + __name__ + 'inside an if block that checked we are not in a module.  '
-                         + '__file__ == ' + __file__)
-            #code to run only if we're imported as a module """
-###############################################################################
-
-
-
-"""         col_max = rs.CreateColor(*rgb_max)
-        col_min = rs.CreateColor(*rgb_min) """
-
-"""         col1 = rs.CreateColor(0, 0, 102)
-        output(col1)
-        output(dir(col1)) """
-
-
-""" AngD 	Angular Distance in Radius
-BtA 	Betweenness Angular
-BtC 	Betweenness Custom
-BtE 	Betweenness Euclidean
-BtH 	Betweenness Hybrid
-Conn 	Connectivity in Radius
-DivA 	Diversion Ratio in Radius Angular
-DivC 	Diversion Ratio in Radius Custom
-DivE 	Diversion Ratio in Radius Euclidean
-DivH 	Diversion Ratio in Radius Hybrid
-HMb 	Line Hybrid Metric (backwards direction)
-HMf 	Line Hybrid Metric (forwards direction)
-HullA 	Convex Hull Area
-HullB 	Convex Hull Bearing of Maximum Radius
-HullP 	Convex Hull Perimeter
-HullR 	Convex Hull Maximum (Crow Flight) Radius
-HullSI 	Convex Hull Shape Index
-Jnc 	Junctions in Radius
-LAC 	Line Angular Curvature
-LBear 	Line Bearing
-LConn 	Line Connectivity
-Len 	Length in Radius
-Lfrac 	Link fraction (for current line)
-LLen 	Line Length
-Lnk 	Links in Radius
-LSin 	Line Sinuosity
-MAD 	Mean Angular Distance in Radius
-MCD 	Mean Custom Distance in Radius
-MCF 	Mean Crow Flight Distance in Radius
-MED 	Mean Euclidean Distance in Radius
-MGLA 	Mean Geodesic Length in Radius Angular
-MGLC 	Mean Geodesic Length in Radius Custom
-MGLE 	Mean Geodesic Length in Radius Euclidean
-MGLH 	Mean Geodesic Length in Radius Hybrid
-MHD 	Mean Hybrid Distance in Radius
-NQPDA 	Network Quantity Penalized by Distance in Radius Angular
-NQPDC 	Network Quantity Penalized by Distance in Radius Custom
-NQPDE 	Network Quantity Penalized by Distance in Radius Euclidean
-NQPDH 	Network Quantity Penalized by Distance in Radius Hybrid
-SAD 	Sum of Angular Distance in Radius *
-SCD 	Sum of Custom Distance in Radius *
-SCF 	Sum of Crow Flight Distance in Radius *
-SED 	Sum of Euclidean Distance in Radius *
-SGLA 	Sum of Geodesic Length in Radius Angular *
-SGLC 	Sum of Geodesic Length in Radius Custom *
-SGLE 	Sum of Geodesic Length in Radius Euclidean *
-SGLH 	Sum of Geodesic Length in Radius Hybrid *
-SHD 	Sum of Hybrid Distance in Radius *
-TPBtA 	Two Phase Betweenness Angular
-TPBtC 	Two Phase Betweenness Custom
-TPBtE 	Two Phase Betweenness Euclidean
-TPBtH 	Two Phase Betweenness Hybrid
-TPDA 	Two Phase Destination Angular
-TPDC 	Two Phase Destination Custom
-TPDE 	Two Phase Destination Euclidean
-TPDH 	Two Phase Destination Hybrid
-Wl 	Weighted by Length (as opposed to Link)
-Wp 	Weighted by Polyline (as opposed to Link)
-Wt 	Weight in Radius """
-
-
-def old_options_parse_override_logic(ghenv, f_name, Geometry, Data, opts, args):
-    ###############################################################################
-    # Python standard library imports                   
-    #  
-    from os.path import isdir, isfile, sep, normpath, join, split
-    from importlib import import_module
-    from collections import namedtuple
-    from re import match
-    from subprocess import call
-    from time import asctime
-    #
-    ###############################################################################
-
-    options = opts['options']
-    metas = opts['metas']
-
-    #for sub_folder in metas.modules_subdirectories:
-    #    test_path = join(metas.current_working_dir, sub_folder)
-    #    if isdir(test_path):
-    #        sys.path += [test_path]
-    #
-
-    #options_manager = import_module_or_search_for_it('options_manager')
-    from .custom_python_modules import options_manager
-    #import options_manager
-
-    ############################################################################################################
-    #  Parse args
-    #
-    # change args in method to (Go,*args)
-    args_metas = {}
-    args_options = {}
-    args_extras = {}
-    for (input,val) in zip(ghenv.Component.Params.Input[1:], args):  # locals() will be full of all our other variables.
-        if input.Name in metas._fields:
-            args_metas[input.Name] = val
-        elif input.Name in options._fields:
-            args_options[input.Name] = val
-        else:
-            args_extras[input.Name] = val
-    #GH_component_class_method_args = {input.Name : arg for (input,arg) in zip(ghenv.Component.Params.Input,args)}
-    ############################################################################################################
-
-    ############################################################################################################
-    # Meta options options_manager.override logic and config file loading
-    #
-    
-
-
-    config_path = metas.config_file_path  # Hardcoded default
-    if 'config_file_path' in args_metas:  # Possible new one from function arguments
-        config_path = args_metas['config_file_path'] # Primary meta.  # Override metas 4) -> 3), and options 3)-> 2)
-        sys.path = [config_path] + sys.path
-    from . import config
-    #config = import_module_or_search_for_it('config')
-
-
-    metas = options_manager.options_manager.override_namedtuple_with_dict(config.metas, metas, False, 'Metas')  # Override metas 5) -> 3) or 4) 
-    metas = options_manager.options_manager.override_namedtuple_with_dict(args_metas, metas, False, 'Metas') # metas 1st options_manager.override 3) or 4) -> 1)
-    config.metas = metas                                      # Share with custom modules
-    #
-    ############################################################################################################
-
-    ############################################################################################################
-    # Main options options_manager.override logic
-    #
-    options = options_manager.options_manager.override_namedtuple_with_dict(config.options, options, False, 'Options')  # options_manager.override options 5) -> 3) or 2)
-    options = options_manager.options_manager.override_namedtuple_with_dict(args_options, options, False, 'Options') # options_manager.override options  3) or 2) -> 1)
-    config.options = options                                        # Share with custom modules
-    #
-    ############################################################################################################
-
-    #

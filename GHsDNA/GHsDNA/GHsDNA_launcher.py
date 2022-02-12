@@ -1,14 +1,9 @@
 #! /usr/bin/python2.7
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
-__version__ = '0.00'
-__copyright__ = 'Cardiff University'
-__license__ = {  'Python standard library modules and ' : 'Python Software Foundation 2.7.18' # https://docs.python.org/2.7/license.html
-                ,'wrapper_logging' : 'Python Software Foundation 2.7.18'
-                ,'wrapper_pyshp' : 'MIT' # https://pypi.org/project/pyshp/ 
-                ,'sDNAUISpec.py' : 'MIT' # https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/LICENSE.md
-                ,'everything else' : 'same as for sDNA ' # https://sdna.cardiff.ac.uk/sdna/legal-license/ 
-               }
+__version__ = '0.01'
+
+
 
 GHsDNA_subfolder = 'GHsDNA' 
 GHsDNA_package = 'GHsDNA'               
@@ -31,6 +26,10 @@ component_tool = None    # Note to user, if you rename this component in Grassho
                                         # T
 #######################################################################################################################
 
+import os,sys 
+from os.path import isfile, isdir, join, split, dirname
+from importlib import import_module
+
 from ghpythonlib.componentbase import executingcomponent as component
 import Grasshopper, GhPython
 import System
@@ -39,38 +38,6 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import ghpythonlib.treehelpers as th
 
-from os.path import isfile, isdir, join, split, dirname
-# import logging
-from importlib import import_module
-
-######################################################################################
-#
-#From sDNA, runsdnacommand.py:
-import os,sys #,time,re
-#from subprocess import PIPE, Popen, STDOUT
-#try:
-#    from Queue import Queue, Empty
-#except ImportError:
-#    from queue import Queue, Empty
-#from threading import Thread
-#
-#
-
-######################################################################################
-#
-#From shapefile.py
-#from struct import pack, unpack, calcsize, error, Struct
-#import os
-#import sys
-#import time
-#import array
-#import tempfile
-#import warnings
-#import io
-#from datetime import date
-
-
-# a = Rhino.RhinoDoc.ActiveDoc.Path
 
 class WriteableFlushableList(list):
     # a simple input for a StreamHandler https://docs.python.org/2.7/library/logging.handlers.html#logging.StreamHandler
@@ -81,17 +48,19 @@ class WriteableFlushableList(list):
     #type: ( str) -> None
     # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     #
-        if isinstance(s,str):
-            self.append(s)
-        else:
-            self.extend(s)
+        if s != None:
+            if isinstance(s,str):
+                self.append(s)
+            else:
+                self.extend(s) # .e.g if s is another WriteableFlushableLists
 
 
     def flush(self):  
     #type: () -> None
         pass  # A flush method is needed by logging
 
-def output(s, level='INFO', inst = None):     # e.g. inst is an instance of this whole Class
+def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
+                         # Inst is a proxy argument for both 'self' and 'cls'.
     #type: (str, MyComponent, str) -> None
     message = s
     if hasattr(inst,'nick_name'):
@@ -104,7 +73,7 @@ def output(s, level='INFO', inst = None):     # e.g. inst is an instance of this
         try:
             getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())("from logging " + message)
         except:
-            print(message_with_level + " bare print")
+            print(message_with_level)
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
                 inst.a.write(message_with_level + " via inst")
     return message_with_level
@@ -141,37 +110,16 @@ def strict_import(  module_name = ''
     sys.path = tmp
     return m       
 
-#print '\n'.join(sys.path)
-def load_GHsDNA():
-    #GH_Components_Folder = r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00'
-    GH_Components_Folder = Grasshopper.Folders.DefaultAssemblyFolder
-    #GHsDNA = strict_import(GHsDNA_package, GH_Components_Folder, GHsDNA_subfolder, '') 
-    class GHsDNA():
-        pass
-    GHsDNA.tools = strict_import(GHsDNA_package + '.tools', GH_Components_Folder, GHsDNA_subfolder)
-    output(' GHsDNA.tools  == ' + str(GHsDNA.tools)[:31],'DEBUG')
-    return GHsDNA #, tools
-
-#GHsDNA = load_GHsDNA()
-#GHsDNA, tools = load_GHsDNA()
-
-#tools = strict_import('.tools', r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00\GHsDNA', 'GHsDNA', 'GHsDNA')
-#GHsDNA = strict_import('GHsDNA', r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00\GHsDNA', 'GHsDNA', '')
-#reload(GHsDNA)
-#tmp=sys.path
-#sys.path=[r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00\GHsDNA']
-#from GHsDNA import GHsDNA
-#sys.path=tmp
-
-#GHsDNA = strict_import('.GHsDNA', r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.00\GHsDNA', '', 'GHsDNA')
 
 class GHsDNA():
     pass
 
+
 def load_modules(m_names, path_lists):
     m_names = m_names if isinstance(m_names, tuple) else [m_names]  # Need this one to be immmutable, so it's hashable to use as a dict key
     output('m_names == ' + str(m_names) + ' of type : ' + type(m_names).__name__,'DEBUG')
-    if any(name.startswith('.') or '..' in name for name in m_names):
+    if any((name.startswith('.') or name.startswith('..')) in name for name in m_names):
+        output(m_names,'DEBUG')
         raise ImportError( output('Relative import attempted, but not supported','CRITICAL') )
 
     output('Testing paths : ' + '\n'.join(map(str,path_lists)),'DEBUG')
@@ -196,32 +144,9 @@ def load_modules(m_names, path_lists):
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
     return None
 
-
-#def load_sDNA(sDNA_folder, metas):
-#    
-#    if sDNA_folder == None:
-#        try:
-#            sDNA_folder = split(metas.sDNA_UISpec_path)[0]     #os.path.split
-#        except:
-#            sDNA_folder = '' #default_sDNAUISpec_path
-#    runsdnacommand = strict_import('runsdnacommand',sDNA_folder,'')
-#    sDNAUISpec = strict_import('sDNAUISpec',sDNA_folder,'') 
-#    return runsdnacommand, sDNAUISpec
-
-# runsdnacommand, sDNAUISpec = load_sDNA()
-
-
-
-
-#sDNA_tools, sDNA_tool_instances, sDNA_tool_names, sDNA_tool_categories = sc.sticky[metas.share_sDNA_tools_key]
-#else:
-
-    #sc.sticky[metas.share_sDNA_tools_key] = sDNA_tools, sDNA_tool_instances, sDNA_tool_names, sDNA_tool_categories
-
-
                     #Abbreviation = Tool Name
-name_map = dict(     Read_Network = 'Read_Network_Links'
-                    ,Write_shp = 'Write_Links_Data_To_Shapefile'
+name_map = dict(     Read_Network = 'read_objects_groups_and_Usertext_from_Rhino'
+                    ,Write_shp = 'Write_Objects_and_Data_To_Shapefile'
                     ,Read_shp = 'Read_Links_Data_From_Shapefile'
                     ,Plot_data = 'Plot_Data_On_Links'
                     #,'sDNAIntegral'
@@ -237,63 +162,35 @@ name_map = dict(     Read_Network = 'Read_Network_Links'
                     #,'sDNAPredict'
                 )
 
-
-
-
-
-
-def convert_nested_list_to_data_tree(nested_list):
-        # type (list(list(str)))->DataTree
-    return th.list_to_tree(nested_list)
-    #layerTree = []
-
-    #for i in range(len(layernames)):
-    #    objs = Rhino.RhinoDoc.ActiveDoc.Objects.FindByLayer(layernames[i])
-    #    
-    #    if objs:
-    #        geoms = [obj.Geometry for obj in objs]
-    #        layerTree.append(geoms)
-
-    #layerTree = th.list_to_tree(layerTree, source=[0,0])
-    #return layerTree
-
-def convert_data_tree_to_nested_list(self, data_tree):
-    # type (DataTree)->list(list(str))
-    return th.tree_to_list(data_tree)
-
-    #x = th.tree_to_list(data_tree)
-
-    #a = []
-
-    #for i,branch in enumerate(x):
-    #    
-    #    for j,item in enumerate(branch):
-    #        s = str(i) + "[" + str(j) + "] "
-    #        s += type(item).__name__ + ": "
-    #        s += str(item)
-    #        
-    #        a.append(s)
-    #return a
-
-
+def is_file_any_type(s):
+    return isinstance(s, str) and isfile(s)
 
 class MyComponent(component):
 
     global GHsDNA, GHsDNA_search_paths, component_tool, log_file
-    GHsDNA_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder, GHsDNA_subfolder) ]
+    GHsDNA_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
+                                ,GHsDNA_subfolder
+                                ) 
+                            ]
                           
-    GHsDNA.tools, GHsDNA_path = load_modules('GHsDNA.tools', GHsDNA_search_paths)
+    GHsDNA.tools, GHsDNA_path = load_modules('GHsDNA.tools'
+                                             ,GHsDNA_search_paths)
 
 
-    opts = GHsDNA.tools.opts                 # mutable.  Refernce broken and remade to de sync / sync
-    local_metas = GHsDNA.tools.local_metas   # immutable.  Can be set on groups of components using the default section of a project config.ini
+    opts = GHsDNA.tools.opts   # mutable.  Reference breakable and remakeable 
+                               # to de sync / sync local opts to global opts
+    local_metas = GHsDNA.tools.local_metas   # immutable.  controls syncing /
+                                             # desyncing / read / write of the
+                                             # above, opts.
+                                             # Although local, can be set on 
+                                             # groups of components using the 
+                                             # default section of a project 
+                                             # config.ini, or passed as a
+                                             # Grasshopper parameter between
+                                             # components
     tools_dict = GHsDNA.tools.tools_dict
 
-    #output( ' opts[options].log_file == ' + opts['options'].log_file
-    #   +' opts[options].logger_file_level  == ' +' '+opts['options'].logger_file_level
-    #   +' opts[options].logger_console_level) == ' +' '+opts['options'].logger_console_level, 'DEBUG')
-
-
+  
     class_logger_name = "MyComponent"
     if GHsDNA.tools.logger.__class__.__name__ == 'WriteableFlushableList':
         log_file = (  ghdoc.Path.rpartition('.')[0]  #type: ignore
@@ -311,7 +208,7 @@ class MyComponent(component):
             pass
             output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
 
-    logger = GHsDNA.tools.logger.getChild( class_logger_name)
+    logger = GHsDNA.tools.logger #.getChild( class_logger_name)
    
 
 
@@ -355,6 +252,8 @@ class MyComponent(component):
             self.opts['options'] = self.opts['options']._replace(  UISpec = self.UISpec
                                                                   ,run = self.run 
                                                                   )  
+
+            assert self.opts['metas'].sDNA_path == dirname(self.opts['options'].UISpec.__file__)                                                                  
 
 
 
@@ -406,14 +305,13 @@ class MyComponent(component):
         synched = self.local_metas.sync_to_shared_global_opts
         old_sDNA = self.opts['metas'].sDNA
 
-
         #print('#1.05 self.local_metas == ' + str(self.local_metas))
 
         #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.read_from_shared_global_opts:
         #    self.opts = GHsDNA.tools.opts.copy() 
         
-        self.local_metas = GHsDNA.tools.override_all_opts( args_dict
-                                                          ,self.opts 
+        self.local_metas = GHsDNA.tools.override_all_opts( args_dict 
+                                                          ,self.opts # also mutates self.opts; local_metas immutable
                                                           ,external_opts 
                                                           ,self.local_metas 
                                                           ,external_local_metas
@@ -422,6 +320,14 @@ class MyComponent(component):
         #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.write_to_shared_global_opts:
         #    GHsDNA.tools.override_all_opts(args_dict, GHsDNA.tools.opts, self.local_metas, self.nick_name)
         
+        if (self.opts['metas'].auto_update_Rhino_doc_path 
+            and not isfile(self.opts['options'].Rhino_doc_path)):
+            path = Rhino.RhinoDoc.ActiveDoc.Path
+            if not isinstance(path, str) or not isfile(path):
+                path = ghdoc.Path #type: ignore
+            self.opts['options'] = self.opts['options']._replace(
+                                                    Rhino_doc_path = path)
+
         if self.opts['metas'].allow_components_to_change_type: 
             #assert False
             
@@ -462,22 +368,26 @@ class MyComponent(component):
 
         if go in [True, [True]]: # [True] in case go set to List Access in GH component but only connected to a normal boolean
             returncode = 999
-            output("whoop whoop, retcode == " + str(returncode),'DEBUG')
             assert isinstance(self.my_tools, list)
-            for tool in self.my_tools:
-                output("Tool name == " + tool.__name__ + " Tool == " + str(tool),'DEBUG')
-                returncode, f_name, Geom, Data, tmp_a = tool( ghenv # type: ignore
-                                                             ,f_name
-                                                             ,Geom
-                                                             ,Data
-                                                             ,self.opts ) 
-                
-                self.a.write(tmp_a)
 
+            tools = self.my_tools
+
+            geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_dictionary(Data, Geom, self.opts)
+
+            for tool in tools:
+                output("Tool name == " + tool.__name__ + " Tool == " + str(tool),'DEBUG')
+                returncode, f_name, geom_data_map, tmp_a = tool( f_name
+                                                                ,geom_data_map
+                                                                ,self.opts 
+                                                                ) 
+                self.a.write(tmp_a)
                 if returncode != 0:
                     break
 
-            return returncode==0, f_name, Geom, Data, self.a, self.opts.copy(), self.local_metas
+            if isinstance(geom_data_map, dict):
+                Data = GHsDNA.tools.convert_dictionary_to_data_tree(geom_data_map)                
 
-        else:   # e.g. if go not in= [True,[True]]
+            return returncode==0, f_name, list(geom_data_map.keys()), Data, self.a, self.opts.copy(), self.local_metas
+
+        else:   
             return False, f_name, Geom, Data, self.a

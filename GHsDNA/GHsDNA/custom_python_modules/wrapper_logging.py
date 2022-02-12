@@ -6,7 +6,7 @@
 #
 __author__ = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
 __license__='Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
-__version__ = '0.00'
+__version__ = '0.01'
 
 from sys import path as sys_path, stdout as sys_stdout, argv as sys_argv
 from os.path import sep, join

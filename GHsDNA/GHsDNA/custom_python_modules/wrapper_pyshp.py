@@ -5,11 +5,11 @@
 # from any iterable object and to any function
 #
 __author__ = 'James Parrott'
-__version__ = '0.00'
+__version__ = '0.01'
 
 import sys
 from os.path import normpath, join, split, isfile 
-from collections import OrderedDict,namedtuple
+from collections import OrderedDict, namedtuple
 from datetime import date
 from re import match
 
@@ -153,7 +153,7 @@ def shp_type_coercer(x, options):
 def dec_places_req(x):
     return len(str(x).lstrip('0123456789').rstrip('0')) - 1
 
-def get_unique_filename_if_not_overwrite(f,opts):
+def get_unique_filename_if_not_overwrite(f, opts):
     #type: (str,dict) -> str
 
     if not opts.overwrite_shp_file:
@@ -168,94 +168,122 @@ def get_unique_filename_if_not_overwrite(f,opts):
         logger.warning('Overwriting file ' + f + ' !')
     return f
 
+def ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attribute_tables, options): 
+    # type(dict, str, type[any], namedtuple) -> None
+    if nice_key in fields:
+        fields[nice_key]['size'] = max( fields[nice_key]['size']
+                                    ,len(str(value)) + max(0, options.shp_file_field_size_num_extra_chars)
+                                    )
+        if val_type == shp_field_codes['float'] and 'decimal' in fields[nice_key]:
+            fields[nice_key]['decimal'] = max( fields[nice_key]['decimal'], dec_places_req(value) )
+        if val_type != fields[nice_key]['fieldType']:
+            if (value in [0,1]) and fields[nice_key]['fieldType'] == shp_field_codes['bool'] or (val_type == shp_field_codes['bool'] 
+                    and fields[nice_key]['fieldType'] == shp_field_codes['int'] 
+                        and all(attribute_tables[i][nice_key] in [0,1] for i in attribute_tables.keys())):
+                pass   #1s and 0s are in a Boolean field as integers or a 1 or a 0 in a Boolean field is type checking as an integer
+                # TODO:  Check options and rectify - flag as Bool for now (rest of loop will recheck others), 
+                #                                  or flag for recheck all at end
+            elif val_type == shp_field_codes['float'] and fields[nice_key]['fieldType'] == shp_field_codes['int']:
+                fields[nice_key]['fieldType'] = shp_field_codes['float']
+                fields[nice_key]['decimal'] = dec_places_req(value)
+            else:
+                fields[nice_key]['fieldType'] = shp_field_codes['str']
+                #logger.error('Type mismatch in same field.  Cannot store ' + str(value) + ' as .shp record type ' + fields[nice_key]['fieldType'])
+    else:
+        fields[nice_key] = { 'size' : len(str(value)) + max(0,options.shp_file_field_size_num_extra_chars)
+                            ,'fieldType' : val_type
+                            }                          # could add a 'name' field, to save looping over the keys to this
+                                                    # dict:
+                                                    # fields[nice_key][name] = nice_key
+                                                    #  and then just unpack a fields dict for each one:
+                                                    # shapefile.Writer.field(**fields[nice_key]).  
+                                                    # But it seems to be
+                                                    # an undocumented feature of Writer.fields, doesn't reduce the amount of code
+                                                    # (actually needs an extra line), requires duplicate data 
+                                                    # in fields.  If we wanted to rename it in the shape file to
+                                                    # something different than the dictionary key then this is a neat way.of doing so.
+        if val_type == shp_field_codes['float']:
+            fields[nice_key]['decimal'] = dec_places_req(value)    
+    # Mutates fields.  Nothing returned.
+
+
 def write_from_iterable_to_shapefile_writer( my_iterable 
                                             ,shp_file_path 
                                             ,shape_mangler
+                                            ,shape_IDer # to make hashable dict key
                                             ,key_finder
                                             ,key_matcher
                                             #,key_mangler
                                             #,value_mangler
                                             ,value_demangler
                                             ,shape
-                                            ,options):
-    #type: (iter , str , function, function, function,  function, str, dict)  -> str
-    #shape_mangler type: (Bob) -> list(list(3),list(3)) Shapefile geometric object
+                                            ,options
+                                            ,field_names = None):
+    #type(type[any], str, function, function, function, function,  function, str, dict)  -> int, str, dict, list, list
     #
     #
     #
-    fields = OrderedDict({options.uuid_shp_file_field_name : {        'fieldType' : shp_field_codes['str']
-                                                                     , 'size' : options.uuid_length
-                                                                              + max(0,options.shp_file_field_size_num_extra_chars)}})
-    attribute_table_data = OrderedDict()
-    
     #######################################
     # If my_iterable is not a list, cache it in my_list
     #
-    my_iterable_is_a_list = isinstance(my_iterable, list)
-    if my_iterable_is_a_list:
-        my_list = my_iterable
-    else:
-        my_list = []
+    my_list = my_iterable
 
-    for item in my_iterable:    
-        if not my_iterable_is_a_list:   # and options.cache_rhino_objects: #  ?
-            my_list += [item]
+    options.cache_iterable_to_shp
 
-        keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
-        values = OrderedDict( {options.uuid_shp_file_field_name : item} )   
-        for key in keys:
-            # Demangle and cache the user text keys and values
-            key_match = key_matcher(key)            # e.g. cPickle.loads.split('_')[1]
-            if key_match:
-                nice_key = key_match.group('name') 
-                value = value_demangler(item, key) # e.g. cPickle.loads(rhinoscriptsyntax.GetUserText(item,key)
+    max_size = (options.global_shp_file_field_size 
+            + options.shp_file_field_size_num_extra_chars)
 
-                value, val_type = shp_type_coercer(value, options)
-                values[nice_key] = value 
+    fields = OrderedDict( {options.uuid_shp_file_field_name 
+                                : { 'fieldType' : shp_field_codes['str']
+                                    ,'size' : options.uuid_length
+                                            +max( 0,  options.shp_file_field_size_num_extra_chars )
+                                    }
+                           }
+                         )
+
+    attribute_tables = OrderedDict()
+        
+
+    if field_names == None or options.cache_iterable_to_shp: 
+        
+        my_iterable_is_a_list = isinstance(my_iterable, list)
+        if not my_iterable_is_a_list:
+            my_list = []
 
 
-                # Update the shp field sizes if they aren't big enough or the field is new, and type check
-                if options.calculate_smallest_field_sizes:
-                    if nice_key in fields:
-                        fields[nice_key]['size'] = max( fields[nice_key]['size']
-                                                    ,len(str(value)) + max(0, options.shp_file_field_size_num_extra_chars)
-                                                    )
-                        if val_type == shp_field_codes['float'] and 'decimal' in fields[nice_key]:
-                            fields[nice_key]['decimal'] = max( fields[nice_key]['decimal'], dec_places_req(value) )
-                        if val_type != fields[nice_key]['fieldType']:
-                            if (value in [0,1]) and fields[nice_key]['fieldType'] == shp_field_codes['bool'] or (val_type == shp_field_codes['bool'] 
-                                    and fields[nice_key]['fieldType'] == shp_field_codes['int'] 
-                                        and all(attribute_table_data[i][nice_key] in [0,1] for i in attribute_table_data.keys())):
-                                pass   #1s and 0s are in a Boolean field as integers or a 1 or a 0 in a Boolean field is type checking as an integer
-                                # TODO:  Check options and rectify - flag as Bool for now (rest of loop will recheck others), 
-                                #                                  or flag for recheck all at end
-                            elif val_type == shp_field_codes['float'] and fields[nice_key]['fieldType'] == shp_field_codes['int']:
-                                fields[nice_key]['fieldType'] = shp_field_codes['float']
-                                fields[nice_key]['decimal'] = dec_places_req(value)
-                            else:
-                                logger.error('Type mismatch in same field.  Cannot store ' + str(value) + ' as .shp record type ' + fields[nice_key]['fieldType'])
+
+        for item in my_iterable:    
+            if not my_iterable_is_a_list:   # and options.cache_rhino_objects: #  ?
+                my_list += [item]
+
+            keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
+            values = OrderedDict( [(options.uuid_shp_file_field_name, shape_IDer(item))] )   
+            for key in keys:
+                # Demangle and cache the user text keys and values
+                nice_key, field_type, size = key_matcher(key)            # e.g. cPickle.loads.split('_')[1]
+                if nice_key:
+                    value = value_demangler(item, key) # e.g. cPickle.loads(rhinoscriptsyntax.GetUserText(item,key)
+
+                    value, val_type = shp_type_coercer(value, options)
+                    values[nice_key] = value 
+
+
+                    # Update the shp field sizes if they aren't big enough or the field is new, and type check
+                    if options.calculate_smallest_field_sizes:
+                        ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attribute_tables, options)
                     else:
-                        fields[nice_key] = { 'size' : len(str(value)) + max(0,options.shp_file_field_size_num_extra_chars)
+                        fields[nice_key] = { 'size' : max_size
                                             ,'fieldType' : val_type
-                                            }                          # could add a 'name' field, to save looping over the keys to this
-                                                                    # dict:
-                                                                    # fields[nice_key][name] = nice_key
-                                                                    #  and then just unpack a fields dict for each one:
-                                                                    # shapefile.Writer.field(**fields[nice_key]).  
-                                                                    # But it seems to be
-                                                                    # an undocumented feature of Writer.fields, doesn't reduce the amount of code
-                                                                    # (actually needs an extra line), requires duplicate data 
-                                                                    # in fields.  If we wanted to rename it in the shape file to
-                                                                    # something different than the dictionary key then this is a neat way.of doing so.
+                                            } 
                         if val_type == shp_field_codes['float']:
-                            fields[nice_key]['decimal'] = dec_places_req(value)
-                else:
-                    fields[nice_key] = { 'size' : options.global_shp_file_field_size + options.shp_file_field_size_num_extra_chars
-                                        ,'fieldType' : val_type
-                                        } 
-                    if val_type == shp_field_codes['float']:
-                        fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
-        attribute_table_data[item] = values.copy()  # Dict of dicts
+                            fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
+        attribute_tables[shape_IDer(item)] = values.copy()  # item may not be hashable so can't use dict of dicts
+    else:
+        for name in field_names:
+            fields[name] = { 'size' : max_size
+                            ,'fieldType' : shp_field_codes['str']
+                           }
+        #TODO setup basic fields dict from list without looping over my_iterable        
 
 
 
@@ -265,6 +293,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     # Instead we'll wrap this wrapper function again in the Rhino / GH process in GHsDNA.py to supply this inner 
     # function it as a normal parameter value for shp_file_path.
         
+    #print('len(my_list) == '+ str(len(my_list))+' ')
+    #print('len(attribute_tables) == '+ str(len(attribute_tables))+' ')
 
 
 
@@ -274,24 +304,42 @@ def write_from_iterable_to_shapefile_writer( my_iterable
             w.field(key,**val)
         #w.field('Name', 'C')
 
-        add_geometric_object = getattr( w, shaperback_writer[shape] )
+        
+
+        add_geometric_object = getattr( w,  shaperback_writer[shape] )
         #print(add_geometric_object)
         for item in my_list:
-            list_of_shapes_to_write = [shape_mangler(item)]
-            add_geometric_object( list_of_shapes_to_write )   # e.g. start_and_end_points(my_iterable)
-            w.record( **attribute_table_data[item] )    # when used on a nested dict[key] ** unpacks the inner dict of key 
-            #except:    print "Failed to add geometry to shapefile: ",  str(list_of_shapes_to_write)
-        #w.linez(map(shape_mangler, my_iterable))
+            list_of_shapes_to_write = shape_mangler(item)
+            if list_of_shapes_to_write:
+                #print(str(list_of_shapes_to_write) + ' ' + str(attribute_table)) 
+                add_geometric_object( list_of_shapes_to_write )   
+                # e.g. start_and_end_points(my_iterable)
+
+                attribute_table = attribute_tables.get( 
+                                shape_IDer(item)
+                                , {options.uuid_shp_file_field_name 
+                                        : shape_IDer(item)
+                                            }.update(
+                                    { key_matcher(key).group('name') 
+                                        : str( value_demangler(item, key) )[:max_size] 
+                                                        for key in key_finder(item)
+                                                        if key_matcher(key) }
+                                    )
+                )
+
+                w.record(  **attribute_table  )    
     #
 
-    return shapefile_path_to_write_to, fields, attribute_table_data, my_list
-    # Todo:  optionally, return my_list
+    return 0, shapefile_path_to_write_to, fields, attribute_tables, my_list
 
-def get_fields_and_records_from_shapefile(shapefile_path):
+def get_fields_recs_and_shapes_from_shapefile(shapefile_path):
     with shp.Reader(shapefile_path) as r:
         fields = r.fields
         recs = r.records()
-    return fields, recs
+        shapes = r.shapes()
+    gdm = {shape : {k : v for k,v in zip (fields, rec)} for shape, rec in zip(shapes, recs)  }
+    
+    return fields, recs, shapes
 
 
 if __name__=='__main__':
