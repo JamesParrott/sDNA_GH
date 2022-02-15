@@ -25,12 +25,14 @@ def get_stem_and_folder(path):
     return split(path)
 
 class HardcodedMetas(): 
-    config_file_path = r'config.ini'
+    config_file_path = join( dirname(dirname(__file__)), r'config.ini')
     add_in_new_options_keys = False
     allow_components_to_change_type = False
     typecheck_opts_namedtuples = True
     typecheck_opts_fields = True
-    sDNA = ('sDNAUISpec','runsdnacommand')
+    sDNAUISpec = 'sDNAUISpec'
+    runsdna = 'runsdnacommand'
+    sDNA = (sDNAUISpec, runsdna)  # Read only.  Auto updates from above two.
     sDNA_path = ''  # Read only.  Determined after loading sDNAUISpec to which ever below
                     # it is found in.
                     # after loading, assert opts['metas'].sDNA_path == dirname(opts['options'].UISpec.__file__)
@@ -68,8 +70,7 @@ class HardcodedOptions():
     sDNA_prepare = r'C:\Program Files (x86)\sDNA\bin\sdnaprepare.py'
     sDNA_integral = r'C:\Program Files (x86)\sDNA\bin\sdnaintegral.py'
     python_exe = r'C:\Python27\python.exe' # Default installation path of Python 2.7.3 release (32 bit ?) http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
-                                            # linked from sDNA manual https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html
-    
+                                            # grouped from sDNA manual https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html    
     ####################################################################################
     #Logging    
     log_file_suffix = '_GHsDNA'
@@ -78,20 +79,21 @@ class HardcodedOptions():
     logs_subdirectory = r'logs'
     tests_subdirectory = r'tests'
     logger_file_level = 'DEBUG'
-    logger_console_level = 'DEBUG'
-    logger_custom_level = 'WARNING'
+    logger_console_level = 'ERROR'
+    logger_custom_level = 'ERROR'
 
     ####################################################################################
     #GDM
     read_overides_Data_from_Usertext = True
     merge_Usertext_subdicts_instead_of_overwriting = True
-    use_initial_links_if_too_many_in_list = True
+    use_initial_groups_if_too_many_in_list = True
     use_initial_data_if_too_many_in_list = True
+    include_groups_in_gdms = False
     ####################################################################################
     #Shapefiles
     shp_file_shape_type = 'POLYLINEZ'
     read_from_Rhino_if_no_shp_data = False
-    cache_iterable_to_shp = False
+    cache_iterable_when_writing_to_shp= False
     shp_file_extension = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
     supply_sDNA_file_names = True
     shape_file_to_write_Rhino_data_to_from_GHsDNA = r'C:\Users\James\Documents\Rhino\Grasshopper\GHsDNA_shapefiles\t6.shp' # None means Rhino .3dm filename is used.
@@ -117,7 +119,7 @@ class HardcodedOptions():
     shp_record_max_decimal = 4
     ####################################################################################
     #Writing and Reading Usertext to/from Rhino
-    create_new_links_layer_from_shapefile = True
+    create_new_groups_layer_from_shapefile = True
     max_new_UserText_keys_to_make = 20
     #
     #
@@ -204,6 +206,25 @@ def output(s, logging_level = "INFO", stream = None, logging_dict = None ):
 #
 #
 
+def report(s):
+    #type(str)->str
+    return output(str(s)+' ','DEBUG')
+
+def report_value(x, x_val = None):
+    # type(type[any]) -> str
+    if x_val == None:
+        if type(x).__name__ == 'generator':
+            x_val = " Generator " # don't use up now just for reporting
+        else:
+            x_val = x
+
+    c = inspect.currentframe().f_back.f_locals.items()
+    names = [var_name.strip("'") for var_name, var_val in c if var_val is x]
+    # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+
+
+    return report(str(names) + ' == ' + str(x_val)+' ')
+
 from .custom_python_modules.options_manager import (                     
                                      make_nested_namedtuple     
                                     ,setup_config                             
@@ -213,40 +234,8 @@ from .custom_python_modules.options_manager import (
 
 
 
-####################################################################################################################
-# First options options_manager.override (3), user's installation specific options over (4), hardcoded defaults above
+
 #
-def kwargs(key, local_opts):
-    return dict( dump_all_in_default_section = False
-                ,empty_lines_in_values = False
-                ,interpolation = None # For setup_config above
-                ,section_name = key # For override_namedtuple below
-                ,leave_as_strings = False 
-                ,strict = local_opts['metas'].typecheck_opts_namedtuples
-                ,check_types = local_opts['metas'].typecheck_opts_fields
-                ,add_in_new_options_keys = local_opts['metas'].add_in_new_options_keys
-                )
-
-config_abs_path = join( dirname(__file__), default_metas.config_file_path)  
-                      #abspath(metas.config_file_path)
-if isfile( config_abs_path ):
-    output('Loading config file from ' + config_abs_path, 'DEBUG')
-    config = setup_config(   config_abs_path, **kwargs('', opts))
-
-    opts['metas'] = override_namedtuple_with_ini_file( default_metas
-                                                      ,config_abs_path
-                                                      ,**kwargs('metas', opts)
-    )
-    opts['options'] = override_namedtuple_with_ini_file( 
-                                                    default_options
-                                                    ,config_abs_path
-                                                    ,**kwargs('options', opts)
-    )
-else:    
-    output('No Installation wide config file found at ' 
-           + config_abs_path 
-           + ' .  Using hardcoded default options.  ', 'WARNING'
-           )
 ####################################################################################################################
 #
 #
@@ -266,10 +255,11 @@ class WriteableFlushableList(list):
     #type: ( str) -> None
     # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     #
-        if isinstance(s,str):
-            self.append(s)
-        else:
-            self.extend(s)
+        if s:
+            if isinstance(s,str):
+                self.append(s)
+            else:
+                self.extend(s)
 
     debug = write
     info = write
@@ -292,22 +282,6 @@ if 'logger' not in globals():
 from .custom_python_modules.wrapper_pyshp import (get_fields_recs_and_shapes_from_shapefile
                                                  ,get_unique_filename_if_not_overwrite
                                                  ,write_from_iterable_to_shapefile_writer)
-
-#def function_imported_by_GHsDNA_launcher(f_name, Geom, Data, opts):
-    #type(bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict) -> bool, str, Rhino_Geom, datatree, str
-# return ran_OK, output_file_path, Geometry, Data, a
-
-#def override_namedtuple( user_args_dict
-#                        ,project_ini_file_path
-#                        ,old_nt_or_dict
-#                        ,installation_nt
-#                        ,add_in_new_options_keys=True
-#                        ,check_types = True 
-#                        ,strict = False
-#                        ,NTClass = None
-#                        ):
-#type() -> namedtuple
-
 
 
 
@@ -345,11 +319,11 @@ def override_all_opts( args_dict
     args_local_metas = {}
 
     for (arg_name, arg_val) in args_dict.items():  # local_metass() will be full of all our other variables.
-        if arg_val != None:  # Unconnected input variables in a Grasshopper component are None.  
-                         # No sDNA tool inputspec default, no metas and no options default is None.
-                         #If None values are needed as specifiable inputs, we would 
-                         # need to e.g. test ghenv for an input variable's connectedness
-                         # so we don't support this
+        if arg_val: # Unconnected input variables in a Grasshopper component are None.  
+                    # No sDNA tool inputspec default, no metas and no options default is None.
+                    #If None values are needed as specifiable inputs, we would 
+                    # need to e.g. test ghenv for an input variable's connectedness
+                    # so we don't support this
             if arg_name in metas._fields:      
                 args_metas[arg_name] = arg_val
             elif arg_name in options._fields:   
@@ -361,56 +335,17 @@ def override_all_opts( args_dict
 
 
 
+    def kwargs(key, local_opts):
+        return dict( dump_all_in_default_section = False
+                    ,empty_lines_in_values = False
+                    ,interpolation = None # For setup_config above
+                    ,section_name = key # For override_namedtuple below
+                    ,leave_as_strings = False 
+                    ,strict = local_opts['metas'].typecheck_opts_namedtuples
+                    ,check_types = local_opts['metas'].typecheck_opts_fields
+                    ,add_in_new_options_keys = local_opts['metas'].add_in_new_options_keys
+                    )
 
-    #test_opts = opts
-    #if opts != None and (len(opts)==1 and isinstance(opts,list)):    # Check for list input mode on the GHPython Component input variable
-    #    test_opts = opts[0]
-
-    #if isinstance(opts,tuple):
-    #    if len(opts)==3:
-    #        test_metas, test_options, test_tool_options = test_opts
-    #    elif len(opts)==2:
-    #        test_options, test_tool_options = test_opts        
-    #    elif len(opts)==1:
-    #        test_tool_options = test_opts
-    #    
-    #new_metas = metas           # From Global scope in this module. 
-    #new_options = options       # Installation options and metas have already overridden the Hardcoded ones above.
-    #if test_opts != None and len(test_opts) == 2 and isinstance(test_opts,tuple):
-    #   test_metas, test_options = test_opts
-    #elif test_opts != None and len(test_opts) == 1 and isinstance(test_opts,namedtuple)
-    #
-    #   if (test_metas.__class__.__name__ == 'Metas' and 
-    #       test_options.__class__.__name__ == 'Options'):
-    #
-    #metas = override_namedtuple( args_metas 
-    #                            ,args_metas.get(config_file_path,'')
-    #                            ,test_metas 
-    #                            ,metas
-    #                            ,add_in_new_options_keys = False 
-    #                            ,check_types = True 
-    #                            ,strict = True
-    #                            ,NTClass = metas_factory)
-    #
-    #options = override_namedtuple(   args_options 
-    #                                ,args_metas.get(config_file_path,'') 
-    #                                ,test_options 
-    #                                ,options
-    #                                ,add_in_new_options_keys = False 
-    #                                ,check_types = True 
-    #                                ,strict = True
-    #                                ,NTClass = options_factory)
-    #
-    #tool_options = override_namedtuple(  args_tool_options 
-    #                                    ,args_metas.get(config_file_path,'') 
-    #                                    ,test_tool_options 
-    #                                    ,tool_options
-    #                                    ,add_in_new_options_keys = False 
-    #                                    ,check_types = True 
-    #                                    ,strict = True
-    #                                    ,NTClass = options_factory)                                
-    
-    ############################################################
     #
     #Primary meta:
     #
@@ -426,9 +361,11 @@ def override_all_opts( args_dict
     #print('#1.1 local_metas == ' + str(local_metas))
 
     sub_args_dict = {     'metas' : args_metas
-                         ,'options' : args_options
+                          ,'options' : args_options
                           ,name : args_tool_options
                     }
+
+
 
     def overrides_list(key):
         # type (str) -> list
@@ -441,7 +378,7 @@ def override_all_opts( args_dict
         if key not in ('options','metas') :
             ext_opts = ext_opts.get( sDNA(),  {} )
         
-        retval += [ext_opts, config_file_reader, sub_args_dict[key]]
+        retval += [ext_opts, config_file_reader, sub_args_dict.get(key,{})]
 
         return retval
 
@@ -450,66 +387,49 @@ def override_all_opts( args_dict
     #overrides_list = lambda key : [external_opts.get(key,{}).get(sDNA(), {}), config_file_reader, sub_args_dict.get(key, {})]
     if local_metas.sync_to_shared_global_opts:
         dict_to_update = opts # the opts in module's global scope, outside this function
+        #print('Using global opts '+'DEBUG')
     else:
         dict_to_update = local_opts
         #if local_metas.read_from_shared_global_opts:
           #  overrides = lambda key : [opts.get(key,{}).get(sDNA(), {})] + overrides(key)
 
-    def get_overidden_options_NT(lesser_NT, overrides, key, opts_NT):
-
-        tmp_NT = override_namedtuple( lesser_NT,  overrides(key),  **kwargs(key, local_opts) )  
-        tmp_opts_NT = opts_NT
-        if local_metas.write_to_shared_global_opts and not local_metas.sync_to_shared_global_opts:
-            tmp_opts_NT = override_namedtuple( opts_NT, tmp_NT,  **kwargs(key, local_opts) ) 
-
-        return tmp_NT, tmp_opts_NT
-
     for key in dict_to_update:
         if key in ('options','metas'):
-            dict_to_update[ key ],  opts[ key ] = (
-                        get_overidden_options_NT( dict_to_update[ key ]
-                                                 ,overrides_list
-                                                 ,key
-                                                 ,opts[ key ] 
-                        )
-            )            
+            dict_to_update[key] = override_namedtuple( dict_to_update[key]
+                                                      ,overrides_list(key)
+                                                      ,**kwargs(key, local_opts) 
+                                                      ) 
+            #if key=='options':
+            #    print('dict_to_update message == '+dict_to_update['options'].message+' '+'DEBUG')
         else:
-            dict_to_update[ key ][ sDNA() ],  opts[ key ][ sDNA() ] = (
-                        get_overidden_options_NT( dict_to_update[ key ][ sDNA() ]
-                                                 ,overrides_list
-                                                 ,key
-                                                 ,opts[ key ][ sDNA() ] 
-                        )
-            )
-
-        #if key not in ('options','metas') and sDNA in val:
-        #   dict_to_update[ key ][ sDNA ] = get_overidden_options_NT(dict_to_update[ key ][ sDNA ], overrides_list(key))
-        #else:
-        #   dict_to_update[ key ] = get_overidden_options_NT(dict_to_update[ key ], overrides_list(key))
-        #
-        #if local_metas.write_to_shared_global_opts and not local_metas.sync_to_shared_global_opts:
-        #    if key not in ('options','metas') and sDNA in val:
-        #        opts[ key ][ sDNA ] = get_overidden_options_NT(opts[ key ][ sDNA ], dict_to_update[ key ][ sDNA ] )
-        #    else:
-        #        opts[ key ] = get_overidden_options_NT(opts[ key ], dict_to_update[ key ])
-            #opts[key].get( sDNA,  opts[key] ) = override_namedtuple( opts[key].get( sDNA,  opts[key] )
-            #                                                                         ,dict_to_update[key]
-            #                                                                         ,**kwargs 
-            #                                                                        )
-
-
-                                                
-
+            dict_to_update[key][sDNA()] = override_namedtuple(dict_to_update[key][sDNA()]
+                                                             ,overrides_list(key)
+                                                             ,**kwargs(key, local_opts) 
+                                                             )
     return local_metas
 
-# Load primary meta.
-override_all_opts(  dict(config_file_path = default_metas.config_file_path) 
-# just to retrieve hardcoded primary meta (installation config file location)
-                    ,opts #  mutates opts
-                    ,{}       #external_opts
-                    ,local_metas 
-                    ,empty_NT #external_local_metas
-                    ,'')
+####################################################################################################################
+# First options options_manager.override (3), user's installation specific options over (4), hardcoded defaults above
+#
+# Use the above function to load the user's installation wide defaults by using
+#  the primary meta from the hardcoded defaults.
+
+if isfile(default_metas.config_file_path):
+    #print('Before override: message == '+opts['options'].message)
+
+    override_all_opts(  default_metas._asdict()
+    # just to retrieve hardcoded primary meta (installation config file location)
+                        ,opts #  mutates opts
+                        ,{}       #external_opts
+                        ,local_metas 
+                        ,empty_NT #external_local_metas
+                        ,'')
+
+    #print('After override: message == '+opts['options'].message)
+else:
+    print('Config.ini not found at '+default_metas.config_file_path)    
+#
+####################################################################################################################
 
 
 
@@ -517,24 +437,6 @@ override_all_opts(  dict(config_file_path = default_metas.config_file_path)
 
 
 
-def report(s):
-    #type(str)->str
-    return output(str(s)+' ','DEBUG')
-
-def report_value(x, x_val = None):
-    # type(type[any]) -> str
-    if x_val == None:
-        if type(x).__name__ == 'generator':
-            x_val = " Generator " # don't use up now just for reporting
-        else:
-            x_val = x
-
-    c = inspect.currentframe().f_back.f_locals.items()
-    names = [var_name for var_name, var_val in c if var_val is x]
-    # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
-
-
-    return report(str(names) + ' == ' + str(x_val)+' ')
 
 def make_regex_inverse_of_format_string(pattern):
     # type (str) -> str
@@ -549,11 +451,11 @@ def convert_dictionary_to_data_tree(nested_dict):
     # type(dict) -> DataTree
     import ghpythonlib.treehelpers as th
         
-    User_Text_Keys = [[key for key in link_dict] for link_dict in nested_dict]
-    User_Text_Values = [[val for val in link_dict.values()] for link_dict in nested_dict]
+    User_Text_Keys = [[key for key in group_dict] for group_dict in nested_dict]
+    User_Text_Values = [[val for val in group_dict.values()] for group_dict in nested_dict]
     
     Data =  th.list_to_tree([[User_Text_Keys, User_Text_Values]])
-    Geometry = nested_dict.keys()  # Multi-polyline-links aren't unpacked.
+    Geometry = nested_dict.keys()  # Multi-polyline-groups aren't unpacked.
     return Data, Geometry
     #layerTree = []
 
@@ -695,11 +597,9 @@ Rhino_obj_getter_code_Shp_file_shape_map = dict( NULL = None
 def get_all_shp_type_Rhino_objects(shp_type):
     #type (None) -> list
     import rhinoscriptsyntax as rs
-    def f():
-        return rs.ObjectsByType( Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
-                                ,select=False
-                                ,state=0)
-    return f
+    return rs.ObjectsByType( Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
+                            ,select=False
+                            ,state=0)
 
 Rhino_obj_adder_Shp_file_shape_map = dict( NULL = None
                                 ,POINT = 'AddPoint'
@@ -717,39 +617,42 @@ Rhino_obj_adder_Shp_file_shape_map = dict( NULL = None
                                 ,MULTIPOINTM = 'AddPoints'
                                 )  
 
-def get_groups_links_and_key_val_tuples( 
+def get_objs_and_key_val_tuples( 
                               options = opts['options']
-                             ,obj_getter = get_all_shp_type_Rhino_objects
+                             ,all_objs_getter = get_all_shp_type_Rhino_objects
                              ,group_getter = get_all_groups
-                             ,group_member_getter = get_members_of_a_group
+                             ,group_objs_getter = get_members_of_a_group
                              ,key_val_tuples_getter = get_key_val_tuples()
+                             ,obj_type_checker = check_is_specified_obj_type
                              ,shp_type = 'POLYLINEZ'
                             ):
     #type(function, function, function) -> function
     shp_type = options.shp_file_shape_type            
-    def generator(obj):
+    def generator():
         #type( type[any]) -> list, list
         #
         # Groups first search.  If a special Usertext key on member objects 
-        # is used to indicate links, then an objects first search 
-        # is necessary instead.  This would be better for reading shapefiles.
+        # is used to indicate groups, then an objects first search 
+        # is necessary instead, to test every object for membership
+        # and track the groups yielded to date, in place of group_getter
+        objs_in_any_group = []
 
-        members_of_all_groups = []
-        groups = group_getter()
-        for group in groups:
-            group_members = group_member_getter(group)
-            if ( group_members and
-                 any(check_is_specified_obj_type(x, shp_type) 
-                                             for x in group_members) ):
-                members_of_all_groups += group_members
-                key_val_tuples = chain( *( key_val_tuples_getter(member)
-                                                for member in group_members ) 
-                                       )
-                yield group, key_val_tuples
+        if options.include_groups_in_gdms:
+            groups = group_getter()
+            for group in groups:
+                objs = group_objs_getter(group)
+                if ( objs and
+                    any(obj_type_checker(x, shp_type) 
+                                                for x in objs) ):                                                 
+                    objs_in_any_group += objs
+                    groups_key_val_tuples = [key_val_tuples_getter(obj) 
+                                                    for obj in objs]
+                    yield group, groups_key_val_tuples
 
-        objs = obj_getter(shp_type)
+        objs = all_objs_getter(shp_type)
         for obj in objs:
-            if obj not in members_of_all_groups:
+            if ((not options.include_groups_in_gdms) or 
+                 obj not in objs_in_any_group):
                 key_val_tuples = key_val_tuples_getter(obj)
                 yield obj, key_val_tuples
         return  # For the avoidance of doubt
@@ -827,9 +730,9 @@ def read_objects_groups_and_Usertext_from_Rhino(f_name, gdm, opts_at_call):
 
     sc.doc = Rhino.RhinoDoc.ActiveDoc # type: ignore 
     # ActiveDoc may change on Macs - TODO: only call once or accept argument
-    output('Starting Read_Network_Links','DEBUG')
+    output('Starting read_objects_groups_and_Usertext_from_Rhino','DEBUG')
 
-    rhino_groups_and_objects = make_gdm(get_groups_links_and_key_val_tuples(options))
+    rhino_groups_and_objects = make_gdm(get_objs_and_key_val_tuples(options))
 
     if opts_at_call['options'].read_overides_Data_from_Usertext:
         read_Usertext_as_tuples = get_key_val_tuples()
@@ -847,7 +750,6 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
     import rhinoscriptsyntax as rs
     
     options = opts_at_call['options']
-
 
     shp_type = options.shp_file_shape_type            
     
@@ -874,9 +776,14 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
                                               #                 format_string)
 
     def get_list_of_lists_from_tuple(tupl):
+        #report_value(tupl)
         obj = tupl[0]
         if check_is_specified_obj_type(obj, shp_type):
-            return [get_points_list_from_Rhino_obj(y, shp_type) for y in obj]
+            return [get_points_list_from_Rhino_obj(obj, shp_type)]
+        elif is_group(obj):
+            return [get_points_list_from_Rhino_obj(y, shp_type) 
+                     for y in get_members_of_a_group(obj)
+                     if check_is_specified_obj_type(y, shp_type)]
         else:
             return None
 
@@ -899,10 +806,13 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
             f_name = options.shape_file_to_write_Rhino_data_to_from_GHsDNA
 
     shp_type = options.shp_file_shape_type            
-                         
+    #report('Type of gdm == '+ type(geom_data_map).__name__)                         
+    #report('Size of gdm == ' + str(len(geom_data_map)))
+    #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_map.keys() )) )
+    #report('Gdm.values == ' + ' '.join(map(str,geom_data_map.values())))
     (retcode, filename, fields, user_data, geometry_data_iterable) = ( 
                          write_from_iterable_to_shapefile_writer(
-                                            geom_data_map.items() #my_iter 
+                                             geom_data_map.items() #my_iter 
                                             ,f_name #shp_file 
                                             ,get_list_of_lists_from_tuple # shape_mangler, e.g. start_and_end_points
                                             ,shape_IDer
@@ -911,6 +821,7 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
                                             ,get_data_item #value_demangler e.g. rs.GetUserText
                                             ,shp_type #"POLYLINEZ" #shape
                                             ,options #options
+                                            ,None # field names
                          )
     ) 
     return retcode, filename, geom_data_map, None
@@ -957,7 +868,7 @@ def get_shape_file_rec_ID(options = opts['options']):
 
 
 
-def Read_Links_Data_From_Shapefile( f_name
+def read_groups_data_from_shapefile( f_name
                                    ,geom_data_map 
                                    ,opts_at_call
                                    ):
@@ -972,7 +883,7 @@ def Read_Links_Data_From_Shapefile( f_name
     field_names = [ x[0] for x in fields ]
 
 
-    if options.create_new_links_layer_from_shapefile: 
+    if options.create_new_groups_layer_from_shapefile: 
         obj_key_maker = make_list_of_rhino_objs_from_shapefile_geometry_pts_lists( options ) 
         shapes_to_output = shapes
     else:          
@@ -1002,19 +913,19 @@ def Read_Links_Data_From_Shapefile( f_name
 
 
     #keys=[]
-    #if options.create_new_links_layer_from_shapefile:
+    #if options.create_new_groups_layer_from_shapefile:
     #    Geometry =  [] # only overwrites local variable in this function
     #    rs.AddLayer(name = split(f_name)[1] ) #.rpartition('.')[0])
-    #    for link in shapes:
-    #        if len(link) > 1:   #multi-polyline link
+    #    for group in shapes:
+    #        if len(group) > 1:   #multi-polyline group
     #            new_group = rs.AddGroup()
     #            polylines = []
-    #            for list_of_points_lists in link:
+    #            for list_of_points_lists in group:
     #                polylines += rs.AddPolyline( list_of_points_lists )
     #            rs.AddObjectsToGroup(polylines, new_group)
     #            Geometry += new_group
-    #        else:          # single polyline link (pyshp returns nested)
-    #            Geometry += rs.AddPolyline(link[0])
+    #        else:          # single polyline group (pyshp returns nested)
+    #            Geometry += rs.AddPolyline(group[0])
     #    keys = Geometry
     #elif options.uuid_shp_file_field_name in field_names:
     #    ID_index = field_names.index( options.uuid_shp_file_field_name )    
@@ -1029,10 +940,10 @@ def Read_Links_Data_From_Shapefile( f_name
 
 
 
-def Write_Links_Data_To_Rhino_File( f_name     #Bake_Geom_and_Data
-                                   ,geom_data_map  # nested dict
-                                   ,opts_at_call
-                                   ):
+def write_data_to_Usertext(  f_name     #Bake_Geom_and_Data
+                            ,geom_data_map  # nested dict
+                            ,opts_at_call
+                            ):
     #type(type[any], str, dict, dict) -> int, str, dict, dict
 
     import scriptcontext as sc
@@ -1083,18 +994,17 @@ def Write_Links_Data_To_Rhino_File( f_name     #Bake_Geom_and_Data
 
     return 0, f_name, geom_data_map, None
     
-###################################################################################################
-#                                                                           # TODO: Fix interface - fields
-def Plot_Data_On_Links(f_name, geom_data_map, opts):
+
+def plot_data_on_objects(f_name, geom_data_map, opts_at_call):
     #type(type[any], str, dict, dict) -> int, str, dict, dict
 
     import Rhino
     import scriptcontext as sc
     import rhinoscriptsyntax as rs
 
-    options = opts['options']
+    options = opts_at_call['options']
 
-    field = options.write_from_iterable_to_shapefile_writer
+    field = options.sDNA_output_abbrev_to_graph
 
     keys = (geom_data_map.viewkeys() 
                     if sys.version_info.major < 3 else geom_data_map.keys())
@@ -1167,10 +1077,10 @@ def Plot_Data_On_Links(f_name, geom_data_map, opts):
                   
 
 ###############################################################################
-def main_sequence(ghenv, f_name, gdm, opts):
+def main_sequence(f_name, gdm, opts_at_call):
     #type(type[any], str, , type[any], type[any], dict) -> bool, str, type[any], type[any], WriteableFlushableList
     output('Starting main sequence... ','INFO')
-    metas, options = opts['metas'], opts['options']
+    metas, options = opts_at_call['metas'], opts_at_call['options']
     #a = WriteableFlushableList()                                     
 
     ################################################################################
@@ -1335,6 +1245,7 @@ def main_sequence(ghenv, f_name, gdm, opts):
         return write_from_iterable_to_shapefile_writer(  my_iter 
                                                         ,shp_file 
                                                         ,shape_mangler
+                                                        ,str #shape_IDer
                                                         ,key_finder
                                                         ,key_matcher
                                                         #,key_mangler
@@ -1342,6 +1253,7 @@ def main_sequence(ghenv, f_name, gdm, opts):
                                                         ,value_demangler
                                                         ,shape
                                                         ,options
+                                                        ,None
                                                         )
 
     #output(options.uuid_length)
@@ -1494,30 +1406,36 @@ def no_name_clashes(name_map, list_of_names_lists):
 def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):    
     # type(str, dict) -> str, dict, function
 
-    # global opts instead of local_opts is intentional 
-    # for cacheing (like get_syntax_dict)
     sDNA, UISpec = local_opts['metas'].sDNA, local_opts['options'].UISpec
+    #
+    global opts, get_syntax_dict
     # 
     #
     def update_or_init(cache, defaults, name):
-        if name in cache and sDNA in cache[name]:
-            if isinstance(defaults, dict):
-                defaults.update(cache[name][sDNA]._asdict())
-                cache[name][sDNA] = make_nested_namedtuple( defaults , name)
-            #else:
-            #    pass
-                #assert cache[name][sDNA] = defaults # already
+        #type(dict, dict / function, str) -> None
+        if name in cache:
+            if sDNA in cache[name]:
+                output('Name : ' + name + ' already in cache ' + str(cache) 
+                       + '.  Updating value(s) ', 'WARNING')
+
+                if isinstance(defaults, dict) and hasattr(cache[name][sDNA]
+                                                         ,'_asdict'):
+                    defaults.update(cache[name][sDNA]._asdict())
+
         else:
-            cache.setdefault(name, {})
-            cache[name][sDNA] = defaults
+            cache[name] =  {}
+
+        cache[name][sDNA] = make_nested_namedtuple( defaults,  name ) if isinstance(defaults, dict) else defaults 
 
 
     if hasattr(UISpec, tool_name):
-        get_syntax = getattr(UISpec, tool_name).getSyntax     
+        sDNA_tool_instance = getattr( UISpec,  tool_name )()
+
+        get_syntax = sDNA_tool_instance.getSyntax     
         # not called until component executes in RunScript
         update_or_init( get_syntax_dict,  get_syntax,  tool_name )
-
-        input_spec = getattr( UISpec,  tool_name ).getInputSpec()
+        # Global get_syntax_dict intentional
+        input_spec = sDNA_tool_instance.getInputSpec()
         defaults_dict = { varname : default for (    varname
                                                     ,displayname
                                                     ,datatype
@@ -1526,10 +1444,10 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
                                                     ,required
                                                 ) in input_spec  }
         update_or_init( opts,  defaults_dict,  nick_name )
-        # Tool options are stored per nick_name, which may equal tool_name
+        # Global opts intentional. Tool options are stored per nick_name, which may equal tool_name
     else:
-        update_or_init( opts,  empty_NT,  nick_name )
-        update_or_init( get_syntax_dict,  empty_NT,  tool_name )
+        update_or_init( opts,  {},  nick_name )
+        update_or_init( get_syntax_dict,  {},  tool_name )
     return 
 
 class FakeProgress():
@@ -1538,24 +1456,20 @@ class FakeProgress():
         pass
 
 tools_dict=dict( read_objects_groups_and_Usertext_from_Rhino = [read_objects_groups_and_Usertext_from_Rhino]
-                ,Write_Objects_and_Data_To_Shapefile = [write_objects_and_data_to_shapefile]
-                ,Read_Links_Data_From_Shapefile = [Read_Links_Data_From_Shapefile]
-                ,Plot_Data_On_Links = [Plot_Data_On_Links]
-                ,main_sequence = [main_sequence]
+                ,write_objects_and_data_to_shapefile = [write_objects_and_data_to_shapefile]
+                ,read_groups_data_from_shapefile = [read_groups_data_from_shapefile]
+                ,write_data_to_Usertext = [write_data_to_Usertext]
+                ,plot_data_on_objects = [plot_data_on_objects]
+                ,main_sequence = [main_sequence] # Needed in iterable wrappers
                 )
 
 support_component_names = list(tools_dict.keys()) # In Python 3, .keys() and 
                                                   # .values() are dict views
                                                   # not lists
 
-support_component_names = list(tools_dict.keys())
-
 special_names =           [  'sDNA_general'
                             ]
                             
-
-
-
 def component_names_factory(name_map): # name_map is unknown in this module so 
                                        # create closure. Call it from outside.
     def return_component_names(f_name, gdm, local_opts):
@@ -1587,8 +1501,8 @@ def component_names_factory(name_map): # name_map is unknown in this module so
         #        correct results if they alter name_map to include a non-trivial cycle.
         if not all(valid_name_map_vals.values()):
             vals_in_name_map_with_no_Tools = [key for (key, val) in valid_name_map_vals.items() if not val]
-            output('Invalid name_map: ' + ' '.join(map(str,vals_in_name_map_with_no_Tools)) + 
-                    '.  Adjust name_map to point to known functions or lists thereof.  ','CRITICAL')
+            output('Invalid name_map: ' + ' '.join(vals_in_name_map_with_no_Tools) + 
+                    '.  Adjust name_map to point to known functions or lists thereof in tools_dict, or vice-versa.  ','CRITICAL')
         else:
             output('Name_map validated successfully.  ','INFO')
         assert all(valid_name_map_vals.values())
@@ -1619,13 +1533,14 @@ def get_specific_tool(tool_name, nick_name, local_opts):
             #
             (sDNA, UISpec, run ) = ( opts_at_call['metas'].sDNA
                                     ,opts_at_call['options'].UISpec
-                                    ,opts_at_call['run'].run )
+                                    ,opts_at_call['options'].run )
             
             options = opts_at_call['options']
+            tool_opts = opts_at_call[nick_name]
 
             dot_shp = options.shp_file_extension
 
-            input_file = opts_at_call[nick_name][sDNA].input
+            input_file = tool_opts[sDNA].input
             if (not isinstance(input_file, str)) or not isfile(input_file): 
                 if (isinstance(f_name, str) and isfile(f_name)
                     and f_name.rpartition('.')[2]==dot_shp[1:]):
@@ -1638,85 +1553,143 @@ def get_specific_tool(tool_name, nick_name, local_opts):
                         input_file = default_file_name
                     else:
                         pass # e.g. could call write_from_iterable_to_shapefile_writer
-                opts_at_call[nick_name][sDNA] = opts_at_call[nick_name][sDNA]._replace(input = input_file)
+                tool_opts[sDNA] = tool_opts[sDNA]._replace(input = input_file)
 
 
-            output_file = opts_at_call[nick_name][sDNA].output
+            output_file = tool_opts[sDNA].output
             if output_file == '':
                 output_suffix =  options.output_shp_file_suffix
                 if tool_name == 'sDNAPrepare':
                     output_suffix = options.prepped_shp_file_suffix   
                 output_file = input_file.rpartition('.')[0] + output_suffix + dot_shp
 
-            output_file = get_unique_filename_if_not_overwrite(output_file, opts_at_call)
-            opts_at_call[nick_name][sDNA] = opts_at_call[nick_name][sDNA]._replace(output = output_file)
+            output_file = get_unique_filename_if_not_overwrite(output_file, options)
+            tool_opts[sDNA] = tool_opts[sDNA]._replace(output = output_file)
 
             
 
-            syntax = get_syntax_dict[tool_name][sDNA]( opts_at_call[nick_name][sDNA]._asdict() )   
+            syntax = get_syntax_dict[tool_name][sDNA]( tool_opts[sDNA]._asdict() )   
                                                       #opts[nick_name] was initialised to defaults in 
                                                       # in cache_syntax_and_UISpec
 
-            return_code = run.runsdnacommand(    syntax
-                                                ,sdnapath = dirname(UISpec.__file__)  #opts['options'].sDNA_UISpec_path
-                                                ,progress = FakeProgress()
-                                                ,pythonexe = options.python_exe
-                                                ,pythonpath = None)   # TODO:  Work out if this is important or not! 
+            command = (options.python_exe 
+                       + ' -u ' 
+                       + '"' 
+                       + join(  dirname(UISpec.__file__)
+                                ,'bin'
+                                ,syntax['command'] + '.py'  
+                              ) 
+                       + '"'
+                       + ' --im ' + run.map_to_string( syntax["inputs"] )
+                       + ' --om ' + run.map_to_string( syntax["outputs"] )
+                       + ' ' + syntax["config"]
+                      )
+            
+            return_code = call(command)   
+            
+            
+
+
+
+            #return_code = run.runsdnacommand(    syntax
+            #                                    ,sdnapath = dirname(UISpec.__file__)  #opts['options'].sDNA_UISpec_path
+            #                                    ,progress = FakeProgress()
+            #                                    ,pythonexe = options.python_exe
+            #                                    ,pythonpath = None)   # TODO:  Work out if this is important or not! 
                                                                     # os.environ["PYTHONPATH"] not found in Iron Python
             # To allow auto reading the shapefile afterwards, the returned Data == None == None to end
             # the input GDM's round trip, in favour of Data and Geometry read from the sDNA analysis just now completed.
-            return return_code==0, getattr( opts_at_call[nick_name],  'output' ), None, None
+            return return_code, getattr( tool_opts[sDNA],  'output' ), None, None
         return [run_sDNA_wrapper]
     else:
         return [None]
 
+def run_tools(tools, f_name, gdm, opts_at_call):
+    #type(list, str, dict, dict)-> int, str, dict, WriteableFlushableList
+    a = WriteableFlushableList()
+    for tool in tools:
+        if tool:
+            report_value(tool)
+
+            returncode, f_name, gdm, tmp_a = tool( f_name 
+                                                  ,gdm
+                                                  ,opts_at_call 
+                                                 )
+            report('Tool name == ' + tool.func_name + ' return code == ' + str(returncode))
+            a.write(tmp_a)
+            #if returncode != 0:
+            #    break
+        else:
+            raise TypeError(output('Bad tool == ' + str(tool), 'ERROR'))
+    return returncode, f_name, gdm, a
+
 def tool_factory(nick_name, name_map, local_opts):  
-    #type( list or str, dict ) -> 
+    #type( str, dict, dict ) -> list
 
     #sDNA, UISpec, run = local_opts['options'].sDNA, local_opts['options'].UISpec, local_opts['options'].run
 
     #global tools_dict # mutable - access through normal parent module namespace
     sDNA = local_opts['metas'].sDNA
-
-                            
+    global tools_dict
+    # A special component that takes its nickname from the parameters provided,
+    # only working out which tools to run at run time.  
     def tool_factory_wrapper(f_name, gdm, opts_at_call):
-        return tool_factory( opts_at_call['options'].tool_name
-                            ,name_map # so technically a closure, but only to 
-                            ,opts_at_call )(f_name # conform to tool interface
-                                            ,gdm
-                                            ,opts_at_call )
+        tools = tool_factory( opts_at_call['options'].tool_name
+                             ,name_map  
+                             ,opts_at_call )
+        return run_tools(tools, f_name, gdm, opts_at_call)
+
  
     if isinstance(nick_name, Hashable):
         if nick_name not in tools_dict or sDNA not in opts.get(nick_name, {}):
-            map_result = name_map.get(nick_name, nick_name)
-            if isinstance(map_result, list):
+            map_result = name_map.get(nick_name, nick_name)  # in case nick_name == tool_name
+            if not isinstance(map_result, str):
+                output('Processing list of tools found for '
+                       + nick_name, 'DEBUG')
                 tools =[]
                 for mapped_name in map_result:
                     tools += tool_factory( mapped_name,  name_map,  local_opts ) 
-                tools_dict.setdefault(  nick_name,  tools )
+                tools_dict[nick_name] = tools 
             else:
                 mapped_name = map_result
-            if nick_name == "Python":   # Validates name_map and used in dev
-                                        # tool to auto name components
-                tools_dict.setdefault(  nick_name,  component_names_factory(name_map) )
-            if nick_name in special_names: #["sDNA_general"]
-                tools_dict.setdefault(  nick_name,  tool_factory_wrapper )
-            else:  # mapped_name is a tool_name, possibly named explicitly in nick_name
-                cache_syntax_and_UISpec(nick_name, mapped_name, local_opts) # create entries for sDNA
-                tools_dict.setdefault(  nick_name,  get_specific_tool(mapped_name, nick_name, local_opts)  )
-                # assert isinstance(get_specific_tool(map_result, nick_name, name_map, local_opts), list)                    
+                cache_syntax_and_UISpec(nick_name, mapped_name, local_opts) 
+                output(nick_name + ' maps to ' + mapped_name,'DEBUG')
+                if mapped_name in support_component_names:
+                    tools_dict[nick_name] = tools_dict[mapped_name]
+                    output(mapped_name + ' in support_component_names','DEBUG')
+                elif nick_name == 'Python':   # Validates name_map and used in dev
+                                            # tool to auto name components
+                    tools_dict[nick_name] = component_names_factory(name_map) 
+                    output(nick_name + ' is "Python"','DEBUG')
+
+                    # Needs to be here because glbal scoep doens't know what name_map from
+                    # the launcher is
+                elif nick_name in special_names: #["sDNA_general"]  
+                    output(nick_name + ' is in special_names','DEBUG')
+
+                # Not 'elif' to create opts for "Python"
+                    tools_dict[nick_name] = tool_factory_wrapper 
+                else:  # mapped_name is a tool_name, possibly named explicitly in nick_name
+                    # create entries for sDNA tools and non-special support tools & "Python"
+                    output(nick_name + ' needs new tool to be built, e.g. from sDNA. ','DEBUG')
+
+                    tools_dict[nick_name] = get_specific_tool(mapped_name, nick_name, local_opts)  
+                    # assert isinstance(get_specific_tool(map_result, nick_name, name_map, local_opts), list)                    
+
+        report('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name][0]) )
         return tools_dict[nick_name] 
     else:
-        return None
+        output('Non-hashable variable given for key' + str(nick_name),'ERROR')
+        return [None]
 
-loc = tool_factory
+loc = tool_factory # just to make the syntax highlighting above bright
 
 
 
 
 
 ###############################################################################
-#Main root process
+#Main script only process
 #
 from os.path import isdir, isfile, sep, normpath, join, split
 if      '__file__' in dir(__builtins__)  and  __name__ in __file__ and '__main__' not in __file__ and '<module>' not in __file__:                     

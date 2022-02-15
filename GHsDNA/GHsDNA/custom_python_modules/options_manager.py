@@ -26,7 +26,7 @@ if __name__=='__main__':
 # TODO: Check for renamed reserved or duplicated field names due to see if 'rename = True' above changed anything
 # defaults = FixedOptions(**defaults)
 
-def make_nested_namedtuple(d, d_namedtuple_class_name, strict = True, class_prefix = 'C_', **kwargs):
+def make_nested_namedtuple(d, d_namedtuple_class_name, strict = True, class_prefix = 'NamedTuple_', **kwargs):
     #type (dict, str, str) -> namedtuple(d), tree (Class)
     #
     if strict and not isinstance(d,dict):
@@ -196,7 +196,8 @@ def override_namedtuple_with_config(     nt_lesser
 
         else:
             new_dict[key] = value    # Let override_namedtuple_with_dict decide whether to exclude new keys or not
-        #print(message+'  '+'DEBUG')
+        #if key=='message':
+        #    print(message+'  '+'DEBUG')
 
 
     return override_namedtuple_with_dict(nt_lesser, new_dict, strict = False, **kwargs)      
@@ -256,15 +257,18 @@ def override_namedtuple( nt_lesser
                             }
 
 
-
+    #print(str(overrides_list))
+    #print('cls.name : ' + nt_lesser.__class__.__name__+' nt_lesser == ' + str(nt_lesser))
     for override in overrides_list:
-        if override != None and len(override) > 0:
+        if override != None:
             for key, val in override_funcs_dict.items():
+                #print('override == ' + str(override) + ' key == ' + str(key))
                 if isinstance(override, key):
+                    #print('  override = ' + str(override))
                     nt_lesser = val( nt_lesser, override, **kwargs ) 
                     break #inner loop only
 
-        #print('nt_lesser : ' + nt_lesser.__class__.__name__ + '  override = ' + str(override))
+            #print('nt_lesser : ' + nt_lesser.__class__.__name__ + '  override = ' + str(override))
 
     return nt_lesser
 

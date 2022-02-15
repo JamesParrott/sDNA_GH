@@ -8,10 +8,15 @@ __author__ = 'James Parrott'
 __version__ = '0.01'
 
 import sys
-from os.path import normpath, join, split, isfile 
+from os.path import normpath, join, split, isfile, isdir, dirname 
 from collections import OrderedDict, namedtuple
 from datetime import date
 from re import match
+
+if sys.version < '3.3':
+    from collections import Iterable
+else:
+    from collections.abc import Iterable
 
 
 file_name_no_ext = split(__file__)[-1].split('.')[0]             #os.path.split and string.split
@@ -221,14 +226,14 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             ,field_names = None):
     #type(type[any], str, function, function, function, function,  function, str, dict)  -> int, str, dict, list, list
     #
-    #
-    #
-    #######################################
-    # If my_iterable is not a list, cache it in my_list
-    #
+    if not isinstance(my_iterable, Iterable) or (isinstance(my_iterable, str) 
+       or not isdir(dirname(shp_file_path))):
+        return 1, shapefile_path_to_write_to, None, None, []
+
+        
     my_list = my_iterable
 
-    options.cache_iterable_to_shp
+    options.cache_iterable_when_writing_to_shp
 
     max_size = (options.global_shp_file_field_size 
             + options.shp_file_field_size_num_extra_chars)
@@ -244,7 +249,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     attribute_tables = OrderedDict()
         
 
-    if field_names == None or options.cache_iterable_to_shp: 
+    if field_names == None or options.cache_iterable_when_writing_to_shp: 
         
         my_iterable_is_a_list = isinstance(my_iterable, list)
         if not my_iterable_is_a_list:
@@ -271,6 +276,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                     # Update the shp field sizes if they aren't big enough or the field is new, and type check
                     if options.calculate_smallest_field_sizes:
                         ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attribute_tables, options)
+                        # mutates fields, adding nice_key to it if not already there, else updating its val
                     else:
                         fields[nice_key] = { 'size' : max_size
                                             ,'fieldType' : val_type
@@ -285,7 +291,14 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                            }
         #TODO setup basic fields dict from list without looping over my_iterable        
 
-
+    def default_record_dict(item):
+        retval = { key_matcher(key).group('name') : 
+                         str( value_demangler(item, key) )[:max_size] 
+                            for key in key_finder(item) 
+                            if (key_matcher(key) and
+                                key_matcher(key).group('name') in field_names)}
+        retval[shape_IDer(item)] = options.uuid_shp_file_field_name
+        return retval
 
 
     shapefile_path_to_write_to = get_unique_filename_if_not_overwrite(shp_file_path,options)
@@ -300,35 +313,25 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
     
     with shp.Writer(  normpath( shapefile_path_to_write_to ), getattr(shp,shape)  ) as w:
-        for key,val in fields.items():
-            w.field(key,**val)
+        for key, val in fields.items():
+            w.field(key, **val)
         #w.field('Name', 'C')
-
-        
 
         add_geometric_object = getattr( w,  shaperback_writer[shape] )
         #print(add_geometric_object)
         for item in my_list:
-            list_of_shapes_to_write = shape_mangler(item)
-            if list_of_shapes_to_write:
-                #print(str(list_of_shapes_to_write) + ' ' + str(attribute_table)) 
-                add_geometric_object( list_of_shapes_to_write )   
+            list_of_shapes = shape_mangler(item)
+            if list_of_shapes:
+                #print(str(list_of_shapes) + ' ' + str(attribute_table)) 
+                add_geometric_object( list_of_shapes )   
                 # e.g. start_and_end_points(my_iterable)
 
-                attribute_table = attribute_tables.get( 
-                                shape_IDer(item)
-                                , {options.uuid_shp_file_field_name 
-                                        : shape_IDer(item)
-                                            }.update(
-                                    { key_matcher(key).group('name') 
-                                        : str( value_demangler(item, key) )[:max_size] 
-                                                        for key in key_finder(item)
-                                                        if key_matcher(key) }
-                                    )
-                )
-
-                w.record(  **attribute_table  )    
-    #
+                shp_ID = shape_IDer(item)
+                if shp_ID in attribute_tables:
+                    attribute_table = attribute_tables[ shape_IDer(item) ]
+                else:
+                    attribute_table = default_record_dict( item )
+                w.record( **attribute_table )    
 
     return 0, shapefile_path_to_write_to, fields, attribute_tables, my_list
 

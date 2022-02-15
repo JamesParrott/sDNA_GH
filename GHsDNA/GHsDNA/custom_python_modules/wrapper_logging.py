@@ -81,7 +81,7 @@ def new_Logger(  logger_name = 'main'
     # add the handler to the root logger
     logger=logging.getLogger(logger_name)
     logger.addHandler(console)
-    if custom_file_object != None:            
+    if custom_file_object:            
         add_custom_file_to_logger(logger, custom_file_object, custom_logging_level)
     return logger 
     #

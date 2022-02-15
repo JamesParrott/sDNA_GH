@@ -23,8 +23,29 @@ component_tool = None    # Note to user, if you rename this component in Grassho
                                         # special_names, names_map, or in sDNA_tool_names, of the tool you want 
                                         # and make sure metas.allow_components_to_change_type_on_rename == False
                                         # Abbreviations are supported via the name_map dictionary below
-                                        # T
+                    #Abbreviation = Tool Name
+name_map = dict(     sDNA_Demo = ['Read_Network', 'Write_Shp', 'sDNAIntegral', 'Read_Shp', 'Save_Data', 'Plot_Data']
+                    ,Read_Network = 'read_objects_groups_and_Usertext_from_Rhino'
+                    ,Write_Shp = 'write_objects_and_data_to_shapefile'
+                    ,Read_Shp = 'read_groups_data_from_shapefile'
+                    ,Save_Data = 'write_data_to_Usertext'
+                    ,Plot_Data = 'plot_data_on_objects'
+                    #,'main_sequence'
+                    #,'sDNAIntegral'
+                    #,'sDNASkim'
+                    ,sDNAIntFromOD = 'sDNAIntegralFromOD'
+                    #,'sDNAGeodesics'
+                    #,'sDNAHulls'
+                    #,'sDNANetRadii'
+                    #,'sDNAAccessibilityMap'
+                    #,'sDNAPrepare'
+                    #,'sDNALineMeasures'
+                    #,'sDNALearn'
+                    #,'sDNAPredict'
+                )
 #######################################################################################################################
+
+
 
 import os,sys 
 from os.path import isfile, isdir, join, split, dirname
@@ -38,26 +59,6 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import ghpythonlib.treehelpers as th
 
-
-class WriteableFlushableList(list):
-    # a simple input for a StreamHandler https://docs.python.org/2.7/library/logging.handlers.html#logging.StreamHandler
-    # that stacks logging messages in a list of strings.  Instances are lists wth two extra methods, not streams akin to 
-    # generators - memory use is not optimised.
-    #
-    def write(self,s):
-    #type: ( str) -> None
-    # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
-    #
-        if s != None:
-            if isinstance(s,str):
-                self.append(s)
-            else:
-                self.extend(s) # .e.g if s is another WriteableFlushableLists
-
-
-    def flush(self):  
-    #type: () -> None
-        pass  # A flush method is needed by logging
 
 def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
                          # Inst is a proxy argument for both 'self' and 'cls'.
@@ -144,23 +145,7 @@ def load_modules(m_names, path_lists):
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
     return None
 
-                    #Abbreviation = Tool Name
-name_map = dict(     Read_Network = 'read_objects_groups_and_Usertext_from_Rhino'
-                    ,Write_shp = 'Write_Objects_and_Data_To_Shapefile'
-                    ,Read_shp = 'Read_Links_Data_From_Shapefile'
-                    ,Plot_data = 'Plot_Data_On_Links'
-                    #,'sDNAIntegral'
-                    #,'sDNASkim'
-                    ,sDNAIntFromOD = 'sDNAIntegralFromOD'
-                    #,'sDNAGeodesics'
-                    #,'sDNAHulls'
-                    #,'sDNANetRadii'
-                    #,'sDNAAccessibilityMap'
-                    #,'sDNAPrepare'
-                    #,'sDNALineMeasures'
-                    #,'sDNALearn'
-                    #,'sDNAPredict'
-                )
+
 
 def is_file_any_type(s):
     return isinstance(s, str) and isfile(s)
@@ -175,7 +160,6 @@ class MyComponent(component):
                           
     GHsDNA.tools, GHsDNA_path = load_modules('GHsDNA.tools'
                                              ,GHsDNA_search_paths)
-
 
     opts = GHsDNA.tools.opts   # mutable.  Reference breakable and remakeable 
                                # to de sync / sync local opts to global opts
@@ -231,12 +215,14 @@ class MyComponent(component):
         
     def update_sDNA(self):
         output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
-        output("self.opts[metas].sDNA == "+ str(self.opts['metas'].sDNA)+' ','DEBUG')
+        output('self.opts[metas].sDNA == (' + str(self.opts['metas'].sDNAUISpec)
+                + ', ' + self.opts['metas'].runsdna + ') ','DEBUG')
 
         if hasattr(self,'sDNA'):
             output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
         
-        sDNA = self.opts['metas'].sDNA
+        sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
+                ,self.opts['metas'].runsdna )   # a dict key => tuple not list
 
         if not hasattr(self,'sDNA') or self.sDNA != sDNA:
             self.UISpec, self.run, path = load_modules(sDNA, self.opts['metas'].sDNA_search_paths)
@@ -263,7 +249,7 @@ class MyComponent(component):
     def __init__(self):
 
         
-        self.a = WriteableFlushableList()
+        self.a = GHsDNA.tools.WriteableFlushableList()
         GHsDNA.tools.wrapper_logging.add_custom_file_to_logger( self.logger
                                                                ,self.a
                                                                ,self.opts['options'].logger_custom_level)
@@ -289,7 +275,7 @@ class MyComponent(component):
         #if not 'opts' in globals():
         #    global opts
         #reload(GHsDNA.tools) # type: ignore
-        self.a = WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
+        self.a = GHsDNA.tools.WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
         args_dict = {key.Name : val for key, val in zip(ghenv.Component.Params.Input[1:], args) } # type: ignore
         
         external_opts = args_dict.get('opts',{})
@@ -317,8 +303,6 @@ class MyComponent(component):
                                                           ,external_local_metas
                                                           ,self.nick_name)
         #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
-        #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.write_to_shared_global_opts:
-        #    GHsDNA.tools.override_all_opts(args_dict, GHsDNA.tools.opts, self.local_metas, self.nick_name)
         
         if (self.opts['metas'].auto_update_Rhino_doc_path 
             and not isfile(self.opts['options'].Rhino_doc_path)):
@@ -351,7 +335,7 @@ class MyComponent(component):
         ############################################################################################
         # TODO: Wrap sDNAPrepare, to map subprocess.returncode to True if 1
         # Check with Crispin if return code 0 means preparation was successful, or just successful execution.
-        # And if we have to delete links based on deletion flag or can leave that to sDNA
+        # And if we have to delete groups based on deletion flag or can leave that to sDNA
         ############################################################################################
         #
         Defined_tools = [y for z in self.tools_dict.values() for y in z]
@@ -370,24 +354,16 @@ class MyComponent(component):
             returncode = 999
             assert isinstance(self.my_tools, list)
 
-            tools = self.my_tools
+            output('my_tools == '+str(self.my_tools),'DEBUG')
 
             geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_dictionary(Data, Geom, self.opts)
 
-            for tool in tools:
-                output("Tool name == " + tool.__name__ + " Tool == " + str(tool),'DEBUG')
-                returncode, f_name, geom_data_map, tmp_a = tool( f_name
-                                                                ,geom_data_map
-                                                                ,self.opts 
-                                                                ) 
-                self.a.write(tmp_a)
-                if returncode != 0:
-                    break
+            GHsDNA.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
 
             if isinstance(geom_data_map, dict):
                 Data = GHsDNA.tools.convert_dictionary_to_data_tree(geom_data_map)                
 
             return returncode==0, f_name, list(geom_data_map.keys()), Data, self.a, self.opts.copy(), self.local_metas
-
+                                         #In Python 3 .keys() returns a dictview not a list
         else:   
             return False, f_name, Geom, Data, self.a
