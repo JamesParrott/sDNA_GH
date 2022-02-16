@@ -27,7 +27,7 @@ component_tool = None    # Note to user, if you rename this component in Grassho
 name_map = dict(     sDNA_Demo = ['Read_Network', 'Write_Shp', 'sDNAIntegral', 'Read_Shp', 'Save_Data', 'Plot_Data']
                     ,Read_Network = 'read_objects_groups_and_Usertext_from_Rhino'
                     ,Write_Shp = 'write_objects_and_data_to_shapefile'
-                    ,Read_Shp = 'read_groups_data_from_shapefile'
+                    ,Read_Shp = 'read_shapes_and_data_from_shapefile'
                     ,Save_Data = 'write_data_to_Usertext'
                     ,Plot_Data = 'plot_data_on_objects'
                     #,'main_sequence'
@@ -202,6 +202,9 @@ class MyComponent(component):
         self.my_tools = GHsDNA.tools.tool_factory( self.nick_name
                                                   ,name_map
                                                   ,self.opts)
+        output('My_tools ==\n'
+                +'\n'.join([tool.func_name for tool in self.my_tools])
+                ,'DEBUG')
 
 
     def update_name(self):

@@ -11,6 +11,7 @@ from time import asctime
 from collections import namedtuple, OrderedDict
 from itertools import chain, izip, cycle
 import inspect
+from uuid import UUID
 
 if sys.version < '3.3':
     from collections import Hashable
@@ -108,7 +109,7 @@ class HardcodedOptions():
     uuid_shp_file_field_name = 'Rhino3D_' # 'object_identifier_UUID_'     
     uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
     calculate_smallest_field_sizes = True
-    delete_shapefile_after_reading = True
+    delete_shapefile_after_reading = False
     global_shp_file_field_size = 30
     global_shp_number_of_decimal_places = 10
     shp_file_field_size_num_extra_chars = 2
@@ -119,7 +120,7 @@ class HardcodedOptions():
     shp_record_max_decimal = 4
     ####################################################################################
     #Writing and Reading Usertext to/from Rhino
-    create_new_groups_layer_from_shapefile = True
+    create_new_groups_layer_from_shapefile = False
     max_new_UserText_keys_to_make = 20
     #
     #
@@ -127,7 +128,7 @@ class HardcodedOptions():
     sDNA_output_user_text_key_format_str_to_read = 'sDNA output={name} run time={datetime}'  #30,000 characters tested!
     ####################################################################################
     #Plotting results
-    sDNA_output_abbrev_to_graph = 'BtE'
+    sDNA_output_abbrev_to_graph = 'BtEn'
     ####################################################################################
     #Test
     message = 'Solid.  Solid as a rock!'
@@ -143,11 +144,6 @@ class HardcodedLocalMetas():
     # the corresponding sDNA version B files with these names will 
     # need to be created.  The shared global opts cannot be used to record
     # the sDNA version.    
-
-sDNA_output_abbrevs = ['AngD', 'BtA', 'BtC', 'BtE', 'BtH', 'Conn', 'DivA', 'DivC', 'DivE', 'DivH', 'HMb', 'HMf', 'HullA', 'HullB', 'HullP', 'HullR' 
-                       ,'HullSI', 'Jnc', 'LAC', 'LBear', 'LConn', 'Len', 'Lfrac', 'LLen', 'Lnk', 'LSin', 'MAD', 'MCD', 'MCF', 'MED', 'MGLA', 'MGLC'
-                       ,'MGLE', 'MGLH', 'MHD', 'NQPDA', 'NQPDC', 'NQPDE', 'NQPDH', 'SAD', 'SCD', 'SCF', 'SED', 'SGLA', 'SGLC', 'SGLE', 'SGLH', 'SHD' 
-                       ,'TPBtA', 'TPBtC', 'TPBtE', 'TPBtH', 'TPDA', 'TPDC', 'TPDE', 'TPDH', 'Wl', 'Wp', 'Wt']
 
 # Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the arguments in its constructor so we build
 # our options and metas namedtuples from a class, to avoid re-stating the order of the keys.
@@ -447,6 +443,17 @@ def make_regex_inverse_of_format_string(pattern):
     return r'\A' + pattern + r'\Z'
 
 
+
+def is_uuid(val):
+    try:
+        UUID(val)
+        return True
+    except ValueError:
+        return False
+#https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
+
+
+
 def convert_dictionary_to_data_tree(nested_dict):
     # type(dict) -> DataTree
     import ghpythonlib.treehelpers as th
@@ -552,7 +559,7 @@ Rhino_obj_converter_Shp_file_shape_map = dict( NULL = None
                                             ,MULTIPOINTM = 'PointCloudPoints'  #see MULTIPOINT
                                             )  
 
-def get_points_list_from_Rhino_obj(x, shp_type):
+def get_points_list_from_Rhino_obj(x, shp_type='POLYLINEZ'):
     #type(str, dict) -> list
     import rhinoscriptsyntax as rs
     f = getattr(rs, Rhino_obj_converter_Shp_file_shape_map[shp_type])
@@ -766,7 +773,7 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
         format_string = options.rhino_user_text_key_format_str_to_read
         pattern = make_regex_inverse_of_format_string( format_string )
         m = match(pattern, x) 
-        return m.group('name') if m else None #, m.group('fieldtype'), 
+        return m   #           if m else None #, m.group('fieldtype'), 
                                               # m.group('size') if m else None
                                               # can get 
                                               # (literal_text, field_name, 
@@ -830,7 +837,7 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
 
 
 
-def make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(
+def create_new_groups_layer_from_points_list(
                      options = opts['options']
                     ,make_new_group = make_new_group
                     ,add_objects_to_group = add_objects_to_group
@@ -838,9 +845,12 @@ def make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(
                     ):
     import rhinoscriptsyntax as rs
     rhino_obj_maker = getattr(rs, Rhino_obj_adder_Shp_file_shape_map[options.shp_file_shape_type])
-    def f(l, rec):
+
+    def g(obj, rec):
         objs_list = []
-        for points_list in l:
+        
+        for points_list in obj:
+            report_value(points_list)
             objs_list += [rhino_obj_maker(points_list).ToString() ] 
     # Creates not necessarily returned Rhino object as intentional side effect
         if len(objs_list) > 1:
@@ -851,27 +861,33 @@ def make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(
             return objs_list[0]
         else: 
             return None
-    return f
+    return g
 
 def get_shape_file_rec_ID(options = opts['options']): 
     import rhinoscriptsyntax as rs 
 
-    def f(l, rec):
-        shp_file_obj_ID = rec._asdict().get(options.uuid_shp_file_field_name, '')
-        if rs.IsObject(shp_file_obj_ID) or is_group(shp_file_obj_ID):
-            return shp_file_obj_ID
-        else:
-            g = make_list_of_rhino_objs_from_shapefile_geometry_pts_lists(options)
-            rhino_obj_or_group_name = g(l, rec)
-            return rhino_obj_or_group_name
+    def f(obj, rec):
+        if is_uuid(obj) and rs.IsObject(obj):
+            return make_obj_key(obj)
+        if hasattr(rec, 'as_dict'):
+            d = rec.as_dict()
+            if options.uuid_shp_file_field_name in d:
+                obj_ID = d[options.uuid_shp_file_field_name]     
+                report_value(obj_ID)
+                # For future use.  Not possible until sDNA round trips through
+                # Userdata into the output .shp file, including our uuid
+                if rs.IsObject(obj_ID) or is_group(obj_ID):
+                    return obj_ID
+        g = create_new_groups_layer_from_points_list(options)
+        return g(obj, rec)
     return f
 
 
 
-def read_groups_data_from_shapefile( f_name
-                                   ,geom_data_map 
-                                   ,opts_at_call
-                                   ):
+def read_shapes_and_data_from_shapefile( f_name
+                                        ,geom_data_map 
+                                        ,opts_at_call
+                                        ):
     #type(type[any], str, dict, dict) -> int, str, dict, dict
     import rhinoscriptsyntax as rs
     options = opts_at_call['options']
@@ -882,29 +898,45 @@ def read_groups_data_from_shapefile( f_name
 
     field_names = [ x[0] for x in fields ]
 
+    report('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
+    report_value(field_names)
 
-    if options.create_new_groups_layer_from_shapefile: 
-        obj_key_maker = make_list_of_rhino_objs_from_shapefile_geometry_pts_lists( options ) 
-        shapes_to_output = shapes
-    else:          
+    shapes_to_output = ([shp.points] for shp in shapes )
+    
+    obj_key_maker = create_new_groups_layer_from_points_list( options ) 
+
+
+
+    if not options.create_new_groups_layer_from_shapefile:   #TODO: put new objs in a new layer or group
         obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
         # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
       
-        if sys.version_info.major < 3:
-            shapes_to_output = geom_data_map.viewkeys()  
-        else: 
-            shapes_to_output = geom_data_map.keys() 
+        if isinstance(geom_data_map, dict) and len(geom_data_map) == len(recs):
+            # figuring out an override for different number of overrided geom objects
+            # to shapes/recs is to open a large a can of worms.  Unsupported.
+            # If the override objects are in Rhino anyway then the uuid field in the shape
+            # file will be picked up in any case in get_shape_file_rec_ID
+            if sys.version_info.major < 3:
+                shape_keys = geom_data_map.viewkeys()  
+            else: 
+                shape_keys = geom_data_map.keys()
+            shapes_to_output = [shp_key for shp_key in shape_keys]
+                # These points shouldn't be used, as by definition they 
+                # come from objects that already
+                # exist in Rhino.  But if they are to be used, then use this!
+            report_value(shapes_to_output)    
 
-    shp_file_gen_exp  = (  (shape, zip(field_names, rec)) for (shape, rec) in 
-                                           izip(shapes_to_output, recs)  )              
 
-    gdm = make_gdm( shp_file_gen_exp
-                   ,obj_key_maker 
-                   )
+    shp_file_gen_exp  = izip(shapes_to_output, (rec.as_dict().items() for rec in recs))
+    
+    #(  (shape, rec) for (shape, rec) in 
+    #                                       izip(shapes_to_output, recs)  )              
 
-    override_gdm_with_gdm(gdm, geom_data_map, opts_at_call)
+    gdm = make_gdm(shp_file_gen_exp, obj_key_maker)
 
-    if options.delete_shapefile_after_reading and isfile(f_name):
+    override_gdm_with_gdm(gdm, geom_data_map, opts_at_call)   
+
+    if options.delete_shapefile_after_reading and isfile(f_name): # TODO: Fix, currently Win32 error
         os.remove(f_name)
 
 
@@ -961,7 +993,7 @@ def write_data_to_Usertext(  f_name     #Bake_Geom_and_Data
         if options.uuid_shp_file_field_name in d:
             obj = d.pop( options.uuid_shp_file_field_name )
         
-        for key, val in d:
+        for key in d:
 
             s = options.sDNA_output_user_text_key_format_str_to_read
             UserText_key_name = s.format(name = key, datetime = date_time_of_run)
@@ -981,7 +1013,7 @@ def write_data_to_Usertext(  f_name     #Bake_Geom_and_Data
                             + str(rhino_obj)
                             ,'WARNING'
                             )
-            write_obj_val(rhino_obj, UserText_key_name, str( val ))
+            write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
 
     for key, val in geom_data_map.items():
         if is_group(key):
@@ -1419,7 +1451,7 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
                        + '.  Updating value(s) ', 'WARNING')
 
                 if isinstance(defaults, dict) and hasattr(cache[name][sDNA]
-                                                         ,'_asdict'):
+                                                         ,'_asdict'): #NT
                     defaults.update(cache[name][sDNA]._asdict())
 
         else:
@@ -1457,7 +1489,7 @@ class FakeProgress():
 
 tools_dict=dict( read_objects_groups_and_Usertext_from_Rhino = [read_objects_groups_and_Usertext_from_Rhino]
                 ,write_objects_and_data_to_shapefile = [write_objects_and_data_to_shapefile]
-                ,read_groups_data_from_shapefile = [read_groups_data_from_shapefile]
+                ,read_shapes_and_data_from_shapefile = [read_shapes_and_data_from_shapefile]
                 ,write_data_to_Usertext = [write_data_to_Usertext]
                 ,plot_data_on_objects = [plot_data_on_objects]
                 ,main_sequence = [main_sequence] # Needed in iterable wrappers
@@ -1599,7 +1631,7 @@ def get_specific_tool(tool_name, nick_name, local_opts):
                                                                     # os.environ["PYTHONPATH"] not found in Iron Python
             # To allow auto reading the shapefile afterwards, the returned Data == None == None to end
             # the input GDM's round trip, in favour of Data and Geometry read from the sDNA analysis just now completed.
-            return return_code, getattr( tool_opts[sDNA],  'output' ), None, None
+            return return_code, tool_opts[sDNA].output, gdm, None
         return [run_sDNA_wrapper]
     else:
         return [None]

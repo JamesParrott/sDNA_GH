@@ -138,14 +138,14 @@ def shp_type_coercer(x, options):
     
             if isinstance(x,str):
                 year=r'([0-3]?\d{3})|\d{2}'
-                month=r'([0]?\d)|(1[0-2]'
+                month=r'([0]?\d)|(1[0-2])'
                 day=r'([0-2]?\d)|(3[01])'
-                sep=r'(?P<sep>[-.,:\\/ ])'
+                sep=r'([-.,:/ \\])' # allows different seps r'(?P<sep>[-.,:\\/ ])'
                 test_patterns =  [ year + sep + month + sep + day ]   # datetime.date requires yyyy, mm, dd
                 if not options.enforce_yyyy_mm_dd:
                     test_patterns += [  day + sep + month + sep + year   # https://en.wikipedia.org/wiki/Date_format_by_country
                                        ,month + sep + day + sep + year]  # 
-                if any(match(pattern,x) for pattern in test_patterns):
+                if any(match(pattern, x) for pattern in test_patterns):
                     return x, shp_field_codes['date']                # TODO, optionally, return datetime.date() object?
                 else:
                     return x, shp_field_codes['str']  # i.e. 'C'  
@@ -218,10 +218,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             ,shape_IDer # to make hashable dict key
                                             ,key_finder
                                             ,key_matcher
-                                            #,key_mangler
-                                            #,value_mangler
                                             ,value_demangler
-                                            ,shape
+                                            ,shape_code # e.g. 'POLYLINEZ'
                                             ,options
                                             ,field_names = None):
     #type(type[any], str, function, function, function, function,  function, str, dict)  -> int, str, dict, list, list
@@ -262,12 +260,14 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                 my_list += [item]
 
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
-            values = OrderedDict( [(options.uuid_shp_file_field_name, shape_IDer(item))] )   
+            values = OrderedDict( {options.uuid_shp_file_field_name : shape_IDer(item) } )   
             for key in keys:
                 # Demangle and cache the user text keys and values
-                nice_key, field_type, size = key_matcher(key)            # e.g. cPickle.loads.split('_')[1]
-                if nice_key:
-                    value = value_demangler(item, key) # e.g. cPickle.loads(rhinoscriptsyntax.GetUserText(item,key)
+                nice_match = key_matcher(key)            
+                if nice_match:
+                    nice_key = nice_match.group('name')
+                    # TODO: use .group('fieldtype') and .group('size') if there
+                    value = value_demangler(item, key) 
 
                     value, val_type = shp_type_coercer(value, options)
                     values[nice_key] = value 
@@ -283,7 +283,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             } 
                         if val_type == shp_field_codes['float']:
                             fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
-        attribute_tables[shape_IDer(item)] = values.copy()  # item may not be hashable so can't use dict of dicts
+            attribute_tables[shape_IDer(item)] = values.copy()  # item may not be hashable so can't use dict of dicts
+            #print(str(values))
     else:
         for name in field_names:
             fields[name] = { 'size' : max_size
@@ -296,8 +297,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                          str( value_demangler(item, key) )[:max_size] 
                             for key in key_finder(item) 
                             if (key_matcher(key) and
-                                key_matcher(key).group('name') in field_names)}
-        retval[shape_IDer(item)] = options.uuid_shp_file_field_name
+                                key_matcher(key).group('name') in fields)}
+        retval[options.uuid_shp_file_field_name ] = shape_IDer(item)
         return retval
 
 
@@ -312,12 +313,14 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
 
     
-    with shp.Writer(  normpath( shapefile_path_to_write_to ), getattr(shp,shape)  ) as w:
+    with shp.Writer(  normpath( shapefile_path_to_write_to ), getattr(shp, shape_code)  ) as w:
         for key, val in fields.items():
             w.field(key, **val)
         #w.field('Name', 'C')
 
-        add_geometric_object = getattr( w,  shaperback_writer[shape] )
+        print(str(fields))
+
+        add_geometric_object = getattr( w,  shaperback_writer[shape_code] )
         #print(add_geometric_object)
         for item in my_list:
             list_of_shapes = shape_mangler(item)
@@ -331,16 +334,17 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                     attribute_table = attribute_tables[ shape_IDer(item) ]
                 else:
                     attribute_table = default_record_dict( item )
+                print('Attr table == ' + str(attribute_table))
                 w.record( **attribute_table )    
 
     return 0, shapefile_path_to_write_to, fields, attribute_tables, my_list
 
 def get_fields_recs_and_shapes_from_shapefile(shapefile_path):
     with shp.Reader(shapefile_path) as r:
-        fields = r.fields
+        fields = r.fields[1:] # skip first field (deletion flag)
         recs = r.records()
         shapes = r.shapes()
-    gdm = {shape : {k : v for k,v in zip (fields, rec)} for shape, rec in zip(shapes, recs)  }
+    #gdm = {shape : {k : v for k,v in zip(fields, rec)} for shape, rec in zip(shapes, recs)  }
     
     return fields, recs, shapes
 
