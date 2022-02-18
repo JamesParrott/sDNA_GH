@@ -24,12 +24,12 @@ component_tool = None    # Note to user, if you rename this component in Grassho
                                         # and make sure metas.allow_components_to_change_type_on_rename == False
                                         # Abbreviations are supported via the name_map dictionary below
                     #Abbreviation = Tool Name
-name_map = dict(     sDNA_Demo = ['Read_Network', 'Write_Shp', 'sDNAIntegral', 'Read_Shp', 'Save_Data', 'Plot_Data']
-                    ,Read_Network = 'read_objects_groups_and_Usertext_from_Rhino'
+name_map = dict(     sDNA_Demo = ['Read_Network_Data', 'Write_Shp', 'sDNAIntegral', 'Read_Shp', 'Save_Network_Data', 'Plot_Network_Data']
+                    ,Read_Network_Data = 'read_objects_groups_and_Usertext_from_Rhino'
                     ,Write_Shp = 'write_objects_and_data_to_shapefile'
                     ,Read_Shp = 'read_shapes_and_data_from_shapefile'
-                    ,Save_Data = 'write_data_to_Usertext'
-                    ,Plot_Data = 'plot_data_on_objects'
+                    ,Save_Network_Data = 'write_data_to_Usertext'
+                    ,Plot_Network_Data = 'plot_data_on_objects'
                     #,'main_sequence'
                     #,'sDNAIntegral'
                     #,'sDNASkim'
@@ -288,7 +288,7 @@ class MyComponent(component):
         if self.nick_name != ghenv.Component.NickName:  # type: ignore
             self.update_name()
             output( ' Tools in ' + self.nick_name + ' changed to : ' 
-                            + str(self.my_tools),'WARNING' )
+                            + str(self.my_tools), 'WARNING' )
         
         
         synched = self.local_metas.sync_to_shared_global_opts

@@ -256,7 +256,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
 
         for item in my_iterable:    
-            if not my_iterable_is_a_list:   # and options.cache_rhino_objects: #  ?
+            if not my_iterable_is_a_list:   
                 my_list += [item]
 
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
@@ -323,9 +323,11 @@ def write_from_iterable_to_shapefile_writer( my_iterable
         add_geometric_object = getattr( w,  shaperback_writer[shape_code] )
         #print(add_geometric_object)
         for item in my_list:
+            #print item
             list_of_shapes = shape_mangler(item)
+            #print(str(list_of_shapes)) 
             if list_of_shapes:
-                #print(str(list_of_shapes) + ' ' + str(attribute_table)) 
+
                 add_geometric_object( list_of_shapes )   
                 # e.g. start_and_end_points(my_iterable)
 
