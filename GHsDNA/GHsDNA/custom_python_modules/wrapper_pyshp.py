@@ -130,13 +130,13 @@ def shp_type_coercer(x, options):
             return x if options.do_not_convert_floats else y, shp_field_codes['float']  # Tuple binds to result of ternary operator,
                                                                                                # not just to y
         except:
-            if isinstance(x,date):
+            if isinstance(x, date):
                 return x, shp_field_codes['date']   # i.e. 'D'   
 
-            if isinstance(x,list) and len(x) == 3 and all(isinstance(z,int) for z in x):
-                x = ':'.join(map(str,x))
+            if isinstance(x, list) and len(x) == 3 and all(isinstance(z, int) for z in x):
+                x = ':'.join(map(str, ))
     
-            if isinstance(x,str):
+            if isinstance(x, str):
                 year=r'([0-3]?\d{3})|\d{2}'
                 month=r'([0]?\d)|(1[0-2])'
                 day=r'([0-2]?\d)|(3[01])'
@@ -224,8 +224,9 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             ,field_names = None):
     #type(type[any], str, function, function, function, function,  function, str, dict)  -> int, str, dict, list, list
     #
-    if not isinstance(my_iterable, Iterable) or (isinstance(my_iterable, str) 
-       or not isdir(dirname(shp_file_path))):
+    if not isinstance(my_iterable, Iterable) or ( 
+           isinstance(my_iterable, str) or 
+       not isdir(dirname(shp_file_path)) ):
         return 1, shapefile_path_to_write_to, None, None, []
 
         

@@ -251,12 +251,12 @@ class WriteableFlushableList(list):
     # that stacks logging messages in a list of strings.  Instances are lists wth two extra methods, not streams akin to 
     # generators - memory use is not optimised.
     #
-    def write(self,s):
+    def write(self, s):
     #type: ( str) -> None
     # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     #
         if s:
-            if isinstance(s,str):
+            if isinstance(s, str):
                 self.append(s)
             else:
                 self.extend(s)
@@ -550,7 +550,7 @@ def add_objects_to_group(objs, group_name):
 Rhino_obj_converter_Shp_file_shape_map = dict( NULL = None
                                             ,POINT = 'PointCoordinates'
                                             ,MULTIPATCH = 'MeshVertices'  # Unsupported.  Complicated.  TODO!  
-                                            ,POLYLINE = 'PolylineVertices'
+                                            ,POLYLINE = 'PolylineVertices'  # Works on Line too, unlike the checker.
                                             ,POLYGON = 'PolylineVertices'   
                                             ,MULTIPOINT = 'PointCloudPoints'  # Unsupported.  Needs chaining to list or POINT
                                             ,POINTZ = 'PointCoordinates'
@@ -569,26 +569,29 @@ def get_points_list_from_Rhino_obj(x, shp_type='POLYLINEZ'):
     f = getattr(rs, Rhino_obj_converter_Shp_file_shape_map[shp_type])
     return [list(y) for y in f(x)]
 
-Rhino_obj_checker_Shp_file_shape_map = dict( NULL = None
-                                            ,POINT = 'IsPoint'
-                                            ,MULTIPATCH = 'IsMesh'    # Unsupported.  Complicated.  TODO!
-                                            ,POLYLINE = 'IsLine'  #IsPolyline ==False for lines, on which PolylineVertices works fine
-                                            ,POLYGON = 'IsLine'   #Doesn't check closed
-                                            ,MULTIPOINT = 'IsPoint'   # Need to define lambda l : any(IsPoint(x) for x in l)
-                                            ,POINTZ = 'IsPoint'
-                                            ,POLYLINEZ = 'IsLine'
-                                            ,POLYGONZ = 'IsLine'   #Doesn't check closed
-                                            ,MULTIPOINTZ = 'IsPoints'  # see MULTIPOINT
-                                            ,POINTM = 'IsPoint'
-                                            ,POLYLINEM = 'IsLine'
-                                            ,POLYGONM = 'IsLine'   #Doesn't check closed 
-                                            ,MULTIPOINTM = 'IsPoints'  # see MULTIPOINT
+Rhino_obj_checker_Shp_file_shape_map = dict( 
+     NULL = [None]
+    ,POINT = ['IsPoint']
+    ,MULTIPATCH = ['IsMesh']    # Unsupported.  Complicated.  TODO!
+    ,POLYLINE = ['IsLine','IsPolyline']  #IsPolyline ==False for lines, 
+#                                        # on which PolylineVertices works fine
+    ,POLYGON = ['IsPolyline'] #2 pt Line not a Polygon.Doesn't check closed
+    ,MULTIPOINT = ['IsPoint']   # Need to define lambda l : any(IsPoint(x) for x in l)
+    ,POINTZ = ['IsPoint']
+    ,POLYLINEZ = ['IsLine','IsPolyline']
+    ,POLYGONZ = ['IsPolyline']   #Doesn't check closed
+    ,MULTIPOINTZ = ['IsPoints']  # see MULTIPOINT
+    ,POINTM = ['IsPoint']
+    ,POLYLINEM = ['IsLine','IsPolyline']
+    ,POLYGONM = ['IsPolyline']   #Doesn't check closed 
+    ,MULTIPOINTM = ['IsPoints']  # see MULTIPOINT
                                             )  
 
 def check_is_specified_obj_type(obj, shp_type):   #e.g. polyline
     # type(str) -> bool
     import rhinoscriptsyntax as rs
-    return getattr(rs, Rhino_obj_checker_Shp_file_shape_map[ shp_type] )( obj )
+    allowers = Rhino_obj_checker_Shp_file_shape_map[ shp_type]
+    return any( getattr(rs, allower )( obj ) for allower in allowers)
 
 Rhino_obj_getter_code_Shp_file_shape_map = dict( NULL = None
                                             ,POINT = 1          # Untested.  TODO
