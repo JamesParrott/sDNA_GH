@@ -319,7 +319,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
             w.field(key, **val)
         #w.field('Name', 'C')
 
-        print(str(fields))
+        logging.debug(str(fields))
 
         add_geometric_object = getattr( w,  shaperback_writer[shape_code] )
         #print(add_geometric_object)
@@ -337,7 +337,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                     attribute_table = attribute_tables[ shape_IDer(item) ]
                 else:
                     attribute_table = default_record_dict( item )
-                print('Attr table == ' + str(attribute_table))
+                logging.debug('Attr table == ' + str(attribute_table))
                 w.record( **attribute_table )    
 
     return 0, shapefile_path_to_write_to, fields, attribute_tables, my_list

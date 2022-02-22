@@ -24,12 +24,21 @@ component_tool = None    # Note to user, if you rename this component in Grassho
                                         # and make sure metas.allow_components_to_change_type_on_rename == False
                                         # Abbreviations are supported via the name_map dictionary below
                     #Abbreviation = Tool Name
-name_map = dict(     sDNA_Demo = ['Read_Network_Data', 'Write_Shp', 'sDNAIntegral', 'Read_Shp', 'Save_Network_Data', 'Plot_Network_Data']
-                    ,Read_Network_Data = 'read_objects_groups_and_Usertext_from_Rhino'
+name_map = dict(     sDNA_Demo = ['Read_From_Rhino'
+                                 ,'Read_Usertext'
+                                 ,'Write_Shp'
+                                 ,'sDNAIntegral'
+                                 ,'Read_Shp'
+                                 ,'Write_Usertext'
+                                 ,'Visualise_Data'
+                                 ]
+                    ,Read_From_Rhino = 'get_objects_from_Rhino'
+                    ,Read_Usertext = 'read_Usertext'
                     ,Write_Shp = 'write_objects_and_data_to_shapefile'
                     ,Read_Shp = 'read_shapes_and_data_from_shapefile'
-                    ,Save_Network_Data = 'write_data_to_Usertext'
-                    ,Plot_Network_Data = 'plot_data_on_objects'
+                    ,Write_Usertext = 'write_data_to_Usertext'
+                    ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
+                    ,Visualise_Data = 'plot_data_on_Rhino_objects'
                     #,'main_sequence'
                     #,'sDNAIntegral'
                     #,'sDNASkim'
