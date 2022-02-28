@@ -11,13 +11,15 @@ __version__ = '0.01'
 
 from sys import path as sys_path, argv as sys_argv, version_info
 from os.path import normpath, join, isfile
+from collections import namedtuple, OrderedDict
+# https://docs.python.org/2.7/library/collections.html#collections.namedtuple
 if version_info.major >= 3 : # version > '3':   # if Python 3
     import configparser as ConfigParser
 else:   # e.g.  Python 2
     import ConfigParser    
 
-from collections import namedtuple, OrderedDict
-# https://docs.python.org/2.7/library/collections.html#collections.namedtuple
+from ..third_party_python_modules.toml.decoder import load
+
 
 if __name__=='__main__':
     sys_path += [join(sys_path[0], '..')]
@@ -72,12 +74,16 @@ def override_ordereddict_with_dict( d_lesser
     
     if check_types:
         for key in d_lesser.viewkeys() & new_od:  #.keys():
-            if type(d_lesser[key]) != type(new_od[key]):
+            if (         d_lesser[key]  != None       
+                and type(d_lesser[key]) != type(new_od[key])   ):
                 del new_od[key]
     
-    if version_info.major > 3 or (version_info.major == 3 and version_info.minor >= 9) :
-        return d_lesser | new_od    # I like this! :)  There's otherwise no good reason to check >= Python 3.9
-                                    # n.b. dict order guaranteed preserved >= Python 3.7
+    if version_info.major > 3 or (    version_info.major == 3 
+                                  and version_info.minor >= 9 ):
+        return d_lesser | new_od    # I like this! :)  There's otherwise no 
+                                    # need to check >= Python 3.9
+                                    # n.b. dict key insertion order guaranteed 
+                                    # to be preserved >= Python 3.7
     else:
         return OrderedDict(d_lesser, **new_od)      # Arguments must be string-keyed PEP 0584
                                                     # The values of od_greater take priority if the keys clash
@@ -143,7 +149,7 @@ def readline_generator(fp):
     fp.close()
     yield ''
 
-def setup_config( file_path
+def load_ini_file( file_path
                  ,dump_all_in_default_section = False
                  ,empty_lines_in_values = False
                  ,interpolation = None
@@ -249,14 +255,23 @@ def override_namedtuple_with_ini_file(
                                   ,config_path = join(sys_path[0],'config.ini')
                                   ,**kwargs
                                      ):
-    #type ([str,RawConfigParser], namedtuple,Boolean, Boolean, Boolean, Boolean) -> namedtuple
+    #type (namedtuple, [str,RawConfigParser]) -> namedtuple
     if not isinstance(config_path, str) and not isfile(config_path):
         return nt_lesser
-    config = setup_config(config_path, **kwargs)
+    config = load_ini_file(config_path, **kwargs)
     return override_namedtuple_with_config(     nt_lesser
                                                 ,config 
                                                 ,**kwargs 
                                            )
+
+def load_toml_file(  config_path = join(sys_path[0],'config.toml')
+                    ,**kwargs
+                   ):
+    #type (namedtuple, str) -> namedtuple
+    return load(config_path, _dict = OrderedDict)      #toml.decoder
+
+
+
 
 def override_namedtuple( nt_lesser
                         ,overrides_list
@@ -267,7 +282,7 @@ def override_namedtuple( nt_lesser
     #          override_ordereddict_with_dict : {strict = True, check_types = False, add_in_new_options_keys = True}
     #          override_namedtuple_with_dict {strict = True, check_types = False}
     #          override_namedtuple_with_namedtuple{strict = True}
-    #          setup_config : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}
+    #          load_ini_file : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}
     #          type_coercer_factory : {d : None => {bool : config.getboolean, int : config.getint, float : config.getfloat}
     #          override_namedtuple_with_config : {section_name = 'DEFAULT', leave_as_strings = False}
     #          override_namedtuple_with_ini_file : {}

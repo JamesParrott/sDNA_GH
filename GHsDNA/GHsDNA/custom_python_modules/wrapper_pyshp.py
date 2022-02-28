@@ -33,7 +33,7 @@ if __name__=='__main__':
 else:
     import logging
     logger = logging.getLogger(file_name_no_ext)
-    from ..third_party_python_modules import shapefile as shp  
+    from ..third_party_python_modules.PyShp import shapefile as shp  
 
 
     #print("Wrapper_Pyshp Being imported as a module.  __name__ == " + __name__)
@@ -230,7 +230,6 @@ def write_from_iterable_to_shapefile_writer( my_iterable
         return 1, shapefile_path_to_write_to, None, None, []
 
         
-    my_list = my_iterable
 
     options.cache_iterable_when_writing_to_shp
 
@@ -251,15 +250,11 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     if field_names == None or options.cache_iterable_when_writing_to_shp: 
         
         my_iterable_is_a_list = isinstance(my_iterable, list)
-        if not my_iterable_is_a_list:
-            my_list = []
+
 
 
 
         for item in my_iterable:    
-            if not my_iterable_is_a_list:   
-                my_list += [item]
-
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
             values = OrderedDict( {options.uuid_shp_file_field_name : shape_IDer(item) } )   
             for key in keys:
@@ -284,7 +279,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             } 
                         if val_type == shp_field_codes['float']:
                             fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
-            attribute_tables[shape_IDer(item)] = values.copy()  # item may not be hashable so can't use dict of dicts
+            #print(str(item))
+            attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
             #print(str(values))
     else:
         for name in field_names:
@@ -308,7 +304,6 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     # Instead we'll wrap this wrapper function again in the Rhino / GH process in GHsDNA.py to supply this inner 
     # function it as a normal parameter value for shp_file_path.
         
-    #print('len(my_list) == '+ str(len(my_list))+' ')
     #print('len(attribute_tables) == '+ str(len(attribute_tables))+' ')
 
 
@@ -323,7 +318,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
         add_geometric_object = getattr( w,  shaperback_writer[shape_code] )
         #print(add_geometric_object)
-        for item in my_list:
+        for item, attribute_table in attribute_tables.items():
             #print item
             list_of_shapes = shape_mangler(item)
             #print(str(list_of_shapes)) 
@@ -332,24 +327,25 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                 add_geometric_object( list_of_shapes )   
                 # e.g. start_and_end_points(my_iterable)
 
-                shp_ID = shape_IDer(item)
-                if shp_ID in attribute_tables:
-                    attribute_table = attribute_tables[ shape_IDer(item) ]
-                else:
-                    attribute_table = default_record_dict( item )
+                #shp_ID = shape_IDer(item)
+                #if shp_ID in attribute_tables:
+                #    attribute_table = attribute_tables[ shp_ID ]
+                #else:
+                #    attribute_table = default_record_dict( item )
                 logging.debug('Attr table == ' + str(attribute_table))
                 w.record( **attribute_table )    
 
-    return 0, shapefile_path_to_write_to, fields, attribute_tables, my_list
+    return 0, shapefile_path_to_write_to, fields, attribute_tables
 
 def get_fields_recs_and_shapes_from_shapefile(shapefile_path):
     with shp.Reader(shapefile_path) as r:
         fields = r.fields[1:] # skip first field (deletion flag)
         recs = r.records()
         shapes = r.shapes()
+        bbox = r.bbox
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} for shape, rec in zip(shapes, recs)  }
     
-    return fields, recs, shapes
+    return fields, recs, shapes, bbox
 
 
 if __name__=='__main__':

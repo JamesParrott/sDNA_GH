@@ -24,7 +24,17 @@ component_tool = None    # Note to user, if you rename this component in Grassho
                                         # and make sure metas.allow_components_to_change_type_on_rename == False
                                         # Abbreviations are supported via the name_map dictionary below
                     #Abbreviation = Tool Name
-name_map = dict(     sDNA_Demo = ['Read_From_Rhino'
+name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
+                                 ,'Read_Usertext'
+                                 ,'Write_Shp'
+                                 ,'sDNAIntegral'
+                                 ,'Read_Shp'
+                                 ,'Write_Usertext'
+                                 ,'Parse_Data'
+                                 ,'Recolour_objects'
+                                 ]
+                    ,sDNA_Demo_old_plot = [
+                                  'Read_From_Rhino'
                                  ,'Read_Usertext'
                                  ,'Write_Shp'
                                  ,'sDNAIntegral'
@@ -39,6 +49,9 @@ name_map = dict(     sDNA_Demo = ['Read_From_Rhino'
                     ,Write_Usertext = 'write_data_to_Usertext'
                     ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
                     ,Visualise_Data = 'plot_data_on_Rhino_objects'
+                    ,Parse_Data = 'parse_data'
+                    ,Recolour_objects='recolour_objects'
+                    ,Recolor_objects ='recolour_objects'
                     #,'main_sequence'
                     #,'sDNAIntegral'
                     #,'sDNASkim'
@@ -282,7 +295,7 @@ class MyComponent(component):
                                         # Grasshopper.Folders.AppDataFolder + r'\Libraries'
                                         # %appdata%  + r'\Grasshopper\Libraries'
                                         # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
-    def RunScript(self, go, f_name, Geom, Data, *args):
+    def RunScript(self, go, Data, Geom, f_name, *args):
         # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
         #if not 'opts' in globals():
         #    global opts
@@ -292,6 +305,8 @@ class MyComponent(component):
         
         external_opts = args_dict.get('opts',{})
         external_local_metas = args_dict.get('local_metas',{})
+        gdm = args_dict.get('gdm',{})
+
         #print('#1 self.local_metas == ' + str(self.local_metas))
         
         if self.nick_name != ghenv.Component.NickName:  # type: ignore
@@ -368,14 +383,17 @@ class MyComponent(component):
 
             output('my_tools == '+str(self.my_tools),'DEBUG')
 
-            geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_dictionary(Data, Geom, self.opts)
+            geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, self.opts)
 
-            GHsDNA.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
+            
+            geom_data_map = GHsDNA.tools.override_gdm_with_gdm(gdm, geom_data_map, self.opts)
 
-            if isinstance(geom_data_map, dict):
-                Data = GHsDNA.tools.convert_dictionary_to_data_tree(geom_data_map)                
+            returncode, ret_f_name, gdm, a = GHsDNA.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
 
-            return returncode==0, f_name, list(geom_data_map.keys()), Data, self.a, self.opts.copy(), self.local_metas
+            if isinstance(gdm, dict):
+                NewData, Geometry = GHsDNA.tools.convert_dictionary_to_data_tree_or_lists(gdm)                
+
+            return returncode==0, NewData, Geometry, ret_f_name, gdm, a, self.opts.copy(), self.local_metas
                                          #In Python 3 .keys() returns a dictview not a list
         else:   
-            return False, f_name, Geom, Data, self.a
+            return False, Data, Geom, f_name, gdm, self.a, self.opts.copy(), self.local_metas
