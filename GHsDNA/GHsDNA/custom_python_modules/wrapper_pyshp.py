@@ -224,10 +224,26 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             ,field_names = None):
     #type(type[any], str, function, function, function, function,  function, str, dict)  -> int, str, dict, list, list
     #
-    if not isinstance(my_iterable, Iterable) or ( 
-           isinstance(my_iterable, str) or 
-       not isdir(dirname(shp_file_path)) ):
-        return 1, shapefile_path_to_write_to, None, None, []
+    is_iterable = isinstance(my_iterable, Iterable)
+    is_str = isinstance(my_iterable, str)
+    is_path_str = isinstance(shp_file_path, str)
+
+
+    if ( not is_iterable 
+         or is_str 
+         or not is_path_str
+         or not isdir(dirname(shp_file_path)) 
+        ):
+        print ('returning.  Not writing to .shp file')
+        print (' Is Iterable ==' + str(is_iterable))
+        print (' Is str ==' + str(is_str))
+        print (' Is path str ==' + str(is_path_str))
+        try:
+            print (' Is path path ==' + str(isdir(dirname(shp_file_path))))
+        except:
+            pass
+        print ('Path == ' + str(shp_file_path))
+        return 1, shp_file_path, None, None
 
         
 
@@ -245,15 +261,9 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                          )
 
     attribute_tables = OrderedDict()
-        
 
     if field_names == None or options.cache_iterable_when_writing_to_shp: 
         
-        my_iterable_is_a_list = isinstance(my_iterable, list)
-
-
-
-
         for item in my_iterable:    
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
             values = OrderedDict( {options.uuid_shp_file_field_name : shape_IDer(item) } )   
@@ -334,6 +344,8 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                 #    attribute_table = default_record_dict( item )
                 logging.debug('Attr table == ' + str(attribute_table))
                 w.record( **attribute_table )    
+
+
 
     return 0, shapefile_path_to_write_to, fields, attribute_tables
 

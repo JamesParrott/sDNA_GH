@@ -59,7 +59,7 @@ name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
                     #,'sDNAGeodesics'
                     #,'sDNAHulls'
                     #,'sDNANetRadii'
-                    #,'sDNAAccessibilityMap'
+                    ,sDNAAccessMap = 'sDNAAccessibilityMap'
                     #,'sDNAPrepare'
                     #,'sDNALineMeasures'
                     #,'sDNALearn'
@@ -91,14 +91,14 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
     message_with_level = level + ' : ' + message
     #print(message_with_level)
     try:
-        GHsDNA.tools.output("From GHsDNA output " + message, level, inst)
+        GHsDNA.tools.output("From GHsDNA_launcher: " + message, level, inst)
     except:
         try:
-            getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())("from logging " + message)
+            getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())("From GHsDNA_launcher via logging: " + message)
         except:
             print(message_with_level)
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
-                inst.a.write(message_with_level + " via inst")
+                inst.a.write("From GHsDNA_launcher via inst: " + message_with_level)
     return message_with_level
 
 def strict_import(  module_name = ''
@@ -299,8 +299,11 @@ class MyComponent(component):
         # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
         #if not 'opts' in globals():
         #    global opts
-        #reload(GHsDNA.tools) # type: ignore
+        if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
+            f_name=f_name[0]
         self.a = GHsDNA.tools.WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
+        options = self.opts['options']
+
         args_dict = {key.Name : val for key, val in zip(ghenv.Component.Params.Input[1:], args) } # type: ignore
         
         external_opts = args_dict.get('opts',{})
@@ -384,16 +387,31 @@ class MyComponent(component):
             output('my_tools == '+str(self.my_tools),'DEBUG')
 
             geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, self.opts)
-
             
+            output('geom_data_map == '+str(type(geom_data_map)),'DEBUG')
+
             geom_data_map = GHsDNA.tools.override_gdm_with_gdm(gdm, geom_data_map, self.opts)
 
+            output('After merge geom_data_map == '+str(type(geom_data_map)),'DEBUG')
+
+
             returncode, ret_f_name, gdm, a = GHsDNA.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
-
+            print (str(gdm))
             if isinstance(gdm, dict):
-                NewData, Geometry = GHsDNA.tools.convert_dictionary_to_data_tree_or_lists(gdm)                
+                (NewData, Geometry) = (
+                  GHsDNA.tools.convert_dictionary_to_data_tree_or_lists(gdm)
+                                      )                
+            else:
+                NewData, Geometry = None, None
 
-            return returncode==0, NewData, Geometry, ret_f_name, gdm, a, self.opts.copy(), self.local_metas
+            #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, gdm, a, self.opts.copy(), self.local_metas
+            ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
+
+            if self.my_tools[-1] == GHsDNA.tools.parse_data:
+                ret_vals = (ret_vals[0], self.opts['options'].plot_min, self.opts['options'].plot_max) + ret_vals[1:]
+
+            return ret_vals
                                          #In Python 3 .keys() returns a dictview not a list
         else:   
-            return False, Data, Geom, f_name, gdm, self.a, self.opts.copy(), self.local_metas
+            return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
+            #return False, Data, Geom, f_name, gdm, self.a, self.opts.copy(), self.local_metas

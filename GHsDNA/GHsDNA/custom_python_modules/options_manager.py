@@ -54,24 +54,36 @@ def make_nested_namedtuple(d
                      ,rename=False 
                      )(**d)  # Don't return nt class
 
+def delistify_dicts(d_lesser, d_greater): # Mutates d_greater.  d_lesser unaltered.
+    #type(dict, dict) -> None
+        for key, val in d_greater.items():
+            if isinstance(val, list) and (  key not in d_lesser 
+                or not isinstance(d_lesser[key], list)  ):
+               d_greater[key]=val[0]
+
+
 def override_ordereddict_with_dict( d_lesser
                                    ,od_greater
                                    ,strict = True
                                    ,check_types = False
+                                   ,delistify = True
                                    ,add_in_new_options_keys = False
                                    ,**kwargs):
-    #type: (dict, OrderedDict, bool, bool, bool, dict) -> OrderedDict
+    #type: (dict, OrderedDict, bool, bool, bool, bool, dict) -> OrderedDict
     #
     if strict and not isinstance(od_greater, dict):  # also true for OrderedDict
         return d_lesser
 
     if not add_in_new_options_keys:
-        new_od = { key : val 
+        new_od = OrderedDict( (key, val) 
                    for key, val in od_greater.items() 
-                   if key in d_lesser }
+                   if key in d_lesser )
     else: 
         new_od = od_greater.copy() 
     
+    if delistify:
+        delistify_dicts(d_lesser, new_od)
+
     if check_types:
         for key in d_lesser.viewkeys() & new_od:  #.keys():
             if (         d_lesser[key]  != None       
@@ -99,18 +111,23 @@ def override_namedtuple_with_dict( nt_lesser
                                   ,d_greater
                                   ,strict = True
                                   ,check_types = True  #types of dict values
+                                  ,delistify = True
                                   ,**kwargs):  
-    #type (dict, namedtuple, Boolean, Boolean, Boolean) -> namedtuple
+    #type (namedtuple, dict, Boolean, Boolean, Boolean) -> namedtuple
     #
     if strict and not isinstance(d_greater, dict):
         return nt_lesser
     elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:  #.viewkeys doesn't have .issubset method ipy 2.7
+        if delistify:
+            delistify_dicts(nt_lesser._asdict(), d_greater)
+        
         return nt_lesser._replace(**d_greater)
     else:
         newDict = override_ordereddict_with_dict(nt_lesser._asdict()
                                                 ,d_greater
                                                 ,strict
                                                 ,check_types
+                                                ,delistify
                                                 ,**kwargs
                                                 )
         return make_nested_namedtuple(newDict
@@ -279,8 +296,8 @@ def override_namedtuple( nt_lesser
                         ):                        
     # type(list(object), namedtuple, Boolean, Boolean, Boolean, Class -> namedtuple
     # kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_'}
-    #          override_ordereddict_with_dict : {strict = True, check_types = False, add_in_new_options_keys = True}
-    #          override_namedtuple_with_dict {strict = True, check_types = False}
+    #          override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_in_new_options_keys = True}
+    #          override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
     #          override_namedtuple_with_namedtuple{strict = True}
     #          load_ini_file : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}
     #          type_coercer_factory : {d : None => {bool : config.getboolean, int : config.getint, float : config.getfloat}
