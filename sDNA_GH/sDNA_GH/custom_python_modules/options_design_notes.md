@@ -34,7 +34,7 @@
 
 ###############################################################################################################
 # Override (3) user installation specific options with (2) previously updated options in Grasshopper definition 
-# from another GHsDNA component
+# from another sDNA_GH component
 #new_nt = options_manager.override_namedtuple_with_namedtuple(installation_nt, old_nt_or_dict, add_in_new_options_keys=True, check_types = True, strict = False)
 #new_metas = options_manager.override_namedtuple_with_namedtuple(test_metas, new_metas, add_in_new_options_keys=True, check_types = True, strict = False)
 #new_options = options_manager.override_namedtuple_with_namedtuple(test_options, new_options, True, add_in_new_options_keys=True, check_types = True, strict = False)

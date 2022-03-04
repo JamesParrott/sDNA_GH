@@ -311,7 +311,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
     shapefile_path_to_write_to = get_unique_filename_if_not_overwrite(shp_file_path,options)
     # wrapper_pyshp can work outside of rhino and grasshopper, so we don't know the name of the Rhino .3dm file.
-    # Instead we'll wrap this wrapper function again in the Rhino / GH process in GHsDNA.py to supply this inner 
+    # Instead we'll wrap this wrapper function again in the Rhino / GH process in sDNA_GH.py to supply this inner 
     # function it as a normal parameter value for shp_file_path.
         
     #print('len(attribute_tables) == '+ str(len(attribute_tables))+' ')

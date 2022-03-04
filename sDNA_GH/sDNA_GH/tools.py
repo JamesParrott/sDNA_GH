@@ -46,15 +46,15 @@ class HardcodedMetas():
     sDNA_search_paths = [sDNA_UISpec_path, join(os.getenv('APPDATA'),'sDNA')]
     sDNA_search_paths += [join(os.getenv('APPDATA'), get_stem_and_folder(sDNA_search_paths[0])[1]) ]
     auto_update_Rhino_doc_path = True
-    #share_installation_defaults_key = "GHsDNA_installation_default_options"
+    #share_installation_defaults_key = "sDNA_GH_installation_default_options"
     #share_sDNA_tools_key = "sDNA_UI_Spec_tools"
     #if all(['ghdoc' in globals, hasattr(ghdoc,'Path'), isfile(ghdoc.Path)]):    
-    #    join(Grasshopper.Folders.DefaultAssemblyFolder,'GHsDNA')
-    #    join(Grasshopper.Folders.AppDataFolder,'Libraries','GHsDNA')
-    #    join(os.getenv('APPDATA'),'Grasshopper','Libraries','GHsDNA')
+    #    join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH')
+    #    join(Grasshopper.Folders.AppDataFolder,'Libraries','sDNA_GH')
+    #    join(os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH')
     #    __file__
     #else: 
-    #    installation_log_file = r'C:\Users\James\AppData\Roaming\Grasshopper\Libraries\GHsDNA'
+    #    installation_log_file = r'C:\Users\James\AppData\Roaming\Grasshopper\Libraries\sDNA_GH'
 
 
 #    append_iterable_values_do_not_overwrite = True # TODO: implement this!
@@ -82,9 +82,9 @@ class HardcodedOptions():
                                             # grouped from sDNA manual https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html    
     ####################################################################################
     #Logging    
-    log_file_suffix = '_GHsDNA'
+    log_file_suffix = '_sDNA_GH'
     log_file = __file__.rpartition('.')[0] + log_file_suffix + '.log'
-    #os.getenv('APPDATA'),'Grasshopper','Libraries','GHsDNA','GHsDNA.log')
+    #os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH','sDNA_GH.log')
     logs_subdirectory = r'logs'
     tests_subdirectory = r'tests'
     logger_file_level = 'DEBUG'
@@ -104,7 +104,7 @@ class HardcodedOptions():
     cache_iterable_when_writing_to_shp= False
     shp_file_extension = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
     supply_sDNA_file_names = True
-    shape_file_to_write_Rhino_data_to_from_GHsDNA = r'C:\Users\James\Documents\Rhino\Grasshopper\GHsDNA_shapefiles\t6.shp' # None means Rhino .3dm filename is used.
+    shape_file_to_write_Rhino_data_to_from_sDNA_GH = r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA_GH_shapefiles\t6.shp' # None means Rhino .3dm filename is used.
     overwrite_shp_file = True
     overwrite_UserText = True
     duplicate_UserText_key_suffix = r'_{}'
@@ -345,7 +345,7 @@ def override_all_opts( args_dict
     # 2) A primary meta in opts refers to an old primary meta (albeit the most recent one) and will not be used
     # in the options_manager.override order as we assume that file has already been read into a previous opts in the chain.  If the user wishes 
     # to apply a new project config.ini file, they need to instead specify it in args (by adding a variable called config_file_path to 
-    # the GHPython GHsDNA launcher component.
+    # the GHPython sDNA_GH launcher component.
     metas = local_opts['metas']
     options = local_opts['options']
     def sDNA():
@@ -1087,7 +1087,7 @@ def write_objects_and_data_to_shapefile(f_name, geom_data_map, opts_at_call):
                         # but just to be safe and future proof we remove
                         # '.3dm'                                        
         except:
-            f_name = options.shape_file_to_write_Rhino_data_to_from_GHsDNA
+            f_name = options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
 
     #report('Type of gdm == '+ type(gdm).__name__)                         
     #report('Size of gdm == ' + str(len(gdm)))

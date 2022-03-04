@@ -5,10 +5,10 @@ __version__ = '0.01'
 
 
 
-GHsDNA_subfolder = 'GHsDNA' 
-GHsDNA_package = 'GHsDNA'               
+sDNA_GH_subfolder = 'sDNA_GH' 
+sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
-GHsDNA_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\GHsDNA']
+sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\sDNA_GHv0.01\sDNA_GH']
 
 #######################################################################################################################
 # Please note!
@@ -91,14 +91,14 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
     message_with_level = level + ' : ' + message
     #print(message_with_level)
     try:
-        GHsDNA.tools.output("From GHsDNA_launcher: " + message, level, inst)
+        sDNA_GH.tools.output("From sDNA_GH_launcher: " + message, level, inst)
     except:
         try:
-            getattr(GHsDNA.tools.wrapper_logging.logging,level.lower())("From GHsDNA_launcher via logging: " + message)
+            getattr(sDNA_GH.tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
         except:
             print(message_with_level)
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
-                inst.a.write("From GHsDNA_launcher via inst: " + message_with_level)
+                inst.a.write("From sDNA_GH_launcher via inst: " + message_with_level)
     return message_with_level
 
 def strict_import(  module_name = ''
@@ -134,7 +134,7 @@ def strict_import(  module_name = ''
     return m       
 
 
-class GHsDNA():
+class sDNA_GH():
     pass
 
 
@@ -174,18 +174,18 @@ def is_file_any_type(s):
 
 class MyComponent(component):
 
-    global GHsDNA, GHsDNA_search_paths, component_tool, log_file
-    GHsDNA_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
-                                ,GHsDNA_subfolder
+    global sDNA_GH, sDNA_GH_search_paths, component_tool, log_file
+    sDNA_GH_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
+                                ,sDNA_GH_subfolder
                                 ) 
                             ]
                           
-    GHsDNA.tools, GHsDNA_path = load_modules('GHsDNA.tools'
-                                             ,GHsDNA_search_paths)
+    sDNA_GH.tools, sDNA_GH_path = load_modules('sDNA_GH.tools'
+                                             ,sDNA_GH_search_paths)
 
-    opts = GHsDNA.tools.opts   # mutable.  Reference breakable and remakeable 
+    opts = sDNA_GH.tools.opts   # mutable.  Reference breakable and remakeable 
                                # to de sync / sync local opts to global opts
-    local_metas = GHsDNA.tools.local_metas   # immutable.  controls syncing /
+    local_metas = sDNA_GH.tools.local_metas   # immutable.  controls syncing /
                                              # desyncing / read / write of the
                                              # above, opts.
                                              # Although local, can be set on 
@@ -194,18 +194,18 @@ class MyComponent(component):
                                              # config.ini, or passed as a
                                              # Grasshopper parameter between
                                              # components
-    tools_dict = GHsDNA.tools.tools_dict
+    tools_dict = sDNA_GH.tools.tools_dict
 
   
     class_logger_name = "MyComponent"
-    if GHsDNA.tools.logger.__class__.__name__ == 'WriteableFlushableList':
+    if sDNA_GH.tools.logger.__class__.__name__ == 'WriteableFlushableList':
         log_file = (  ghdoc.Path.rpartition('.')[0]  #type: ignore
                     + opts['options'].log_file_suffix + '_tracker1'
                     + '.log' ) 
         log_file_dir = split(log_file)[0]
         if isdir(log_file_dir):
-            GHsDNA.tools.logger = GHsDNA.tools.wrapper_logging.new_Logger( 
-                                            'GHsDNA'
+            sDNA_GH.tools.logger = sDNA_GH.tools.wrapper_logging.new_Logger( 
+                                            'sDNA_GH'
                                             ,log_file 
                                             ,opts['options'].logger_file_level
                                             ,opts['options'].logger_console_level
@@ -214,14 +214,14 @@ class MyComponent(component):
             pass
             output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
 
-    logger = GHsDNA.tools.logger #.getChild( class_logger_name)
+    logger = sDNA_GH.tools.logger #.getChild( class_logger_name)
    
 
 
     my_tools = None
 
     def update_tools(self):
-        self.my_tools = GHsDNA.tools.tool_factory( self.nick_name
+        self.my_tools = sDNA_GH.tools.tool_factory( self.nick_name
                                                   ,name_map
                                                   ,self.opts)
         output('My_tools ==\n'
@@ -274,8 +274,8 @@ class MyComponent(component):
     def __init__(self):
 
         
-        self.a = GHsDNA.tools.WriteableFlushableList()
-        GHsDNA.tools.wrapper_logging.add_custom_file_to_logger( self.logger
+        self.a = sDNA_GH.tools.WriteableFlushableList()
+        sDNA_GH.tools.wrapper_logging.add_custom_file_to_logger( self.logger
                                                                ,self.a
                                                                ,self.opts['options'].logger_custom_level)
 
@@ -291,7 +291,7 @@ class MyComponent(component):
 
 
 
-    #GHsDNA = strict_import('GHsDNA', join(Grasshopper.Folders.DefaultAssemblyFolder,'GHsDNA'), sub_folder = 'GHsDNA')   
+    #sDNA_GH = strict_import('sDNA_GH', join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH'), sub_folder = 'sDNA_GH')   
                                         # Grasshopper.Folders.AppDataFolder + r'\Libraries'
                                         # %appdata%  + r'\Grasshopper\Libraries'
                                         # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
@@ -301,7 +301,7 @@ class MyComponent(component):
         #    global opts
         if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
             f_name=f_name[0]
-        self.a = GHsDNA.tools.WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
+        self.a = sDNA_GH.tools.WriteableFlushableList() #Reset. Discard output persisting from previous calls to this method (should be logged anyway).
         options = self.opts['options']
 
         args_dict = {key.Name : val for key, val in zip(ghenv.Component.Params.Input[1:], args) } # type: ignore
@@ -324,9 +324,9 @@ class MyComponent(component):
         #print('#1.05 self.local_metas == ' + str(self.local_metas))
 
         #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.read_from_shared_global_opts:
-        #    self.opts = GHsDNA.tools.opts.copy() 
+        #    self.opts = sDNA_GH.tools.opts.copy() 
         
-        self.local_metas = GHsDNA.tools.override_all_opts( args_dict 
+        self.local_metas = sDNA_GH.tools.override_all_opts( args_dict 
                                                           ,self.opts # also mutates self.opts; local_metas immutable
                                                           ,external_opts 
                                                           ,self.local_metas 
@@ -346,14 +346,14 @@ class MyComponent(component):
             #assert False
             
             if self.local_metas.sync_to_shared_global_opts != synched:
-                self.opts = GHsDNA.tools.opts if self.local_metas.sync_to_shared_global_opts else self.opts.copy()
+                self.opts = sDNA_GH.tools.opts if self.local_metas.sync_to_shared_global_opts else self.opts.copy()
 
             if self.opts['metas'].sDNA != old_sDNA:
                 self.update_sDNA()
                 self.update_tools()
 
                 
-        #load_GHsDNA()
+        #load_sDNA_GH()
         #reload(tools)
         
         #y = globals().copy(); 
@@ -386,32 +386,32 @@ class MyComponent(component):
 
             output('my_tools == '+str(self.my_tools),'DEBUG')
 
-            geom_data_map = GHsDNA.tools.convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, self.opts)
+            geom_data_map = sDNA_GH.tools.convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, self.opts)
             
             output('geom_data_map == '+str(type(geom_data_map)),'DEBUG')
 
-            geom_data_map = GHsDNA.tools.override_gdm_with_gdm(gdm, geom_data_map, self.opts)
+            geom_data_map = sDNA_GH.tools.override_gdm_with_gdm(gdm, geom_data_map, self.opts)
 
             output('After merge geom_data_map == '+str(type(geom_data_map)),'DEBUG')
 
 
-            returncode, ret_f_name, gdm, a = GHsDNA.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
+            returncode, ret_f_name, gdm, a = sDNA_GH.tools.run_tools(self.my_tools, f_name, geom_data_map, self.opts)
             print (str(gdm))
             if isinstance(gdm, dict):
                 (NewData, Geometry) = (
-                  GHsDNA.tools.convert_dictionary_to_data_tree_or_lists(gdm)
+                  sDNA_GH.tools.convert_dictionary_to_data_tree_or_lists(gdm)
                                       )                
             else:
                 NewData, Geometry = None, None
 
-            #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, gdm, a, self.opts.copy(), self.local_metas
-            ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
+            ret_vals = (returncode==0), NewData, Geometry, ret_f_name, [gdm], a, [self.opts.copy()], [self.local_metas]
+            #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
 
-            if self.my_tools[-1] == GHsDNA.tools.parse_data:
+            if self.my_tools[-1] == sDNA_GH.tools.parse_data:
                 ret_vals = (ret_vals[0], self.opts['options'].plot_min, self.opts['options'].plot_max) + ret_vals[1:]
 
             return ret_vals
                                          #In Python 3 .keys() returns a dictview not a list
         else:   
-            return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
-            #return False, Data, Geom, f_name, gdm, self.a, self.opts.copy(), self.local_metas
+            #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
+            return False, Data, Geom, f_name, [gdm], self.a, [self.opts.copy()], [self.local_metas]
