@@ -2111,19 +2111,27 @@ def get_specific_tool(tool_name, nick_name, local_opts):
 
             dot_shp = options.shp_file_extension
 
+            a = WriteableFlushableList()
+
             input_file = tool_opts[sDNA].input
             if (not isinstance(input_file, str)) or not isfile(input_file): 
                 if (isinstance(f_name, str) and isfile(f_name)
-                    and f_name.rpartition('.')[2]==dot_shp[1:]):
+                    and f_name.rpartition('.')[2] in [dot_shp[1:],'dbf','shx']):  
                     input_file = f_name
                 else:
                     default_file_name = (options.Rhino_doc_path.rpartition('.')[0] 
                                                                     + dot_shp)
-                    if (options.supply_sDNA_file_names and 
-                                              isfile(default_file_name) ): 
+                    if options.supply_sDNA_file_names: 
                         input_file = default_file_name
                     else:
-                        pass # e.g. could call write_from_iterable_to_shapefile_writer
+                        raise FileExistsError(output('No input shapefile ' + 
+                                                     +'exists and '
+                                                     +'options.supply_sDNA_file_names'
+                                                     +' == False.  ','ERROR'))
+                    assert input_file and isinstance(input_file, str)
+                    if options.overwrite_input_shapefile or not isfile(input_file):
+                        retcode, filename, gdm, tmp_a = write_from_iterable_to_shapefile_writer(f_name, gdm, opts_at_call)
+                        a.write(tmp_a)
                 tool_opts[sDNA] = tool_opts[sDNA]._replace(input = input_file)
 
 
@@ -2186,7 +2194,7 @@ def get_specific_tool(tool_name, nick_name, local_opts):
                                                                     # os.environ["PYTHONPATH"] not found in Iron Python
             # To allow auto reading the shapefile afterwards, the returned Data == None == None to end
             # the input GDM's round trip, in favour of Data and Geometry read from the sDNA analysis just now completed.
-            return return_code, tool_opts[sDNA].output, gdm, None
+            return return_code, tool_opts[sDNA].output, gdm, a
         return [run_sDNA_wrapper]
     else:
         return [None]

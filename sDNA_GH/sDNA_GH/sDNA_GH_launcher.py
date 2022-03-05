@@ -8,7 +8,7 @@ __version__ = '0.01'
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
-sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\sDNA_GHv0.01\sDNA_GH']
+sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH']
 
 #######################################################################################################################
 # Please note!
