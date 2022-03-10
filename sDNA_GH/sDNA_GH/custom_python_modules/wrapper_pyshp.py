@@ -111,7 +111,8 @@ def shp_type_coercer(x, options):
     if options.use_str_decimal:
         import decimal as dec
     dec.getcontext().prec = options.decimal_module_prec #if else options.decimal_module_prec    # significant figures,  >= # decimal places
-    if x in [True,False]:   # if isinstance(x,bool):.  Don't test coercion with bool() first or everything truthy will be 'L'
+    if      x in [True, False] or (hasattr(x, 'lower')
+        and x.lower() in ['true','false']):   # if isinstance(x,bool):.  Don't test coercion with bool() first or everything truthy will be 'L'
         return x, shp_field_codes['bool']   # i.e. 'L'
     try:
         y = int(x)   # if isinstance(x,int):  # Bool test needs to come before this as int(True) == 1
