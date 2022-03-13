@@ -183,7 +183,7 @@ except:
 class sDNA_GH():
     pass
 
-sDNA_GH.tools, sDNA_GH_path = load_modules( 'sDNA_GH.tools'
+sDNA_GH.tools, sDNA_GH_path = load_modules(  sDNA_GH_package + '.tools'
                                             ,sDNA_GH_search_paths
                                             )
 
@@ -217,6 +217,8 @@ class MyComponent(component):
                                         # Grasshopper parameter between
                                         # components
     ghdoc = ghdoc #type: ignore
+    sDNA_GH_path = sDNA_GH_path
+    sDNA_GH_package = sDNA_GH_package
 
     if sDNA_GH.tools.logger.__class__.__name__ == 'WriteableFlushableList':
         log_file = (  ghdoc.Path.rpartition('.')[0]  #type: ignore
@@ -244,12 +246,16 @@ class MyComponent(component):
 
 run_normally = component_tool.replace(' ','').replace('_','').lower() != 'selftest'
 if run_normally:  # if running from command line, no ghenv so previous code 
-                  # should've set component_tool=='selftest'
+                  # should've set component_tool=='selftest', 
     MyComponent = sDNA_GH.tools.sDNA_GH_component_deco(MyComponent) 
 else: # Run self tests:
-    sDNA_GH.unit_tests, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
-                                        ,sDNA_GH_search_paths
-                                        )
+    if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
+        from .tests.unit_tests import unit_tests_sDNA_GH
+        sDNA_GH.unit_tests = unit_tests_sDNA_GH
+    else:
+        sDNA_GH.unit_tests, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
+                                            ,sDNA_GH_search_paths
+                                            )
     FileAndStream = sDNA_GH.unit_tests.FileAndStream
       
  

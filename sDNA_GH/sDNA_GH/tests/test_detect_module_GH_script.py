@@ -2,12 +2,13 @@ if      '__file__' in __builtins__  and  __name__ in __file__ and '__main__' not
     # Assert:  We're in a module!
     pass
 else:
-    print "Not in a module"
+    pass
+    #print 
 
 
 """ print(__name__)
 if __name__ == '':
-    pass # Module only code.  No else associates with this if to avoid intentation.  Are there module imports without __name__=='' ?
+    pass # Module only code.  No else associates with this if to avoid indentation.  Are there module imports without __name__=='' ?
 if __name__ == '__main__':  # Name is still '__main__' in an uncompiled grasshopper component as well as in scripts.
     from argparse import ArgumentParser()
     ap=ArgumentParser()

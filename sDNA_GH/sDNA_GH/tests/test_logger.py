@@ -3,7 +3,8 @@ print('Hello there!')
 from sys import path as sys_path
 from os.path import isfile, sep, normpath
 
-import logging,wrapper_logging
+import logging
+from ..custom_python_modules import wrapper_logging
 
 default_options=dict(    overwrite_shp_file = True
                         ,suppress_overwrite_warning = False
@@ -17,13 +18,13 @@ default_options=dict(    overwrite_shp_file = True
                         ,logger_custom_level = 'INFO'
                     )
 
-''" logger = wrapper_logger.new_Logger(  __name__
+''' logger = wrapper_logger.new_Logger(  __name__
                                     ,sys_path[0]+sep+__name__ + '.log'
                                     ,default_options['logger_file_level']
                                     ,default_options['logger_console_level']
                                     ,a
                                     ,default_options['logger_custom_level']
-                                  ) ''"
+                                  ) '''
 
                                   # set up logging to file - see previous section for more details
 
