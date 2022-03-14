@@ -898,7 +898,7 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
 
     # 
     if Data in [[], None, [None]]:
-        Data = {}
+        Data = OrderedDict()
     elif (isinstance(Data, DataTree[object]) 
           and getattr(Data, 'BranchCount', 0) > 0):
         Data = th.tree_to_list(Data)
@@ -917,9 +917,10 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
             len(Geom) != len(Data) ) # No possible 1-1 correspondence
         ):
         if len(Data) > 2:
-            print('Data tree has more than two branches.  '
+            output(  'Data tree has more than two branches.  '
                     +'Using first two for keys and vals.  '
-                    )#, 'WARNING')
+                    ,'WARNING'
+                  )
         key_lists = Data[0]
         val_lists = Data[1]
         Data = [  OrderedDict(zip(key_list, val_list)) for key_list, val_list in 
@@ -942,14 +943,16 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
         #print('More values in Data list than Geometry. Storing excess '
         #       +'values from Data with key tuple(). '
         #       )#,'INFO')
-        component_inputs_gen_exp =  chain(izip(Geom, Data[:len(Geom)]), [ (tuple(), Data[len(Geom):])])
+        component_inputs_gen_exp =  chain( izip(Geom, Data[:len(Geom)])
+                                          ,[(tuple(), Data[len(Geom):])]
+                                          )
         #print('Chaining worked')
     else:
         if len(Geom) > len(Data):
-            report(r'repeating {} after Data... ')
-            Data = chain( Data,  repeat({}) )
+            report(r'repeating OrderedDict() after Data... ')
+            Data = chain( Data,  repeat(OrderedDict()) )
         else:
-            report( "Yeah!  Equal length" )
+            report( "Ah yeah!  Equal length.  " )
         component_inputs_gen_exp =  izip(Geom, Data)
 
 
