@@ -87,6 +87,7 @@ except ImportError:
 #import rhinoscriptsyntax as rs
 #import scriptcontext as sc
 #import ghpythonlib.treehelpers as th
+import Rhino
 
 
 def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
@@ -95,10 +96,10 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
     message = s
     if hasattr(inst,'nick_name'):
         message = inst.nick_name + ' : ' + message
-    message_with_level = level + ' : ' + message
+    message_with_level =  'sDNA_GH_launcher' + '  ' + level + ' : ' + message
     #print(message_with_level)
     try:
-        sDNA_GH.tools.output("From sDNA_GH_launcher: " + message, level, inst)
+        sDNA_GH.tools.output(message, level, inst)
     except:
         try:
             getattr(sDNA_GH.tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
@@ -112,9 +113,10 @@ def strict_import(  module_name = ''
                    ,folder = ''
                    ,sub_folder = ''
                    ,output = output
-                  ):
+                   ,search_folder_only = False
+                   ):
 
-    # type: (str,str,str,function) -> type[any]
+    # type: (str, str, str, function, bool) -> type[any]
     #
     if module_name == '':
         output('No module to import','INFO')
@@ -132,15 +134,26 @@ def strict_import(  module_name = ''
     # Load module_name for first time:
     #
     #
-    search_path = join(folder,sub_folder)
-    output("Search path == " + search_path,'DEBUG')
+    search_path = join(folder, sub_folder)
+
     tmp = sys.path
-    sys.path.insert(0, search_path)
+    if search_path and isinstance(search_path, str) and isdir(search_path):
+        output('Search path == ' + search_path, 'DEBUG')
+        if search_folder_only:
+            sys.path = [search_path]
+        else:
+            sys.path.insert(0, search_path)
+    else:
+        output('Invalid search path : ' + search_path, 'DEBUG')
+        if search_folder_only:
+            return None
+
+    output('Trying import... ','DEBUG')
     m = import_module(module_name, '')           
     sys.path = tmp
     return m       
 
-def load_modules(m_names, path_lists):
+def load_modules(self, m_names, path_lists):
     m_names = m_names if isinstance(m_names, tuple) else [m_names] 
     output('m_names == ' + str(m_names) + ' of type : ' + type(m_names).__name__,'DEBUG')
     if any((name.startswith('.') or name.startswith('..')) in name for name in m_names):
@@ -183,7 +196,8 @@ except:
 class sDNA_GH():
     pass
 
-sDNA_GH.tools, sDNA_GH_path = load_modules(  sDNA_GH_package + '.tools'
+sDNA_GH.tools, sDNA_GH_path = load_modules(  None
+                                            ,sDNA_GH_package + '.tools'
                                             ,sDNA_GH_search_paths
                                             )
 
@@ -203,6 +217,11 @@ def is_file_any_type(s):
 
 
 class MyComponent(component):
+
+    ghdoc = ghdoc #type: ignore
+    Component = ghenv.Component #type: ignore
+    RhinoDoc = Rhino.RhinoDoc
+
     opts = sDNA_GH.tools.opts                       
                         # mutable.  Reference breakable and remakeable 
                         # to de sync / sync local opts to global opts
@@ -216,26 +235,28 @@ class MyComponent(component):
                                         # config.ini, or passed as a
                                         # Grasshopper parameter between
                                         # components
-    ghdoc = ghdoc #type: ignore
+    logger = sDNA_GH.tools.logger 
+
     sDNA_GH_path = sDNA_GH_path
     sDNA_GH_package = sDNA_GH_package
+    component_tool = component_tool
+    name_map = name_map
 
-    if sDNA_GH.tools.logger.__class__.__name__ == 'WriteableFlushableList':
-        log_file = (  ghdoc.Path.rpartition('.')[0]  #type: ignore
-                    + opts['options'].log_file_suffix + '_tracker1'
-                    + '.log' ) 
-        log_file_dir = split(log_file)[0]    #os.path.split
-        if isdir(log_file_dir):
-            logger = sDNA_GH.tools.wrapper_logging.new_Logger( 
-                                            'sDNA_GH'
-                                            ,log_file 
-                                            ,opts['options'].logger_file_level
-                                            ,opts['options'].logger_console_level
-                                            )
-        else:
-            pass
-            output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
-            logger = sDNA_GH.tools.logger 
+
+
+
+    # log_file = opts['options'].log_file  
+    # log_file_dir = opts['options'].logs_subdirectory
+    # if isdir(log_file_dir):
+    #     logger = sDNA_GH.tools.wrapper_logging.new_Logger( 
+    #                                     'sDNA_GH'
+    #                                     ,log_file 
+    #                                     ,opts['options'].logger_file_level
+    #                                     ,opts['options'].logger_console_level
+    #                                     )
+    # else:
+    #     pass
+    #     output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
 
 
 
@@ -245,6 +266,7 @@ class MyComponent(component):
 
 
 run_normally = component_tool.replace(' ','').replace('_','').lower() != 'selftest'
+
 if run_normally:  # if running from command line, no ghenv so previous code 
                   # should've set component_tool=='selftest', 
     MyComponent = sDNA_GH.tools.sDNA_GH_component_deco(MyComponent) 
@@ -253,8 +275,9 @@ else: # Run self tests:
         from .tests.unit_tests import unit_tests_sDNA_GH
         sDNA_GH.unit_tests = unit_tests_sDNA_GH
     else:
-        sDNA_GH.unit_tests, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
-                                            ,sDNA_GH_search_paths
+        sDNA_GH.unit_tests, _ = load_modules( None
+                                             ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
+                                             ,sDNA_GH_search_paths
                                             )
     FileAndStream = sDNA_GH.unit_tests.FileAndStream
       

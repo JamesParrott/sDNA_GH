@@ -37,7 +37,7 @@ logs_subdirectory = 'logs'
 tests_subdirectory = 'tests'
 logger_file_level = 'DEBUG'
 logger_console_level = 'DEBUG'
-logger_custom_level = 'ERROR'
+logger_custom_level = 'INFO'
 
 ####################################################################################
 #GDM

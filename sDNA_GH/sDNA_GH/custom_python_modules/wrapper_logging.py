@@ -4,16 +4,16 @@
 # Convenience wrapper to run Vinay Sajip's logger recipe with customisable
 # console  output in each module
 #
-__author__ = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
-__license__='Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
+__author__  = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
+__license__ = 'Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
 __version__ = '0.01'
 
-from sys import path as sys_path, stdout as sys_stdout, argv as sys_argv
+import sys
 from os.path import sep, join
 import logging
 
 if __name__=='__main__':
-    sys_path += [join(sys_path[0], '..')]
+    sys.path += [join(sys.path[0], '..')]
 else:
     pass
     #print "Import attempted of wrapper_logging"
@@ -55,7 +55,7 @@ def add_custom_file_to_logger(logger
         pass
 
 def new_Logger(  logger_name = 'main'
-                ,file_name = join(sys_path[0], sys_argv[0].rsplit('.')[0] + '.log')
+                ,file_name = join(sys.path[0], sys.argv[0].rsplit('.')[0] + '.log')
                 ,file_logging_level = 'DEBUG'
                 ,console_logging_level = 'WARNING'
                 ,custom_file_object = None
@@ -70,11 +70,11 @@ def new_Logger(  logger_name = 'main'
     # set up logging to file - see previous section for more details
     logging.basicConfig( level = getattr(logging, file_logging_level)
                         ,format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-                        ,datefmt = '%m-%d %H:%M'
+                        ,datefmt = '%d-%m-%y %H:%M'
                         ,filename = file_name
                         ,filemode = 'w')
     # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler(sys_stdout)
+    console = logging.StreamHandler(sys.stdout)
     console.setLevel(getattr(logging,console_logging_level))
     # tell the handler to use this format
     console.setFormatter(formatter)

@@ -4,11 +4,18 @@ from time import asctime
 from itertools import repeat, izip
 from collections import OrderedDict
 
-#from ghpythonlib.componentbase import executingcomponent as component
-#import Grasshopper, GhPython
-#import System
-#import Rhino
-#import rhinoscriptsyntax as rs
+try:
+    from ghpythonlib.componentbase import executingcomponent as component
+    import Grasshopper, GhPython
+    import System
+    import Rhino
+    import rhinoscriptsyntax as rs
+    import scriptcontext as sc
+    import ghpythonlib.treehelpers as th
+    GH_env_exists = True
+except:
+    GH_env_exists = False
+
 
 from ...tools import (  opts
                         ,convert_Data_tree_and_Geom_list_to_gdm
@@ -70,6 +77,9 @@ class TestCreateGeomDataMapping(unittest.TestCase):
           ]
 
     opts = opts['options']
+
+    #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
+
     input_discrete_expected = [  
         ( ([], [[[],[]],[[],[]],[[],[]]])          , OrderedDict([((),  [OrderedDict(), OrderedDict()])]) )
         ,( (None, None)                             , OrderedDict() )
@@ -79,8 +89,15 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                      OrderedDict([((), [ OrderedDict([('a',1),('b',2),('c',3)])
                                         ,OrderedDict([('x',7),('y',6.0),('z','A2')])
                                         ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
-                                        ])]) #type: ignore
-          )                     
+                                        ])]) 
+          )
+          ,(  ( uuids , [[['a','b','c'],['x','y','z'],[2,3,4]],[[1,2,3],[7,6.0,'A2'],['p','q','r']]] 
+              ),   
+                               OrderedDict( zip(uuids, [ OrderedDict([('a',1),('b',2),('c',3)])
+                                        ,OrderedDict([('x',7),('y',6.0),('z','A2')])
+                                        ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
+                                        ,OrderedDict()]) )                           
+            )                     
                               ]
 
     input_almost_expected = [ ( ( []
@@ -102,20 +119,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                                         ])]) #type: ignore
                         )
                       ]
-
-    #print('From testCreateGDM: ' + str([x[0] for x in input_discrete_expected]))
-    #print('From testCreateGDM: ' + str(input_discrete_expected[0][0]))
-    #print('From testCreateGDM: ' + ' '.join( str(x[0][i]) for x in [ input_discrete_expected[0] ] for i in (0,1)) )
-    #print('From testCreateGDM: ' + str(convert_Data_tree_and_Geom_list_to_gdm( input_discrete_expected[0][0][0]
-    #                                        ,input_discrete_expected[0][0][1]
-    #                                        ,opts 
-    #                                        )
-    #                                    )
-    #      )
-
-    #print('From testCreateGDM: ' + str(input_discrete_expected[0][0]))
-    #print('From testCreateGDM: ' + str(input_discrete_expected[0][0]))
-    
+   
     def conv_opts(self, x):
         return convert_Data_tree_and_Geom_list_to_gdm(x[0], x[1], self.opts)
 
@@ -138,17 +142,18 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                                                         ,self.input_not_equal
                                                         )
                         )
-    #print conv([], [[[],[]],[[],[]],[[],[]]], opts)
-    #print conv(Geom, Data, opts)
-    #sc.doc = Rhino.RhinoDoc.ActiveDoc
-    #objs = rs.ObjectsByType(4)
-    #print( conv( ['a','b','c','d']
-    #            ,[[[],[]]]*4+ [1,2,3]
-    #            ,opts).items() 
-    #        )
-    #sc.doc = ghdoc
-    #print( conv([], [12,34,23,68,45,23,3.0], opts))
 
+def test_empty_DataTree(self):
+        
+        #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
+    self.input_data_tree = [(([None], th.ListToTree(None)), OrderedDict())]
+    self.assertEqual(  *self.get_expected_and_actual(self.conv_opts
+                                                ,self.input_data_tree
+                                                )
+                    )
+
+if GH_env_exists:
+    TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
 def run_launcher_tests(self, go, Data, Geom, f_name, *args):
     import sys
