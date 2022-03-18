@@ -82,9 +82,11 @@ max_new_UserText_keys_to_make = 20
 rhino_user_text_key_format_str_to_read = 'sDNA input name={name} type={fieldtype} size={size}'  #30,000 characters tested!
 sDNA_output_user_text_key_format_str_to_read = 'sDNA output={name} run time={datetime}'  #30,000 characters tested!
 ####################################################################################
+#sDNA
+overwrite_input_shapefile = false
 #Plotting results
 sDNA_output_abbrev_to_graph = 'BtEn'
 ####################################################################################
 #Test
-message = 'Bouncey bouncey!  Bouncey bouncey!'
+message = 'Bouncey bouncey!  Bouncey bouncey! Installation options value in config.toml'
               

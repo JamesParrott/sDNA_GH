@@ -22,13 +22,12 @@ from ...tools import (  opts
                         )
 
 
-
-
-
 class FileAndStream():
     def __init__(self, file, stream):
         self.file = file
         self.stream = stream
+        if hasattr(file, 'fileno'):
+            self.fileno = file.fileno
         
     def write(self, *args):
         self.stream.write(*args)
@@ -44,6 +43,9 @@ class FileAndStream():
         
     def __exit__(self, *args):
         return self.file.__exit__(*args)    
+
+
+
 
 
 class TestStringMethods(unittest.TestCase):

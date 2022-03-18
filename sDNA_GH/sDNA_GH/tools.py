@@ -9,7 +9,7 @@ from os.path import (join, split, isfile, dirname, isdir, sep, normpath
                      )
 
 from re import match
-from subprocess import call
+from subprocess import check_output, call
 from time import asctime
 from collections import namedtuple, OrderedDict
 from itertools import chain, izip, repeat #, cycle
@@ -183,7 +183,7 @@ class HardcodedOptions():
     ####################################################################################
     #sDNA
     Default_sDNA_GH_file_path = join(dirname(dirname(__file__)), 'tmp_sDNA_GH_file.gh')
-    overwrite_input_shapefile = True
+    overwrite_input_shapefile = False
     #Plotting results
     sDNA_output_abbrev_to_graph = 'BtEn'
     plot_max = None
@@ -213,7 +213,7 @@ class HardcodedOptions():
     line_width = 4 # milimetres? 
     ####################################################################################
     #Test
-    message = 'Solid.  Solid as a rock!'
+    message = 'Solid.  Solid as a rock!  Hardcoded default value in tools.py'
 
 GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             ,1 : 'Forest'
@@ -290,7 +290,7 @@ def output(s, logging_level = "INFO", stream = None, logging_dict = {} ):
                             )
 
     logging_dict.get( logging_level
-                     ,lambda x : tmp_logs.extend( tuple(x, logging_level) ) 
+                     ,lambda x : tmp_logs.append( (x, logging_level) ) 
                      )(s)
 
     return logging_level + ' : ' + s + ' '
@@ -354,9 +354,10 @@ class WriteableFlushableList(list):
 
 
 
+
 #if 'logger' not in globals():
 
-
+report(options.message)
 
 
 ####################################################################################################################
@@ -525,9 +526,9 @@ if isfile(default_metas.config):
                         ,empty_NT #external_local_metas
                         ,'')
 
-    #print('After override: message == '+opts['options'].message)
+    report('After override: message == '+opts['options'].message)
 else:
-    print('Config file ' + default_metas.config + ' not found. ')    
+    output('Config file: ' + default_metas.config + ' not found. ','WARNING')    
 #
 ####################################################################################################################
 
@@ -547,6 +548,8 @@ if not hasattr(sys.modules['sDNA_GH.tools'], 'logger'):
                                         ,None # custom_file_object 
                                         ,options.logger_custom_level
                                         )
+
+    sDNA_logger = logging.getLogger('sDNA')
 
     report('Logging set up in sDNA_GH.tools ')
 
@@ -1070,7 +1073,8 @@ def get_objects_from_Rhino(f_name, gdm, opts_at_call):
 
 
     report('First objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[:3]))
-    report('type(gdm[0]) == ' + type(geom_data_map.keys()[0]).__name__ )
+    if len(geom_data_map) > 0:
+        report('type(gdm[0]) == ' + type(geom_data_map.keys()[0]).__name__ )
     report('....Last objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[-3:]))
 
     geom_data_map = override_gdm_with_gdm(geom_data_map, gdm, opts_at_call)
@@ -2169,12 +2173,16 @@ def get_specific_tool(tool_name, nick_name, local_opts):
             a = WriteableFlushableList()
 
             input_file = tool_opts[sDNA].input
+            
+
             if (not isinstance(input_file, str)) or not isfile(input_file): 
                 if (isinstance(f_name, str) and isfile(f_name)
                     and f_name.rpartition('.')[2] in [dot_shp[1:],'dbf','shx']):  
                     input_file = f_name
                     
-                if options.overwrite_input_shapefile or not isfile(input_file):
+                if options.read_from_Rhino_if_no_shp_data and (
+                   options.overwrite_input_shapefile 
+                   or not isfile(input_file)                  ):
                     retcode, input_file, gdm, tmp_a = write_objects_and_data_to_shapefile(input_file, gdm, opts_at_call)
                     a.write(tmp_a)
                 
@@ -2190,22 +2198,6 @@ def get_specific_tool(tool_name, nick_name, local_opts):
 
             output_file = get_unique_filename_if_not_overwrite(output_file, options)
             tool_opts[sDNA] = tool_opts[sDNA]._replace(output = output_file)
-
-            if not isfile(input_file) and options.read_from_Rhino_if_no_shp_data:
-                output('No geometry to write to shapefile.' 
-                      +'Reading geometry from Rhino...  '
-                      ,'WARNING')
-                (retcode, ret_f_name, gdm, _, a) = (
-                                run_tools([get_objects_from_Rhino
-                                          ,read_Usertext
-                                          ,write_objects_and_data_to_shapefile
-                                          ]
-                                          ,f_name
-                                          ,{}
-                                          ,opts_at_call
-                                          )
-                )
-                output('Read geometry from Rhino.  Starting sDNA... ','INFO')
 
             syntax = get_syntax_dict[tool_name][sDNA]( 
                                                     tool_opts[sDNA]._asdict() 
@@ -2226,7 +2218,22 @@ def get_specific_tool(tool_name, nick_name, local_opts):
                        + ' ' + syntax["config"]
                       )
             
-            return_code = call(command)   
+            sDNA_logger.debug(command)
+
+            try:
+                output_lines = check_output(command)
+                #print output_lines
+                return_code = 0
+            except:
+                return_code = 1
+            finally:
+                try:
+                    line_end = '\r\n' if '\r\n' in output_lines else '\n'
+                    for line in output_lines.split(line_end):
+                        sDNA_logger.debug(line)
+                except:
+                    pass
+            #return_code = call(command)   
             
             
 
