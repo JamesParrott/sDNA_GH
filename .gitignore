@@ -5,7 +5,7 @@
 .shp
 .dbf
 .shx
-.shp.names.csv
+.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

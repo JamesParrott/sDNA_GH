@@ -10,78 +10,69 @@ sDNA_GH_package = 'sDNA_GH'
 reload_config_and_other_modules_if_already_loaded = False
 sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH']
 
-#######################################################################################################################
-# Please note!
-# 
-#
-component_tool = None    # Note to user, if you rename this component in Grasshopper, 
-                                        # EITHER: add an entry in name_map dictionary below from the name you've
-                                        # given it to the name of the tool you want
-                                        # this component to actually run.
-                                        # 
-                                        # OR: hardcode component_tool here to the name in support_component_names,
-                                        # special_names, names_map, or in sDNA_tool_names, of the tool you want 
-                                        # and make sure metas.allow_components_to_change_type_on_rename == False
-                                        # Abbreviations are supported via the name_map dictionary below
-                    #Abbreviation = Tool Name
-name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
-                                 ,'Read_Usertext'
-                                 ,'Write_Shp'
-                                 ,'sDNAIntegral'
-                                 ,'Read_Shp'
-                                 ,'Write_Usertext'
-                                 ,'Parse_Data'
-                                 ,'Recolour_objects'
-                                 ]
-                    ,sDNA_Demo_old_plot = [
-                                  'Read_From_Rhino'
-                                 ,'Read_Usertext'
-                                 ,'Write_Shp'
-                                 ,'sDNAIntegral'
-                                 ,'Read_Shp'
-                                 ,'Write_Usertext'
-                                 ,'Visualise_Data'
-                                 ]
-                    ,Read_From_Rhino = 'get_objects_from_Rhino'
-                    ,Read_Usertext = 'read_Usertext'
-                    ,Write_Shp = 'write_objects_and_data_to_shapefile'
-                    ,Read_Shp = 'read_shapes_and_data_from_shapefile'
-                    ,Write_Usertext = 'write_data_to_Usertext'
-                    ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
-                    ,Visualise_Data = 'plot_data_on_Rhino_objects'
-                    ,Parse_Data = 'parse_data'
-                    ,Recolour_objects='recolour_objects'
-                    ,Recolor_objects ='recolour_objects'
-                    #,'main_sequence'
-                    #,'sDNAIntegral'
-                    #,'sDNASkim'
-                    ,sDNAIntFromOD = 'sDNAIntegralFromOD'
-                    #,'sDNAGeodesics'
-                    #,'sDNAHulls'
-                    #,'sDNANetRadii'
-                    ,sDNAAccessMap = 'sDNAAccessibilityMap'
-                    #,'sDNAPrepare'
-                    #,'sDNALineMeasures'
-                    #,'sDNALearn'
-                    #,'sDNAPredict'
-                )
-#######################################################################################################################
+
+
+#                     #Abbreviation = Tool Name
+# #######################################################################################################################
+# name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
+#                                  ,'Read_Usertext'
+#                                  ,'Write_Shp'
+#                                  ,'sDNAIntegral'
+#                                  ,'Read_Shp'
+#                                  ,'Write_Usertext'
+#                                  ,'Parse_Data'
+#                                  ,'Recolour_objects'
+#                                  ]
+#                     ,test_write_Usertext_req = [ 'Read_From_Rhino'
+#                                  ,'Read_Usertext'
+#                                  ,'Write_Shp'
+#                                  ,'sDNAIntegral'
+#                                  ,'Read_Shp'
+#                                  ,'Write_Usertext'
+#                                  ,'Parse_Data'
+#                                  ,'Recolour_objects'
+#                                  ]
+#                     ,sDNA_Demo_old_plot = [
+#                                   'Read_From_Rhino'
+#                                  ,'Read_Usertext'
+#                                  ,'Write_Shp'
+#                                  ,'sDNAIntegral'
+#                                  ,'Read_Shp'
+#                                  ,'Write_Usertext'
+#                                  ,'Visualise_Data' #TODO: Delete.  Deprecated.
+#                                  ]
+#                     ,Read_From_Rhino = 'get_objects_from_Rhino'
+#                     ,Read_Usertext = 'read_Usertext'
+#                     ,Write_Shp = 'write_objects_and_data_to_shapefile'
+#                     ,Read_Shp = 'read_shapes_and_data_from_shapefile'
+#                     ,Write_Usertext = 'write_data_to_Usertext'
+#                     ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
+#                     ,Visualise_Data = 'plot_data_on_Rhino_objects'  #TODO: Delete.  Deprecated.
+#                     ,Parse_Data = 'parse_data'
+#                     ,Recolour_objects='recolour_objects'
+#                     ,Recolor_objects ='recolour_objects'
+#                     #,'main_sequence'
+#                     #,'sDNAIntegral'
+#                     #,'sDNASkim'
+#                     ,sDNAIntFromOD = 'sDNAIntegralFromOD'
+#                     #,'sDNAGeodesics'
+#                     #,'sDNAHulls'
+#                     #,'sDNANetRadii'
+#                     ,sDNAAccessMap = 'sDNAAccessibilityMap'
+#                     #,'sDNAPrepare'
+#                     #,'sDNALineMeasures'
+#                     #,'sDNALearn'
+#                     #,'sDNAPredict'
+#                 )
+# #######################################################################################################################
 
 
 
 import os, sys 
 from os.path import isfile, isdir, join, split, dirname
 from importlib import import_module
-if component_tool == None:
-    try:
-        component_tool = ghenv.Component.NickName #type: ignore
-    except:
-        component_tool = "selftest"
-        import unittest
-try:        
-    from ghpythonlib.componentbase import executingcomponent as component
-except ImportError:
-    component = object
+
+
 
 #import System, GhPython
 #import rhinoscriptsyntax as rs
@@ -99,10 +90,10 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
     message_with_level =  'sDNA_GH_launcher' + '  ' + level + ' : ' + message
     #print(message_with_level)
     try:
-        sDNA_GH.tools.output(message, level, inst)
+        sDNA_GH_tools.output(message, level, inst)
     except:
         try:
-            getattr(sDNA_GH.tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
+            getattr(sDNA_GH_tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
         except:
             print(message_with_level)
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
@@ -191,15 +182,17 @@ try:
                                  ) 
                             ]
 except:
-    pass
+    raise ImportError(output( 'Unable to import the main sDNA_GH Python Package.  '
+                             +'Check the folder sDNA_GH containing the package '
+                             +'is a sub folder of the '
+                             +'sDNA_GH folder containing the plug-in components'
+                             +'and the installation procedure was done correctly'
+                             +'as pe as per README.md'
+                             ,'ERROR'
+                             )
+                      )
 
-class sDNA_GH():
-    pass
 
-sDNA_GH.tools, sDNA_GH_path = load_modules(  None
-                                            ,sDNA_GH_package + '.tools'
-                                            ,sDNA_GH_search_paths
-                                            )
 
 
 #global sDNA_GH, sDNA_GH_search_paths, component_tool
@@ -212,35 +205,11 @@ sDNA_GH.tools, sDNA_GH_path = load_modules(  None
 
   
 
-def is_file_any_type(s):
-    return isinstance(s, str) and isfile(s)
+#def is_file_any_type(s):
+#    return isinstance(s, str) and isfile(s)
 
-
-class MyComponent(component):
-
-    ghdoc = ghdoc #type: ignore
-    Component = ghenv.Component #type: ignore
-    RhinoDoc = Rhino.RhinoDoc
-
-    opts = sDNA_GH.tools.opts                       
-                        # mutable.  Reference breakable and remakeable 
-                        # to de sync / sync local opts to global opts
-    tools_dict = sDNA_GH.tools.tools_dict
-    local_metas = sDNA_GH.tools.local_metas   # immutable.  controls syncing /
-                                        # desyncing / read / write of the
-                                        # above, opts.
-                                        # Although local, can be set on 
-                                        # groups of components using the 
-                                        # default section of a project 
-                                        # config.ini, or passed as a
-                                        # Grasshopper parameter between
-                                        # components
-    logger = sDNA_GH.tools.logger 
-
-    sDNA_GH_path = sDNA_GH_path
-    sDNA_GH_package = sDNA_GH_package
-    component_tool = component_tool
-    name_map = name_map
+    #@staticmethod
+    #load_modules = load_modules
 
 
 
@@ -260,48 +229,51 @@ class MyComponent(component):
 
 
 
-    my_tools = None
-    #@staticmethod
-    load_modules = load_modules
 
+try:
+    nick_name = ghenv.Component.NickName #type: ignore
+except:
+    nick_name = 'selftest'
 
-run_normally = component_tool.replace(' ','').replace('_','').lower() != 'selftest'
+if nick_name.replace(' ','').replace('_','').lower() != 'selftest':  
 
-if run_normally:  # if running from command line, no ghenv so previous code 
-                  # should've set component_tool=='selftest', 
-    MyComponent = sDNA_GH.tools.sDNA_GH_component_deco(MyComponent) 
+    sDNA_GH_tools, _ = load_modules( None
+                                    ,sDNA_GH_package + '.tools'
+                                    ,sDNA_GH_search_paths
+                                    )                  
+    MyComponent = sDNA_GH_tools.sDNA_GH_Component(load_modules)
+    # MyComponent = sDNA_GH_tools.sDNA_GH_component_deco(MyComponent) 
 else: # Run self tests:
     if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
         from .tests.unit_tests import unit_tests_sDNA_GH
-        sDNA_GH.unit_tests = unit_tests_sDNA_GH
     else:
-        sDNA_GH.unit_tests, _ = load_modules( None
+        unit_tests_sDNA_GH, _ = load_modules( None
                                              ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
                                              ,sDNA_GH_search_paths
-                                            )
-    FileAndStream = sDNA_GH.unit_tests.FileAndStream
+                                             )
+    #FileAndStream = unit_tests_sDNA_GH.FileAndStream
       
  
 
-    MyComponent.RunScript = sDNA_GH.unit_tests.run_launcher_tests 
+    MyComponent = unit_tests_sDNA_GH.sDNA_GH_Test_Runner_Component #run_launcher_tests 
     
-    import unittest
-    TestComponent = sDNA_GH.tools.sDNA_GH_component_deco(unittest.TestCase)
+    #import unittest
+    #TestComponent = sDNA_GH.tools.sDNA_GH_component_deco(unittest.TestCase)
 
-    TestStringMethods = sDNA_GH.unit_tests.TestStringMethods
+    #TestStringMethods = unit_tests_sDNA_GH.TestStringMethods
 
         
-    from time import asctime
+    #from time import asctime
     
-    tests_log_file_suffix = '_test_results'
-    try:
-        file_path_no_ext = ghdoc.Path.rpartition('.')[0] #type: ignore
-    except:
-        file_path_no_ext = join( sys.path[0]
-                                ,__file__.rpartition('.')[0]
-                                )
-
-    test_log_file_path = (    file_path_no_ext
-                            + tests_log_file_suffix
-                            + '.log' 
-                         )
+   # tests_log_file_suffix = '_test_results'
+    #try:
+    #    file_path_no_ext = ghdoc.Path.rpartition('.')[0] #type: ignore
+    #except:
+    #    file_path_no_ext = join( sys.path[0]
+    #                            ,__file__.rpartition('.')[0]
+    #                            )
+    #
+    #test_log_file_path = (    file_path_no_ext
+    #                        + tests_log_file_suffix
+    #                        + '.log' 
+    #                     )

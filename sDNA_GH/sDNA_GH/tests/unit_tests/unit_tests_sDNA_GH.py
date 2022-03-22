@@ -15,6 +15,7 @@ try:
     GH_env_exists = True
 except:
     GH_env_exists = False
+    component = object
 
 
 from ...tools import (  opts
@@ -157,29 +158,30 @@ def test_empty_DataTree(self):
 if GH_env_exists:
     TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
-def run_launcher_tests(self, go, Data, Geom, f_name, *args):
-    import sys
-    tests_log_file_suffix = '_test_results'
-    test_log_file_path = (    self.ghdoc.Path.rpartition('.')[0]  #type: ignore
-                            + tests_log_file_suffix
-                            + '.log' )
-    test_log_file = open(test_log_file_path,'at')
-    output_double_stream = FileAndStream(test_log_file, sys.stderr)
-    output_double_stream.write( 'Unit test run started at: ' 
-                                +asctime()
-                                +' ... \n\n')
-    with output_double_stream as o:
-        #suite = unittest.TestLoader().loadTestsFromTestCase(TestStringMethods)
-        path = self.sDNA_GH_path
-        discovered_suite = unittest.TestLoader().discover( path 
-                                                          ,'*test*.py'
-                                                          )
-        #unittest.TextTestRunner(o, verbosity=2).run(suite)
-        unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
-        
-        
-    a=''
-    return a   
+class sDNA_GH_Test_Runner_Component(component):
+    def run_launcher_tests(self, go, Data, Geom, f_name, *args):
+        import sys
+        tests_log_file_suffix = '_test_results'
+        test_log_file_path = (    self.ghdoc.Path.rpartition('.')[0]  #type: ignore
+                                + tests_log_file_suffix
+                                + '.log' )
+        test_log_file = open(test_log_file_path,'at')
+        output_double_stream = FileAndStream(test_log_file, sys.stderr)
+        output_double_stream.write( 'Unit test run started at: ' 
+                                    +asctime()
+                                    +' ... \n\n')
+        with output_double_stream as o:
+            #suite = unittest.TestLoader().loadTestsFromTestCase(TestStringMethods)
+            path = self.sDNA_GH_path
+            discovered_suite = unittest.TestLoader().discover( path 
+                                                            ,'*test*.py'
+                                                            )
+            #unittest.TextTestRunner(o, verbosity=2).run(suite)
+            unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
+            
+            
+        a=''
+        return a   
 
 """ if ( __name__ == '__main__' and
      '__file__' in dir(__builtins__) and
