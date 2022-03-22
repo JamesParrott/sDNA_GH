@@ -285,7 +285,16 @@ def load_toml_file(  config_path = join(sys_path[0],'config.toml')
                     ,**kwargs
                    ):
     #type (namedtuple, str) -> namedtuple
+
+    # Please note, .toml tables are mapped to correctly to OrderedDictionaries
+    # by the line below.  But if this is then 
+    # passed into override_namedtuple, it will pass up through the normal 
+    # heirarchy of functions in this module, finally having 
+    # make_nested_namedtuple called on it, turning the .toml table
+    # into a namedtuple.
+    
     return load(config_path, _dict = OrderedDict)      #toml.decoder
+
 
 
 

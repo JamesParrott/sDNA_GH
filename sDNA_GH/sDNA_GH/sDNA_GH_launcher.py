@@ -4,81 +4,20 @@ __author__ = 'James Parrott'
 __version__ = '0.01'
 
 
-
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
 sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH']
 
 
-
-#                     #Abbreviation = Tool Name
-# #######################################################################################################################
-# name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
-#                                  ,'Read_Usertext'
-#                                  ,'Write_Shp'
-#                                  ,'sDNAIntegral'
-#                                  ,'Read_Shp'
-#                                  ,'Write_Usertext'
-#                                  ,'Parse_Data'
-#                                  ,'Recolour_objects'
-#                                  ]
-#                     ,test_write_Usertext_req = [ 'Read_From_Rhino'
-#                                  ,'Read_Usertext'
-#                                  ,'Write_Shp'
-#                                  ,'sDNAIntegral'
-#                                  ,'Read_Shp'
-#                                  ,'Write_Usertext'
-#                                  ,'Parse_Data'
-#                                  ,'Recolour_objects'
-#                                  ]
-#                     ,sDNA_Demo_old_plot = [
-#                                   'Read_From_Rhino'
-#                                  ,'Read_Usertext'
-#                                  ,'Write_Shp'
-#                                  ,'sDNAIntegral'
-#                                  ,'Read_Shp'
-#                                  ,'Write_Usertext'
-#                                  ,'Visualise_Data' #TODO: Delete.  Deprecated.
-#                                  ]
-#                     ,Read_From_Rhino = 'get_objects_from_Rhino'
-#                     ,Read_Usertext = 'read_Usertext'
-#                     ,Write_Shp = 'write_objects_and_data_to_shapefile'
-#                     ,Read_Shp = 'read_shapes_and_data_from_shapefile'
-#                     ,Write_Usertext = 'write_data_to_Usertext'
-#                     ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
-#                     ,Visualise_Data = 'plot_data_on_Rhino_objects'  #TODO: Delete.  Deprecated.
-#                     ,Parse_Data = 'parse_data'
-#                     ,Recolour_objects='recolour_objects'
-#                     ,Recolor_objects ='recolour_objects'
-#                     #,'main_sequence'
-#                     #,'sDNAIntegral'
-#                     #,'sDNASkim'
-#                     ,sDNAIntFromOD = 'sDNAIntegralFromOD'
-#                     #,'sDNAGeodesics'
-#                     #,'sDNAHulls'
-#                     #,'sDNANetRadii'
-#                     ,sDNAAccessMap = 'sDNAAccessibilityMap'
-#                     #,'sDNAPrepare'
-#                     #,'sDNALineMeasures'
-#                     #,'sDNALearn'
-#                     #,'sDNAPredict'
-#                 )
-# #######################################################################################################################
-
-
-
 import os, sys 
 from os.path import isfile, isdir, join, split, dirname
 from importlib import import_module
 
-
-
-#import System, GhPython
-#import rhinoscriptsyntax as rs
-#import scriptcontext as sc
-#import ghpythonlib.treehelpers as th
-import Rhino
+try:        
+    from ghpythonlib.componentbase import executingcomponent as component
+except ImportError:
+    component = object
 
 
 def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
@@ -99,6 +38,7 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
             if hasattr(inst,'a') and hasattr(inst.a,'write'):
                 inst.a.write("From sDNA_GH_launcher via inst: " + message_with_level)
     return message_with_level
+
 
 def strict_import(  module_name = ''
                    ,folder = ''
@@ -143,6 +83,7 @@ def strict_import(  module_name = ''
     m = import_module(module_name, '')           
     sys.path = tmp
     return m       
+
 
 def load_modules(self, m_names, path_lists):
     m_names = m_names if isinstance(m_names, tuple) else [m_names] 
@@ -193,57 +134,29 @@ except:
                       )
 
 
-
-
-#global sDNA_GH, sDNA_GH_search_paths, component_tool
-
-                        
-
-
-
-
-
-  
-
-#def is_file_any_type(s):
-#    return isinstance(s, str) and isfile(s)
-
-    #@staticmethod
-    #load_modules = load_modules
-
-
-
-
-    # log_file = opts['options'].log_file  
-    # log_file_dir = opts['options'].logs_subdirectory
-    # if isdir(log_file_dir):
-    #     logger = sDNA_GH.tools.wrapper_logging.new_Logger( 
-    #                                     'sDNA_GH'
-    #                                     ,log_file 
-    #                                     ,opts['options'].logger_file_level
-    #                                     ,opts['options'].logger_console_level
-    #                                     )
-    # else:
-    #     pass
-    #     output('Invalid log file dir ' + log_file_dir + ' ', 'ERROR')
-
-
-
-
 try:
     nick_name = ghenv.Component.NickName #type: ignore
 except:
     nick_name = 'selftest'
 
-if nick_name.replace(' ','').replace('_','').lower() != 'selftest':  
 
-    sDNA_GH_tools, _ = load_modules( None
-                                    ,sDNA_GH_package + '.tools'
-                                    ,sDNA_GH_search_paths
-                                    )                  
-    MyComponent = sDNA_GH_tools.sDNA_GH_Component(load_modules)
-    # MyComponent = sDNA_GH_tools.sDNA_GH_component_deco(MyComponent) 
-else: # Run self tests:
+sDNA_GH_tools, _ = load_modules( None
+                                ,sDNA_GH_package + '.tools'
+                                ,sDNA_GH_search_paths
+                                )         
+
+class MyComponent(component):
+    pass  # Required.  Idiomatic to Grasshopper.  Must be called "MyComponent"  
+          # too, otherwise Grasshopper may not find the class building on 
+          # component.  Despite component being passed to the class decorator
+          # and overwriting this very class immediately below.  
+          # Initial parser step / scope check trips this?
+
+MyComponent = sDNA_GH_tools.component_decorator(component, load_modules)
+
+
+if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
+
     if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
         from .tests.unit_tests import unit_tests_sDNA_GH
     else:
@@ -251,29 +164,6 @@ else: # Run self tests:
                                              ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
                                              ,sDNA_GH_search_paths
                                              )
-    #FileAndStream = unit_tests_sDNA_GH.FileAndStream
-      
- 
 
-    MyComponent = unit_tests_sDNA_GH.sDNA_GH_Test_Runner_Component #run_launcher_tests 
-    
-    #import unittest
-    #TestComponent = sDNA_GH.tools.sDNA_GH_component_deco(unittest.TestCase)
-
-    #TestStringMethods = unit_tests_sDNA_GH.TestStringMethods
-
-        
-    #from time import asctime
-    
-   # tests_log_file_suffix = '_test_results'
-    #try:
-    #    file_path_no_ext = ghdoc.Path.rpartition('.')[0] #type: ignore
-    #except:
-    #    file_path_no_ext = join( sys.path[0]
-    #                            ,__file__.rpartition('.')[0]
-    #                            )
-    #
-    #test_log_file_path = (    file_path_no_ext
-    #                        + tests_log_file_suffix
-    #                        + '.log' 
-    #                     )
+    MyComponent._RunScript = MyComponent.RunScript
+    MyComponent.RunScript = unit_tests_sDNA_GH.run_launcher_tests  

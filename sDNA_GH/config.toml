@@ -18,7 +18,7 @@ sDNA_UISpec_path = 'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
 #sDNA_search_paths += [join(os.getenv('APPDATA'), get_stem_and_folder(sDNA_search_paths[0])[1]) ]
 auto_update_Rhino_doc_path = true
 #########################################################################################
-[[metas.name_map]]
+[metas.name_map]
 sDNA_Demo = [   
             'Read_From_Rhino',  # '' maket literal strings in toml, but harmless.
             'Read_Usertext',

@@ -30,6 +30,7 @@ from System.Drawing import Color as Colour
 from Grasshopper.Kernel.Types import GH_Colour
 from Grasshopper import DataTree
 from Grasshopper.GUI.Gradient import GH_Gradient
+import GhPython
 from ghpythonlib.components import ( BoundingBox
                                 ,Rectangle
                                 ,Legend 
@@ -38,11 +39,7 @@ from ghpythonlib.components import ( BoundingBox
                                 ,YZPlane
                                 ,CustomPreview
                                 )
-import GhPython
-try:        
-    from ghpythonlib.componentbase import executingcomponent as component
-except ImportError:
-    component = object
+
 
 
 if 'ghdoc' not in globals():
@@ -112,7 +109,6 @@ class HardcodedMetas():
                                     ,'Write_Shp'
                                     ,'sDNAIntegral'
                                     ,'Read_Shp'
-                                    ,'Write_Usertext'
                                     ,'Parse_Data'
                                     ,'Recolour_objects'
                                     ]
@@ -148,6 +144,7 @@ class HardcodedMetas():
                         #,'sDNALearn'
                         #,'sDNAPredict'
                     )
+    name_map = namedtuple('name_map',name_map.keys())(**name_map)
 #######################################################################################################################
     #share_installation_defaults_key = "sDNA_GH_installation_default_options"
     #share_sDNA_tools_key = "sDNA_UI_Spec_tools"
@@ -243,9 +240,9 @@ class HardcodedOptions():
     overwrite_input_shapefile = False
     auto_get_objects_from_Rhino = True
     auto_read_Usertext = True
-    auto_write_new_Shp_file = True
-    auto_read_Shp = True
-    auto_plot_Shp_data = True
+    auto_write_new_Shp_file = False
+    auto_read_Shp = False
+    auto_plot_Shp_data = False
     #Plotting results
     sDNA_output_abbrev_to_graph = 'BtEn'
     plot_max = None
@@ -379,6 +376,7 @@ def report_value(x, x_val = None):
 
     return report(str(names) + ' == ' + str(x_val)+' ')
 
+#report_value(component)
 #
 ####################################################################################################################
 #
@@ -1078,56 +1076,92 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
     return geom_data_map
 #
 # 
-def components_are_in_the_GH_Doc(name):
+def are_GhPython_components_in_GH(compnt, names):
     #type(str)->bool
-    doc = ghenv.Component.OnPingDocument() #type: ignore
+    doc = compnt.Attributes.Owner.OnPingDocument() #type: ignore
     return any( type(GH_component) is GhPython.Component.ZuiPythonComponent 
-                and GH_component.NickName == name
+                and GH_component.NickName in names
                 for GH_component in doc.Objects
               )
 #
 #
-def get_downstream_GhPython_components(comp):
-    return [r.Attributes.GetTopLevel.DocObject
-            for x in comp.Params.Output 
-            for r in x.Recipients
-            if type(r) is GhPython.Component.ZuiPythonComponent]
+def downstream_components(compnt):
+    return [recipient.Attributes.GetTopLevel.DocObject
+            for param in compnt.Params.Output 
+            for recipient in param.Recipients
+            ]
 
-def component_is_downstream(self, names):
-    downstream_components = get_downstream_GhPython_components(self)
-    return (any(name in [x.NickName for x in downstream_components] for name in names) or
-            any(component_is_downstream(y, names) for x in downstream_components for y in x.Params.Output)
-        print [x.Name for x in [r.Attributes.GetTopLevel.DocObject for x in self.Params.Output for r in x.Recipients][0].Params.Output]
 
-        
+def are_GhPython_downstream(names, compnt):
+    comps = downstream_components(compnt)
+    GhPython_compnt_NickNames = [ comp.NickName for comp in comps
+                                  if type( comp.Attributes.GetTopLevel.DocObject ) 
+                                     is GhPython.Component.ZuiPythonComponent
+                                ]
+    return ( any(name in GhPython_compnt_NickNames for name in names) or
+             any(are_GhPython_downstream(names, comp) for comp in comps) )
+
+def insert_tool_after_specials(   compnt
+                                 ,tools
+                                 ,tool
+                                 ,is_special
+                                 ,not_special_names
+                                 ):
+        if any(tool.func_name not in not_special_names for tool in tools):  
+                            # Not just last tool.  Else no point checking more
+                            # than one downstream component?  The user may 
+                            # wish to do other stuff after the tool
+                            # and name_map is now a meta option too.
+            special_names = [name for name, tool_list in tools_dict.items() 
+                             if tool in tool_list]
+                            # tools_dict is keyed on all present nick names 
+                            # as well as names of tools defined in this module
+
+        if (  not are_GhPython_components_in_GH(compnt, special_names) and
+              not are_GhPython_downstream(special_names, compnt)     ):
+                             # check tool not already there in another 
+                             # component that will be executed next.
+                             # TODO: None in entire canvas is too strict?
+            for i, tool in enumerate(tools):
+                if (  is_special(tool)  
+                      and tool not in tools[i:]  ):
+                         # check tool not already inserted 
+                         # in tools after specials
+                    tools.insert(i+1, tool)
+
+
+#        print [x.Name for x in [r.Attributes.GetTopLevel.DocObject for x in self.Params.Output for r in x.Recipients][0].Params.Output]
 #
 #
-def run_tools(self, tools, f_name, gdm, opts_at_call):
+def run_tools(self, my_tools, f_name, gdm, opts_at_call):
     #type(type[any], list, str, dict, dict)-> int, str, dict, WriteableFlushableList
     a = WriteableFlushableList()
 
-    if any(tool.func_name not in sDNA_GH_names for tool in tools):  #Not just last.  Else no point checking more
-                                                                     # than one downstream component?
-        assert *(hasattr(self.opts['options'].UISpec, tools[-1].func_name)
-                ,'Unknown tool name.  Rename component or adjust name_map. ')
+    tools = my_tools[:]
 
-        if (options.auto_read_Shp and 
-            not component_is_downstream(self, name) and
-            not components_are_in_the_GH_Doc('Read_Shp')):
-            pass
-    if ( options.auto_plot_Shp_data and 
-        
-        not connected_to_a_plot_component and
-        not Plot_components_are_in_the_GH_Doc and
-        no_subsequent_Plot_tool_in_self_my_tools_after_this_tool ):
-        pass    
+    if options.auto_read_Shp:
+        insert_tool_after_specials(   self
+                                     ,tools
+                                     ,read_shapes_and_data_from_shapefile
+                                     ,lambda tool : hasattr(self.opts['options'].UISpec, tool.func_name)
+                                     ,sDNA_GH_names
+                                     )
+    if options.auto_plot_Shp_data:
+        insert_tool_after_specials(   self
+                                     ,tools
+                                     ,recolour_objects
+                                     ,lambda tool : tool == read_shapes_and_data_from_shapefile
+                                     ,[]
+                                     )        
+
+
 
     for tool in tools:
         if tool:
-            #report_value(tool)
-            #report_value(f_name)
-            #report_value(gdm)
-            #report_value(opts_at_call)
+            report_value(tool)
+            report_value(f_name)
+            report_value(gdm)
+            report_value(opts_at_call)
 
             returncode, f_name, gdm, tmp_a = tool(  f_name 
                                                     ,gdm
@@ -1135,8 +1169,12 @@ def run_tools(self, tools, f_name, gdm, opts_at_call):
                                                     )
             report('Tool name == ' + tool.func_name + ' return code == ' + str(returncode))
             a.write(tmp_a)
-            #if returncode != 0:
-            #    break
+            if returncode != 0:
+                raise Exception(output(  'Tool ' + tool.func_name + ' exited '
+                                        +'with status code ' 
+                                        + str(returncode),'ERROR'
+                                        )
+                                )
         else:
             raise TypeError(output('Bad tool == ' + str(tool), 'ERROR'))
     return returncode, f_name, gdm, a        
@@ -1934,9 +1972,10 @@ def recolour_objects(f_name, geom_data_map, opts_at_call):
             target_doc = is_an_obj_in_GH_or_Rhino(obj)    
             if target_doc:
                 sc.doc = target_doc
-                if target_doc == ghdoc:
+                if False: #target_doc == ghdoc:
                     GH_objs_to_recolour[obj] = new_colour 
-                elif target_doc == Rhino.RhinoDoc.ActiveDoc:
+                #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
+                else:
                     rs.ObjectColor(obj, new_colour)
                     objects_to_widen_lines.append(obj)
 
@@ -1960,9 +1999,10 @@ def recolour_objects(f_name, geom_data_map, opts_at_call):
                                     )
 
     sc.doc = ghdoc
-    CustomPreview( list(GH_objs_to_recolour.keys())
-                  ,list(GH_objs_to_recolour.values())
-                  )
+    #[x.Geometry for x in list(GH_objs_to_recolour.keys())]
+    #CustomPreview( list(GH_objs_to_recolour.keys())
+    #              ,list(GH_objs_to_recolour.values())
+    #              )
 
 
     keys = objects_to_widen_lines
@@ -2104,20 +2144,28 @@ def plot_data_on_Rhino_objects(f_name, geom_data_map, opts_at_call):
 
 def list_contains(check_list, name, name_map):
     # type( MyComponent, list(str), str, dict(str, str) ) -> bool
-
-    return name in check_list or (name in name_map and name_map[name] in check_list)
+    name_map
+    return name in check_list or (name in name_map._fields and 
+                                  getattr(name_map, name) in check_list
+                                  )
+    #return name in check_list or (name in name_map and name_map[name] in check_list)
 
 
 def no_name_clashes(name_map, list_of_names_lists):
     #type( MyComponent, dict(str, str), list(str) ) -> bool
 
     num_names = sum(len(names_list) for names_list in list_of_names_lists)
-    super_set = set(name for names_list in list_of_names_lists for name in names_list)
+
+    super_set = set(name for names_list in list_of_names_lists 
+                         for name in names_list
+                   )
     # Check no duplicated name entries in list_of_names_lists.
     if set(['options', 'metas']) & super_set:
         return False  # Clashes with internal reserved names.  Still best avoided even though tool options
                       # are now a level below (under the sDNA version key)
-    return num_names == len(super_set) and not any([x == name_map[x] for x in name_map])  # No trivial cycles
+    return num_names == len(super_set) and not any([x == getattr(name_map, x) 
+                                                   for x in name_map._fields])  
+                                                   # No trivial cycles
 
 
 
@@ -2215,13 +2263,13 @@ def component_names_factory(name_map): # name_map is unknown in this module so
         assert clash_test_passed
                                                                 # No nick names allowed that are 
                                                                 # a tool's full / real name.
-        names_and_nicknames = names_list + name_map.keys()   
+        names_and_nicknames = names_list + name_map._fields #name_map.keys()   
         def points_to_valid_tools(tool_names):
             if not isinstance(tool_names, list):
                 tool_names = [tool_names]
             return all(name in names_and_nicknames for name in tool_names)
-        invalid_name_map_vals = {key : val for key, val in name_map.items()
-                                     if not points_to_valid_tools(val)}
+        invalid_name_map_vals = {key : val for key, val in name_map._asdict.items()
+                                           if not points_to_valid_tools(val)}
         # TODO.  Lowest priority: Check there are no non-trivial cycles.  this is only devtool validation code - 
         #        not likely a user will expect
         #        correct results if they alter name_map to include a non-trivial cycle.
@@ -2239,8 +2287,8 @@ def component_names_factory(name_map): # name_map is unknown in this module so
         #return special_names + support_component_names + sDNA_tool_names, None, None, None, self.a 
 
         ret_names = ([name for name in names_list 
-                           if name not in name_map.values()] 
-                     + list(name_map.keys())
+                           if name not in name_map] #.values()] 
+                     + list(name_map._fields) #keys())
                     )
 
         return 0, None, {}, ret_names, #names_list
@@ -2359,11 +2407,12 @@ def get_specific_tool(tool_name, nick_name, local_opts):
 
 
 def tool_factory(self, nick_name, name_map, local_opts):  
-    #type( str, dict, dict ) -> list
+    #type( type[any], str, namedtuple, dict ) -> list
 
     #sDNA, UISpec, run = local_opts['options'].sDNA, local_opts['options'].UISpec, local_opts['options'].run
 
     #global tools_dict # mutable - access through normal parent module namespace
+
     sDNA = local_opts['metas'].sDNA
     global tools_dict
     # A special component that takes its nickname from the parameters provided,
@@ -2379,7 +2428,7 @@ def tool_factory(self, nick_name, name_map, local_opts):
  
     if isinstance(nick_name, Hashable):
         if nick_name not in tools_dict or sDNA not in opts.get(nick_name, {}):
-            map_result = name_map.get(nick_name, nick_name)  # in case nick_name == tool_name
+            map_result = getattr(name_map, nick_name, nick_name)  # in case nick_name == tool_name
             if not isinstance(map_result, str):
                 output('Processing list of tools found for '
                        + nick_name, 'DEBUG')
@@ -2422,308 +2471,325 @@ def tool_factory(self, nick_name, name_map, local_opts):
         output('Non-hashable variable given for key' + str(nick_name),'ERROR')
         return [None]
 
-#def sDNA_GH_component_deco(BaseClass):
-#type:(type[type]) -> type[type]
-#    class MyComponent(BaseClass):
-class sDNA_GH_Component(component):
-    
-    #GH Environment `magic' global variables:
-    ghdoc = ghdoc #type: ignore
-    Component = ghenv.Component #type: ignore
-    RhinoDoc = Rhino.RhinoDoc
-
-    # Options from defautls and installation config.toml
-    opts = opts  
-    local_metas = local_metas   # immutable.  controls syncing /
-                                # desyncing / read / write of the
-                                # above, opts.
-                                # Although local, can be set on 
-                                # groups of components using the 
-                                # default section of a project 
-                                # config.ini, or passed as a
-                                # Grasshopper parameter between
-                                # components
-
-    #sDNA_GH_path = sDNA_GH_path
-    #sDNA_GH_package = sDNA_GH_package
-
-    def update_tools(self):
-        tools = tool_factory(    self 
-                                ,self.nick_name
-                                ,self.opts['metas'].name_map
-                                ,self.opts)
-        for tool in tools:
-            # some are unique closures so no #if not hasattr(self, tool.func_name):
-            setattr(self, tool.func_name, tool)
-            self.my_tools +=[getattr(self, tool.func_name)]
-            
-
-        output('My_tools ==\n'
-                +'\n'.join([tool.func_name for tool in self.my_tools])
-                ,'DEBUG')
 
 
-    def update_name(self, new_name = 'selftest'):       
-        self.nick_name = new_name 
-        self.logger = logger.getChild(self.nick_name)
-        self.update_tools()
+def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_search_paths):
+    modules = ()
+    try:
+        tmp = sys.path
+        for test_path in path_lists: 
+            #TODO support nested lists
+            sys.path = [test_path]
+            if all(isfile(join(test_path, m_name) + '.py' )
+                    for m_name in m_names):
+                path = test_path
+                break
+        for m_name in m_names:
+            modules += ( import_module(m_names[0],''), )
+    finally:
+        sys.path = tmp
+
+    return modules + (path,)
+    #return tuple(strict_import(name, path, '') for name in m_names) + (path,)
+    #return self.UISpec, self.run, path
 
 
+def component_decorator(BaseClass, loader = module_loader):
+    #type:(type[type], function) -> type[type]
+    class sDNA_GH_Component(BaseClass):
         
-    def update_sDNA(self):
-        output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
-        output('self.opts[metas].sDNA == (' + str(self.opts['metas'].sDNAUISpec)
-                + ', ' + self.opts['metas'].runsdna + ') ','DEBUG')
+        #GH Environment `magic' global variables:
+        ghdoc = ghdoc #type: ignore
+        #Component = ghenv.Component #type: ignore
+        RhinoDoc = Rhino.RhinoDoc
 
-        if hasattr(self,'sDNA'):
-            output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
-        
-        sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
-                ,self.opts['metas'].runsdna )   # a dict key => tuple not list
+        # Options from defautls and installation config.toml
+        opts = opts  
+        local_metas = local_metas   # immutable.  controls syncing /
+                                    # desyncing / read / write of the
+                                    # above, opts.
+                                    # Although local, can be set on 
+                                    # groups of components using the 
+                                    # default section of a project 
+                                    # config.ini, or passed as a
+                                    # Grasshopper parameter between
+                                    # components
 
-        if not hasattr(self,'sDNA') or self.sDNA != sDNA:
-            if hasattr(self, 'load_modules'):
-                self.UISpec, self.run, path = self.loader(sDNA, self.opts['metas'].sDNA_search_paths) 
-            else:
-                try:
-                    tmp = sys.path
-                    for test_path in self.opts['metas'].sDNA_search_paths: 
-                        #TODO support nested lists
-                        sys.path = [test_path]
-                        if all(isfile(join(test_path, sDNA[i]) + '.py' )
-                                for i in [0,1]):
-                            break
-                    self.UISpec = import_module(sDNA[0],'')
-                    self.run = import_module(sDNA[1],'')
-                    path = test_path
-                finally:
-                    sys.path = tmp
+        #sDNA_GH_path = sDNA_GH_path
+        #sDNA_GH_package = sDNA_GH_package
 
-
-            output('Self has attr UISpec == ' + str(hasattr(self,'UISpec'))+' ' , 'DEBUG')
-            output('Self has attr run == ' + str(hasattr(self,'run'))+' ' ,'DEBUG')
-
-            self.sDNA = sDNA
-            self.sDNA_path = path
-            self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
-                                                                ,sDNA_path = path 
-                                                            )
-            self.opts['options'] = self.opts['options']._replace(  UISpec = self.UISpec
-                                                                ,run = self.run 
-                                                                )  
-
-            assert self.opts['metas'].sDNA_path == dirname(self.opts['options'].UISpec.__file__)                                                                  
-
-
-
-
-
-
-    def __init__(self, loader):
-
-        BaseClass.__init__(self)
-        self.loader = loader
-        self.a = WriteableFlushableList()
-
-        self.update_sDNA()
-
-        add_file_to_logger = wrapper_logging.add_custom_file_to_logger
-        add_file_to_logger(  logger
-                            ,self.a
-                            ,self.opts['options'].logger_custom_level)
-
-
-
-
-
-
-
-
-    #sDNA_GH = strict_import('sDNA_GH', join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH'), sub_folder = 'sDNA_GH')   
-                                        # Grasshopper.Folders.AppDataFolder + r'\Libraries'
-                                        # %appdata%  + r'\Grasshopper\Libraries'
-                                        # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
-    def RunScript(self, go, Data, Geom, f_name, *args):
-        # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
-        
-        #if not 'opts' in globals():
-        #    global opts
-        if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
-                f_name=f_name[0] 
-        
-        self.a = WriteableFlushableList() 
-        #Output from previous calls to RunScript is already logged elsewhere.
-        
-        options = self.opts['options']
-
-        args_dict = {key.Name : val for key, val in zip(self.Component.Params.Input[1:], args) } # type: ignore
-        
-        external_opts = args_dict.get('opts', {})
-        external_local_metas = args_dict.get('local_metas', {})
-        gdm = args_dict.get('gdm', {})
-
-        #print('#1 self.local_metas == ' + str(self.local_metas))
-        
- 
-        try:
-            new_name = ghenv.Component.NickName #type: ignore
-        except:
-            new_name = "selftest"     
-
-        if not hasattr(self, 'nick_name') or (
-               self.opts['metas'].allow_components_to_change_type
-               and self.nick_name != new_name   
-                                             ):  
-            #
-            self.update_name(new_name)
+        def update_tools(self):
             self.my_tools = []
-
-            output( ' Component nick name ' +  + ' changed to : ' 
-                            + self.nick_name, 'INFO' )
-            output( ' Tools in ' + self.nick_name + ' changed to : ' 
-                            + str(self.my_tools), 'INFO' )
-        
-        
-        synced = self.local_metas.sync_to_shared_global_opts
-        old_sDNA = self.opts['metas'].sDNA
-
-        #print('#1.05 self.local_metas == ' + str(self.local_metas))
-
-        #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.read_from_shared_global_opts:
-        #    self.opts = opts.copy() 
-        
-        self.local_metas = override_all_opts( 
-                                                     args_dict 
-                                                    ,self.opts # mutated
-                                                    ,external_opts 
-                                                    ,self.local_metas 
-                                                    ,external_local_metas
-                                                    ,self.nick_name
-                                                            )
-        #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
-        
-        if (self.opts['metas'].auto_update_Rhino_doc_path 
-            or not isfile(options.Rhino_doc_path)        ):
-
-            path = self.RhinoDoc.ActiveDoc.Path
-            
-            if not isinstance(path, str) or not isfile(path):
-                try:
-                    path = self.ghdoc.Path #type: ignore
-                except:
-                    path = None
-                finally:
-                    if not path:
-                        path = options.Default_sDNA_GH_file_path
-            
-            options = options._replace( Rhino_doc_path = path )
-            self.opts['options'] = options
-
-        if self.opts['metas'].allow_components_to_change_type: 
-            
-            if self.local_metas.sync_to_shared_global_opts != synced:
-                if self.local_metas.sync_to_shared_global_opts:
-                    self.opts = opts 
-                else:
-                    self.opts = self.opts.copy()
-
-            if self.opts['metas'].sDNA != old_sDNA:
-                self.update_sDNA()
-                self.my_tools = []
-        
-        if self.my_tools != []:
-            self.update_tools()
-
+            tools = tool_factory(    self 
+                                    ,self.nick_name
+                                    ,self.opts['metas'].name_map
+                                    ,self.opts)
+            for tool in tools:
+                # some are unique closures so no #if not hasattr(self, tool.func_name):
+                setattr(self, tool.func_name, tool)
+                self.my_tools +=[getattr(self, tool.func_name)]
                 
 
-        Defined_tools = [y for z in tools_dict.values() for y in z]
-        Undefined_tools = [x for x in self.my_tools if x not in Defined_tools]
-
-        if Undefined_tools:
-            output('Defined_tools == ' + str(Defined_tools), 'DEBUG')
-            output('Undefined tools == ' + str(Undefined_tools), 'DEBUG')
-            raise ValueError(output('Tool function not in cache, possibly ' 
-                                    + 'unsupported.  Check input tool_name '
-                                    +'if sDNAGeneral, else tool_factory '
-                                    ,'ERROR',self))
+            output('My_tools ==\n'
+                    +'\n'.join([tool.func_name for tool in self.my_tools])
+                    ,'DEBUG')
 
 
-        if go in [True, [True]]: # [True] in case go set to List Access in GH component 
-            returncode = 999
-            assert isinstance(self.my_tools, list)
+        def update_name(self, new_name = 'selftest'):       
+            self.nick_name = new_name 
+            self.logger = logger.getChild(self.nick_name)
+            self.update_tools()
 
-            output('my_tools == '+str(self.my_tools),'DEBUG')
 
-            geom_data_map = convert_Data_tree_and_Geom_list_to_gdm(  Geom
-                                                                    ,Data
-                                                                    ,self.opts
-                                                                    )
             
-            output('type(geom_data_map) == ' + str(type(geom_data_map)), 'DEBUG')
+        def update_sDNA(self):
+            output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
+            output('self.opts[metas].sDNA == (' + str(self.opts['metas'].sDNAUISpec)
+                    + ', ' + self.opts['metas'].runsdna + ') ','DEBUG')
+
+            if hasattr(self,'sDNA'):
+                output('Self has attr sDNA == ' + str(hasattr(self,'sDNA'))+' ','DEBUG')
+            
+            sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
+                    ,self.opts['metas'].runsdna )   # a dict key => tuple not list
+
+            if not hasattr(self,'sDNA') or self.sDNA != sDNA:
+                self.UISpec, self.run, path = self.loader( self
+                                                        ,sDNA
+                                                        ,self.opts['metas'].sDNA_search_paths
+                                                        ) 
+
+
+
+
+                output('Self has attr UISpec == ' + str(hasattr(self,'UISpec'))+' ' , 'DEBUG')
+                output('Self has attr run == ' + str(hasattr(self,'run'))+' ' ,'DEBUG')
+
+                self.sDNA = sDNA
+                self.sDNA_path = path
+                self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
+                                                                    ,sDNA_path = path 
+                                                                )
+                self.opts['options'] = self.opts['options']._replace(  UISpec = self.UISpec
+                                                                    ,run = self.run 
+                                                                    )  
+
+                assert self.opts['metas'].sDNA_path == dirname(self.opts['options'].UISpec.__file__)                                                                  
+
+
+
+
+
+
+        def __init__(self, *args, **kwargs):
+
+            BaseClass.__init__(self, *args, **kwargs)
+            self.loader = loader
+            self.a = WriteableFlushableList()
+
+            self.update_sDNA()
+
+            add_file_to_logger = wrapper_logging.add_custom_file_to_logger
+            add_file_to_logger(  logger
+                                ,self.a
+                                ,self.opts['options'].logger_custom_level)
+
+
+
+
+
+
+
+
+        #sDNA_GH = strict_import('sDNA_GH', join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH'), sub_folder = 'sDNA_GH')   
+                                            # Grasshopper.Folders.AppDataFolder + r'\Libraries'
+                                            # %appdata%  + r'\Grasshopper\Libraries'
+                                            # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
+        def RunScript(self, go, Data, Geom, f_name, *args):
+            # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
+            
+            #if not 'opts' in globals():
+            #    global opts
+            if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
+                    f_name=f_name[0] 
+            
+            self.a = WriteableFlushableList() 
+            #Output from previous calls to RunScript is already logged elsewhere.
+            
+            options = self.opts['options']
+
+            args_dict = {key.Name : val for key, val in zip(self.Params.Input[1:], args) } # type: ignore
+            
+            external_opts = args_dict.get('opts', {})
+            external_local_metas = args_dict.get('local_metas', {})
+            gdm = args_dict.get('gdm', {})
+
+            #print('#1 self.local_metas == ' + str(self.local_metas))
+            
+    
+            try:
+                new_name = self.Attributes.Owner.NickName #type: ignore 
+            except:
+                new_name = "selftest"     
+
+            if not hasattr(self, 'nick_name') or (
+                self.opts['metas'].allow_components_to_change_type
+                and self.nick_name != new_name   
+                                                ):  
+                #
+                self.update_name(new_name)
+
+                output( ' Component nick name changed to : ' 
+                                + self.nick_name, 'INFO' )
+                output( ' Tools in ' + self.nick_name + ' changed to : ' 
+                                + str(self.my_tools), 'INFO' )
+            
+            
+            synced = self.local_metas.sync_to_shared_global_opts
+            old_sDNA = self.opts['metas'].sDNA
+
+            #print('#1.05 self.local_metas == ' + str(self.local_metas))
+
+            #if not self.local_metas.sync_to_shared_global_opts and self.local_metas.read_from_shared_global_opts:
+            #    self.opts = opts.copy() 
+            
+            self.local_metas = override_all_opts( 
+                                                 args_dict 
+                                                ,self.opts # mutated
+                                                ,external_opts 
+                                                ,self.local_metas 
+                                                ,external_local_metas
+                                                ,self.nick_name
+                                                )
+            #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
+            
+            if (self.opts['metas'].auto_update_Rhino_doc_path 
+                or not isfile(options.Rhino_doc_path)        ):
+
+                path = self.RhinoDoc.ActiveDoc.Path
+                
+                if not isinstance(path, str) or not isfile(path):
+                    try:
+                        path = self.ghdoc.Path #type: ignore
+                    except:
+                        path = None
+                    finally:
+                        if not path:
+                            path = options.Default_sDNA_GH_file_path
+                
+                options = options._replace( Rhino_doc_path = path )
+                self.opts['options'] = options
+
+            if self.opts['metas'].allow_components_to_change_type: 
+                
+                if self.local_metas.sync_to_shared_global_opts != synced:
+                    if self.local_metas.sync_to_shared_global_opts:
+                        self.opts = opts 
+                    else:
+                        self.opts = self.opts.copy()
+
+                if self.opts['metas'].sDNA != old_sDNA:
+                    self.update_sDNA()
+                    self.update_tools()
             
 
-            geom_data_map = override_gdm_with_gdm(   gdm
-                                                    ,geom_data_map
-                                                    ,self.opts
-                                                    )
 
-            output('After merge type(geom_data_map) == ' 
-                    +str(type(geom_data_map))
-                    ,'DEBUG'
-                    )                
-            
-            output(   'After merge geom_data_map == ' 
-                    +str(geom_data_map.items()[:3])
-                    +' ...'
-                    ,'DEBUG'
-                    )
+                    
+
+            Defined_tools = [y for z in tools_dict.values() for y in z]
+            Undefined_tools = [x for x in self.my_tools if x not in Defined_tools]
+
+            if Undefined_tools:
+                output('Defined_tools == ' + str(Defined_tools), 'DEBUG')
+                output('Undefined tools == ' + str(Undefined_tools), 'DEBUG')
+                raise ValueError(output('Tool function not in cache, possibly ' 
+                                        + 'unsupported.  Check input tool_name '
+                                        +'if sDNAGeneral, else tool_factory '
+                                        ,'ERROR',self))
 
 
-            returncode, ret_f_name, gdm, a = run_tools(  self
-                                                        ,self.my_tools
-                                                        ,f_name
+            if go in [True, [True]]: # [True] in case go set to List Access in GH component 
+                returncode = 999
+                assert isinstance(self.my_tools, list)
+
+                output('my_tools == '+str(self.my_tools),'DEBUG')
+
+                geom_data_map = convert_Data_tree_and_Geom_list_to_gdm(  Geom
+                                                                        ,Data
+                                                                        ,self.opts
+                                                                        )
+                
+                output('type(geom_data_map) == ' + str(type(geom_data_map)), 'DEBUG')
+                
+
+                geom_data_map = override_gdm_with_gdm(   gdm
                                                         ,geom_data_map
                                                         ,self.opts
                                                         )
-            print (str(gdm))
-            if isinstance(gdm, dict):
-                (NewData, Geometry) = (
-                convert_dictionary_to_data_tree_or_lists(gdm)
-                                    )                
-            else:
-                NewData, Geometry = None, None
 
-            ret_vals = ((returncode==0)
-                        ,NewData
-                        ,Geometry
-                        ,ret_f_name
+                output('After merge type(geom_data_map) == ' 
+                        +str(type(geom_data_map))
+                        ,'DEBUG'
+                        )                
+                
+                output(   'After merge geom_data_map == ' 
+                        +str(geom_data_map.items()[:3])
+                        +' ...'
+                        ,'DEBUG'
+                        )
+
+
+                returncode, ret_f_name, gdm, a = run_tools(  self
+                                                            ,self.my_tools
+                                                            ,f_name
+                                                            ,geom_data_map
+                                                            ,self.opts
+                                                            )
+                print (str(gdm))
+                if isinstance(gdm, dict):
+                    (NewData, Geometry) = (
+                    convert_dictionary_to_data_tree_or_lists(gdm)
+                                        )                
+                else:
+                    NewData, Geometry = None, None
+
+                ret_vals = ((returncode==0)
+                            ,NewData
+                            ,Geometry
+                            ,ret_f_name
+                            ,[gdm]
+                            ,a
+                            ,[self.opts.copy()]
+                            ,[self.local_metas]
+                            )
+                #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
+
+                if self.my_tools[-1] == parse_data:
+                    ret_vals = (  ret_vals[0]
+                                ,options.plot_min
+                                ,options.plot_max   ) + ret_vals[1:]
+
+                return ret_vals
+                                            #In Python 3 .keys() returns a dictview not a list
+            else:   
+                #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
+                return ( False
+                        ,Data
+                        ,Geom
+                        ,f_name
                         ,[gdm]
-                        ,a
+                        ,self.a
                         ,[self.opts.copy()]
                         ,[self.local_metas]
                         )
-            #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
-
-            if self.my_tools[-1] == parse_data:
-                ret_vals = (  ret_vals[0]
-                            ,options.plot_min
-                            ,options.plot_max   ) + ret_vals[1:]
-
-            return ret_vals
-                                        #In Python 3 .keys() returns a dictview not a list
-        else:   
-            #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
-            return ( False
-                    ,Data
-                    ,Geom
-                    ,f_name
-                    ,[gdm]
-                    ,self.a
-                    ,[self.opts.copy()]
-                    ,[self.local_metas]
-                    )
-                    
-#    return MyComponent
+#def deco(BaseClass):
+    class M(BaseClass):
+        def RunScript(self, go, Data, Geom, f_name, *args):
+            a = 'Running Runscript from class deco'
+            print(a)
+            return a
+    #return M                    
+    return sDNA_GH_Component
 
 """ loc = tool_factory()
 comp = sDNA_GH_component_deco(object) """
