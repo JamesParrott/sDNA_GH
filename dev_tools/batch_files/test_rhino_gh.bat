@@ -1,7 +1,7 @@
 @ECHO OFF
 cd "C:\Users\James\Documents\Rhino\Grasshopper\"
 
-"C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="-_ReadCommandFile test_rhino_gh.txt" "C:\Users\James\Documents\Rhino\Grasshopper\test_rhino_gh_bat.3dm"
+"C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="-_ReadCommandFile test_rhino_gh_rhino_commands.txt" "C:\Users\James\Documents\Rhino\Grasshopper\test_rhino_gh_bat.3dm"
 REM "C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="_PrintDisplay _State=_On Color=Display Thickness=4 _Enter -_GrasshopperPlayer test_rhino_gh_bat.gh _enter -_save _enter _exit _enterend" "C:\Users\James\Documents\Rhino\Grasshopper\test_rhino_gh_bat.3dm"
 REM "C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="_Grasshopper _Document _Open test_rhino_gh_bat.gh _Save _Exit _EnterEnd" "C:\Users\James\Documents\Rhino\Grasshopper\test_rhino_gh_bat.3dm"
 
