@@ -27,18 +27,18 @@ import scriptcontext as sc
 import Rhino
 import ghpythonlib.treehelpers as th
 from System.Drawing import Color as Colour
-from Grasshopper.Kernel.Types import GH_Colour
+import Grasshopper.Kernel 
 from Grasshopper import DataTree
 from Grasshopper.GUI.Gradient import GH_Gradient
 import GhPython
 from ghpythonlib.components import ( BoundingBox
-                                ,Rectangle
-                                ,Legend 
-                                ,XYPlane
-                                ,XZPlane
-                                ,YZPlane
-                                ,CustomPreview
-                                )
+                                    ,Rectangle
+                                    ,Legend 
+                                    ,XYPlane
+                                    ,XZPlane
+                                    ,YZPlane
+                                    ,CustomPreview
+                                    )
 
 
 
@@ -354,6 +354,16 @@ def output(s, logging_level = "INFO", stream = None, logging_dict = {} ):
 
     return logging_level + ' : ' + s + ' '
 
+#
+#
+def func_name(f):
+    #type(function)->str
+    if hasattr(f,'__qualname__'):
+        return f.__qualname__  
+    elif hasattr(f,'__name__'):
+        return f.__name__  
+    else:
+        return f.func_name
 #
 #
 
@@ -1107,7 +1117,7 @@ def insert_tool_after_specials(   compnt
                                  ,is_special
                                  ,not_special_names
                                  ):
-        if any(tool.func_name not in not_special_names for tool in tools):  
+        if any(func_name(tool) not in not_special_names for tool in tools):  
                             # Not just last tool.  Else no point checking more
                             # than one downstream component?  The user may 
                             # wish to do other stuff after the tool
@@ -1142,15 +1152,15 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
     if options.auto_read_Shp:
         insert_tool_after_specials(   self
                                      ,tools
-                                     ,read_shapes_and_data_from_shapefile
-                                     ,lambda tool : hasattr(self.opts['options'].UISpec, tool.func_name)
+                                     ,tools_dict['read_shapes_and_data_from_shapefile']
+                                     ,lambda tool : hasattr(self.opts['options'].UISpec, func_name(tool))
                                      ,sDNA_GH_names
                                      )
     if options.auto_plot_Shp_data:
         insert_tool_after_specials(   self
                                      ,tools
-                                     ,recolour_objects
-                                     ,lambda tool : tool == read_shapes_and_data_from_shapefile
+                                     ,tools_dict['recolour_objects']
+                                     ,lambda tool : tool == tools_dict['read_shapes_and_data_from_shapefile']
                                      ,[]
                                      )        
 
@@ -1167,10 +1177,10 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
                                                     ,gdm
                                                     ,opts_at_call 
                                                     )
-            report('Tool name == ' + tool.func_name + ' return code == ' + str(returncode))
+            report('Tool name == ' + func_name(tool) + ' return code == ' + str(returncode))
             a.write(tmp_a)
             if returncode != 0:
-                raise Exception(output(  'Tool ' + tool.func_name + ' exited '
+                raise Exception(output(  'Tool ' + func_name(tool) + ' exited '
                                         +'with status code ' 
                                         + str(returncode),'ERROR'
                                         )
@@ -1187,172 +1197,200 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
 # Main component tool functions
 #
 #
-def get_objects_from_Rhino(f_name, gdm, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
+def get_objects_from_Rhino(retvals = None):
+    #type() -> function
+    def inner(f_name, gdm, opts_at_call):
+        #type(str, dict, dict) -> int, str, dict, list
 
-    options = opts_at_call['options']
+        options = opts_at_call['options']
 
-    #if 'ghdoc' not in globals():
-    #    global ghdoc
-    #    ghdoc = sc.doc  
+        #if 'ghdoc' not in globals():
+        #    global ghdoc
+        #    ghdoc = sc.doc  
 
-    sc.doc = Rhino.RhinoDoc.ActiveDoc 
-    
-    #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
-    geom_data_map = make_gdm(get_objs_and_OrderedDicts(
-                                             options
-                                            ,get_all_shp_type_Rhino_objects
-                                            ,get_all_groups
-                                            ,get_members_of_a_group
-                                            ,lambda *args, **kwargs : {} 
-                                            ,check_is_specified_obj_type
-                                                        ) 
-                              )
-    # lambda : {}, as Usertext is read elsewhere, in read_Usertext
-
-
-
-
-    report('First objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[:3]))
-    if len(geom_data_map) > 0:
-        report('type(gdm[0]) == ' + type(geom_data_map.keys()[0]).__name__ )
-    report('....Last objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[-3:]))
-
-    geom_data_map = override_gdm_with_gdm(geom_data_map, gdm, opts_at_call)
-    sc.doc = ghdoc # type: ignore 
-    return 0, f_name, geom_data_map, None
+        sc.doc = Rhino.RhinoDoc.ActiveDoc 
+        
+        #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
+        geom_data_map = make_gdm(get_objs_and_OrderedDicts(
+                                                options
+                                                ,get_all_shp_type_Rhino_objects
+                                                ,get_all_groups
+                                                ,get_members_of_a_group
+                                                ,lambda *args, **kwargs : {} 
+                                                ,check_is_specified_obj_type
+                                                            ) 
+                                )
+        # lambda : {}, as Usertext is read elsewhere, in read_Usertext
 
 
-def read_Usertext(f_name, gdm, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
-
-    report('Starting read_Usertext... ')
-
-    if (options.auto_get_objects_from_Rhino and
-             (not gdm or not hasattr(gdm, 'keys')
-             or (len(gdm.keys()) == 1 and gdm.keys()[0] == tuple() ))):
-        retcode, f_name, gdm, tmp_a = get_objects_from_Rhino(    f_name
-                                                                ,gdm
-                                                                ,opts_at_call
-                                                                )
-
-    #if opts_at_call['options'].read_overides_Data_from_Usertext:
-
-    read_Usertext_as_tuples = get_OrderedDict()
-    for obj in gdm:
-        gdm[obj].update(read_Usertext_as_tuples(obj))
-
-    # get_OrderedDict() will get Usertext from both the GH and Rhino docs
-    # switching the target to RhinoDoc if needed, hence the following line 
-    # is important:
-    sc.doc = ghdoc # type: ignore 
-    return 0, f_name, gdm, None
 
 
-def write_objects_and_data_to_shapefile(f_name, gdm, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
-      
-    options = opts_at_call['options']
+        report('First objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[:3]))
+        if len(geom_data_map) > 0:
+            report('type(gdm[0]) == ' + type(geom_data_map.keys()[0]).__name__ )
+        report('....Last objects read: \n' + '\n'.join(str(x) for x in geom_data_map.keys()[-3:]))
 
-    shp_type = options.shp_file_shape_type            
-    #print gdm
-    if (options.auto_read_Usertext and
-             (not gdm or not hasattr(gdm, 'values')
-             or all(len(v) ==0  for v in gdm.values()))):
-        retcode, f_name, gdm, tmp_a = read_Usertext( f_name
-                                                    ,gdm
-                                                    ,opts_at_call
-                                                    )
+        geom_data_map = override_gdm_with_gdm(geom_data_map, gdm, opts_at_call)
+        sc.doc = ghdoc # type: ignore 
 
-    format_string = options.rhino_user_text_key_format_str_to_read
-    pattern = make_regex( format_string )
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'f_name', 'geom_data_map', None
+    else:
+        inner.retvals = retvals
 
-    def pattern_match_key_names(x):
-        #type: (str)-> object #re.MatchObject
+    return inner
 
-        return match(pattern, x) 
-           #           if m else None #, m.group('fieldtype'), 
-                                              # m.group('size') if m else None
-                                              # can get 
-                                              # (literal_text, field_name, 
-                                              #                  f_spec, conv) 
-                                              # from iterating over
-                                              # string.Formatter.parse(
-                                              #                 format_string)
 
-    def get_list_of_lists_from_tuple(obj):
-        #report_value(obj)
-        #if is_an_obj_in_GH_or_Rhino(obj):
-        target_doc = is_an_obj_in_GH_or_Rhino(obj)    
-        if target_doc:
-            sc.doc = target_doc
-            if check_is_specified_obj_type(obj, shp_type):
-                return [get_points_list_from_geom_obj(obj, shp_type)]
-            else:
-                return []      
-            #elif is_a_group_in_GH_or_Rhino(obj):
-        else:
-            target_doc = is_a_group_in_GH_or_Rhino(obj)    
+def read_Usertext(retvals = None):
+    #type() -> function
+
+    def inner(f_name, gdm, opts_at_call):
+        #type(str, dict, dict) -> int, str, dict, list
+
+        report('Starting read_Usertext... ')
+
+        if (options.auto_get_objects_from_Rhino and
+                (not gdm or not hasattr(gdm, 'keys')
+                or (len(gdm.keys()) == 1 and gdm.keys()[0] == tuple() ))):
+            retcode, f_name, gdm, tmp_a = tools_dict['get_objects_from_Rhino'](  f_name
+                                                                                ,gdm
+                                                                                ,opts_at_call
+                                                                                )
+
+        #if opts_at_call['options'].read_overides_Data_from_Usertext:
+
+        read_Usertext_as_tuples = get_OrderedDict()
+        for obj in gdm:
+            gdm[obj].update(read_Usertext_as_tuples(obj))
+
+        # get_OrderedDict() will get Usertext from both the GH and Rhino docs
+        # switching the target to RhinoDoc if needed, hence the following line 
+        # is important:
+        sc.doc = ghdoc # type: ignore 
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'f_name', 'gdm', None
+    else:
+        inner.retvals = retvals
+    return inner
+
+
+def write_objects_and_data_to_shapefile(retvals = None):
+    #type() -> function
+
+    def inner(f_name, gdm, opts_at_call):
+        #type(str, dict, dict) -> int, str, dict, list
+        
+        options = opts_at_call['options']
+
+        shp_type = options.shp_file_shape_type            
+        #print gdm
+        if (options.auto_read_Usertext and
+                (not gdm or not hasattr(gdm, 'values')
+                or all(len(v) ==0  for v in gdm.values()))):
+            retcode, f_name, gdm, tmp_a = tools_dict['read_Usertext'](   f_name
+                                                                        ,gdm
+                                                                        ,opts_at_call
+                                                                        )
+
+        format_string = options.rhino_user_text_key_format_str_to_read
+        pattern = make_regex( format_string )
+
+        def pattern_match_key_names(x):
+            #type: (str)-> object #re.MatchObject
+
+            return match(pattern, x) 
+            #           if m else None #, m.group('fieldtype'), 
+                                                # m.group('size') if m else None
+                                                # can get 
+                                                # (literal_text, field_name, 
+                                                #                  f_spec, conv) 
+                                                # from iterating over
+                                                # string.Formatter.parse(
+                                                #                 format_string)
+
+        def get_list_of_lists_from_tuple(obj):
+            #report_value(obj)
+            #if is_an_obj_in_GH_or_Rhino(obj):
+            target_doc = is_an_obj_in_GH_or_Rhino(obj)    
             if target_doc:
-                sc.doc = target_doc                  
-                return [get_points_list_from_geom_obj(y, shp_type) 
-                        for y in get_members_of_a_group(obj)
-                        if check_is_specified_obj_type(y, shp_type)]
+                sc.doc = target_doc
+                if check_is_specified_obj_type(obj, shp_type):
+                    return [get_points_list_from_geom_obj(obj, shp_type)]
+                else:
+                    return []      
+                #elif is_a_group_in_GH_or_Rhino(obj):
             else:
-                return []
+                target_doc = is_a_group_in_GH_or_Rhino(obj)    
+                if target_doc:
+                    sc.doc = target_doc                  
+                    return [get_points_list_from_geom_obj(y, shp_type) 
+                            for y in get_members_of_a_group(obj)
+                            if check_is_specified_obj_type(y, shp_type)]
+                else:
+                    return []
 
-    def shape_IDer(obj):
-        return obj #tupl[0].ToString() # uuid
+        def shape_IDer(obj):
+            return obj #tupl[0].ToString() # uuid
 
-    def find_keys(obj):
-        return gdm[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
+        def find_keys(obj):
+            return gdm[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
 
-    def get_data_item(obj, key):
-        return gdm[obj][key] #tupl[1][key]
+        def get_data_item(obj, key):
+            return gdm[obj][key] #tupl[1][key]
 
-    if not f_name:  
-        if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
-               and isdir(dirname( options.shape_file_to_write_Rhino_data_to_from_sDNA_GH ))   ):
-            f_name = options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
-        else:
-            f_name = options.Rhino_doc_path.rpartition('.')[0] + options.shp_file_extension
-                        # file extensions are actually optional in PyShp, 
-                        # but just to be safe and future proof we remove
-                        # '.3dm'                                        
+        if not f_name:  
+            if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
+                and isdir(dirname( options.shape_file_to_write_Rhino_data_to_from_sDNA_GH ))   ):
+                f_name = options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
+            else:
+                f_name = options.Rhino_doc_path.rpartition('.')[0] + options.shp_file_extension
+                            # file extensions are actually optional in PyShp, 
+                            # but just to be safe and future proof we remove
+                            # '.3dm'                                        
 
-    #report('Type of gdm == '+ type(gdm).__name__)                         
-    #report('Size of gdm == ' + str(len(gdm)))
-    #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],gdm.keys() )) )
-    #report('Gdm.values == ' + ' '.join(map(str,gdm.values())))
-    sc.doc = Rhino.RhinoDoc.ActiveDoc 
-    (retcode, filename, fields, gdm_out) = ( 
-                         write_from_iterable_to_shapefile_writer(
-                                             gdm
-                                    #my_iter 
-                                            ,f_name 
-                                    #shp_file 
-                                            ,get_list_of_lists_from_tuple 
-                                    # shape_mangler, e.g. start_and_end_points
-                                            ,shape_IDer
-                                            ,find_keys 
-                                    # key_finder
-                                            ,pattern_match_key_names 
-                                    #key_matcher
-                                            ,get_data_item 
-                                    #value_demangler e.g. rs.GetUserText
-                                            ,shp_type 
-                                    #"POLYLINEZ" #shape
-                                            ,options 
-                                            ,None 
-                                    # field names
-                         )
-    ) 
-    # get_list_of_lists_from_tuple() will 
-    # switch the targeted file to RhinoDoc if needed, hence the following line 
-    # is important:
-    sc.doc = ghdoc # type: ignore 
-    return retcode, filename, gdm_out, None
+        #report('Type of gdm == '+ type(gdm).__name__)                         
+        #report('Size of gdm == ' + str(len(gdm)))
+        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],gdm.keys() )) )
+        #report('Gdm.values == ' + ' '.join(map(str,gdm.values())))
+        sc.doc = Rhino.RhinoDoc.ActiveDoc 
+        (retcode, filename, fields, gdm_out) = ( 
+                            write_from_iterable_to_shapefile_writer(
+                                                gdm
+                                        #my_iter 
+                                                ,f_name 
+                                        #shp_file 
+                                                ,get_list_of_lists_from_tuple 
+                                        # shape_mangler, e.g. start_and_end_points
+                                                ,shape_IDer
+                                                ,find_keys 
+                                        # key_finder
+                                                ,pattern_match_key_names 
+                                        #key_matcher
+                                                ,get_data_item 
+                                        #value_demangler e.g. rs.GetUserText
+                                                ,shp_type 
+                                        #"POLYLINEZ" #shape
+                                                ,options 
+                                                ,None 
+                                        # field names
+                            )
+        ) 
+        # get_list_of_lists_from_tuple() will 
+        # switch the targeted file to RhinoDoc if needed, hence the following line 
+        # is important:
+        sc.doc = ghdoc # type: ignore 
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:    
+        inner.retvals = 'retcode', 'filename', 'gdm_out', None
+    else:
+        inner.retvals = retvals
 
+    return inner
 
 
 
@@ -1415,88 +1453,95 @@ def get_shape_file_rec_ID(options = opts['options']):
 
 
 
-def read_shapes_and_data_from_shapefile( f_name
-                                        ,gdm 
-                                        ,opts_at_call
-                                        ):
-    #type(str, dict, dict) -> int, str, dict, list
-    options = opts_at_call['options']
+def read_shapes_and_data_from_shapefile(retvals = None):
+    #type() -> function
 
-    ( fields
-     ,recs
-     ,shapes
-     ,bbox ) = get_fields_recs_and_shapes_from_shapefile( f_name )
+    def inner( f_name, gdm, opts_at_call ):
+        #type(str, dict, dict) -> int, str, dict, list
+        options = opts_at_call['options']
 
-    if not recs:
-         output('No data read from Shapefile ' + f_name + ' ','WARNING')
-         return 1, f_name, gdm, None    
-         
-    if not shapes:
-         output('No shapes in Shapefile ' + f_name + ' ','WARNING')
-         return 1, f_name, gdm, None
+        ( fields
+        ,recs
+        ,shapes
+        ,bbox ) = get_fields_recs_and_shapes_from_shapefile( f_name )
 
+        if not recs:
+            output('No data read from Shapefile ' + f_name + ' ','WARNING')
+            return 1, f_name, gdm, None    
+            
+        if not shapes:
+            output('No shapes in Shapefile ' + f_name + ' ','WARNING')
+            return 1, f_name, gdm, None
+
+            
+
+        field_names = [ x[0] for x in fields ]
+
+        report('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
+        report_value(field_names)
+
+        shapes_to_output = ([shp.points] for shp in shapes )
         
-
-    field_names = [ x[0] for x in fields ]
-
-    report('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
-    report_value(field_names)
-
-    shapes_to_output = ([shp.points] for shp in shapes )
-    
-    obj_key_maker = create_new_groups_layer_from_points_list( options ) 
+        obj_key_maker = create_new_groups_layer_from_points_list( options ) 
 
 
 
-    if not options.create_new_groups_layer_from_shapefile:   #TODO: put new objs in a new layer or group
-        obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
-        # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
-      
-        if isinstance(gdm, dict) and len(gdm) == len(recs):
-            # figuring out an override for different number of overrided geom objects
-            # to shapes/recs is to open a large a can of worms.  Unsupported.
-            # If the override objects are in Rhino anyway then the uuid field in the shape
-            # file will be picked up in any case in get_shape_file_rec_ID
-            if sys.version_info.major < 3:
-                shape_keys = gdm.viewkeys()  
-            else: 
-                shape_keys = gdm.keys()
-            shapes_to_output = [shp_key for shp_key in shape_keys]
-                # These points shouldn't be used, as by definition they 
-                # come from objects that already
-                # exist in Rhino.  But if they are to be used, then use this!
-            report_value(shapes_to_output)    
+        if not options.create_new_groups_layer_from_shapefile:   #TODO: put new objs in a new layer or group
+            obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
+            # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
+        
+            if isinstance(gdm, dict) and len(gdm) == len(recs):
+                # figuring out an override for different number of overrided geom objects
+                # to shapes/recs is to open a large a can of worms.  Unsupported.
+                # If the override objects are in Rhino anyway then the uuid field in the shape
+                # file will be picked up in any case in get_shape_file_rec_ID
+                if sys.version_info.major < 3:
+                    shape_keys = gdm.viewkeys()  
+                else: 
+                    shape_keys = gdm.keys()
+                shapes_to_output = [shp_key for shp_key in shape_keys]
+                    # These points shouldn't be used, as by definition they 
+                    # come from objects that already
+                    # exist in Rhino.  But if they are to be used, then use this!
+                report_value(shapes_to_output)    
 
 
-    shp_file_gen_exp  = izip( shapes_to_output
-                             ,(rec.as_dict() for rec in recs)
-                             )
-    
-    #(  (shape, rec) for (shape, rec) in 
-    #                                       izip(shapes_to_output, recs)  )              
-    sc.doc = Rhino.RhinoDoc.ActiveDoc
-    gdm_out = make_gdm(shp_file_gen_exp, obj_key_maker)
-    sc.doc = ghdoc # type: ignore
-    
-    dot_shp = options.shp_file_extension
-    csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
-    ret_vals = {}
-    if isfile(csv_f_name):
-        f = open(csv_f_name, 'rb')
-        f_csv = csv.reader(f)
-        ret_vals['sDNA_field_names'] = OrderedDict( (line[0], line[1]) 
-                                                          for line in f_csv )
-        ret_vals = [line[0] for line in f_csv ]
+        shp_file_gen_exp  = izip( shapes_to_output
+                                ,(rec.as_dict() for rec in recs)
+                                )
+        
+        #(  (shape, rec) for (shape, rec) in 
+        #                                       izip(shapes_to_output, recs)  )              
+        sc.doc = Rhino.RhinoDoc.ActiveDoc
+        gdm_out = make_gdm(shp_file_gen_exp, obj_key_maker)
+        sc.doc = ghdoc # type: ignore
+        
+        dot_shp = options.shp_file_extension
+        csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
+        ret_vals = {}
+        if isfile(csv_f_name):
+            f = open(csv_f_name, 'rb')
+            f_csv = csv.reader(f)
+            ret_vals['sDNA_field_names'] = OrderedDict( (line[0], line[1]) 
+                                                            for line in f_csv )
+            ret_vals = [line[0] for line in f_csv ]
 
-    if not options.bbox and not options.legend_extent:
-        opts_at_call['options'] = opts_at_call['options']._replace(bbox = bbox)
+        if not options.bbox and not options.legend_extent:
+            opts_at_call['options'] = opts_at_call['options']._replace(bbox = bbox)
 
-    #override_gdm_with_gdm(gdm, gdm, opts_at_call)   # TODO:What for?
+        #override_gdm_with_gdm(gdm, gdm, opts_at_call)   # TODO:What for?
 
-    if options.delete_shapefile_after_reading and isfile(f_name): 
-        os.remove(f_name)  # TODO: Fix, currently Win32 error
+        if options.delete_shapefile_after_reading and isfile(f_name): 
+            os.remove(f_name)  # TODO: Fix, currently Win32 error
 
-    return 0, f_name, gdm_out, ret_vals
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'f_name', 'gdm_out', 'ret_vals'
+    else:
+        inner.retvals = retvals
+
+    return inner
 
 
 
@@ -1528,107 +1573,125 @@ def read_shapes_and_data_from_shapefile( f_name
 
 
 
-def write_data_to_Usertext(  f_name     #Bake_Geom_and_Data
-                            ,gdm  # nested dict
-                            ,opts_at_call
-                            ):
-    #type(str, dict, dict) -> int, str, dict, list
-    options = opts_at_call['options']
-    date_time_of_run = asctime()
+def write_data_to_Usertext(retvals = None):
+    #type() -> function
 
-    def write_dict_to_UserText_on_obj(d, rhino_obj):
-        #type(dict, str) -> None
-        if not isinstance(d, dict):
-            return
-        
-        #if is_an_obj_in_GH_or_Rhino(rhino_obj):
-            # Checker switches GH/ Rhino context
-        
-        target_doc = is_an_obj_in_GH_or_Rhino(rhino_obj)    
-        if target_doc:
-            sc.doc = target_doc        
-            existing_keys = get_obj_keys(rhino_obj)
-            #TODO Move key pattern matching into ReadSHP
-            if options.uuid_shp_file_field_name in d:
-                obj = d.pop( options.uuid_shp_file_field_name )
+    def inner(   f_name     #Bake_Geom_and_Data
+                ,gdm  # nested dict
+                ,opts_at_call
+                ):
+        #type(str, dict, dict) -> int, str, dict, list
+        options = opts_at_call['options']
+        date_time_of_run = asctime()
+
+        def write_dict_to_UserText_on_obj(d, rhino_obj):
+            #type(dict, str) -> None
+            if not isinstance(d, dict):
+                return
             
-            for key in d:
-
-                s = options.sDNA_output_user_text_key_format_str_to_read
-                UserText_key_name = s.format(name = key
-                                            ,datetime = date_time_of_run
-                                            )
-                
-                if not options.overwrite_UserText:
-
-                    for i in range(0, options.max_new_UserText_keys_to_make):
-                        tmp = UserText_key_name 
-                        tmp += options.duplicate_UserText_key_suffix.format(i)
-                        if tmp not in existing_keys:
-                            break
-                    UserText_key_name = tmp
-                else:
-                    if not options.suppress_overwrite_warning:
-                        output( "UserText key == " 
-                                + UserText_key_name 
-                                +" overwritten on object with guid " 
-                                + str(rhino_obj)
-                                ,'WARNING'
-                                )
-                write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
-        else:
-            output('Object: ' 
-                   + key[:10] 
-                   + ' is neither a curve nor a group. '
-                   ,'INFO'
-                   )
-
-    for key, val in gdm.items():
-        #if is_a_curve_in_GH_or_Rhino(key):
-        target_doc = is_an_obj_in_GH_or_Rhino(key)    
-        if target_doc:
-            sc.doc = target_doc          
-            group_members = [key]
-        else:
-            target_doc = is_a_group_in_GH_or_Rhino(key)    
+            #if is_an_obj_in_GH_or_Rhino(rhino_obj):
+                # Checker switches GH/ Rhino context
+            
+            target_doc = is_an_obj_in_GH_or_Rhino(rhino_obj)    
             if target_doc:
-                sc.doc = target_doc              
-                #elif is_a_group_in_GH_or_Rhino(key):
-                # Switches context, but will be switched again
-                # when members checked
-                group_members = get_members_of_a_group(key)
-                # Can't use rs.SetUserText on a group name.  Must be a uuid.
+                sc.doc = target_doc        
+                existing_keys = get_obj_keys(rhino_obj)
+                #TODO Move key pattern matching into ReadSHP
+                if options.uuid_shp_file_field_name in d:
+                    obj = d.pop( options.uuid_shp_file_field_name )
+                
+                for key in d:
+
+                    s = options.sDNA_output_user_text_key_format_str_to_read
+                    UserText_key_name = s.format(name = key
+                                                ,datetime = date_time_of_run
+                                                )
+                    
+                    if not options.overwrite_UserText:
+
+                        for i in range(0, options.max_new_UserText_keys_to_make):
+                            tmp = UserText_key_name 
+                            tmp += options.duplicate_UserText_key_suffix.format(i)
+                            if tmp not in existing_keys:
+                                break
+                        UserText_key_name = tmp
+                    else:
+                        if not options.suppress_overwrite_warning:
+                            output( "UserText key == " 
+                                    + UserText_key_name 
+                                    +" overwritten on object with guid " 
+                                    + str(rhino_obj)
+                                    ,'WARNING'
+                                    )
+                    write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
             else:
+                output('Object: ' 
+                    + key[:10] 
+                    + ' is neither a curve nor a group. '
+                    ,'INFO'
+                    )
+
+        for key, val in gdm.items():
+            #if is_a_curve_in_GH_or_Rhino(key):
+            target_doc = is_an_obj_in_GH_or_Rhino(key)    
+            if target_doc:
+                sc.doc = target_doc          
                 group_members = [key]
+            else:
+                target_doc = is_a_group_in_GH_or_Rhino(key)    
+                if target_doc:
+                    sc.doc = target_doc              
+                    #elif is_a_group_in_GH_or_Rhino(key):
+                    # Switches context, but will be switched again
+                    # when members checked
+                    group_members = get_members_of_a_group(key)
+                    # Can't use rs.SetUserText on a group name.  Must be a uuid.
+                else:
+                    group_members = [key]
 
-            
-        for member in group_members:
-            write_dict_to_UserText_on_obj(val, member)
+                
+            for member in group_members:
+                write_dict_to_UserText_on_obj(val, member)
 
-    sc.doc = ghdoc # type: ignore 
-    return 0, f_name, gdm, None
-    
+        sc.doc = ghdoc # type: ignore 
 
-def bake_and_write_data_as_Usertext_to_Rhino(f_name
-                                            ,gdm
-                                            ,opts_at_call
-                                            ):
-    #type(str, dict, dict) -> int, str, dict, list  
-    gdm_out=OrderedDict()
-    for obj in gdm:
-        doc_obj = ghdoc.Objects.Find(obj)
-        if doc_obj:
-            geometry = doc_obj.Geometry
-            attributes = doc_obj.Attributes
-            if geometry:
-                add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
-                # trying to avoid constantly switching sc.doc
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'f_name', 'gdm', None
+    else:
+        inner.retvals = retvals
 
-                gdm_out[add_to_Rhino(geometry, attributes)] = gdm[obj] # The bake
-    
-    return write_data_to_Usertext(f_name, gdm_out, opts_at_call)
-    # write_data_to_USertext context switched when checking so will move
-    #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
+    return inner    
+
+def bake_and_write_data_as_Usertext_to_Rhino(retvals = None):
+    #type() -> function
+
+    def inner(f_name, gdm, opts_at_call ):
+        #type(str, dict, dict) -> int, str, dict, list  
+        gdm_out=OrderedDict()
+        for obj in gdm:
+            doc_obj = ghdoc.Objects.Find(obj)
+            if doc_obj:
+                geometry = doc_obj.Geometry
+                attributes = doc_obj.Attributes
+                if geometry:
+                    add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
+                    # trying to avoid constantly switching sc.doc
+
+                    gdm_out[add_to_Rhino(geometry, attributes)] = gdm[obj] # The bake
+        
+        next_ret_vals = tools_dict['write_data_to_Usertext'](f_name, gdm_out, opts_at_call)
+        # write_data_to_USertext context switched when checking so will move
+        #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
+
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 'next_ret_vals',
+    else:
+        inner.retvals = retvals
+    return inner
 
 
 def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
@@ -1713,433 +1776,396 @@ def change_line_thickness(obj, width, rel_or_abs = False):  #The default value i
     x.CommitChanges()
 
 
-def parse_data(f_name, geom_data_map, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
-    # Note!  opts_at_call can be mutated.
-    options = opts_at_call['options']
-    field = options.sDNA_output_abbrev_to_graph
+def parse_data(retvals = None):
+    #type() -> function
 
-    data = [ val[field] for val in geom_data_map.values()]
-    report('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
-    x_max = max(data) if options.plot_max == None else options.plot_max
-    x_min = min(data) if options.plot_min == None else options.plot_min
-    # bool(0) == False so in case x_min==0 we can't use 
-    # if options.plot_min if options.plot_min else min(data) 
+    def inner(f_name, geom_data_map, opts_at_call):
+        #type(str, dict, dict) -> int, str, dict, list
+        # Note!  opts_at_call can be mutated.
+        options = opts_at_call['options']
+        field = options.sDNA_output_abbrev_to_graph
 
-
-    no_manual_classes = (not isinstance(options.class_boundaries, list)
-                         or not all( isinstance(x, Number) 
-                                          for x in options.class_boundaries
-                                    )
-                        )
-
-    if options.sort_data or (no_manual_classes 
-       and options.class_spacing == 'equal_spacing'): 
-        gdm = OrderedDict( sorted(geom_data_map.items()
-                                 ,key = lambda tupl : tupl[1][field]
-                                 ) 
-                         )
-    else:
-        gdm = geom_data_map
-
-    #valid_class_spacers = valid_renormalisers + ['equal number of members'] 
-
-    param={}
-    param['exponential'] = param['logarithmic'] = options.base
-
-    if no_manual_classes:
-        m = options.number_of_classes
-        if options.class_spacing == 'equal number of members':
-            n = len(gdm)
-            objs_per_class, rem = divmod(n, m)
-            # assert gdm is already sorted
-            class_boundaries = [ val[field] for val in 
-                                 gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
-                               ]  # classes include their lower bound
-            report('num class boundaries == ' + str(len(class_boundaries)))
-            report_value(options.number_of_classes)
-            report_value(n)
-            assert len(class_boundaries) + 1 == options.number_of_classes
-        else: 
-            class_boundaries = [
-                splines[options.class_spacing](  
-                                 i
-                                ,0
-                                ,param.get(options.class_spacing, 'Not used')
-                                ,m + 1
-                                ,x_min
-                                ,x_max
-                                               )     for i in range(1, m + 1) 
-                                ]
-    else:
-        class_boundaries = options.class_boundaries
-    
-    opts_at_call['options'] = opts_at_call['options']._replace(
-                                           class_boundaries = class_boundaries
-                                          ,plot_max = x_max
-                                          ,plot_min = x_min
-                                                              )
+        data = [ val[field] for val in geom_data_map.values()]
+        report('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
+        x_max = max(data) if options.plot_max == None else options.plot_max
+        x_min = min(data) if options.plot_min == None else options.plot_min
+        # bool(0) == False so in case x_min==0 we can't use 
+        # if options.plot_min if options.plot_min else min(data) 
 
 
-    def re_normaliser(x, p = param.get(options.re_normaliser, 'Not used')):
-        return splines[options.re_normaliser](   x
-                                                ,x_min
-                                                ,p
-                                                ,x_max
-                                                ,x_min
-                                                ,x_max
-                                             )
-    
-    if not options.all_in_class_same_colour:
-        classifier = re_normaliser
-    elif options.re_normaliser:
-        #'linear' # exponential, logarithmic
-        def classifier(x): 
+        no_manual_classes = (not isinstance(options.class_boundaries, list)
+                            or not all( isinstance(x, Number) 
+                                            for x in options.class_boundaries
+                                        )
+                            )
 
-            highest_lower_bound = x_min if x < class_boundaries[0] else max(y 
-                                            for y in class_boundaries + [x_min] 
-                                            if y <= x                       )
-            #Classes include their lower bound
-            least_upper_bound = x_max if x >= class_boundaries[-1] else min(y for y in class_boundaries + [x_max] 
-                                      if y > x)
+        if options.sort_data or (no_manual_classes 
+        and options.class_spacing == 'equal_spacing'): 
+            gdm = OrderedDict( sorted(geom_data_map.items()
+                                    ,key = lambda tupl : tupl[1][field]
+                                    ) 
+                            )
+        else:
+            gdm = geom_data_map
 
-            return re_normaliser (0.5*(least_upper_bound + highest_lower_bound))
+        #valid_class_spacers = valid_renormalisers + ['equal number of members'] 
 
-    #retvals = {}
+        param={}
+        param['exponential'] = param['logarithmic'] = options.base
 
-    # todo:  '{n:}'.format() everything to apply localisation, 
-    # e.g. thousand seperators
-
-
-    mid_points = [0.5*(x_min + min(class_boundaries))]
-    mid_points += [0.5*(x + y) for (x,y) in zip(  class_boundaries[0:-1]
-                                                ,class_boundaries[1:]  
-                                               )
-                   ]
-    mid_points += [ 0.5*(x_max + max(class_boundaries))]
-    report_value(mid_points)
-
-    locale.setlocale(locale.LC_ALL,  options.locale)
-
-    x_min_s = options.num_format.format(x_min)
-    upper_s = options.num_format.format(min( class_boundaries ))
-    mid_pt_s = options.num_format.format( mid_points[0] )
-
-    legend_tags = [options.first_legend_tag_format_string.format( 
-                                                             lower = x_min_s
-                                                            ,upper = upper_s
-                                                            ,mid_pt = mid_pt_s
+        if no_manual_classes:
+            m = options.number_of_classes
+            if options.class_spacing == 'equal number of members':
+                n = len(gdm)
+                objs_per_class, rem = divmod(n, m)
+                # assert gdm is already sorted
+                class_boundaries = [ val[field] for val in 
+                                    gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
+                                ]  # classes include their lower bound
+                report('num class boundaries == ' + str(len(class_boundaries)))
+                report_value(options.number_of_classes)
+                report_value(n)
+                assert len(class_boundaries) + 1 == options.number_of_classes
+            else: 
+                class_boundaries = [
+                    splines[options.class_spacing](  
+                                    i
+                                    ,0
+                                    ,param.get(options.class_spacing, 'Not used')
+                                    ,m + 1
+                                    ,x_min
+                                    ,x_max
+                                                )     for i in range(1, m + 1) 
+                                    ]
+        else:
+            class_boundaries = options.class_boundaries
+        
+        opts_at_call['options'] = opts_at_call['options']._replace(
+                                            class_boundaries = class_boundaries
+                                            ,plot_max = x_max
+                                            ,plot_min = x_min
                                                                 )
-                                                    ]
-    for lower_bound, mid_point, upper_bound in zip( 
-                                         class_boundaries[0:-1]
-                                        ,mid_points[1:-1]
-                                        ,class_boundaries[1:]  
-                                                  ):
+
+
+        def re_normaliser(x, p = param.get(options.re_normaliser, 'Not used')):
+            return splines[options.re_normaliser](   x
+                                                    ,x_min
+                                                    ,p
+                                                    ,x_max
+                                                    ,x_min
+                                                    ,x_max
+                                                )
         
-        lower_s = options.num_format.format(lower_bound)
-        upper_s = options.num_format.format(upper_bound)
-        mid_pt_s = options.num_format.format(mid_point)
+        if not options.all_in_class_same_colour:
+            classifier = re_normaliser
+        elif options.re_normaliser:
+            #'linear' # exponential, logarithmic
+            def classifier(x): 
 
-        legend_tags += [options.inner_tag_format_string.format(
-                                                 lower = lower_s
-                                                ,upper = upper_s
-                                                ,mid_pt = mid_pt_s 
-                                                              )
-                        ]
+                highest_lower_bound = x_min if x < class_boundaries[0] else max(y 
+                                                for y in class_boundaries + [x_min] 
+                                                if y <= x                       )
+                #Classes include their lower bound
+                least_upper_bound = x_max if x >= class_boundaries[-1] else min(y for y in class_boundaries + [x_max] 
+                                        if y > x)
 
-    lower_s = options.num_format.format(max( class_boundaries ))
-    x_max_s = options.num_format.format(x_max)
-    mid_pt_s = options.num_format.format(mid_points[-1])
+                return re_normaliser (0.5*(least_upper_bound + highest_lower_bound))
 
-    legend_tags += [options.last_legend_tag_format_string.format( 
-                                                             lower = lower_s
-                                                            ,upper = x_max_s 
-                                                            ,mid_pt = mid_pt_s 
-                                                                )        
-                    ]                                                       
+        #retvals = {}
 
-    assert len(legend_tags) == options.number_of_classes == len(mid_points)
-
-    report_value(legend_tags)
-
-    #first_legend_tag_format_string = 'below {upper}'
-    #inner_tag_format_string = '{lower} - {upper}' # also supports {mid}
-    #last_legend_tag_format_string = 'above {lower}'
-
-    #retvals['max'] = x_max = max(data)
-    #retvals['min'] = x_min = min(data)
-
-    gdm = OrderedDict(zip( geom_data_map.keys() + legend_tags 
-                          ,(classifier(x) for x in data + mid_points)
-                          )
-                     )
-    return 0, f_name, gdm, None
+        # todo:  '{n:}'.format() everything to apply localisation, 
+        # e.g. thousand seperators
 
 
-def recolour_objects(f_name, geom_data_map, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
-    # Note!  opts_at_call can be mutated.
+        mid_points = [0.5*(x_min + min(class_boundaries))]
+        mid_points += [0.5*(x + y) for (x,y) in zip(  class_boundaries[0:-1]
+                                                    ,class_boundaries[1:]  
+                                                )
+                    ]
+        mid_points += [ 0.5*(x_max + max(class_boundaries))]
+        report_value(mid_points)
 
-    options = opts_at_call['options']
+        locale.setlocale(locale.LC_ALL,  options.locale)
+
+        x_min_s = options.num_format.format(x_min)
+        upper_s = options.num_format.format(min( class_boundaries ))
+        mid_pt_s = options.num_format.format( mid_points[0] )
+
+        legend_tags = [options.first_legend_tag_format_string.format( 
+                                                                lower = x_min_s
+                                                                ,upper = upper_s
+                                                                ,mid_pt = mid_pt_s
+                                                                    )
+                                                        ]
+        for lower_bound, mid_point, upper_bound in zip( 
+                                            class_boundaries[0:-1]
+                                            ,mid_points[1:-1]
+                                            ,class_boundaries[1:]  
+                                                    ):
+            
+            lower_s = options.num_format.format(lower_bound)
+            upper_s = options.num_format.format(upper_bound)
+            mid_pt_s = options.num_format.format(mid_point)
+
+            legend_tags += [options.inner_tag_format_string.format(
+                                                    lower = lower_s
+                                                    ,upper = upper_s
+                                                    ,mid_pt = mid_pt_s 
+                                                                )
+                            ]
+
+        lower_s = options.num_format.format(max( class_boundaries ))
+        x_max_s = options.num_format.format(x_max)
+        mid_pt_s = options.num_format.format(mid_points[-1])
+
+        legend_tags += [options.last_legend_tag_format_string.format( 
+                                                                lower = lower_s
+                                                                ,upper = x_max_s 
+                                                                ,mid_pt = mid_pt_s 
+                                                                    )        
+                        ]                                                       
+
+        assert len(legend_tags) == options.number_of_classes == len(mid_points)
+
+        report_value(legend_tags)
+
+        #first_legend_tag_format_string = 'below {upper}'
+        #inner_tag_format_string = '{lower} - {upper}' # also supports {mid}
+        #last_legend_tag_format_string = 'above {lower}'
+
+        #retvals['max'] = x_max = max(data)
+        #retvals['min'] = x_min = min(data)
+
+        gdm = OrderedDict(zip( geom_data_map.keys() + legend_tags 
+                            ,(classifier(x) for x in data + mid_points)
+                            )
+                        )
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'f_name', 'gdm', None
+    else:
+        inner.retvals = retvals
+
+    return inner        
 
 
-    
-    field = options.sDNA_output_abbrev_to_graph
-    objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
-                                   if isinstance(v, dict) and field in v    
+def recolour_objects(retvals = None):
+    #type() -> function
+
+    def inner(f_name, geom_data_map, opts_at_call):
+        #type(str, dict, dict) -> int, str, dict, list
+        # Note!  opts_at_call can be mutated.
+
+        options = opts_at_call['options']
+
+
+        
+        field = options.sDNA_output_abbrev_to_graph
+        objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
+                                    if isinstance(v, dict) and field in v    
+                                    )
+        if objs_to_parse:
+            ret_code, f_name, gdm, messages = tools_dict['parse_data'](  f_name
+                                                                        ,objs_to_parse
+                                                                        ,opts_at_call
+                                                                        )
+        else:
+            gdm = {}
+
+        x_min, x_max = options.plot_min, options.plot_max
+
+        objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
+                                                if isinstance(v, Number) 
+                                        )
+        objs_to_get_colour.update(gdm)  # no key clashes possible unless some x
+                                        # isinstance(x, dict) 
+                                        # and isinstance(x, Number)
+        if options.GH_Gradient:
+            grad = getattr( GH_Gradient()
+                        ,GH_Gradient_preset_names[options.GH_Gradient_preset])
+            def get_colour(x):
+                # Number-> Tuple(Number, Number, Number)
+                # May need either rhinoscriptsyntax.CreateColor
+                # or System.Drawing.Color.FromArgb and even 
+                # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
+                # in Grasshopper
+                return grad().ColourAt(linearly_interpolate( x
+                                                            ,x_min
+                                                            ,None
+                                                            ,x_max
+                                                            ,0 #0.18
+                                                            ,1 #0.82
+                                                            )
+                                        )
+        else:
+            def get_colour(x):
+                # Number-> Tuple(Number, Number, Number)
+                # May need either rhinoscriptsyntax.CreateColor
+                # or System.Drawing.Color.FromArgb and even 
+                # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
+                # in Grasshopper
+                rgb_col =  map_f_to_three_tuples( three_point_quadratic_spline
+                                                ,x
+                                                ,x_min
+                                                ,0.5*(x_min + x_max)
+                                                ,x_max
+                                                ,tuple(options.rgb_min)
+                                                ,tuple(options.rgb_mid)
+                                                ,tuple(options.rgb_max)
+                                                )
+                bounded_colour = ()
+                for channel in rgb_col:
+                    bounded_colour += ( max(0, min(255, channel)), )
+                return rs.CreateColor(bounded_colour)
+
+        objs_to_recolour = OrderedDict( (k, v) for k, v in geom_data_map.items()
+                                            if isinstance(v, Colour)  
+                                    )
+            
+        objs_to_recolour.update( (key,  get_colour(val))
+                                for key, val in objs_to_get_colour.items()
                                 )
-    if objs_to_parse:
-        ret_code, f_name, gdm, messages = parse_data(f_name
-                                                    ,objs_to_parse
-                                                    ,opts_at_call
-                                                    )
-    else:
-        gdm = {}
 
-    x_min, x_max = options.plot_min, options.plot_max
 
-    objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
-                                             if isinstance(v, Number) 
-                                    )
-    objs_to_get_colour.update(gdm)  # no key clashes possible unless some x
-                                    # isinstance(x, dict) 
-                                    # and isinstance(x, Number)
-    if options.GH_Gradient:
-        grad = getattr( GH_Gradient()
-                       ,GH_Gradient_preset_names[options.GH_Gradient_preset])
-        def get_colour(x):
-            # Number-> Tuple(Number, Number, Number)
-            # May need either rhinoscriptsyntax.CreateColor
-            # or System.Drawing.Color.FromArgb and even 
-            # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
-            # in Grasshopper
-            return grad().ColourAt(linearly_interpolate( x
-                                                        ,x_min
-                                                        ,None
-                                                        ,x_max
-                                                        ,0 #0.18
-                                                        ,1 #0.82
-                                                        )
-                                    )
-    else:
-        def get_colour(x):
-            # Number-> Tuple(Number, Number, Number)
-            # May need either rhinoscriptsyntax.CreateColor
-            # or System.Drawing.Color.FromArgb and even 
-            # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
-            # in Grasshopper
-            rgb_col =  map_f_to_three_tuples( three_point_quadratic_spline
-                                            ,x
-                                            ,x_min
-                                            ,0.5*(x_min + x_max)
-                                            ,x_max
-                                            ,tuple(options.rgb_min)
-                                            ,tuple(options.rgb_mid)
-                                            ,tuple(options.rgb_max)
-                                            )
-            bounded_colour = ()
-            for channel in rgb_col:
-                bounded_colour += ( max(0, min(255, channel)), )
-            return rs.CreateColor(bounded_colour)
+        legend_tags = OrderedDict()
+        legend_first_pattern = make_regex(options.first_legend_tag_format_string)
+        legend_inner_pattern = make_regex(options.inner_tag_format_string)
+        legend_last_pattern = make_regex(options.last_legend_tag_format_string)
 
-    objs_to_recolour = OrderedDict( (k, v) for k, v in geom_data_map.items()
-                                           if isinstance(v, Colour)  
-                                  )
-        
-    objs_to_recolour.update( (key,  get_colour(val))
-                              for key, val in objs_to_get_colour.items()
+        legend_tag_patterns = (legend_first_pattern
+                            ,legend_inner_pattern
+                            ,legend_last_pattern
                             )
 
 
-    legend_tags = OrderedDict()
-    legend_first_pattern = make_regex(options.first_legend_tag_format_string)
-    legend_inner_pattern = make_regex(options.inner_tag_format_string)
-    legend_last_pattern = make_regex(options.last_legend_tag_format_string)
+        GH_objs_to_recolour = OrderedDict()
+        objects_to_widen_lines = []
 
-    legend_tag_patterns = (legend_first_pattern
-                          ,legend_inner_pattern
-                          ,legend_last_pattern
-                          )
+        for obj, new_colour in objs_to_recolour.items():
+            #report_value(obj)
+            if is_uuid(obj): # and is_an_obj_in_GH_or_Rhino(obj):
+                target_doc = is_an_obj_in_GH_or_Rhino(obj)    
+                if target_doc:
+                    sc.doc = target_doc
+                    if False: #target_doc == ghdoc:
+                        GH_objs_to_recolour[obj] = new_colour 
+                    #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
+                    else:
+                        rs.ObjectColor(obj, new_colour)
+                        objects_to_widen_lines.append(obj)
 
-
-    GH_objs_to_recolour = OrderedDict()
-    objects_to_widen_lines = []
-
-    for obj, new_colour in objs_to_recolour.items():
-        #report_value(obj)
-        if is_uuid(obj): # and is_an_obj_in_GH_or_Rhino(obj):
-            target_doc = is_an_obj_in_GH_or_Rhino(obj)    
-            if target_doc:
-                sc.doc = target_doc
-                if False: #target_doc == ghdoc:
-                    GH_objs_to_recolour[obj] = new_colour 
-                #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
                 else:
-                    rs.ObjectColor(obj, new_colour)
-                    objects_to_widen_lines.append(obj)
-
-            else:
-                raise ValueError(output( 'sc.doc == ' + str(sc.doc) 
-                                        +' i.e. neither Rhinodoc.ActiveDoc '
-                                        +'nor ghdoc'
-                                        ,'ERROR'
-                                        )
-                                )
-
-        elif any(  bool(match(pattern, obj)) 
-                    for pattern in legend_tag_patterns ):
-            sc.doc = ghdoc
-            legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
-        else:
-            raise NotImplementedError(output( 'Valid colour in Data but ' 
-                                                +'no geom obj or legend tag.'
-                                                ,'ERROR'
+                    raise ValueError(output( 'sc.doc == ' + str(sc.doc) 
+                                            +' i.e. neither Rhinodoc.ActiveDoc '
+                                            +'nor ghdoc'
+                                            ,'ERROR'
                                             )
                                     )
 
-    sc.doc = ghdoc
-    #[x.Geometry for x in list(GH_objs_to_recolour.keys())]
-    #CustomPreview( list(GH_objs_to_recolour.keys())
-    #              ,list(GH_objs_to_recolour.values())
-    #              )
+            elif any(  bool(match(pattern, obj)) 
+                        for pattern in legend_tag_patterns ):
+                sc.doc = ghdoc
+                legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
+            else:
+                raise NotImplementedError(output( 'Valid colour in Data but ' 
+                                                    +'no geom obj or legend tag.'
+                                                    ,'ERROR'
+                                                )
+                                        )
 
-
-    keys = objects_to_widen_lines
-    if keys:
-        sc.doc = Rhino.RhinoDoc.ActiveDoc                             
-        rs.ObjectColorSource(keys, 1)  # 1 => colour from object
-        rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
-        rs.ObjectPrintWidthSource(keys, 1)  # 1 => print width from object
-        rs.ObjectPrintWidth(keys, options.line_width) # width in mm
-        rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
-                   +str(options.line_width)
-                   +' _enter')
-        sc.doc.Views.Redraw()
         sc.doc = ghdoc
+        #[x.Geometry for x in list(GH_objs_to_recolour.keys())]
+        #CustomPreview( list(GH_objs_to_recolour.keys())
+        #              ,list(GH_objs_to_recolour.values())
+        #              )
 
 
-    # "Node in code"
-    #pt = rs.CreatePoint(0, 0, 0)
-    #bbox = BoundingBox(objs_to_recolour.keys, XYPlane(pt)) # BoundingBox(XYPlane
-
-    #bbox_xmin = min(list(p)[0] for p in bbox.box.GetCorners()[:4] )
-    #bbox_xmax = max(list(p)[0] for p in bbox.box.GetCorners()[:4] )
-    #bbox_ymin = min(list(p)[1] for p in bbox.box.GetCorners()[:4] )
-    #bbox_ymax = max(list(p)[1] for p in bbox.box.GetCorners()[:4] )
-
-    if options.bbox:
-        bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
-
-        legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
-        legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
-        legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
-        
-        report_value(bbox)
-
-    elif options.legend_extent:
-        [legend_xmin
-        ,legend_ymin
-        ,legend_xmax
-        ,legend_ymax] = options.legend_extent
-
- 
-
-    #rectangle = Rectangle( XYPlane(pt)
-    #                      ,[legend_xmin, legend_xmax]
-    #                      ,[legend_ymin, legend_ymax]
-    #                      ,0
-    #                      )
-
-    plane = rs.WorldXYPlane()
-    rectangle = rs.AddRectangle(plane
-                               ,legend_xmax - legend_xmin
-                               ,legend_ymax - legend_ymin )
-
-    rs.MoveObject(rectangle, [1.07*bbox_xmax, legend_ymin])
-
-    opts_at_call['options'] = opts_at_call['options']._replace(
-                                        legend_rectangle = rectangle 
-                                                            )
-
-    #def c():
-        #return GH_Colour(Color.FromArgb(r(0,255), r(0,255), r(0,255)))
-        #return Color.FromArgb(r(0,255), r(0,255), r(0,255))
-        #return rs.CreateColor(r(0,255), r(0,255), r(0,255))
-    #tags=['Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5']
-    #colours = [c(), c(), c(), c(), c()]
-    #rect = sc.doc.Objects.FindGeometry(rectangle)
-    #for k, v in legend_tags.items():
-    #    Legend(Colour.FromArgb(*v), k, rectangle)
-    #Legend( [GH_Colour(Colour.FromArgb(*v)) for v in legend_tags.values()]
-    #       ,list(legend_tags.keys()) 
-    #       ,rectangle
-    #       )
+        keys = objects_to_widen_lines
+        if keys:
+            sc.doc = Rhino.RhinoDoc.ActiveDoc                             
+            rs.ObjectColorSource(keys, 1)  # 1 => colour from object
+            rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
+            rs.ObjectPrintWidthSource(keys, 1)  # 1 => print width from object
+            rs.ObjectPrintWidth(keys, options.line_width) # width in mm
+            rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
+                    +str(options.line_width)
+                    +' _enter')
+            sc.doc.Views.Redraw()
+            sc.doc = ghdoc
 
 
+        # "Node in code"
+        #pt = rs.CreatePoint(0, 0, 0)
+        #bbox = BoundingBox(objs_to_recolour.keys, XYPlane(pt)) # BoundingBox(XYPlane
 
-    sc.doc =  ghdoc # type: ignore
+        #bbox_xmin = min(list(p)[0] for p in bbox.box.GetCorners()[:4] )
+        #bbox_xmax = max(list(p)[0] for p in bbox.box.GetCorners()[:4] )
+        #bbox_ymin = min(list(p)[1] for p in bbox.box.GetCorners()[:4] )
+        #bbox_ymax = max(list(p)[1] for p in bbox.box.GetCorners()[:4] )
 
-    return 0, rectangle, legend_tags, None
+        if options.bbox:
+            bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
 
+            legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
+            legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
+            legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
+            
+            report_value(bbox)
 
-###########TODO: Delete.  Now obsolete.
-def plot_data_on_Rhino_objects(f_name, geom_data_map, opts_at_call):
-    #type(str, dict, dict) -> int, str, dict, list
-    # Only works on Rhino objects in the gdm
-    sc.doc = Rhino.RhinoDoc.ActiveDoc
-    options = opts_at_call['options']
+        elif options.legend_extent:
+            [legend_xmin
+            ,legend_ymin
+            ,legend_xmax
+            ,legend_ymax] = options.legend_extent
 
-    field = options.sDNA_output_abbrev_to_graph
-
-    keys = (geom_data_map.viewkeys() 
-                    if sys.version_info.major < 3 else geom_data_map.keys())
-
-    vals = (geom_data_map.viewvalues() 
-                    if sys.version_info.major < 3 else geom_data_map.values())
-
-    report("Plotting field == " + field)
-
-    data_points = [ d[field] for d in vals ]
-    data_max = max(data_points)
-    data_min = min(data_points)
-    rgb_max = tuple(options.rgb_max) #(155, 0, 0) #990000
-    rgb_min = tuple(options.rgb_min) #(0, 0, 125) #3333cc
-    rgb_mid = tuple(options.rgb_mid) # (0, 155, 0) # guessed
-
-
-
-
-
-    new_width = 4
     
 
-    for rhino_obj, d in geom_data_map.items():
-        #change_line_thickness(rhino_obj, new_width)
-        #rs.ObjectColor(rhino_obj, map_f_to_tuples(linearly_interpolate, record[sDNA_output_to_plot_index], data_min, data_max, rgb_min, rgb_max))
-        rs.ObjectColor(rhino_obj, map_f_to_three_tuples( three_point_quadratic_spline
-                                                        ,d[field]
-                                                        ,data_min
-                                                        ,0.5*(data_min + data_max)
-                                                        ,data_max
-                                                        ,rgb_min
-                                                        ,rgb_mid
-                                                        ,rgb_max
-                                                        )
+        #rectangle = Rectangle( XYPlane(pt)
+        #                      ,[legend_xmin, legend_xmax]
+        #                      ,[legend_ymin, legend_ymax]
+        #                      ,0
+        #                      )
 
-                        )
+        plane = rs.WorldXYPlane()
+        rectangle = rs.AddRectangle(plane
+                                ,legend_xmax - legend_xmin
+                                ,legend_ymax - legend_ymin )
 
-    rs.ObjectColorSource(keys, 1)  # 1 => colour from object
-    rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
-    rs.ObjectPrintWidthSource(keys, 1)  # 1 => print width from object
-    rs.ObjectPrintWidth(keys, new_width) # width in mm
-    #rs._commanPrint Display (Model Viewports) ( State=On  Color=Display  Thickness=15 ): Thickness=20
-    rs.Command('_PrintDisplay _State=_On Color=Display Thickness=8')
-    #rs.Command('Print Display (Model Viewports) ( State=On  Color=Display  Thickness=8 )')
-    sc.doc.Views.Redraw()
+        rs.MoveObject(rectangle, [1.07*bbox_xmax, legend_ymin])
 
-    sc.doc =  ghdoc # type: ignore
-    return 0, f_name, geom_data_map, None
+        opts_at_call['options'] = opts_at_call['options']._replace(
+                                            legend_rectangle = rectangle 
+                                                                )
+
+        #def c():
+            #return GH_Colour(Color.FromArgb(r(0,255), r(0,255), r(0,255)))
+            #return Color.FromArgb(r(0,255), r(0,255), r(0,255))
+            #return rs.CreateColor(r(0,255), r(0,255), r(0,255))
+        #tags=['Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5']
+        #colours = [c(), c(), c(), c(), c()]
+        #rect = sc.doc.Objects.FindGeometry(rectangle)
+        #for k, v in legend_tags.items():
+        #    Legend(Colour.FromArgb(*v), k, rectangle)
+        #Legend( [GH_Colour(Colour.FromArgb(*v)) for v in legend_tags.values()]
+        #       ,list(legend_tags.keys()) 
+        #       ,rectangle
+        #       )
+
+
+
+        sc.doc =  ghdoc # type: ignore
+
+        locs = locals().copy()
+        return [locs[retval] for retval in inner.retvals]
+    if retvals == None:
+        inner.retvals = 0, 'rectangle', 'legend_tags', None
+    else:
+        inner.retvals = retvals
+    return inner
+
+
+
                   
 
 def list_contains(check_list, name, name_map):
@@ -2221,15 +2247,14 @@ class TheIllusionOfProgress():
         pass
 
 
-tools_dict=dict( get_objects_from_Rhino = [get_objects_from_Rhino]
-                ,read_Usertext = [read_Usertext]
-                ,write_objects_and_data_to_shapefile = [write_objects_and_data_to_shapefile]
-                ,read_shapes_and_data_from_shapefile = [read_shapes_and_data_from_shapefile]
-                ,write_data_to_Usertext = [write_data_to_Usertext]
-                ,bake_and_write_data_as_Usertext_to_Rhino = [bake_and_write_data_as_Usertext_to_Rhino]
-                ,parse_data = [parse_data]
-                ,recolour_objects = [recolour_objects]
-                ,plot_data_on_Rhino_objects = [plot_data_on_Rhino_objects] # Needed in iterable wrappers
+tools_dict=dict( get_objects_from_Rhino = [get_objects_from_Rhino()]
+                ,read_Usertext = [read_Usertext()]
+                ,write_objects_and_data_to_shapefile = [write_objects_and_data_to_shapefile()]
+                ,read_shapes_and_data_from_shapefile = [read_shapes_and_data_from_shapefile()]
+                ,write_data_to_Usertext = [write_data_to_Usertext()]
+                ,bake_and_write_data_as_Usertext_to_Rhino = [bake_and_write_data_as_Usertext_to_Rhino()]
+                ,parse_data = [parse_data()]
+                ,recolour_objects = [recolour_objects()] # Needed in iterable wrappers
                 )
 
 support_component_names = list(tools_dict.keys())[:] # In Python 3, .keys() and 
@@ -2337,10 +2362,11 @@ def get_specific_tool(tool_name, nick_name, local_opts):
                 if options.auto_write_new_Shp_file and (
                    options.overwrite_input_shapefile 
                    or not isfile(input_file)                  ):
-                    retcode, input_file, gdm, tmp_a = write_objects_and_data_to_shapefile( input_file
-                                                                                          ,gdm
-                                                                                          ,opts_at_call
-                                                                                          )
+                    retcode, input_file, gdm, tmp_a = tools_dict['write_objects_and_data_to_shapefile']( 
+                                                                                             input_file
+                                                                                            ,gdm
+                                                                                            ,opts_at_call
+                                                                                            )
                     a.write(tmp_a)
                 
                 tool_opts[sDNA] = tool_opts[sDNA]._replace(input = input_file)
@@ -2518,21 +2544,47 @@ def component_decorator(BaseClass, loader = module_loader):
         #sDNA_GH_path = sDNA_GH_path
         #sDNA_GH_package = sDNA_GH_package
 
-        def update_tools(self):
-            self.my_tools = []
-            tools = tool_factory(    self 
-                                    ,self.nick_name
-                                    ,self.opts['metas'].name_map
-                                    ,self.opts)
-            for tool in tools:
-                # some are unique closures so no #if not hasattr(self, tool.func_name):
-                setattr(self, tool.func_name, tool)
-                self.my_tools +=[getattr(self, tool.func_name)]
-                
+        def remove_component_output(self, name):
+            for param in self.Params.Output:
+                if param.NickName == name:
+                    self.Params.Output.Remove(self, param)
+        
 
+        def update_component_outputs(self, retval_names):
+            for param in self.Params.Output:  # Overkill?  Discards user's customisations?
+                                              # Otherwise needs two loops, but these seldom run.
+                self.Params.Output.Remove(self, param)
+            current_output_names = [x.NickName for x in self.Params.Output]
+            for name in retval_names:
+                if name not in current_output_names: #Just delete all first!
+                    var = Grasshopper.Kernel.Parameters.Param_String(NickName = name)
+
+                    #var.NickName = name
+                    #var.Name = name
+                    #var.Description = "test var"
+                    var.Access = Grasshopper.Kernel.GH_ParamAccess.list
+                    self.Params.RegisterOutputParam(var)
+            self.Params.OnParametersChanged()
+    
+
+        def update_tools(self):
+            #self.my_tools = []
+
+            #for tool in tools:
+            #    # some are unique closures so no #if not hasattr(self, tool.func_name):
+            #    setattr(self, func_name(tool), tool)
+            #    self.my_tools +=[getattr(self, func_name(tool))]
+            
+            #Avoid issues with calling tools stored as methods with self:
+            self.my_tools = tool_factory(self 
+                                        ,self.nick_name
+                                        ,self.opts['metas'].name_map
+                                        ,self.opts)
             output('My_tools ==\n'
-                    +'\n'.join([tool.func_name for tool in self.my_tools])
+                    +'\n'.join([func_name(tool) for tool in self.my_tools])
                     ,'DEBUG')
+
+            self.update_component_outputs(self, self.my_tools[-1].retvals)
 
 
         def update_name(self, new_name = 'selftest'):       
@@ -2766,7 +2818,7 @@ def component_decorator(BaseClass, loader = module_loader):
                             )
                 #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
 
-                if self.my_tools[-1] == parse_data:
+                if self.my_tools[-1] == tools_dict['parse_data']:
                     ret_vals = (  ret_vals[0]
                                 ,options.plot_min
                                 ,options.plot_max   ) + ret_vals[1:]
