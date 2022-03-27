@@ -315,6 +315,7 @@ opts = OrderedDict( metas = default_metas
                    ,options = default_options
                    )                
 
+metas = opts['metas']
 options = opts['options']
 
 get_syntax_dict = {} 
@@ -1165,7 +1166,7 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
                                      )        
 
 
-
+    val_dict_orian = OrderedDict([('f_name', f_name),('gdm', gdm), ('opts_at_call',opts_at_call)])
     for tool in tools:
         if tool:
             report_value(tool)
@@ -1173,10 +1174,14 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
             report_value(gdm)
             report_value(opts_at_call)
 
-            returncode, f_name, gdm, tmp_a = tool(  f_name 
-                                                    ,gdm
-                                                    ,opts_at_call 
-                                                    )
+            #returncode, f_name, gdm, tmp_a = 
+            retvals = tool(  val_dict_orian['f_name']
+                            ,val_dict_orian['gdm']
+                            ,val_dict_orian['opts_at_call'] 
+                            )
+            val_dict_orian = OrderedDict(zip(tool.retvals, retvals))
+            returncode = val_dict_orian['return_code']
+            tmp_a = val_dict_orian['a']
             report('Tool name == ' + func_name(tool) + ' return code == ' + str(returncode))
             a.write(tmp_a)
             if returncode != 0:
@@ -1187,7 +1192,7 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
                                 )
         else:
             raise TypeError(output('Bad tool == ' + str(tool), 'ERROR'))
-    return returncode, f_name, gdm, a        
+    return val_dict_orian        
 #
 #
 #############################################################################################################################
@@ -1197,13 +1202,13 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
 # Main component tool functions
 #
 #
-def get_objects_from_Rhino(retvals = None):
+def get_objects_from_Rhino(retvals = None, Required = None):
     #type() -> function
     def inner(f_name, gdm, opts_at_call):
         #type(str, dict, dict) -> int, str, dict, list
 
         options = opts_at_call['options']
-
+        a = WriteableFlushableList()
         #if 'ghdoc' not in globals():
         #    global ghdoc
         #    ghdoc = sc.doc  
@@ -1235,21 +1240,28 @@ def get_objects_from_Rhino(retvals = None):
 
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
+        retcode = 0
     if retvals == None:
-        inner.retvals = 0, 'f_name', 'geom_data_map', None
+        inner.retvals = 'retcode', 'f_name', 'geom_data_map', 'a'
     else:
         inner.retvals = retvals
-
+    if Required == None:
+        inner.Required = inner.retvals[0] + ('Geom', ) + inner.retvals[1:]
+    else:
+        inner.Required = Required
     return inner
 
 
-def read_Usertext(retvals = None):
+def read_Usertext(retvals = None, Required = None):
     #type() -> function
 
     def inner(f_name, gdm, opts_at_call):
         #type(str, dict, dict) -> int, str, dict, list
 
         report('Starting read_Usertext... ')
+        options = opts_at_call['options']
+
+        a = WriteableFlushableList()
 
         if (options.auto_get_objects_from_Rhino and
                 (not gdm or not hasattr(gdm, 'keys')
@@ -1258,7 +1270,7 @@ def read_Usertext(retvals = None):
                                                                                 ,gdm
                                                                                 ,opts_at_call
                                                                                 )
-
+        a.write(tmp_a)
         #if opts_at_call['options'].read_overides_Data_from_Usertext:
 
         read_Usertext_as_tuples = get_OrderedDict()
@@ -1272,27 +1284,33 @@ def read_Usertext(retvals = None):
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 0, 'f_name', 'gdm', None
+        inner.retvals = 'retcode', 'f_name', 'gdm', 'a'
     else:
         inner.retvals = retvals
+    if Required == None:
+        inner.Required = inner.retvals[0] + ('Geom', 'Data') + inner.retvals[1:]
+    else:
+        inner.Required = Required
     return inner
 
 
-def write_objects_and_data_to_shapefile(retvals = None):
+def write_objects_and_data_to_shapefile(retvals = None, Required = None):
     #type() -> function
 
-    def inner(f_name, gdm, opts_at_call):
+    def inner(f_name, geom_data_mapping, opts_at_call):
         #type(str, dict, dict) -> int, str, dict, list
         
         options = opts_at_call['options']
 
+        a = WriteableFlushableList()
+
         shp_type = options.shp_file_shape_type            
-        #print gdm
+        #print geom_data_mapping
         if (options.auto_read_Usertext and
-                (not gdm or not hasattr(gdm, 'values')
-                or all(len(v) ==0  for v in gdm.values()))):
-            retcode, f_name, gdm, tmp_a = tools_dict['read_Usertext'](   f_name
-                                                                        ,gdm
+                (not geom_data_mapping or not hasattr(geom_data_mapping, 'values')
+                or all(len(v) ==0  for v in geom_data_mapping.values()))):
+            retcode, f_name, geom_data_mapping, tmp_a = tools_dict['read_Usertext'](   f_name
+                                                                        ,geom_data_mapping
                                                                         ,opts_at_call
                                                                         )
 
@@ -1337,10 +1355,10 @@ def write_objects_and_data_to_shapefile(retvals = None):
             return obj #tupl[0].ToString() # uuid
 
         def find_keys(obj):
-            return gdm[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
+            return geom_data_mapping[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
 
         def get_data_item(obj, key):
-            return gdm[obj][key] #tupl[1][key]
+            return geom_data_mapping[obj][key] #tupl[1][key]
 
         if not f_name:  
             if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
@@ -1352,14 +1370,14 @@ def write_objects_and_data_to_shapefile(retvals = None):
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
 
-        #report('Type of gdm == '+ type(gdm).__name__)                         
-        #report('Size of gdm == ' + str(len(gdm)))
-        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],gdm.keys() )) )
-        #report('Gdm.values == ' + ' '.join(map(str,gdm.values())))
+        #report('Type of geom_data_mapping == '+ type(geom_data_mapping).__name__)                         
+        #report('Size of geom_data_mapping == ' + str(len(geom_data_mapping)))
+        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_mapping.keys() )) )
+        #report('Gdm.values == ' + ' '.join(map(str,geom_data_mapping.values())))
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
-        (retcode, filename, fields, gdm_out) = ( 
+        (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
-                                                gdm
+                                                geom_data_mapping
                                         #my_iter 
                                                 ,f_name 
                                         #shp_file 
@@ -1386,10 +1404,13 @@ def write_objects_and_data_to_shapefile(retvals = None):
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:    
-        inner.retvals = 'retcode', 'filename', 'gdm_out', None
+        inner.retvals = 'retcode', 'f_name', 'gdm', 'a'
     else:
         inner.retvals = retvals
-
+    if Required == None:
+        inner.Required = inner.retvals
+    else:
+        inner.Required = Required
     return inner
 
 
@@ -1453,12 +1474,14 @@ def get_shape_file_rec_ID(options = opts['options']):
 
 
 
-def read_shapes_and_data_from_shapefile(retvals = None):
+def read_shapes_and_data_from_shapefile(retvals = None, Required = None):
     #type() -> function
 
-    def inner( f_name, gdm, opts_at_call ):
+    def inner( f_name, geom_data_mapping, opts_at_call ):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts_at_call['options']
+
+        a = WriteableFlushableList()
 
         ( fields
         ,recs
@@ -1467,11 +1490,11 @@ def read_shapes_and_data_from_shapefile(retvals = None):
 
         if not recs:
             output('No data read from Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, gdm, None    
+            return 1, f_name, geom_data_mapping, None    
             
         if not shapes:
             output('No shapes in Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, gdm, None
+            return 1, f_name, geom_data_mapping, None
 
             
 
@@ -1490,15 +1513,15 @@ def read_shapes_and_data_from_shapefile(retvals = None):
             obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
             # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
         
-            if isinstance(gdm, dict) and len(gdm) == len(recs):
+            if isinstance(geom_data_mapping, dict) and len(geom_data_mapping) == len(recs):
                 # figuring out an override for different number of overrided geom objects
                 # to shapes/recs is to open a large a can of worms.  Unsupported.
                 # If the override objects are in Rhino anyway then the uuid field in the shape
                 # file will be picked up in any case in get_shape_file_rec_ID
                 if sys.version_info.major < 3:
-                    shape_keys = gdm.viewkeys()  
+                    shape_keys = geom_data_mapping.viewkeys()  
                 else: 
-                    shape_keys = gdm.keys()
+                    shape_keys = geom_data_mapping.keys()
                 shapes_to_output = [shp_key for shp_key in shape_keys]
                     # These points shouldn't be used, as by definition they 
                     # come from objects that already
@@ -1513,18 +1536,17 @@ def read_shapes_and_data_from_shapefile(retvals = None):
         #(  (shape, rec) for (shape, rec) in 
         #                                       izip(shapes_to_output, recs)  )              
         sc.doc = Rhino.RhinoDoc.ActiveDoc
-        gdm_out = make_gdm(shp_file_gen_exp, obj_key_maker)
+        gdm = make_gdm(shp_file_gen_exp, obj_key_maker)
         sc.doc = ghdoc # type: ignore
         
         dot_shp = options.shp_file_extension
         csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
-        ret_vals = {}
+        sDNA_fields = {}
         if isfile(csv_f_name):
             f = open(csv_f_name, 'rb')
             f_csv = csv.reader(f)
-            ret_vals['sDNA_field_names'] = OrderedDict( (line[0], line[1]) 
-                                                            for line in f_csv )
-            ret_vals = [line[0] for line in f_csv ]
+            sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
+            abbrevs = [line[0] for line in f_csv ]
 
         if not options.bbox and not options.legend_extent:
             opts_at_call['options'] = opts_at_call['options']._replace(bbox = bbox)
@@ -1534,13 +1556,16 @@ def read_shapes_and_data_from_shapefile(retvals = None):
         if options.delete_shapefile_after_reading and isfile(f_name): 
             os.remove(f_name)  # TODO: Fix, currently Win32 error
 
+        retcode = 0
+
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 0, 'f_name', 'gdm_out', 'ret_vals'
+        inner.retvals = 'retcode', 'f_name', 'gdm', 'a', 'abbrevs', 'sDNA_fields'
+    if Required == None:
+        inner.Required = inner.retvals[0] + ('Geom', 'Data') + inner.retvals[1:]
     else:
-        inner.retvals = retvals
-
+        inner.Required = Required
     return inner
 
 
@@ -1573,7 +1598,7 @@ def read_shapes_and_data_from_shapefile(retvals = None):
 
 
 
-def write_data_to_Usertext(retvals = None):
+def write_data_to_Usertext(retvals = None, Required = None):
     #type() -> function
 
     def inner(   f_name     #Bake_Geom_and_Data
@@ -1582,6 +1607,9 @@ def write_data_to_Usertext(retvals = None):
                 ):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts_at_call['options']
+
+        a = WriteableFlushableList()
+
         date_time_of_run = asctime()
 
         def write_dict_to_UserText_on_obj(d, rhino_obj):
@@ -1654,23 +1682,28 @@ def write_data_to_Usertext(retvals = None):
                 write_dict_to_UserText_on_obj(val, member)
 
         sc.doc = ghdoc # type: ignore 
+        
+        retcode = 0
 
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 0, 'f_name', 'gdm', None
+        inner.retvals = 'retcode', 'gdm', 'a'
+    if Required == None:
+        inner.Required = inner.retvals #[0] + ('Geom', 'Data') + inner.retvals[1:]
     else:
-        inner.retvals = retvals
+        inner.Required = Required
+    return inner
 
-    return inner    
-
-def bake_and_write_data_as_Usertext_to_Rhino(retvals = None):
+def bake_and_write_data_as_Usertext_to_Rhino(retvals = None, Required = None):
     #type() -> function
 
-    def inner(f_name, gdm, opts_at_call ):
+    def inner(f_name, geom_data_mapping, opts_at_call ):
         #type(str, dict, dict) -> int, str, dict, list  
-        gdm_out=OrderedDict()
-        for obj in gdm:
+        a = WriteableFlushableList()
+
+        gdm = OrderedDict()
+        for obj in geom_data_mapping:
             doc_obj = ghdoc.Objects.Find(obj)
             if doc_obj:
                 geometry = doc_obj.Geometry
@@ -1679,18 +1712,20 @@ def bake_and_write_data_as_Usertext_to_Rhino(retvals = None):
                     add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
                     # trying to avoid constantly switching sc.doc
 
-                    gdm_out[add_to_Rhino(geometry, attributes)] = gdm[obj] # The bake
+                    gdm[add_to_Rhino(geometry, attributes)] = geom_data_mapping[obj] # The bake
         
-        next_ret_vals = tools_dict['write_data_to_Usertext'](f_name, gdm_out, opts_at_call)
+        retcode, gdm, tmp_a = tools_dict['write_data_to_Usertext'](f_name, gdm, opts_at_call)
+        a.write(tmp_a)
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
-
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 'next_ret_vals',
+        inner.retvals = 'retcode', 'a' #'f_name', 'gdm', 'a'
+    if Required == None:
+        inner.Required = inner.retvals #[0] + ('Geom', 'Data') + inner.retvals[1:]
     else:
-        inner.retvals = retvals
+        inner.Required = Required
     return inner
 
 
@@ -1776,13 +1811,16 @@ def change_line_thickness(obj, width, rel_or_abs = False):  #The default value i
     x.CommitChanges()
 
 
-def parse_data(retvals = None):
+def parse_data(retvals = None, Required = None):
     #type() -> function
 
     def inner(f_name, geom_data_map, opts_at_call):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts_at_call can be mutated.
         options = opts_at_call['options']
+
+        a = WriteableFlushableList()
+
         field = options.sDNA_output_abbrev_to_graph
 
         data = [ val[field] for val in geom_data_map.values()]
@@ -1940,17 +1978,20 @@ def parse_data(retvals = None):
                             ,(classifier(x) for x in data + mid_points)
                             )
                         )
+        plot_min, plot_max = options.plot_min, options.plot_max
+        retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 0, 'f_name', 'gdm', None
+        inner.retvals = 'retcode', 'plot_min', 'plot_max', 'f_name', 'gdm', 'a'
+    if Required == None:
+        inner.Required = inner.retvals[:3] + ('Data', 'Geometry') + inner.retvals[3:]
     else:
-        inner.retvals = retvals
+        inner.Required = Required
+    return inner      
 
-    return inner        
 
-
-def recolour_objects(retvals = None):
+def recolour_objects(retvals = None, Required = None):
     #type() -> function
 
     def inner(f_name, geom_data_map, opts_at_call):
@@ -1959,7 +2000,7 @@ def recolour_objects(retvals = None):
 
         options = opts_at_call['options']
 
-
+        a = WriteableFlushableList()
         
         field = options.sDNA_output_abbrev_to_graph
         objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
@@ -2155,45 +2196,46 @@ def recolour_objects(retvals = None):
 
 
         sc.doc =  ghdoc # type: ignore
+        retcode = 0
 
         locs = locals().copy()
         return [locs[retval] for retval in inner.retvals]
     if retvals == None:
-        inner.retvals = 0, 'rectangle', 'legend_tags', None
+        inner.retvals = 'retcode', 'legend_colours', 'legend_tags', 'rectangle', 'a'
+    if Required == None:
+        inner.Required = inner.retvals[0] + ('Geom', 'Data') + inner.retvals[1:]
+          # To recolour GH Geom with a native Preview component
     else:
-        inner.retvals = retvals
+        inner.Required = Required
     return inner
 
 
 
                   
 
-def list_contains(check_list, name, name_map):
-    # type( MyComponent, list(str), str, dict(str, str) ) -> bool
-    name_map
-    return name in check_list or (name in name_map._fields and 
-                                  getattr(name_map, name) in check_list
-                                  )
-    #return name in check_list or (name in name_map and name_map[name] in check_list)
 
 
-def no_name_clashes(name_map, list_of_names_lists):
-    #type( MyComponent, dict(str, str), list(str) ) -> bool
-
-    num_names = sum(len(names_list) for names_list in list_of_names_lists)
-
-    super_set = set(name for names_list in list_of_names_lists 
-                         for name in names_list
-                   )
-    # Check no duplicated name entries in list_of_names_lists.
-    if set(['options', 'metas']) & super_set:
-        return False  # Clashes with internal reserved names.  Still best avoided even though tool options
-                      # are now a level below (under the sDNA version key)
-    return num_names == len(super_set) and not any([x == getattr(name_map, x) 
-                                                   for x in name_map._fields])  
-                                                   # No trivial cycles
-
-
+#########################################################
+#Grasshopper component auto add/remove output param rules
+#
+do_not_add = ['retcode'] # Won't be added automatically
+#
+do_not_remove = ('out'
+                ,'OK'
+                ,'Data'
+                ,'Geometry'
+                ,'f_name'
+                ,'gdm'
+                ,'a'
+                ,'opts'
+                ,'l_metas'
+                ,'retcode' # But if user adds it, we won't remove it
+                )
+#
+do_not_remove += metas._fields
+do_not_remove += options._fields
+do_not_remove += local_metas._fields
+#########################################################
 
 
 def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):    
@@ -2234,6 +2276,7 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
                                                     ,required
                                                 ) in input_spec  }
         update_or_init( local_opts,  defaults_dict,  nick_name )
+        do_not_remove += tuple(defaults_dict.keys())
         # Tool options are stored per nick_name, which may equal tool_name
     else:
         update_or_init( local_opts,  {},  nick_name )
@@ -2265,8 +2308,36 @@ special_names =           [  'sDNA_general'
                             ]
 
 sDNA_GH_names = support_component_names + special_names + ['Python', 'selftest']
-                            
-def component_names_factory(name_map): # name_map is unknown in this module so 
+
+
+def list_contains(check_list, name, name_map):
+    # type( MyComponent, list(str), str, dict(str, str) ) -> bool
+    name_map
+    return name in check_list or (name in name_map._fields and 
+                                  getattr(name_map, name) in check_list
+                                  )
+    #return name in check_list or (name in name_map and name_map[name] in check_list)
+
+
+def no_name_clashes(name_map, list_of_names_lists):
+    #type( MyComponent, dict(str, str), list(str) ) -> bool
+
+    num_names = sum(len(names_list) for names_list in list_of_names_lists)
+
+    super_set = set(name for names_list in list_of_names_lists 
+                         for name in names_list
+                   )
+    # Check no duplicated name entries in list_of_names_lists.
+    if set(['options', 'metas']) & super_set:
+        return False  # Clashes with internal reserved names.  Still best avoided even though tool options
+                      # are now a level below (under the sDNA version key)
+    return num_names == len(super_set) and not any([x == getattr(name_map, x) 
+                                                   for x in name_map._fields])  
+                                                   # No trivial cycles
+
+
+def return_component_names_factory(name_map, retvals = None, Required = None): 
+                                       # name_map is unknown in this module so 
                                        # create closure. Call it from outside.
     def return_component_names(f_name, gdm, local_opts):
         UISpec = local_opts['options'].UISpec
@@ -2316,15 +2387,33 @@ def component_names_factory(name_map): # name_map is unknown in this module so
                      + list(name_map._fields) #keys())
                     )
 
-        return 0, None, {}, ret_names, #names_list
+        #return 0, None, {}, ret_names, #names_list
+        retcode = 0
+        locs = locals().copy()
+        return [locs[retval] for retval in return_component_names.retvals]
+    if retvals == None:
+        return_component_names.retvals = 'retcode', 'names'
+    else:
+        return_component_names.retvals = retvals
+    if Required == None:
+        return_component_names.Required = return_component_names.retvals
+    else:
+        return_component_names.Required = Required  
 
 
     return [return_component_names]
 
 
-def get_specific_tool(tool_name, nick_name, local_opts):
+def get_specific_tool(tool_name
+                     ,nick_name
+                     ,local_opts
+                     ,retvals = None
+                     ,Required = None
+                     ):
     # type(str) -> function
-    # global get_syntax_dict  # access shared global cache via parent module namespace.  Not mutated here (done already in cache_syntax_and_UISpec).
+    # No global get_syntax_dict.  instead
+    # access shared global cache via parent module namespace.  
+    # Not mutated here (done already in cache_syntax_and_UISpec).
     UISpec = local_opts['options'].UISpec
 
     #if tool_name in support_component_names:
@@ -2426,7 +2515,18 @@ def get_specific_tool(tool_name, nick_name, local_opts):
             #                                    ,pythonpath = None)   # TODO:  Work out if this is important or not! 
                                                                     # os.environ["PYTHONPATH"] not found in Iron Python
 
-            return return_code, tool_opts[sDNA].output, gdm, a
+            #return return_code, tool_opts[sDNA].output, gdm, a
+            locs = locals().copy()
+            return [locs[retval] for retval in run_sDNA_wrapper.retvals]
+        if retvals == None:
+            run_sDNA_wrapper.retvals = 'return_code', 'tool_opts[sDNA].output', 'gdm', 'a'
+        else:
+            run_sDNA_wrapper.retvals = retvals
+        if Required == None:
+            run_sDNA_wrapper.Required = ('f_name',)
+            run_sDNA_wrapper.Required = (run_sDNA_wrapper.retvals[0] + ('Geom', 'Data') + run_sDNA_wrapper.retvals[1:])
+        else:
+            run_sDNA_wrapper.Required = Required    
         return [run_sDNA_wrapper]
     else:
         return [None]
@@ -2443,13 +2543,14 @@ def tool_factory(self, nick_name, name_map, local_opts):
     global tools_dict
     # A special component that takes its nickname from the parameters provided,
     # only working out which tools to run at run time.  
-    def tool_factory_wrapper(self, f_name, gdm, opts_at_call):
-        tools = tool_factory( self 
+    def tool_factory_wrapper(inst, f_name, gdm, opts_at_call):
+        tools = tool_factory( inst 
                              ,opts_at_call['options'].tool_name
                              ,name_map  
                              ,opts_at_call 
                              )
-        return run_tools(self, tools, f_name, gdm, opts_at_call)
+        inst.update_component_outputs(tools)
+        return run_tools(inst, tools, f_name, gdm, opts_at_call)
 
  
     if isinstance(nick_name, Hashable):
@@ -2475,7 +2576,7 @@ def tool_factory(self, nick_name, name_map, local_opts):
                     tools_dict[nick_name] = tools_dict[mapped_name]
                     output(mapped_name + ' in support_component_names','DEBUG')
                 elif nick_name == 'Python': #Dev tool for naming components
-                    tools_dict[nick_name] = component_names_factory(name_map) 
+                    tools_dict[nick_name] = return_component_names_factory(name_map) 
                     output(nick_name + ' is "Python"','DEBUG')
                     # Needs to be here to be passed name_map
 
@@ -2520,6 +2621,8 @@ def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_s
     #return self.UISpec, self.run, path
 
 
+
+
 def component_decorator(BaseClass, loader = module_loader):
     #type:(type[type], function) -> type[type]
     class sDNA_GH_Component(BaseClass):
@@ -2547,20 +2650,33 @@ def component_decorator(BaseClass, loader = module_loader):
         def remove_component_output(self, name):
             for param in self.Params.Output:
                 if param.NickName == name:
-                    self.Params.Output.Remove(self, param)
+                    self.Params.Output.Remove(param)
         
 
-        def update_component_outputs(self, retval_names):
-            for param in self.Params.Output:  # Overkill?  Discards user's customisations?
-                                              # Otherwise needs two loops, but these seldom run.
-                self.Params.Output.Remove(self, param)
-            current_output_names = [x.NickName for x in self.Params.Output]
-            for name in retval_names:
-                if name not in current_output_names: #Just delete all first!
-                    var = Grasshopper.Kernel.Parameters.Param_String(NickName = name)
+        def update_component_outputs( self
+                                     ,tools = None  
+                                     ):
+            if tools == None:
+                tools = self.my_tools
+            tool = tools[-1] 
+            params_needed = tool.Required
+            params_current = self.Params.Output[:]
 
-                    #var.NickName = name
-                    #var.Name = name
+            for param in params_current:  
+                if param.NickName in params_needed:
+                    do_not_add += [param.NickName]
+                elif (     param.NickName not in do_not_remove
+                           and len(param.Recipients) == 0        ):
+                    self.Params.Output.Remove(param)
+                # else:  Leave alone.  The user added the param, 
+                # or the component was supplied that way by ourselves.
+                    do_not_add += [param.NickName]
+            for param_name in params_needed:
+                if param_name not in do_not_add: 
+                    var = Grasshopper.Kernel.Parameters.Param_String(NickName = param_name)
+
+                    #var.NickName = param
+                    #var.Name = param
                     #var.Description = "test var"
                     var.Access = Grasshopper.Kernel.GH_ParamAccess.list
                     self.Params.RegisterOutputParam(var)
@@ -2584,7 +2700,7 @@ def component_decorator(BaseClass, loader = module_loader):
                     +'\n'.join([func_name(tool) for tool in self.my_tools])
                     ,'DEBUG')
 
-            self.update_component_outputs(self, self.my_tools[-1].retvals)
+            self.update_component_outputs()
 
 
         def update_name(self, new_name = 'selftest'):       
@@ -2669,6 +2785,7 @@ def component_decorator(BaseClass, loader = module_loader):
             #Output from previous calls to RunScript is already logged elsewhere.
             
             options = self.opts['options']
+            metas = self.opts['metas']
 
             args_dict = {key.Name : val for key, val in zip(self.Params.Input[1:], args) } # type: ignore
             
@@ -2685,7 +2802,7 @@ def component_decorator(BaseClass, loader = module_loader):
                 new_name = "selftest"     
 
             if not hasattr(self, 'nick_name') or (
-                self.opts['metas'].allow_components_to_change_type
+                metas.allow_components_to_change_type
                 and self.nick_name != new_name   
                                                 ):  
                 #
@@ -2698,7 +2815,7 @@ def component_decorator(BaseClass, loader = module_loader):
             
             
             synced = self.local_metas.sync_to_shared_global_opts
-            old_sDNA = self.opts['metas'].sDNA
+            old_sDNA = metas.sDNA
 
             #print('#1.05 self.local_metas == ' + str(self.local_metas))
 
@@ -2715,7 +2832,7 @@ def component_decorator(BaseClass, loader = module_loader):
                                                 )
             #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
             
-            if (self.opts['metas'].auto_update_Rhino_doc_path 
+            if (metas.auto_update_Rhino_doc_path 
                 or not isfile(options.Rhino_doc_path)        ):
 
                 path = self.RhinoDoc.ActiveDoc.Path
@@ -2729,10 +2846,10 @@ def component_decorator(BaseClass, loader = module_loader):
                         if not path:
                             path = options.Default_sDNA_GH_file_path
                 
-                options = options._replace( Rhino_doc_path = path )
-                self.opts['options'] = options
 
-            if self.opts['metas'].allow_components_to_change_type: 
+                self.opts['options'] = options._replace( Rhino_doc_path = path )
+
+            if metas.allow_components_to_change_type: 
                 
                 if self.local_metas.sync_to_shared_global_opts != synced:
                     if self.local_metas.sync_to_shared_global_opts:
@@ -2740,7 +2857,7 @@ def component_decorator(BaseClass, loader = module_loader):
                     else:
                         self.opts = self.opts.copy()
 
-                if self.opts['metas'].sDNA != old_sDNA:
+                if metas.sDNA != old_sDNA:
                     self.update_sDNA()
                     self.update_tools()
             
@@ -2793,12 +2910,13 @@ def component_decorator(BaseClass, loader = module_loader):
                         )
 
 
-                returncode, ret_f_name, gdm, a = run_tools(  self
-                                                            ,self.my_tools
-                                                            ,f_name
-                                                            ,geom_data_map
-                                                            ,self.opts
-                                                            )
+                ret_vals_dict = run_tools(   self
+                                            ,self.my_tools
+                                            ,f_name
+                                            ,geom_data_map
+                                            ,self.opts
+                                            )
+                gdm = ret_vals_dict['gdm']
                 print (str(gdm))
                 if isinstance(gdm, dict):
                     (NewData, Geometry) = (
@@ -2806,26 +2924,36 @@ def component_decorator(BaseClass, loader = module_loader):
                                         )                
                 else:
                     NewData, Geometry = None, None
-
-                ret_vals = ((returncode==0)
-                            ,NewData
-                            ,Geometry
-                            ,ret_f_name
-                            ,[gdm]
-                            ,a
-                            ,[self.opts.copy()]
-                            ,[self.local_metas]
-                            )
+                ret_vals_dict['Data'] = NewData
+                ret_vals_dict['Geometry'] = Geometry
+                #ret_vals_dict
+                #ret_vals = ((returncode==0)
+                #            ,NewData
+                #            ,Geometry
+                #            ,ret_f_name
+                #            ,[gdm]
+                #            ,a
+                #            ,[self.opts.copy()]
+                #            ,[self.local_metas]
+                #            )
                 #ret_vals = (returncode==0), NewData, Geometry, ret_f_name, a 
 
-                if self.my_tools[-1] == tools_dict['parse_data']:
-                    ret_vals = (  ret_vals[0]
-                                ,options.plot_min
-                                ,options.plot_max   ) + ret_vals[1:]
-
+                #if self.my_tools[-1] == tools_dict['parse_data']:
+                #    ret_vals = ( ret_vals[0]
+                #                ,options.plot_min
+                #                ,options.plot_max   ) + ret_vals[1:] #TODO!!!!!!!!!!!!!!
+                ret_vals_dict['retcode'] = (ret_vals_dict['retcode'] == 0)
+                def get_val(key):
+                    return                      ret_vals_dict.get(key,
+                                                        metas.get(key,
+                                                      options.get(key,
+                                                  local_metas.get(key,
+                        self.opts[self.nick_name][metas.sDNA].get(key, None)))))
+                ret_vals = tuple(get_val[param.NickName] for param in self.Params.Output)
                 return ret_vals
                                             #In Python 3 .keys() returns a dictview not a list
             else:   
+                return (False, ) + repeat(None, len(self.Params.Output) - 1)
                 #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
                 return ( False
                         ,Data
@@ -2837,11 +2965,11 @@ def component_decorator(BaseClass, loader = module_loader):
                         ,[self.local_metas]
                         )
 #def deco(BaseClass):
-    class M(BaseClass):
-        def RunScript(self, go, Data, Geom, f_name, *args):
-            a = 'Running Runscript from class deco'
-            print(a)
-            return a
+    #class M(BaseClass):
+    #    def RunScript(self, go, Data, Geom, f_name, *args):
+    #        a = 'Running Runscript from class deco'
+    #        print(a)
+    #        return a
     #return M                    
     return sDNA_GH_Component
 
