@@ -141,5 +141,5 @@ overwrite_input_shapefile = false
 sDNA_output_abbrev_to_graph = 'BtEn'
 ####################################################################################
 #Test
-message = 'Bouncey bouncey!  Bouncey bouncey! Installation options value in config.toml'
+message = 'Options loaded from config.toml'
               

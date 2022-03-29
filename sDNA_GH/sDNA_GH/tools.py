@@ -270,7 +270,7 @@ class HardcodedOptions():
     line_width = 4 # milimetres? 
     ####################################################################################
     #Test
-    message = 'Solid.  Solid as a rock!  Hardcoded default value in tools.py'
+    message = 'Hardcoded default options from tools.py'
 
 GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             ,1 : 'Forest'
@@ -581,10 +581,17 @@ def override_all_opts( args_dict
             #if key=='options':
             #    print('dict_to_update message == '+dict_to_update['options'].message+' '+'DEBUG')
         else:
-            dict_to_update[key][sDNA()] = override_namedtuple(dict_to_update[key][sDNA()]
-                                                             ,overrides_list(key)
-                                                             ,**kwargs(key, local_opts) 
-                                                             )
+            if sDNA() in dict_to_update[key]:
+                dict_to_update[key][sDNA()] = override_namedtuple(   dict_to_update[key][sDNA()]
+                                                                    ,overrides_list(key)
+                                                                    ,**kwargs(key, local_opts) 
+                                                                    )
+            else:
+                for tool in dict_to_update[key]:
+                    dict_to_update[key][tool][sDNA()] = override_namedtuple( dict_to_update[key][tool][sDNA()]
+                                                                            ,overrides_list(key) # + '_tool'
+                                                                            ,**kwargs(key, local_opts) # + '_tool'
+                                                                            ) # TODO: add in tool name to key
     return local_metas
 
 
@@ -2267,15 +2274,38 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
     global get_syntax_dict, do_not_remove
     # 
     #
-    def update_or_init(cache, defaults, name):
-        #type(dict, dict / function, str) -> None
-        if name not in cache:
-            cache[name] =  {}
-        if sDNA not in cache[name]:
-            cache[name][sDNA] = ( make_nested_namedtuple( defaults,  name ) 
-                        if isinstance(defaults, dict) else defaults  )
+    def update_or_init(cache, defaults, nick_name, tool_name):
+        #type(dict, dict / function, str, str) -> None
+        def getdefaults():
+            if isinstance(defaults, dict):
+                return make_nested_namedtuple( defaults,  nick_name ) #+ '_' + tool_name ) 
+            else:
+                return defaults
+
+        cache.setdefault(nick_name, OrderedDict()) #OrderedDict([(1,2)])
+        
+        if nick_name != tool_name:
+            cache.setdefault(tool_name, OrderedDict()) #OrderedDict([(3,4)])
+            cache[nick_name].setdefault(tool_name, OrderedDict()) #OrderedDict([(2,3)])
+            cache[nick_name][tool_name].setdefault( sDNA 
+                                                   ,cache[tool_name].setdefault( sDNA
+                                                                                ,getdefaults()
+                                                                                )
+                                                   )
         else:
-            output('Name : ' + name + ' already in cache ', 'INFO')
+            cache[tool_name].setdefault(sDNA, getdefaults() )
+        #
+        #
+        #if nick_name not in cache:
+        #    cache[nick_name] =  {}
+        #if  (   nick_name != tool_name and
+        #        tool_name not in cache[nick_name]   ):
+        #    cache[nick_name][tool_name] = {}
+        #if sDNA not in cache[nick_name][tool_name]: # and name is a tool name not a nick name
+        #    cache[nick_name][tool_name][sDNA] = ( make_nested_namedtuple( defaults,  name ) 
+        #                if isinstance(defaults, dict) else defaults  )
+        #else:
+        #    output('Name : ' + name + ' already in cache ', 'INFO')
             #if isinstance(defaults, dict) and hasattr(cache[name][sDNA]
             #                                            ,'_asdict'): #NT
             #    defaults.update(cache[name][sDNA]._asdict())
@@ -2286,7 +2316,7 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
 
         get_syntax = sDNA_tool_instance.getSyntax     
         # not called until component executes in RunScript
-        update_or_init( get_syntax_dict,  get_syntax,  tool_name )
+        update_or_init( get_syntax_dict,  get_syntax,  tool_name, tool_name )
         # Global get_syntax_dict intentional
         input_spec = sDNA_tool_instance.getInputSpec()
         defaults_dict = { varname : default for (    varname
@@ -2296,19 +2326,14 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
                                                     ,default
                                                     ,required
                                                 ) in input_spec  }
-        update_or_init( local_opts,  defaults_dict,  nick_name )
+        update_or_init(  local_opts, defaults_dict, nick_name, tool_name )
         do_not_remove += tuple(defaults_dict.keys())
         # Tool options are stored per nick_name, which may equal tool_name
     else:
-        update_or_init( local_opts,  {},  nick_name )
-        update_or_init( get_syntax_dict,  {},  tool_name )
-    return 
+        update_or_init( local_opts,  OrderedDict(),  nick_name, tool_name )
+        #update_or_init( get_syntax_dict,  OrderedDict(),  tool_name, tool_name )
+    return #local_opts[nick_name], get_syntax_dict[tool_name]
 
-
-class TheIllusionOfProgress():
-    setInfo = output
-    def setPercentage(self,*args):
-        pass
 
 
 tools_dict=dict( get_objects_from_Rhino = [get_objects_from_Rhino()]
@@ -2432,9 +2457,7 @@ def get_specific_tool(tool_name
                      ,Required = None
                      ):
     # type(str) -> function
-    # No global get_syntax_dict.  instead
-    # access shared global cache via parent module namespace.  
-    # Not mutated here (done already in cache_syntax_and_UISpec).
+
     UISpec = local_opts['options'].UISpec
 
     #if tool_name in support_component_names:
@@ -2456,6 +2479,10 @@ def get_specific_tool(tool_name
             
             options = opts_at_call['options']
             tool_opts = opts_at_call[nick_name]
+            report_value(tool_opts)
+
+            tool_opts = tool_opts.get(tool_name, tool_opts)
+            report_value(tool_opts)
 
             dot_shp = options.shp_file_extension
 
@@ -2499,6 +2526,7 @@ def get_specific_tool(tool_name
                                                      )   
                             #opts[nick_name] was initialised to defaults in 
                             # in cache_syntax_and_UISpec
+            #        get_syntax_dict in module global name space                     
 
             command = (options.python_exe 
                        + ' -u ' 
@@ -2576,18 +2604,25 @@ def tool_factory(self, nick_name, name_map, local_opts):
 
  
     if isinstance(nick_name, Hashable):
-        if nick_name not in tools_dict or sDNA not in opts.get(nick_name, {}):
+        if (   nick_name not in tools_dict or 
+               sDNA not in local_opts.get(nick_name, {})   ):
             map_result = getattr(name_map, nick_name, nick_name)  # in case nick_name == tool_name
             if not isinstance(map_result, str):
                 output('Processing list of tools found for '
                        + nick_name, 'DEBUG')
                 tools =[]
+                #nick_name_opts = {}
                 for mapped_name in map_result:
                     tools += tool_factory( self
                                           ,mapped_name
                                           ,name_map
                                           ,local_opts 
-                                          ) 
+                                          )
+                    #cache_syntax_and_UISpec(nick_name, mapped_name, local_opts)                    
+                    # Not needed as no function closure will ever be 
+                    # created that refers to self.opts[nickname][not a tool_name]
+
+                    #nick_name_opts[mapped_name] = local_opts[mapped_name]
                 tools_dict[nick_name] = tools 
             else:
                 mapped_name = map_result
@@ -2612,7 +2647,7 @@ def tool_factory(self, nick_name, name_map, local_opts):
                     output(nick_name + ' needs new tool to be built, e.g. from sDNA. ','DEBUG')
 
                     tools_dict[nick_name] = get_specific_tool(mapped_name, nick_name, local_opts)  
-                    # assert isinstance(get_specific_tool(map_result, nick_name, name_map, local_opts), list)                    
+                    # assert isinstance(get_specific_tool(map_result, nick_name, name_map, local_opts), list)
 
         report('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name][0]) )
         return tools_dict[nick_name] 
@@ -2724,6 +2759,13 @@ def component_decorator(BaseClass, loader = module_loader):
                     +'\n'.join([func_name(tool) for tool in self.my_tools])
                     ,'DEBUG')
 
+            report_value('self.opts : '+ str(self.opts))
+            output('\n'.join(str(k) + ' : ' + str(v) 
+                             for k,v in self.opts.items()
+                             if k not in ('options','metas')
+                             )
+                   ,'DEBUG')
+
             self.update_component_outputs()
 
 
@@ -2779,7 +2821,8 @@ def component_decorator(BaseClass, loader = module_loader):
             self.loader = loader
             self.a = WriteableFlushableList()
 
-            self.update_sDNA()
+            self.update_sDNA() 
+            # update_name and update_tools within it will get called in RunScript
 
             add_file_to_logger = wrapper_logging.add_custom_file_to_logger
             add_file_to_logger(  logger
@@ -2823,9 +2866,8 @@ def component_decorator(BaseClass, loader = module_loader):
                 new_name = "selftest"     
 
             if not hasattr(self, 'nick_name') or (
-                self.opts['metas'].allow_components_to_change_type
-                and self.nick_name != new_name   
-                                                ):  
+               self.opts['metas'].allow_components_to_change_type
+               and self.nick_name != new_name    ):  
                 #
                 self.update_name(new_name)
 
@@ -2852,6 +2894,8 @@ def component_decorator(BaseClass, loader = module_loader):
                                                 ,self.nick_name
                                                 )
 
+
+            print()
             #output('#2 self.local_metas == ' + str(self.local_metas),'DEBUG')
             
             if (self.opts['metas'].auto_update_Rhino_doc_path 
@@ -2871,7 +2915,8 @@ def component_decorator(BaseClass, loader = module_loader):
 
                 if self.opts['metas'].sDNA != old_sDNA:
                     self.update_sDNA()
-                    self.update_tools()
+                    self.update_tools()   # Again, if name has also changed.  
+                                          # But it was unavoidable (rare).
             
 
 
@@ -2961,7 +3006,7 @@ def component_decorator(BaseClass, loader = module_loader):
                                     getattr(self.opts['metas'], key,
                                     getattr(self.opts['metas'], key,
                                       getattr(self.local_metas, key,
-                        self.opts[self.nick_name][self.opts['metas'].sDNA].get(key, None)))))
+                        self.opts.get(self.nick_name,{}).get(self.opts['metas'].sDNA,{}).get(key, None)))))
 
 
                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)

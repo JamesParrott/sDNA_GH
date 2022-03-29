@@ -329,7 +329,7 @@ def override_namedtuple( nt_lesser
     #    [not v in globals() for v in override_funcs_dict.values()]):
     override_funcs_dict = {  
                  dict : override_namedtuple_with_dict 
-                ,str : override_namedtuple_with_ini_file
+                ,str : override_namedtuple_with_ini_file # TODO: Write switcher function that also does .toml
                 ,ConfigParser.RawConfigParser : override_namedtuple_with_config
                 ,ConfigParser.ConfigParser : override_namedtuple_with_config
                 ,nt_lesser.__class__ : override_namedtuple_with_namedtuple  
@@ -339,15 +339,17 @@ def override_namedtuple( nt_lesser
     #print(str(overrides_list))
     #print('cls.name : ' + nt_lesser.__class__.__name__+' nt_lesser == ' + str(nt_lesser))
     for override in overrides_list:
-        if override != None:
+        if override: # != None:
             for key, val in override_funcs_dict.items():
                 #print('override == ' + str(override) + ' key == ' + str(key))
                 if isinstance(override, key):
-                    #print('  override = ' + str(override))
+                    #print('  override = ' + str(override) + ' key == ' + str(key) + ' val == ' + str(val))
                     nt_lesser = val( nt_lesser, override, **kwargs ) 
                     break #inner loop only
 
-            #print('nt_lesser : ' + nt_lesser.__class__.__name__ + '  override = ' + str(override))
+            #print( ' nt_lesser : ' + str(nt_lesser) 
+            #      +' nt_lesser.__class__.__name__ : ' + nt_lesser.__class__.__name__ 
+            #      +' override = ' + str(override))
 
     return nt_lesser
 
