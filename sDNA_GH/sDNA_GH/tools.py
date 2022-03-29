@@ -238,9 +238,9 @@ class HardcodedOptions():
     overwrite_input_shapefile = False
     auto_get_objects_from_Rhino = True
     auto_read_Usertext = True
-    auto_write_new_Shp_file = False
-    auto_read_Shp = False
-    auto_plot_Shp_data = False
+    auto_write_new_Shp_file = True
+    auto_read_Shp = True
+    auto_plot_Shp_data = True
     #Plotting results
     sDNA_output_abbrev_to_graph = 'BtEn'
     plot_max = None
@@ -1081,7 +1081,7 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
             report(r'repeating OrderedDict() after Data... ')
             Data = chain( Data,  repeat(OrderedDict()) )
         else:
-            report( "Ah yeah!  Equal length.  " )
+            report( "Data and Geom equal length.  " )
         component_inputs_gen_exp =  izip(Geom, Data)
 
 
@@ -1116,7 +1116,7 @@ def downstream_components(compnt):
     return [recipient.Attributes.GetTopLevel.DocObject
             for param in compnt.Params.Output 
             for recipient in param.Recipients
-            ]
+            ] if hasattr(compnt,'Params') else []
 
 
 def are_GhPython_downstream(names, compnt):
@@ -1130,7 +1130,7 @@ def are_GhPython_downstream(names, compnt):
 
 def insert_tool_after_specials(   compnt
                                  ,tools
-                                 ,tool
+                                 ,tool_to_insert
                                  ,is_special
                                  ,not_special_names
                                  ):
@@ -1140,21 +1140,26 @@ def insert_tool_after_specials(   compnt
                             # wish to do other stuff after the tool
                             # and name_map is now a meta option too.
             special_names = [name for name, tool_list in tools_dict.items() 
-                             if tool in tool_list]
+                             if tool_to_insert in tool_list]
                             # tools_dict is keyed on all present nick names 
                             # as well as names of tools defined in this module
 
-        if (  not are_GhPython_components_in_GH(compnt, special_names) and
-              not are_GhPython_downstream(special_names, compnt)     ):
+        #if (  not are_GhPython_components_in_GH(compnt, special_names) and
+        report('not are_GhPython_downstream(special_names, compnt)' 
+               + str(not are_GhPython_downstream(special_names, compnt)) )
+        if  (    not are_GhPython_downstream(special_names, compnt)     ):
                              # check tool not already there in another 
                              # component that will be executed next.
                              # TODO: None in entire canvas is too strict?
+            report('Inserting tool : ' + str(tool_to_insert))
             for i, tool in enumerate(tools):
+                report('is_special(tool) : ' + str(is_special(tool)))
+                report('tool : ' + str(tool))
                 if (  is_special(tool)  
-                      and tool not in tools[i:]  ):
+                      and tool_to_insert not in tools[i:]  ):
                          # check tool not already inserted 
                          # in tools after specials
-                    tools.insert(i+1, tool)
+                    tools.insert(i + 1, tool_to_insert)
 
 
 #        print [x.Name for x in [r.Attributes.GetTopLevel.DocObject for x in self.Params.Output for r in x.Recipients][0].Params.Output]
@@ -1170,15 +1175,15 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
     if options.auto_read_Shp:
         insert_tool_after_specials(   self
                                      ,tools
-                                     ,tools_dict['read_shapes_and_data_from_shapefile']
-                                     ,lambda tool : hasattr(self.opts['options'].UISpec, func_name(tool))
+                                     ,tools_dict['read_shapes_and_data_from_shapefile'][0]
+                                     ,lambda tool : func_name(tool) == 'run_sDNA_wrapper'
                                      ,sDNA_GH_names
                                      )
     if options.auto_plot_Shp_data:
         insert_tool_after_specials(   self
                                      ,tools
-                                     ,tools_dict['recolour_objects']
-                                     ,lambda tool : tool == tools_dict['read_shapes_and_data_from_shapefile']
+                                     ,tools_dict['recolour_objects'][0]
+                                     ,lambda tool : tool == tools_dict['read_shapes_and_data_from_shapefile'][0]
                                      ,[]
                                      )        
 
@@ -1191,6 +1196,8 @@ def run_tools(self, my_tools, f_name, gdm, opts_at_call):
                                 ,('opts_at_call', opts_at_call)
                              ]
                             )
+
+    report_value(tools)                            
     for tool in tools:
         if tool:
             report_value(tool)
@@ -1288,7 +1295,7 @@ def read_Usertext_factory(retvals = None, Required = None):
            (not geom_data_map or not hasattr(geom_data_map, 'keys') or
            (len(geom_data_map.keys()) == 1 and geom_data_map.keys()[0] == tuple() ))):
             #
-            retcode, f_name, gdm, tmp_a = tools_dict['get_objects_from_Rhino'](  f_name
+            retcode, f_name, gdm, tmp_a = tools_dict['get_objects_from_Rhino'][0](  f_name
                                                                                 ,geom_data_map
                                                                                 ,opts_at_call
                                                                                 )
@@ -1335,7 +1342,7 @@ def write_objects_and_data_to_shapefile(retvals = None, Required = None):
         if (options.auto_read_Usertext and
                 (not geom_data_mapping or not hasattr(geom_data_mapping, 'values')
                 or all(len(v) ==0  for v in geom_data_mapping.values()))):
-            retcode, f_name, geom_data_mapping, tmp_a = tools_dict['read_Usertext'](   f_name
+            retcode, f_name, geom_data_mapping, tmp_a = tools_dict['read_Usertext'][0](   f_name
                                                                         ,geom_data_mapping
                                                                         ,opts_at_call
                                                                         )
@@ -1740,7 +1747,7 @@ def bake_and_write_data_as_Usertext_to_Rhino(retvals = None, Required = None):
 
                     gdm[add_to_Rhino(geometry, attributes)] = geom_data_mapping[obj] # The bake
         
-        retcode, gdm, tmp_a = tools_dict['write_data_to_Usertext'](f_name, gdm, opts_at_call)
+        retcode, gdm, tmp_a = tools_dict['write_data_to_Usertext'][0](f_name, gdm, opts_at_call)
         a.write(tmp_a)
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
@@ -2004,7 +2011,7 @@ def parse_data_factory(retvals = None, Required = None):
                             ,(classifier(x) for x in data + mid_points)
                             )
                         )
-        plot_min, plot_max = options.plot_min, options.plot_max
+        plot_min, plot_max = x_min, x_max
         retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in parse_data.retvals]
@@ -2033,14 +2040,20 @@ def recolour_objects_factory(retvals = None, Required = None):
                                     if isinstance(v, dict) and field in v    
                                     )
         if objs_to_parse:
-            ret_code, f_name, gdm, messages = tools_dict['parse_data'](  f_name
-                                                                        ,objs_to_parse
-                                                                        ,opts_at_call
-                                                                        )
+            ret_code, x_min, x_max, f_name, gdm, messages = tools_dict['parse_data'][0]( f_name
+                                                                                        ,objs_to_parse
+                                                                                        ,opts_at_call
+                                                                                        )
+            report_value(x_min)
+            report_value(x_max)
         else:
             gdm = {}
+            x_min, x_max = options.plot_min, options.plot_max
+            report_value(options.plot_min)
+            report_value(options.plot_max)     
 
-        x_min, x_max = options.plot_min, options.plot_max
+        report_value(opts_at_call['options'].plot_min)
+        report_value(opts_at_call['options'].plot_max)
 
         objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
                                                 if isinstance(v, Number) 
@@ -2499,7 +2512,7 @@ def get_specific_tool(tool_name
                 if options.auto_write_new_Shp_file and (
                    options.overwrite_input_shapefile 
                    or not isfile(input_file)                  ):
-                    retcode, input_file, gdm, tmp_a = tools_dict['write_objects_and_data_to_shapefile']( 
+                    retcode, input_file, gdm, tmp_a = tools_dict['write_objects_and_data_to_shapefile'][0]( 
                                                                                              input_file
                                                                                             ,gdm
                                                                                             ,opts_at_call
@@ -3004,16 +3017,16 @@ def component_decorator(BaseClass, loader = module_loader):
                 def get_val(key):
                     return                    ret_vals_dict.get(key,
                                     getattr(self.opts['metas'], key,
-                                    getattr(self.opts['metas'], key,
+                                  getattr(self.opts['options'], key,
                                       getattr(self.local_metas, key,
-                        self.opts.get(self.nick_name,{}).get(self.opts['metas'].sDNA,{}).get(key, None)))))
+                        getattr(self.opts.get(self.nick_name,{}).get(self.opts['metas'].sDNA,{}),key, None)))))
 
 
                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)
                 return ret_vals
                                             #In Python 3 .keys() returns a dictview not a list
             else:   
-                return (False, ) + repeat(None, len(self.Params.Output) - 1)
+                return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
                 #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
                 return ( False
                         ,Data
