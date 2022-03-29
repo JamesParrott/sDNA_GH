@@ -44,13 +44,12 @@ from ghpythonlib.components import ( BoundingBox
 
 if 'ghdoc' not in globals():
     try:
-        ghdoc = sc.doc
+        ghdoc = sc.doc  # Normally a terrible idea!  
+                        # but we need to get ghdoc in this namespace
     except:
-        try:
-            ghdoc = Rhino.RhinoDoc.ActiveDoc
-        except:
-            ghdoc = 'No Rhino Doc and no GH canvas found'
-            print(ghdoc)
+        ghdoc = 'No Rhino Doc and no GH canvas found'
+        print(ghdoc)
+
 
 
 
@@ -111,15 +110,6 @@ class HardcodedMetas():
                                     ,'Read_Shp'
                                     ,'Parse_Data'
                                     ,'Recolour_objects'
-                                    ]
-                        ,sDNA_Demo_old_plot = [
-                                    'Read_From_Rhino'
-                                    ,'Read_Usertext'
-                                    ,'Write_Shp'
-                                    ,'sDNAIntegral'
-                                    ,'Read_Shp'
-                                    ,'Write_Usertext'
-                                    ,'Visualise_Data' #TODO: Delete.  Deprecated.
                                     ]
                         ,Read_From_Rhino = 'get_objects_from_Rhino'
                         ,Read_Usertext = 'read_Usertext'
@@ -188,7 +178,7 @@ class HardcodedOptions():
 
     tests_subdirectory = r'tests'
     logger_file_level = 'DEBUG'
-    logger_console_level = 'DEBUG'
+    logger_console_level = 'INFO'
     logger_custom_level = 'INFO'
 
     ####################################################################################
@@ -316,14 +306,20 @@ opts = OrderedDict( metas = default_metas
 get_syntax_dict = {} 
 input_spec_dict = {}                 
 
-def get_path():
+def get_path(inst = None):
     path = Rhino.RhinoDoc.ActiveDoc.Path
                     
     if not isinstance(path, str) or not isfile(path):
         try:
-            path = self.ghdoc.Path #type: ignore
+            path = ghdoc.Path
         except:
-            path = None
+            try:
+                path = inst.ghdoc.Path #type: ignore
+            except:
+                try:
+                    path = sc.doc.Path
+                except:
+                    path = None
         finally:
             if not path:
                 path = opts['options'].Default_sDNA_GH_file_path
@@ -2038,16 +2034,16 @@ def recolour_objects_factory(retvals = None, Required = None):
         field = options.sDNA_output_abbrev_to_graph
         objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
                                     if isinstance(v, dict) and field in v    
-                                    )
+                                    )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse:
-            ret_code, x_min, x_max, f_name, gdm, messages = tools_dict['parse_data'][0]( f_name
+            ret_code, x_min, x_max, f_name, gdm_in, messages = tools_dict['parse_data'][0]( f_name
                                                                                         ,objs_to_parse
                                                                                         ,opts_at_call
                                                                                         )
             report_value(x_min)
             report_value(x_max)
         else:
-            gdm = {}
+            gdm_in = {}
             x_min, x_max = options.plot_min, options.plot_max
             report_value(options.plot_min)
             report_value(options.plot_max)     
@@ -2058,7 +2054,7 @@ def recolour_objects_factory(retvals = None, Required = None):
         objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
                                                 if isinstance(v, Number) 
                                         )
-        objs_to_get_colour.update(gdm)  # no key clashes possible unless some x
+        objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
                                         # isinstance(x, dict) 
                                         # and isinstance(x, Number)
         if options.GH_Gradient:
@@ -2128,7 +2124,7 @@ def recolour_objects_factory(retvals = None, Required = None):
                 target_doc = is_an_obj_in_GH_or_Rhino(obj)    
                 if target_doc:
                     sc.doc = target_doc
-                    if False: #target_doc == ghdoc:
+                    if target_doc == ghdoc:
                         GH_objs_to_recolour[obj] = new_colour 
                     #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
                     else:
@@ -2231,9 +2227,9 @@ def recolour_objects_factory(retvals = None, Required = None):
         #       ,list(legend_tags.keys()) 
         #       ,rectangle
         #       )
-
-        leg_tags = list(legend_tags.keys())
+        gdm = GH_objs_to_recolour
         leg_cols = list(legend_tags.values())
+        leg_tags = list(legend_tags.keys())
 
 
         sc.doc =  ghdoc # type: ignore
@@ -2242,7 +2238,7 @@ def recolour_objects_factory(retvals = None, Required = None):
         locs = locals().copy()
         return [locs[retval] for retval in recolour_objects.retvals]
     if retvals == None:
-        recolour_objects.retvals = 'retcode', 'leg_cols', 'leg_tags', 'rectangle', 'a'
+        recolour_objects.retvals = 'retcode', 'gdm', 'leg_cols', 'leg_tags', 'rectangle', 'a'
     if Required == None:
         recolour_objects.Required = (recolour_objects.retvals[0], 'Geom', 'Data') + recolour_objects.retvals[1:]
           # To recolour GH Geom with a native Preview component
@@ -2914,7 +2910,7 @@ def component_decorator(BaseClass, loader = module_loader):
             if (self.opts['metas'].auto_update_Rhino_doc_path 
                 or not isfile(self.opts['options'].Rhino_doc_path)        ):
 
-                path = get_path()
+                path = get_path(self)
 
                 self.opts['options'] = self.opts['options']._replace( Rhino_doc_path = path )
 

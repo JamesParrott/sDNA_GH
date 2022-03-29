@@ -11,6 +11,7 @@ from importlib import import_module
 try:        
     from ghpythonlib.componentbase import executingcomponent as component
     import Grasshopper
+    import scriptcontext as sc
 except ImportError:
     print( "No Grasshopper env found.  Building test environment.  ")
     
@@ -128,22 +129,22 @@ def load_modules(self, m_names, path_lists):
     return None
 
 
-try:
-    from Grasshopper.Folders import DefaultAssemblyFolder
-    sDNA_GH_search_paths += [join(DefaultAssemblyFolder
-                                 ,sDNA_GH_subfolder
-                                 ) 
-                            ]
-except:
-    raise ImportError(output( 'Unable to import the main sDNA_GH Python Package.  '
-                             +'Check the folder sDNA_GH containing the package '
-                             +'is a sub folder of the '
-                             +'sDNA_GH folder containing the plug-in components'
-                             +'and the installation procedure was done correctly'
-                             +'as pe as per README.md'
-                             ,'ERROR'
-                             )
-                      )
+#try:
+from Grasshopper.Folders import DefaultAssemblyFolder
+sDNA_GH_search_paths += [join(DefaultAssemblyFolder
+                                ,sDNA_GH_subfolder
+                                ) 
+                        ]            
+# except:
+#     raise ImportError(output( 'Unable to import the main sDNA_GH Python Package.  '
+#                              +'Check the folder sDNA_GH containing the package '
+#                              +'is a sub folder of the '
+#                              +'sDNA_GH folder containing the plug-in components'
+#                              +'and the installation procedure was done correctly'
+#                              +'as per README.md'
+#                              ,'ERROR'
+#                              )
+#                       )
 
 
 try:
@@ -151,7 +152,7 @@ try:
 except:
     nick_name = 'selftest'
 
-
+sc.doc = ghdoc
 sDNA_GH_tools, _ = load_modules( None
                                 ,sDNA_GH_package + '.tools'
                                 ,sDNA_GH_search_paths
