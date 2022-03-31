@@ -152,7 +152,8 @@ try:
 except:
     nick_name = 'selftest'
 
-sc.doc = ghdoc
+sc.doc = ghdoc #type: ignore
+
 sDNA_GH_tools, _ = load_modules( None
                                 ,sDNA_GH_package + '.tools'
                                 ,sDNA_GH_search_paths
@@ -165,7 +166,11 @@ class MyComponent(component):
           # and overwriting this very class immediately below.  
           # Initial parser step / scope check trips this?
 
-MyComponent = sDNA_GH_tools.component_decorator(component, load_modules)
+MyComponent = sDNA_GH_tools.component_decorator( component
+                                                ,ghenv #type: ignore
+                                                ,nick_name
+                                                ,load_modules
+                                                )
 
 
 if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
