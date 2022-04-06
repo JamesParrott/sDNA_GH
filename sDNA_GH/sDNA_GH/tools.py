@@ -1318,7 +1318,7 @@ get_Geom = get_objects_from_Rhino___factory()
 def read_Usertext_factory(retvals = None):
     #type() -> function
     args = ('gdm', 'opts')
-    component_inputs = ('go', 'Geom', 'Data') + args
+    component_inputs = ('go', 'Data', args[0])
 
     def read_Usertext(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -1355,7 +1355,7 @@ def read_Usertext_factory(retvals = None):
         read_Usertext.retvals = retvals
     read_Usertext.show = {}
     read_Usertext.args = args
-    read_Usertext.show['Input'] = ()
+    read_Usertext.show['Input'] = component_inputs
     read_Usertext.show['Output'] = ('OK', 'Geom', 'Data') + read_Usertext.retvals[1:]
 
     return read_Usertext
@@ -1779,7 +1779,7 @@ write_Usertext = write_Usertext_factory()
 def bake_Usertext_factory(retvals = None):
     #type() -> function
     args = ('gdm', 'opts')
-    component_inputs = ('go', 'Geom', 'Data') + args
+    component_inputs = ('go', 'Geom') + args
 
 
     def bake_Usertext(geom_data_map, opts):
@@ -2569,6 +2569,7 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
         retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in return_component_names.retvals]
+
     if retvals is None:
         return_component_names.retvals = 'retcode', 'names'
     else:
@@ -2579,36 +2580,45 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
     return_component_names.show['Output'] = ('OK',) + return_component_names.retvals[1:]
  
 
+
     builder_args = ('launcher_code', 'opts')
     builder_component_inputs = ('go',) + builder_args + ('name_map', 'categories')
 
-    def build_components(code, opts):
+    def build_components(code, opts_at_call):
         #type(str, dict) -> None
 
         while (isinstance(code, Iterable) 
                and not isinstance(code, str)):
             code = code[0]
 
-        metas = opts['metas']
+        global opts
+        opts['options']._replace( auto_get_Geom = False
+                                 ,auto_read_Usertext = False
+                                 ,auto_write_new_Shp_file = False
+                                 ,auto_read_Shp = False
+                                 ,auto_plot_Shp_data = False
+                                 )
 
-        UISpec = opts['options'].UISpec
+        metas = opts_at_call['metas']
+
+        UISpec = opts_at_call['options'].UISpec
         categories = {Tool.__name__ : Tool.category for Tool in UISpec.get_tools()}
         categories.update(metas.categories._asdict())
 
         name_map = metas.name_map._asdict()
 
-        retcode, names  = return_component_names(opts)
+        retcode, names  = return_component_names(opts_at_call)
 
         nicknameless_names = [name for name in names if name not in name_map.values()]
 
         this_comp = inst.Attributes.Owner
 
 
-        for i, name in enumerate(list(name_map.keys()) + nicknameless_names):
+        for i, name in enumerate(set(list(name_map.keys()) + nicknameless_names)):
             if name_map.get(name, name) not in categories:
                 raise ValueError(output('No category for ' + name, 'ERROR'))
             else:
-                i *= 100
+                i *= 175
                 w = 800
                 #make_new_component(  name
                 #                    ,'sDNA'
@@ -2618,7 +2628,7 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
                 #                    [i % w, i // w]
                 #                    )
 
-                position = [200 + (i % w), 450 + (i // w)]
+                position = [200 + (i % w), 550 + 220*(i // w)]
                 comp = GhPython.Component.ZuiPythonComponent()
     
                 #comp.CopyFrom(this_comp)
@@ -2628,7 +2638,8 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
                 
 
                 comp.Code = code
-                #comp.NickName = name
+                comp.NickName = name
+                comp.Name = name
                 comp.Params.Clear()
                 comp.IsAdvancedMode = True
                 comp.Category = 'sDNA'
@@ -2636,9 +2647,6 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
 
                 GH_doc = this_comp.OnPingDocument()
                 GH_doc.AddObject(comp, False)
-                
-
-
 
         retcode = 0
         locs = locals().copy()
@@ -2652,6 +2660,7 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
     build_components.args = builder_args
     build_components.show['Input'] = builder_component_inputs
     build_components.show['Output'] = ('OK',) + build_components.retvals[1:]    
+
 
 
     dev_tools = dict( Python = return_component_names
@@ -3383,7 +3392,7 @@ def component_decorator( BaseClass
 
                 ret_vals_dict = run_tools(   self.tools, args_dict)
 
-                gdm = ret_vals_dict['gdm']
+                gdm = ret_vals_dict.get('gdm', {})
                 #print (str(gdm))
                 if isinstance(gdm, dict):
                     report('Converting gdm to Data and Geometry')
