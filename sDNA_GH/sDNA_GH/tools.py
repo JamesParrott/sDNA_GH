@@ -3,7 +3,6 @@
 __author__ = 'James Parrott'
 __version__ = '0.01'
 
-from cmath import rect
 import sys, os  
 from os.path import (join, split, isfile, dirname, isdir, sep, normpath
                      ,basename as filename
@@ -28,6 +27,7 @@ import scriptcontext as sc
 import Rhino
 import ghpythonlib.treehelpers as th
 from System.Drawing import Color as Colour
+from System.Drawing import PointF, SizeF
 import Grasshopper.Kernel 
 from Grasshopper import DataTree
 from Grasshopper.GUI.Gradient import GH_Gradient
@@ -73,9 +73,11 @@ from .custom_python_modules.wrapper_pyshp import (get_fields_recs_and_shapes_fro
                                                  ,write_from_iterable_to_shapefile_writer)
 
 def get_stem_and_folder(path):
+    #type(str)-> list
+    #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     if isfile(path):
         path=dirname(path)
-    return split(path)
+    return split(path)  # os.split
 
 class HardcodedMetas(): 
     config = join( dirname(dirname(__file__)), r'config.toml')
@@ -95,33 +97,24 @@ class HardcodedMetas():
     auto_update_Rhino_doc_path = True
                         #Abbreviation = Tool Name
 #######################################################################################################################
-    name_map = dict(    sDNA_Demo = [ 'Read_From_Rhino'
-                                    ,'Read_Usertext'
-                                    ,'Write_Shp'
-                                    ,'sDNAIntegral'
-                                    ,'Read_Shp'
-                                    ,'Write_Usertext'
-                                    ,'Parse_Data'
-                                    ,'Recolour_objects'
-                                    ]
-                        ,test_write_Usertext_req = [ 'Read_From_Rhino'
-                                    ,'Read_Usertext'
-                                    ,'Write_Shp'
-                                    ,'sDNAIntegral'
-                                    ,'Read_Shp'
-                                    ,'Parse_Data'
-                                    ,'Recolour_objects'
-                                    ]
-                        ,Read_From_Rhino = 'get_objects_from_Rhino'
+    name_map = dict(    #sDNA_Demo = [ 'Read_From_Rhino'
+                        #            ,'Read_Usertext'
+                        #            ,'Write_Shp'
+                        #            ,'sDNAIntegral'
+                        #            ,'Read_Shp'
+                        #            ,'Write_Usertext'
+                        #            ,'Parse_Data'
+                        #            ,'Recolour_objects'
+                        #            ]
+                         Read_From_Rhino = 'get_Geom'
                         ,Read_Usertext = 'read_Usertext'
-                        ,Write_Shp = 'write_objects_and_data_to_shapefile'
-                        ,Read_Shp = 'read_shapes_and_data_from_shapefile'
-                        ,Write_Usertext = 'write_data_to_Usertext'
-                        ,Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
-                        ,Visualise_Data = 'plot_data_on_Rhino_objects'  #TODO: Delete.  Deprecated.
+                        ,Write_Shp = 'write_shapefile'
+                        ,Read_Shp = 'read_shapefile'
+                        ,Write_Usertext = 'write_Usertext'
+                        ,Bake_UserText = 'bake_Usertext'
                         ,Parse_Data = 'parse_data'
-                        ,Recolour_objects='recolour_objects'
-                        ,Recolor_objects ='recolour_objects'
+                        ,Recolour_objects = 'recolour_objects'
+                        ,Recolor_objects = 'recolour_objects'
                         #,'main_sequence'
                         #,'sDNAIntegral'
                         #,'sDNASkim'
@@ -136,6 +129,31 @@ class HardcodedMetas():
                         #,'sDNAPredict'
                     )
     name_map = namedtuple('name_map',name_map.keys())(**name_map)
+    categories = {
+                         'get_Geom'         : 'Support'
+                        ,'read_Usertext'    : 'Usertext'
+                        ,'write_shapefile'  : 'Support'
+                        ,'read_shapefile'   : 'Support'
+                        ,'write_Usertext'   : 'Usertext'
+                        ,'bake_Usertext'    : 'Usertext'
+                        ,'parse_data'       : 'Support'
+                        ,'recolour_objects' : 'Support'
+                        ,'sDNAIntegral'     : 'Analysis'
+                        ,'sDNASkim'         : 'Analysis'
+                        ,'sDNAIntFromOD'    : 'Analysis'
+                        ,'sDNAGeodesics'    : 'Geometric analysis'
+                        ,'sDNAHulls'        : 'Geometric analysis'
+                        ,'sDNANetRadii'     : 'Geometric analysis'
+                        ,'sDNAAccessMap'    : 'Analysis'
+                        ,'sDNAPrepare'      : 'Preparation'
+                        ,'sDNALineMeasures' : 'Preparation'
+                        ,'sDNALearn'        : 'Calibration'
+                        ,'sDNAPredict'      : 'Calibration'
+                        ,'sDNA_general'     : 'Dev tools'
+                        ,'Python'           : 'Dev tools'
+                        ,'Self_test'        : 'Dev tools'
+                        ,'Build_components' : 'Dev tools' 
+                    }
 #######################################################################################################################
     #share_installation_defaults_key = "sDNA_GH_installation_default_options"
     #share_sDNA_tools_key = "sDNA_UI_Spec_tools"
@@ -227,7 +245,7 @@ class HardcodedOptions():
     #sDNA
     Default_sDNA_GH_file_path = __file__
     overwrite_input_shapefile = False
-    auto_get_objects_from_Rhino = True
+    auto_get_Geom = True
     auto_read_Usertext = True
     auto_write_new_Shp_file = True
     auto_read_Shp = True
@@ -240,7 +258,7 @@ class HardcodedOptions():
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' 
     assert re_normaliser in valid_re_normalisers 
-    class_boundaries = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+    classes = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
     legend_extent = None  # [xmin, ymin, xmax, ymax]
     bbox = None  # [xmin, ymin, xmax, ymax]
     number_of_classes = 7
@@ -250,7 +268,7 @@ class HardcodedOptions():
     inner_tag_format_string = '{lower} - {upper}' # also supports {mid_pt}
     last_legend_tag_format_string = 'above {lower}'
     num_format = '{:.3n}'
-    legend_rectangle = ''  # uuid of GH object
+    leg_frame = ''  # uuid of GH object
     locale = '' # ''=> auto .  Used for locale.setlocale(locale.LC_ALL,  options.locale)
     all_in_class_same_colour = False
     GH_Gradient = False
@@ -274,19 +292,13 @@ GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             }
 
 class HardcodedLocalMetas():
-    sync_to_shared_global_opts = True    # Needs to be true to
+    sync_to_module_opts = True    
     read_from_shared_global_opts = True
-    write_to_shared_global_opts = False  
 
-    # if we want to run two versions of sDNA in the same Python instance
-    # there'll be a module name clash unless this tuple sDNA is changed in
-    # components using a different version to the default.  Copies of
-    # the corresponding sDNA version B files with these names will 
-    # need to be created.  The shared global opts cannot be used to record
-    # the sDNA version.    
 
-# Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the arguments in its constructor so we build
-# our options and metas namedtuples from a class, to avoid re-stating the order of the keys.
+# Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
+# arguments in its constructor so we build our options and metas namedtuples
+# from a class, to avoid re-stating the order of the keys.
 
 def get_namedtuple_etc_from_class(Class, name):
     # type: ( type[any], str) -> namedtuple
@@ -330,20 +342,10 @@ def get_path(inst = None):
 
 tmp_logs = []
 
-def output(s, logging_level = "INFO", stream = None, logging_dict = {} ):
-    #type: (str,...,str,dict) -> str
-    #type: (stream) == anything with a write method. e.g. 'file-like object' supporting write() and flush() methods, e.g. WriteableFlushableList
+def output(s, logging_level = "INFO", logging_dict = {} ):
+    #type: (str, str, dict) -> str
     
     #print(s)
-
-
-    #if stream == None and ('a' in locals or 'a' in globals()):   # a is attached to a logger StreamHandler now, so if that works 
-    #                                                             # this code would double log to it
-    #    global a
-    #    stream = a
-
-    if hasattr(stream, 'write'): #isinstance(stream, WriteableFlushableList):
-        stream.write(s)
 
     if logging_dict == {} and 'logger' in globals(): 
         logging_dict = dict( DEBUG = logger.debug
@@ -378,7 +380,7 @@ def report(s):
 
 def report_value(x, x_val = None):
     # type(type[any]) -> str
-    if x_val == None:
+    if x_val is None:
         if type(x).__name__ == 'generator':
             x_val = " Generator " # don't use up now just for reporting
         else:
@@ -397,31 +399,9 @@ def report_value(x, x_val = None):
 #
 # 
 
-class WriteableFlushableList(list):
-    # a simple input for a StreamHandler https://docs.python.org/2.7/library/logging.handlers.html#logging.StreamHandler
-    # that stacks logging messages in a list of strings.  Instances are lists wth two extra methods, not streams akin to 
-    # generators - memory use is not optimised.
-    #
-    def write(self, s):
-    #type: ( str) -> None
-    # https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
-    #
-        if s:
-            if isinstance(s, str):
-                self.append(s)
-            else:
-                self.extend(s)
-
-    debug = write
-    info = write
-    warning = write
-    error = write
-    critical = write
 
 
-    def flush(self):  
-    #type: () -> None
-        pass  # A flush method is needed by logging
+
 
 def unpack_first_item_from_list(l):
     #type(type[any])-> dict
@@ -560,10 +540,12 @@ def override_all_opts( args_dict
 
     def overrides_list(key):
         # type (str) -> list
-        if any(( local_metas.sync_to_shared_global_opts,  
-                 not local_metas.read_from_shared_global_opts )):
+        if (local_metas.sync_to_module_opts or 
+            not local_metas.read_from_shared_global_opts):
             retval = []  
         else: 
+            #if not synced but still reading from module opts, 
+            # then add module opts to overrides
             retval = [    opts.get( key,  {} ).get( sDNA(),  {} )    ]
 
         
@@ -581,7 +563,7 @@ def override_all_opts( args_dict
 
     #overrides_list = lambda key : [ external_opts.get(key,{}).get(sDNA(), {})
     #                              ,config_file_reader, sub_args_dict.get(key, {})]
-    if local_metas.sync_to_shared_global_opts:
+    if local_metas.sync_to_module_opts:
         dict_to_update = opts # the opts in module's global scope, outside this function
     else:
         dict_to_update = local_opts
@@ -1204,13 +1186,13 @@ def insert_tool_after_targets(   compnt
                              # check tool not already there in another 
                              # component that will be executed next.
                              # TODO: None in entire canvas is too strict?
-            report('Inserting tool : ' + str(tool_to_insert))
             for i, tool in enumerate(tools):
                 report('is_target(tool) : ' + str(is_target(tool)))
                 report('tool : ' + str(tool))
                 if is_target(tool) and tool_to_insert not in tools[i:]:
                          # check tool not already inserted 
                          # in tools after specials
+                    output('Inserting tool : ' + str(tool_to_insert), 'INFO')
                     tools.insert(i + 1, tool_to_insert)
     return tools
 
@@ -1218,42 +1200,47 @@ def insert_tool_after_targets(   compnt
 #        print [x.Name for x in [r.Attributes.GetTopLevel.DocObject for x in self.Params.Output for r in x.Recipients][0].Params.Output]
 #
 #
-def run_tools(tools, f_name, gdm, opts):
-    #type(type[any], list, str, dict, dict)-> int, str, dict, WriteableFlushableList
-    a = WriteableFlushableList()
+def run_tools(tools, args_dict):  #f_name, gdm, opts):
+    #type(type[any], list, kwargs)-> dict
 
     options = opts['options']
     
 
-    report_value(f_name)
-    #report_value(gdm)
-    #report_value(opts)
-
-    vals_dict = OrderedDict( [   ('f_name', f_name)
-                                ,('gdm', gdm)
-                                ,('opts', opts)
-                             ]
-                            )
+    vals_dict = args_dict 
+                #OrderedDict( [   ('f_name', f_name)
+                #                ,('gdm', gdm)
+                #                ,('opts', opts)
+                #             ]
+                #            )
 
     report_value(tools)                            
     for tool in tools:
         if tool:
             report_value(tool)
 
-            #returncode, f_name, gdm, tmp_a = 
-            retvals = tool(  vals_dict['f_name']
-                            ,vals_dict['gdm']
-                            ,vals_dict['opts'] 
-                            )
+            #returncode, f_name, gdm
+
+            inputs = [vals_dict[input] for input in tool.args]
+            retvals = tool( *inputs)
+                            #  if input not in (('Data','Geom','go')
+                            #  +opt)] 
+                            # vals_dict['f_name']
+                            #,vals_dict['gdm']
+                            #,vals_dict['opts'] 
+                            #)
             vals_dict.update( OrderedDict(zip(tool.retvals, retvals)) )
-            returncode = vals_dict['retcode']
-            tmp_a = vals_dict['a']
-            report('Tool name == ' + func_name(tool) + ' return code == ' + str(returncode))
-            a.write(tmp_a)
-            if returncode != 0:
+            vals_dict.setdefault( 'file'
+                                , vals_dict.get('f_name')
+                                )
+            vals_dict['OK'] = (vals_dict['retcode'] == 0)
+
+            retcode = vals_dict['retcode']
+            report('Tool name == ' + func_name(tool) + ' return code == ' + str(retcode))
+            if retcode != 0:
                 raise Exception(output(  'Tool ' + func_name(tool) + ' exited '
                                         +'with status code ' 
-                                        + str(returncode),'ERROR'
+                                        + str(retcode)
+                                        ,'ERROR'
                                         )
                                 )
         else:
@@ -1268,13 +1255,18 @@ def run_tools(tools, f_name, gdm, opts):
 # Main component tool functions
 #
 #
-def get_objects_from_Rhino___factory(retvals = None, show_outputs = None):
+def get_objects_from_Rhino___factory(retvals = None):
     #type() -> function
-    def get_objs(f_name, geom_data_map, opts):
+    args = ('gdm', 'opts') # Only the order need correspond to the function.
+                           # the names can be different.  The ones in args
+                           # are used as keys in vals_dict and for 
+                           # input Param names on the component
+    component_inputs = ('go', 'Geom', 'Data') + args
+    
+    def get_objs(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
 
         options = opts['options']
-        a = WriteableFlushableList()
         #if 'ghdoc' not in globals():
         #    global ghdoc
         #    ghdoc = sc.doc  
@@ -1307,39 +1299,40 @@ def get_objects_from_Rhino___factory(retvals = None, show_outputs = None):
         retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in get_objs.retvals]
-    if retvals == None:
-        get_objs.retvals = 'retcode', 'f_name', 'gdm', 'a'
+    if retvals is None:
+        get_objs.retvals = 'retcode', 'gdm'
     else:
         get_objs.retvals = retvals
-    if show_outputs == None:
-        get_objs.show_outputs = (get_objs.retvals[0], 'Geom') + get_objs.retvals[1:]
-    else:
-        get_objs.show_outputs = show_outputs
+    get_objs.show = {}
+    get_objs.args = args
+    get_objs.show['Input'] = component_inputs
+    get_objs.show['Output'] = ('OK', 'Geom') + get_objs.retvals[1:]
+    # The values in show are only used by the auto param updater, so unlike retvals can 
+    # contain different names to the internal function variable names
+
     return get_objs
 
-get_objects_from_Rhino = get_objects_from_Rhino___factory()
+get_Geom = get_objects_from_Rhino___factory()
 
 
-def read_Usertext_factory(retvals = None, show_outputs = None):
+def read_Usertext_factory(retvals = None):
     #type() -> function
+    args = ('gdm', 'opts')
+    component_inputs = ('go', 'Geom', 'Data') + args
 
-    def read_Usertext(f_name, geom_data_map, opts):
+    def read_Usertext(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
 
         report('Starting read_Usertext... ')
         options = opts['options']
 
-        a = WriteableFlushableList()
-
-        if (options.auto_get_objects_from_Rhino and
+        if (options.auto_get_Geom and
            (not geom_data_map or not hasattr(geom_data_map, 'keys') or
            (len(geom_data_map.keys()) == 1 and geom_data_map.keys()[0] == tuple() ))):
             #
-            retcode, f_name, gdm, tmp_a = tools_dict['get_objects_from_Rhino'][0](  f_name
-                                                                                ,geom_data_map
-                                                                                ,opts
-                                                                                )
-            a.write(tmp_a)
+            retcode, gdm = get_Geom( geom_data_map
+                                    ,opts
+                                    )
             #
         else:
             retcode = 0
@@ -1356,37 +1349,38 @@ def read_Usertext_factory(retvals = None, show_outputs = None):
         sc.doc = ghdoc # type: ignore 
         locs = locals().copy()
         return [locs[retval] for retval in read_Usertext.retvals]
-    if retvals == None:
-        read_Usertext.retvals = 'retcode', 'f_name', 'gdm', 'a'
+    if retvals is None:
+        read_Usertext.retvals = 'retcode', 'gdm'
     else:
         read_Usertext.retvals = retvals
-    if show_outputs == None:
-        read_Usertext.show_outputs = (read_Usertext.retvals[0], 'Geom', 'Data') + read_Usertext.retvals[1:]
-    else:
-        read_Usertext.show_outputs = show_outputs
+    read_Usertext.show = {}
+    read_Usertext.args = args
+    read_Usertext.show['Input'] = ()
+    read_Usertext.show['Output'] = ('OK', 'Geom', 'Data') + read_Usertext.retvals[1:]
+
     return read_Usertext
 
 read_Usertext = read_Usertext_factory()
 
-def write_objects_and_data_to_shapefile_factory(retvals = None, show_outputs = None):
+def write_shapefile_factory(retvals = None):
     #type() -> function
+    args = ('file', 'gdm', 'opts')
+    component_inputs = ('go', args[0], 'Geom', 'Data') + args[1:]
 
-    def write_shp(f_name, geom_data_mapping, opts):
+    def write_shp(f_name, geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
         
         options = opts['options']
 
-        a = WriteableFlushableList()
-
         shp_type = options.shp_file_shape_type            
-        #print geom_data_mapping
+        #print geom_data_map
         if (options.auto_read_Usertext and
-                (not geom_data_mapping or not hasattr(geom_data_mapping, 'values')
-                or all(len(v) ==0  for v in geom_data_mapping.values()))):
-            retcode, f_name, geom_data_mapping, tmp_a = tools_dict['read_Usertext'][0](   f_name
-                                                                        ,geom_data_mapping
-                                                                        ,opts
-                                                                        )
+                (not geom_data_map or not hasattr(geom_data_map, 'values')
+                or all(len(v) ==0  for v in geom_data_map.values()))):
+            retcode, f_name, geom_data_map = read_Usertext(  f_name
+                                                            ,geom_data_map
+                                                            ,opts
+                                                            )
 
         format_string = options.rhino_user_text_key_format_str_to_read
         pattern = make_regex( format_string )
@@ -1429,10 +1423,10 @@ def write_objects_and_data_to_shapefile_factory(retvals = None, show_outputs = N
             return obj #tupl[0].ToString() # uuid
 
         def find_keys(obj):
-            return geom_data_mapping[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
+            return geom_data_map[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
 
         def get_data_item(obj, key):
-            return geom_data_mapping[obj][key] #tupl[1][key]
+            return geom_data_map[obj][key] #tupl[1][key]
 
         if not f_name:  
             if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
@@ -1444,14 +1438,14 @@ def write_objects_and_data_to_shapefile_factory(retvals = None, show_outputs = N
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
 
-        #report('Type of geom_data_mapping == '+ type(geom_data_mapping).__name__)                         
-        #report('Size of geom_data_mapping == ' + str(len(geom_data_mapping)))
-        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_mapping.keys() )) )
-        #report('Gdm.values == ' + ' '.join(map(str,geom_data_mapping.values())))
+        #report('Type of geom_data_map == '+ type(geom_data_map).__name__)                         
+        #report('Size of geom_data_map == ' + str(len(geom_data_map)))
+        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_map.keys() )) )
+        #report('Gdm.values == ' + ' '.join(map(str,geom_data_map.values())))
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
-                                                geom_data_mapping
+                                                geom_data_map
                                         #my_iter 
                                                 ,f_name 
                                         #shp_file 
@@ -1477,17 +1471,18 @@ def write_objects_and_data_to_shapefile_factory(retvals = None, show_outputs = N
         sc.doc = ghdoc # type: ignore 
         locs = locals().copy()
         return [locs[retval] for retval in write_shp.retvals]
-    if retvals == None:    
-        write_shp.retvals = 'retcode', 'f_name', 'gdm', 'a'
+    if retvals is None:    
+        write_shp.retvals = 'retcode', 'f_name', 'gdm'
     else:
         write_shp.retvals = retvals
-    if show_outputs == None:
-        write_shp.show_outputs = write_shp.retvals
-    else:
-        write_shp.show_outputs = show_outputs
+    write_shp.show = {}
+    write_shp.args = args
+    write_shp.show['Input'] = component_inputs
+    write_shp.show['Output'] = ('OK', 'file') #+ write_shp.retvals[2:]
+
     return write_shp
 
-write_objects_and_data_to_shapefile = write_objects_and_data_to_shapefile_factory()
+write_shapefile = write_shapefile_factory()
 
 
 def create_new_groups_layer_from_points_list(
@@ -1548,14 +1543,14 @@ def get_shape_file_rec_ID(options = opts['options']):
 
 
 
-def read_shapes_and_data_from_shapefile_factory(retvals = None, show_outputs = None):
+def read_shapefile_factory(retvals = None):
     #type() -> function
+    args = ('file', 'gdm', 'opts')
+    component_inputs = ('go', args[0], 'Geom') + args[1:]
 
-    def read_shp( f_name, geom_data_mapping, opts ):
+    def read_shp( f_name, geom_data_map, opts ):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts['options']
-
-        a = WriteableFlushableList()
 
         ( fields
         ,recs
@@ -1564,11 +1559,11 @@ def read_shapes_and_data_from_shapefile_factory(retvals = None, show_outputs = N
 
         if not recs:
             output('No data read from Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, geom_data_mapping, None    
+            return 1, f_name, geom_data_map, None    
             
         if not shapes:
             output('No shapes in Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, geom_data_mapping, None
+            return 1, f_name, geom_data_map, None
 
         if not bbox:
             output('No Bounding Box in Shapefile.  '
@@ -1593,15 +1588,15 @@ def read_shapes_and_data_from_shapefile_factory(retvals = None, show_outputs = N
             obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
             # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
         
-            if isinstance(geom_data_mapping, dict) and len(geom_data_mapping) == len(recs):
+            if isinstance(geom_data_map, dict) and len(geom_data_map) == len(recs):
                 # figuring out an override for different number of overrided geom objects
                 # to shapes/recs is to open a large a can of worms.  Unsupported.
                 # If the override objects are in Rhino anyway then the uuid field in the shape
                 # file will be picked up in any case in get_shape_file_rec_ID
                 if sys.version_info.major < 3:
-                    shape_keys = geom_data_mapping.viewkeys()  
+                    shape_keys = geom_data_map.viewkeys()  
                 else: 
-                    shape_keys = geom_data_mapping.keys()
+                    shape_keys = geom_data_map.keys()
                 shapes_to_output = [shp_key for shp_key in shape_keys]
                     # These points shouldn't be used, as by definition they 
                     # come from objects that already
@@ -1644,15 +1639,16 @@ def read_shapes_and_data_from_shapefile_factory(retvals = None, show_outputs = N
 
         locs = locals().copy()
         return [locs[retval] for retval in read_shp.retvals]
-    if retvals == None:
-        read_shp.retvals = 'retcode', 'f_name', 'gdm', 'a', 'abbrevs', 'sDNA_fields', 'bbox', 'opts'
-    if show_outputs == None:
-        read_shp.show_outputs = (read_shp.retvals[0], 'Geom', 'Data') + read_shp.retvals[1:-2]
-    else:
-        read_shp.show_outputs = show_outputs
+    if retvals is None:
+        read_shp.retvals = 'retcode', 'gdm', 'abbrevs', 'sDNA_fields', 'bbox', 'opts'
+    read_shp.show = {}
+    read_shp.args = args
+    read_shp.show['Input'] = component_inputs
+    read_shp.show['Output'] = ('OK', 'Geom', 'Data') + read_shp.retvals[1:]
+
     return read_shp
 
-read_shapes_and_data_from_shapefile = read_shapes_and_data_from_shapefile_factory()
+read_shapefile = read_shapefile_factory()
 
     #keys=[]
     #if options.create_new_groups_layer_from_shapefile:
@@ -1682,17 +1678,15 @@ read_shapes_and_data_from_shapefile = read_shapes_and_data_from_shapefile_factor
 
 
 
-def write_data_to_Usertext_factory(retvals = None, show_outputs = None):
+def write_Usertext_factory(retvals = None):
     #type() -> function
+    args = ('gdm', 'opts')
+    component_inputs = ('go', 'Geom', 'Data') + args
 
-    def write_Usertext(   f_name     #Bake_Geom_and_Data
-                ,gdm  # nested dict
-                ,opts
-                ):
+
+    def write_Usertext(gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts['options']
-
-        a = WriteableFlushableList()
 
         date_time_of_run = asctime()
 
@@ -1771,25 +1765,28 @@ def write_data_to_Usertext_factory(retvals = None, show_outputs = None):
 
         locs = locals().copy()
         return [locs[retval] for retval in write_Usertext.retvals]
-    if retvals == None:
-        write_Usertext.retvals = 'retcode', 'gdm', 'a'
-    if show_outputs == None:
-        write_Usertext.show_outputs = write_Usertext.retvals #[0] + ('Geom', 'Data') + write_Usertext.retvals[1:]
-    else:
-        write_Usertext.show_outputs = show_outputs
+    if retvals is None:
+        write_Usertext.retvals = ('retcode', 'gdm')
+    write_Usertext.show = {}
+    write_Usertext.args = args
+    write_Usertext.show['Input'] = component_inputs
+    write_Usertext.show['Output'] = ('OK',) #[0] + ('Geom', 'Data') + write_Usertext.retvals[1:]
+
     return write_Usertext
 
-write_data_to_Usertext = write_data_to_Usertext_factory()
+write_Usertext = write_Usertext_factory()
 
-def bake_and_write_data_as_Usertext_to_Rhino_factory(retvals = None, show_outputs = None):
+def bake_Usertext_factory(retvals = None):
     #type() -> function
+    args = ('gdm', 'opts')
+    component_inputs = ('go', 'Geom', 'Data') + args
 
-    def bake_Usertext(f_name, geom_data_mapping, opts ):
+
+    def bake_Usertext(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list  
-        a = WriteableFlushableList()
 
         gdm = OrderedDict()
-        for obj in geom_data_mapping:
+        for obj in geom_data_map:
             doc_obj = ghdoc.Objects.Find(obj)
             if doc_obj:
                 geometry = doc_obj.Geometry
@@ -1798,23 +1795,23 @@ def bake_and_write_data_as_Usertext_to_Rhino_factory(retvals = None, show_output
                     add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
                     # trying to avoid constantly switching sc.doc
 
-                    gdm[add_to_Rhino(geometry, attributes)] = geom_data_mapping[obj] # The bake
+                    gdm[add_to_Rhino(geometry, attributes)] = geom_data_map[obj] # The bake
         
-        retcode, gdm, tmp_a = tools_dict['write_data_to_Usertext'][0](f_name, gdm, opts)
-        a.write(tmp_a)
+        retcode, gdm = write_Usertext(gdm, opts)
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
         locs = locals().copy()
         return [locs[retval] for retval in bake_Usertext.retvals]
-    if retvals == None:
-        bake_Usertext.retvals = 'retcode', 'a' #'f_name', 'gdm', 'a'
-    if show_outputs == None:
-        bake_Usertext.show_outputs = bake_Usertext.retvals #[0] + ('Geom', 'Data') + bake_Usertext.retvals[1:]
-    else:
-        bake_Usertext.show_outputs = show_outputs
+    if retvals is None:
+        bake_Usertext.retvals = ('retcode',) #'f_name', 'gdm'
+    bake_Usertext.show = {}
+    bake_Usertext.args = args
+    bake_Usertext.show['Input'] = component_inputs
+    bake_Usertext.show['Output'] = ('OK',) #bake_Usertext.retvals #[0] + ('Geom', 'Data') + bake_Usertext.retvals[1:]
+
     return bake_Usertext
 
-bake_and_write_data_as_Usertext_to_Rhino = bake_and_write_data_as_Usertext_to_Rhino_factory()
+bake_Usertext = bake_Usertext_factory()
 
 
 
@@ -1900,34 +1897,36 @@ def change_line_thickness(obj, width, rel_or_abs = False):  #The default value i
     x.CommitChanges()
 
 
-def parse_data_factory(retvals = None, show_outputs = None):
+def parse_data_factory(retvals = None):
     #type() -> function
+    args = ('gdm', 'opts')
+    component_inputs = ('go', 'Geom', 'Data', args[0], 'field', 'plot_max', 'plot_min', 'classes') + args[1:]
 
-    def parse_data(f_name, geom_data_map, opts):
+
+    def parse_data(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
         options = opts['options']
-
-        a = WriteableFlushableList()
 
         field = options.field
 
         data = [ val[field] for val in geom_data_map.values()]
         report('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
-        x_max = max(data) if options.plot_max == None else options.plot_max
-        x_min = min(data) if options.plot_min == None else options.plot_min
+        x_max = max(data) if options.plot_max is None else options.plot_max
+        x_min = min(data) if options.plot_min is None else options.plot_min
         # bool(0) == False so in case x_min==0 we can't use 
         # if options.plot_min if options.plot_min else min(data) 
 
 
-        no_manual_classes = (not isinstance(options.class_boundaries, list)
+        no_manual_classes = (not isinstance(options.classes, list)
                             or not all( isinstance(x, Number) 
-                                            for x in options.class_boundaries
+                                            for x in options.classes
                                         )
                             )
 
         if options.sort_data or (no_manual_classes 
-        and options.class_spacing == 'equal_spacing'): 
+           and options.class_spacing == 'equal_spacing'  ):
+            # 
             gdm = OrderedDict( sorted(geom_data_map.items()
                                     ,key = lambda tupl : tupl[1][field]
                                     ) 
@@ -1946,15 +1945,15 @@ def parse_data_factory(retvals = None, show_outputs = None):
                 n = len(gdm)
                 objs_per_class, rem = divmod(n, m)
                 # assert gdm is already sorted
-                class_boundaries = [ val[field] for val in 
+                classes = [ val[field] for val in 
                                     gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
                                 ]  # classes include their lower bound
-                report('num class boundaries == ' + str(len(class_boundaries)))
+                report('num class boundaries == ' + str(len(classes)))
                 report_value(options.number_of_classes)
                 report_value(n)
-                assert len(class_boundaries) + 1 == options.number_of_classes
+                assert len(classes) + 1 == options.number_of_classes
             else: 
-                class_boundaries = [
+                classes = [
                     splines[options.class_spacing](  
                                     i
                                     ,0
@@ -1965,10 +1964,10 @@ def parse_data_factory(retvals = None, show_outputs = None):
                                                 )     for i in range(1, m + 1) 
                                     ]
         else:
-            class_boundaries = options.class_boundaries
+            classes = options.classes
         
         opts['options'] = opts['options']._replace(
-                                            class_boundaries = class_boundaries
+                                            classes = classes
                                            ,plot_max = x_max
                                            ,plot_min = x_min
                                                                 )
@@ -1989,11 +1988,11 @@ def parse_data_factory(retvals = None, show_outputs = None):
             #'linear' # exponential, logarithmic
             def classifier(x): 
 
-                highest_lower_bound = x_min if x < class_boundaries[0] else max(y 
-                                                for y in class_boundaries + [x_min] 
+                highest_lower_bound = x_min if x < classes[0] else max(y 
+                                                for y in classes + [x_min] 
                                                 if y <= x                       )
                 #Classes include their lower bound
-                least_upper_bound = x_max if x >= class_boundaries[-1] else min(y for y in class_boundaries + [x_max] 
+                least_upper_bound = x_max if x >= classes[-1] else min(y for y in classes + [x_max] 
                                         if y > x)
 
                 return re_normaliser (0.5*(least_upper_bound + highest_lower_bound))
@@ -2004,18 +2003,18 @@ def parse_data_factory(retvals = None, show_outputs = None):
         # e.g. thousand seperators
 
 
-        mid_points = [0.5*(x_min + min(class_boundaries))]
-        mid_points += [0.5*(x + y) for (x,y) in zip(  class_boundaries[0:-1]
-                                                    ,class_boundaries[1:]  
+        mid_points = [0.5*(x_min + min(classes))]
+        mid_points += [0.5*(x + y) for (x,y) in zip(  classes[0:-1]
+                                                    ,classes[1:]  
                                                 )
                     ]
-        mid_points += [ 0.5*(x_max + max(class_boundaries))]
+        mid_points += [ 0.5*(x_max + max(classes))]
         report_value(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
         x_min_s = options.num_format.format(x_min)
-        upper_s = options.num_format.format(min( class_boundaries ))
+        upper_s = options.num_format.format(min( classes ))
         mid_pt_s = options.num_format.format( mid_points[0] )
 
         legend_tags = [options.first_legend_tag_format_string.format( 
@@ -2025,9 +2024,9 @@ def parse_data_factory(retvals = None, show_outputs = None):
                                                                     )
                                                         ]
         for lower_bound, mid_point, upper_bound in zip( 
-                                            class_boundaries[0:-1]
+                                            classes[0:-1]
                                             ,mid_points[1:-1]
-                                            ,class_boundaries[1:]  
+                                            ,classes[1:]  
                                                     ):
             
             lower_s = options.num_format.format(lower_bound)
@@ -2041,7 +2040,7 @@ def parse_data_factory(retvals = None, show_outputs = None):
                                                                 )
                             ]
 
-        lower_s = options.num_format.format(max( class_boundaries ))
+        lower_s = options.num_format.format(max( classes ))
         x_max_s = options.num_format.format(x_max)
         mid_pt_s = options.num_format.format(mid_points[-1])
 
@@ -2071,36 +2070,36 @@ def parse_data_factory(retvals = None, show_outputs = None):
         retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in parse_data.retvals]
-    if retvals == None:
-        parse_data.retvals = 'retcode', 'plot_min', 'plot_max', 'f_name', 'gdm', 'a', 'opts'
-    if show_outputs == None:
-        parse_data.show_outputs = parse_data.retvals[:3] + ('Data', 'Geom') + parse_data.retvals[3:-2]
-    else:
-        parse_data.show_outputs = show_outputs
+    if retvals is None:
+        parse_data.retvals = 'retcode', 'plot_min', 'plot_max', 'gdm', 'opts'
+    parse_data.show = {}
+    parse_data.args = args
+    parse_data.show['Input'] = component_inputs
+    parse_data.show['Output'] = ('OK',) + parse_data.retvals[1:3] + ('Data', 'Geom') + parse_data.retvals[3:]
+
     return parse_data      
 
 parse_data = parse_data_factory()
 
-def recolour_objects_factory(retvals = None, show_outputs = None):
+def recolour_objects_factory(retvals = None):
     #type() -> function
+    args = ('gdm', 'opts')
+    component_inputs = ('go', 'Data', 'Geom') + args
 
-    def recolour_objects(f_name, geom_data_map, opts):
+
+    def recolour_objects(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
 
         options = opts['options']
-
-        a = WriteableFlushableList()
         
         field = options.field
         objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
                                     if isinstance(v, dict) and field in v    
                                     )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse:
-            ret_code, x_min, x_max, f_name, gdm_in, messages = tools_dict['parse_data'][0]( f_name
-                                                                                        ,objs_to_parse
-                                                                                        ,opts
-                                                                                        )
+            ret_code, x_min, x_max, gdm_in, opts = parse_data(objs_to_parse, opts)
+                                                                            
             report_value(x_min)
             report_value(x_max)
         else:
@@ -2260,14 +2259,14 @@ def recolour_objects_factory(retvals = None, show_outputs = None):
                 report('bbox == ' + str(bbox))
 
 
-                #rectangle = Rectangle( XYPlane(pt)
+                #leg_frame = Rectangle( XYPlane(pt)
                 #                      ,[legend_xmin, legend_xmax]
                 #                      ,[legend_ymin, legend_ymax]
                 #                      ,0
                 #                      )
 
                 plane = rs.WorldXYPlane()
-                rectangle = rs.AddRectangle( plane
+                leg_frame = rs.AddRectangle( plane
                                             ,legend_xmax - legend_xmin
                                             ,legend_ymax - legend_ymin 
                                             )
@@ -2279,26 +2278,25 @@ def recolour_objects_factory(retvals = None, show_outputs = None):
                        )
 
 
-                rs.MoveObject(rectangle, [1.07*bbox_xmax, legend_ymin])
-                #rs.MoveObject(rectangle, [65,0]) #1.07*bbox_xmax, legend_ymin])
+                rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
+                #rs.MoveObject(leg_frame, [65,0]) #1.07*bbox_xmax, legend_ymin])
 
                 opts['options'] = opts['options']._replace(
-                                                    legend_rectangle = rectangle 
+                                                    leg_frame = leg_frame 
                                                                         )
 
-                #report_value(rectangle)
-                #rectangle = sc.doc.Objects.FindGeometry(rectangle)
-                #rectangle = sc.doc.Objects.Find(rectangle)
-                #rectangle = rect
+                #report_value(leg_frame)
+                #leg_frame = sc.doc.Objects.FindGeometry(leg_frame)
+                #leg_frame = sc.doc.Objects.Find(leg_frame)
 
         else:
             output('No legend rectangle dimensions.  ', 'INFO')
-            rectangle = None
+            leg_frame = None
 
     
 
 
-        report_value(rectangle)
+        report_value(leg_frame)
 
         #def c():
             #return GH_Colour(Color.FromArgb(r(0,255), r(0,255), r(0,255)))
@@ -2306,12 +2304,12 @@ def recolour_objects_factory(retvals = None, show_outputs = None):
             #return rs.CreateColor(r(0,255), r(0,255), r(0,255))
         #tags=['Tag1', 'Tag2', 'Tag3', 'Tag4', 'Tag5']
         #colours = [c(), c(), c(), c(), c()]
-        #rect = sc.doc.Objects.FindGeometry(rectangle)
+        #rect = sc.doc.Objects.FindGeometry(leg_frame)
         #for k, v in legend_tags.items():
-        #    Legend(Colour.FromArgb(*v), k, rectangle)
+        #    Legend(Colour.FromArgb(*v), k, leg_frame)
         #Legend( [GH_Colour(Colour.FromArgb(*v)) for v in legend_tags.values()]
         #       ,list(legend_tags.keys()) 
-        #       ,rectangle
+        #       ,leg_frame
         #       )
         gdm = GH_objs_to_recolour
         leg_cols = list(legend_tags.values())
@@ -2325,13 +2323,14 @@ def recolour_objects_factory(retvals = None, show_outputs = None):
 
         locs = locals().copy()
         return [locs[retval] for retval in recolour_objects.retvals]
-    if retvals == None:
-        recolour_objects.retvals = 'retcode', 'gdm', 'leg_cols', 'leg_tags', 'rectangle', 'a', 'opts'
-    if show_outputs == None:
-        recolour_objects.show_outputs = (recolour_objects.retvals[0], 'Geom', 'Data') + recolour_objects.retvals[1:-2]
+    if retvals is None:
+        recolour_objects.retvals = 'retcode', 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
+    recolour_objects.show = {}
+    recolour_objects.args = args
+    recolour_objects.show['Input'] = component_inputs    
+    recolour_objects.show['Output'] = ('OK', 'Geom', 'Data') + recolour_objects.retvals[1:]
           # To recolour GH Geom with a native Preview component
-    else:
-        recolour_objects.show_outputs = show_outputs
+
     return recolour_objects
 
 recolour_objects = recolour_objects_factory()
@@ -2350,7 +2349,7 @@ do_not_remove = ('out'
                 ,'OK'
                 ,'Data'
                 ,'Geom'
-                ,'f_name'
+                ,'file'
                 ,'gdm'
                 ,'a'
                 ,'opts'
@@ -2422,7 +2421,7 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
                                                     ,datatype
                                                     ,filtr
                                                     ,default
-                                                    ,show_outputs
+                                                    ,required
                                                 ) in input_spec  }
         update_or_init(  local_opts, defaults_dict, nick_name, tool_name )
         do_not_remove += tuple(defaults_dict.keys())
@@ -2434,12 +2433,12 @@ def cache_syntax_and_UISpec(nick_name, tool_name, local_opts):
 
 
 
-tools_dict = dict(   get_objects_from_Rhino = [get_objects_from_Rhino]
+tools_dict = dict(   get_Geom = [get_Geom]
                     ,read_Usertext = [read_Usertext]
-                    ,write_objects_and_data_to_shapefile = [write_objects_and_data_to_shapefile]
-                    ,read_shapes_and_data_from_shapefile = [read_shapes_and_data_from_shapefile]
-                    ,write_data_to_Usertext = [write_data_to_Usertext]
-                    ,bake_and_write_data_as_Usertext_to_Rhino = [bake_and_write_data_as_Usertext_to_Rhino]
+                    ,write_shapefile = [write_shapefile]
+                    ,read_shapefile = [read_shapefile]
+                    ,write_Usertext = [write_Usertext]
+                    ,bake_Usertext = [bake_Usertext]
                     ,parse_data = [parse_data]
                     ,recolour_objects = [recolour_objects] # Needed in iterable wrappers
                     )
@@ -2451,7 +2450,13 @@ support_component_names = list(tools_dict.keys())[:] # In Python 3, .keys() and
 special_names =           [  'sDNA_general'
                             ]
 
-sDNA_GH_names = support_component_names + special_names + ['Python', 'selftest']
+dev_tools = ['Python'
+            ,'Self_test'
+            ,'Build_components']
+
+sDNA_GH_names = support_component_names + special_names + dev_tools
+
+
 
 
 def list_contains(check_list, name, name_map):
@@ -2479,11 +2484,40 @@ def no_name_clashes(name_map, list_of_names_lists):
                                                    for x in name_map._fields])  
                                                    # No trivial cycles
 
+def make_new_component(name
+                      ,category
+                      ,subcategory
+                      ,launcher_code
+                      ,this_comp
+                      ,position
+                      ):
+    comp = GhPython.Component.ZuiPythonComponent()
+    
+    #comp.CopyFrom(this_comp)
+    sizeF = SizeF(*position)
 
-def return_component_names_factory(name_map, retvals = None, show_outputs = None): 
-                                       # name_map is unknown in this module so 
-                                       # create closure. Call it from outside.
-    def return_component_names(f_name, gdm, local_opts):
+    comp.Attributes.Pivot = PointF.Add(comp.Attributes.Pivot, sizeF)
+    
+
+    comp.Code = launcher_code
+    #comp.NickName = name
+    comp.Params.Clear()
+    comp.IsAdvancedMode = True
+    comp.Category = category
+    comp.SubCategory = subcategory
+
+    GH_doc = this_comp.OnPingDocument()
+    GH_doc.AddObject(comp, False)
+    
+
+    
+
+def dev_tools_factory(name, name_map, inst, retvals = None): 
+
+    args = ('opts',)
+    component_inputs = ('go',) + args
+
+    def return_component_names(local_opts):
         UISpec = local_opts['options'].UISpec
         
         sDNA_tool_names = [Tool.__name__ for Tool in UISpec.get_tools()]
@@ -2524,9 +2558,9 @@ def return_component_names_factory(name_map, retvals = None, show_outputs = None
         else:
             output('Name_map validated successfully.  ','INFO')
         assert not invalid_name_map_vals
-        #return special_names + support_component_names + sDNA_tool_names, None, None, None, self.a 
+        #return special_names + support_component_names + sDNA_tool_names, None, None, None
 
-        ret_names = ([name for name in names_list 
+        names = ([name for name in names_list 
                            if name not in name_map] #.values()] 
                      + list(name_map._fields) #keys())
                     )
@@ -2535,25 +2569,105 @@ def return_component_names_factory(name_map, retvals = None, show_outputs = None
         retcode = 0
         locs = locals().copy()
         return [locs[retval] for retval in return_component_names.retvals]
-    if retvals == None:
+    if retvals is None:
         return_component_names.retvals = 'retcode', 'names'
     else:
         return_component_names.retvals = retvals
-    if show_outputs == None:
-        return_component_names.show_outputs = return_component_names.retvals
+    return_component_names.show = {}
+    return_component_names.args = args
+    return_component_names.show['Input'] = component_inputs
+    return_component_names.show['Output'] = ('OK',) + return_component_names.retvals[1:]
+ 
+
+    builder_args = ('launcher_code', 'opts')
+    builder_component_inputs = ('go',) + builder_args + ('name_map', 'categories')
+
+    def build_components(code, opts):
+        #type(str, dict) -> None
+
+        while (isinstance(code, Iterable) 
+               and not isinstance(code, str)):
+            code = code[0]
+
+        metas = opts['metas']
+
+        UISpec = opts['options'].UISpec
+        categories = {Tool.__name__ : Tool.category for Tool in UISpec.get_tools()}
+        categories.update(metas.categories._asdict())
+
+        name_map = metas.name_map._asdict()
+
+        retcode, names  = return_component_names(opts)
+
+        nicknameless_names = [name for name in names if name not in name_map.values()]
+
+        this_comp = inst.Attributes.Owner
+
+
+        for i, name in enumerate(list(name_map.keys()) + nicknameless_names):
+            if name_map.get(name, name) not in categories:
+                raise ValueError(output('No category for ' + name, 'ERROR'))
+            else:
+                i *= 100
+                w = 800
+                #make_new_component(  name
+                #                    ,'sDNA'
+                #                    ,categories[name_map.get(name, name)]
+                #                    ,code
+                #                    ,this_comp
+                #                    [i % w, i // w]
+                #                    )
+
+                position = [200 + (i % w), 450 + (i // w)]
+                comp = GhPython.Component.ZuiPythonComponent()
+    
+                #comp.CopyFrom(this_comp)
+                sizeF = SizeF(*position)
+
+                comp.Attributes.Pivot = PointF.Add(comp.Attributes.Pivot, sizeF)
+                
+
+                comp.Code = code
+                #comp.NickName = name
+                comp.Params.Clear()
+                comp.IsAdvancedMode = True
+                comp.Category = 'sDNA'
+                comp.SubCategory = categories[name_map.get(name, name)]
+
+                GH_doc = this_comp.OnPingDocument()
+                GH_doc.AddObject(comp, False)
+                
+
+
+
+        retcode = 0
+        locs = locals().copy()
+        return [locs[retval] for retval in build_components.retvals]
+
+    if retvals is None:
+        build_components.retvals = ('retcode',)
     else:
-        return_component_names.show_outputs = show_outputs  
+        build_components.retvals = retvals
+    build_components.show = {}
+    build_components.args = builder_args
+    build_components.show['Input'] = builder_component_inputs
+    build_components.show['Output'] = ('OK',) + build_components.retvals[1:]    
 
 
-    return return_component_names
+    dev_tools = dict( Python = return_component_names
+                     ,Self_test = lambda *args : args  # TODO!  Make it do something!
+                     ,Build_components = build_components
+                     )
+
+    return dev_tools[name]
 
 
-def get_specific_tool(tool_name
-                     ,nick_name
-                     ,local_opts
-                     ,retvals = None
-                     ,show_outputs = None
-                     ):
+def sDNA_wrapper_factory(tool_name
+                        ,nick_name
+                        ,local_opts
+                        ,retvals = None
+                        ,show_outputs = None
+                        ):
     # type(str) -> function
 
     #UISpec = local_opts['options'].UISpec
@@ -2564,6 +2678,9 @@ def get_specific_tool(tool_name
     #    tools_dict[tool_name] = support_tool_wrapper   
         #
         #
+    args = ('file', 'gdm', 'opts')
+    component_inputs = ('go', ) + args #args[0], 'Geom', 'Data') + args[1:]
+
 
     def run_sDNA_wrapper(f_name, gdm, opts):
         
@@ -2586,8 +2703,6 @@ def get_specific_tool(tool_name
 
         dot_shp = options.shp_file_extension
 
-        a = WriteableFlushableList()
-
         input_file = tool_opts[sDNA].input
         
 
@@ -2598,13 +2713,12 @@ def get_specific_tool(tool_name
                 
             if options.auto_write_new_Shp_file and (
                 options.overwrite_input_shapefile 
-                or not isfile(input_file)                  ):
-                retcode, input_file, gdm, tmp_a = tools_dict['write_objects_and_data_to_shapefile'][0]( 
-                                                                                            input_file
-                                                                                        ,gdm
-                                                                                        ,opts
-                                                                                        )
-                a.write(tmp_a)
+                or not isfile(input_file)):
+                retcode, input_file, gdm = write_shapefile( 
+                                                             input_file
+                                                            ,gdm
+                                                            ,opts
+                                                            )
             
             tool_opts[sDNA] = tool_opts[sDNA]._replace(input = input_file)
 
@@ -2668,17 +2782,16 @@ def get_specific_tool(tool_name
         #return return_code, tool_opts[sDNA].output, gdm, a
         locs = locals().copy()
         return [locs[retval] for retval in run_sDNA_wrapper.retvals]
-    if retvals == None:
-        run_sDNA_wrapper.retvals = 'retcode', 'f_name', 'gdm', 'a', 'opts'
+    if retvals is None:
+        run_sDNA_wrapper.retvals = 'retcode', 'f_name', 'gdm', 'opts'
     else:
         run_sDNA_wrapper.retvals = retvals
-    if show_outputs == None:
-        run_sDNA_wrapper.show_outputs = ('f_name',)
-        run_sDNA_wrapper.show_outputs = (run_sDNA_wrapper.retvals[0], 'Geom', 'Data') + run_sDNA_wrapper.retvals[1:]
-    else:
-        run_sDNA_wrapper.show_outputs = show_outputs    
+    run_sDNA_wrapper.show = {}
+    run_sDNA_wrapper.args = args
+    run_sDNA_wrapper.show['Input'] = component_inputs
+    run_sDNA_wrapper.show['Output'] = ('OK', 'file', 'Geom', 'Data') + run_sDNA_wrapper.retvals[2:]
+   
     return run_sDNA_wrapper
-
 
 def tool_factory(self, nick_name, name_map, local_opts):  
     #type( type[any], str, namedtuple, dict ) -> list
@@ -2691,17 +2804,32 @@ def tool_factory(self, nick_name, name_map, local_opts):
     global tools_dict
     # A special component that takes its nickname from the parameters provided,
     # only working out which tools to run at run time.  
-    def tool_factory_wrapper(inst, f_name, gdm, opts):
-        tools = tool_factory( inst 
-                             ,opts['options'].tool_name
+
+    args = ('file', 'gdm', 'opts', 'tool')
+    component_inputs = ('go', args[0], 'Geom', 'Data') + args[1:]
+
+    def tool_factory_wrapper(f_name, gdm, opts, tool = None):
+        if tool is None:
+            tool = opts['options'].tool_name
+        tools = tool_factory( self 
+                             ,tool
                              ,name_map  
                              ,opts 
                              )
             
-        tools = inst.auto_insert_extra_tools(tools, inst.Params)
-        inst.Params = inst.update_component_outputs(inst.Params, tools)
-        return run_tools(tools, f_name, gdm, opts)  #TODO  Add in .show_outputs or .retvals attributes?
-
+        tools = self.auto_insert_tools(tools, self.Params)
+        #self.Params = 
+        self.update_Params(self.ghenv.Component.Params, tools)
+        return run_tools(tools, **dict(f_name = f_name
+                                      ,gdm = gdm
+                                      ,opts = opts
+                                      )
+                        ) 
+    tool_factory_wrapper.show = {}
+    tool_factory_wrapper.args = args
+    tool_factory_wrapper.show['Input'] = component_inputs
+    tool_factory_wrapper.retvals = 'retcode', 'Geom', 'Data', 'f_name', 'gdm', 'opts'
+    tool_factory_wrapper.show['Output'] = ('OK', ) + tool_factory_wrapper.retvals[1:3] + ('file',) + tool_factory_wrapper.retvals[4:]
  
     if isinstance(nick_name, Hashable):
         if (   nick_name not in tools_dict or 
@@ -2732,9 +2860,9 @@ def tool_factory(self, nick_name, name_map, local_opts):
                 if mapped_name in support_component_names:
                     tools_dict[nick_name] = tools_dict[mapped_name]
                     output(mapped_name + ' in support_component_names','DEBUG')
-                elif nick_name == 'Python': #Dev tool for naming components
-                    tools_dict[nick_name] = [return_component_names_factory(name_map)] 
-                    output(nick_name + ' is "Python"','DEBUG')
+                elif nick_name in dev_tools: #Dev tool for naming components
+                    tools_dict[nick_name] = [dev_tools_factory(nick_name, name_map, self)] 
+                    output('nick_name' + ' in Dev tools','DEBUG')
                     # Needs to be here to be passed name_map
 
                 elif nick_name in special_names: #["sDNA_general"]  
@@ -2746,8 +2874,8 @@ def tool_factory(self, nick_name, name_map, local_opts):
                     # create entries for sDNA tools and non-special support tools & "Python"
                     output(nick_name + ' needs new tool to be built, e.g. from sDNA. ','DEBUG')
 
-                    tools_dict[nick_name] = [get_specific_tool(mapped_name, nick_name, local_opts)]  
-                    # assert isinstance(get_specific_tool(map_result, nick_name, name_map, local_opts), list)
+                    tools_dict[nick_name] = [sDNA_wrapper_factory(mapped_name, nick_name, local_opts)]  
+                    # assert isinstance(sDNA_wrapper_factory(map_result, nick_name, name_map, local_opts), list)
 
         report('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name][0]) )
         return tools_dict[nick_name] 
@@ -2783,7 +2911,7 @@ def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_s
 
 def component_decorator( BaseClass
                         ,ghenv
-                        ,nick_name = 'selftest'
+                        ,nick_name = 'Self_test'
                         ,loader = module_loader
                         ):
     #type:(type[type], str, object, function) -> type[type]
@@ -2794,17 +2922,17 @@ def component_decorator( BaseClass
         #Component = ghenv.Component #type: ignore
         RhinoDoc = Rhino.RhinoDoc
 
-        # Options from defautls and installation config.toml
+        # Options from module, from defaults and installation config.toml
         opts = opts  
         local_metas = local_metas   # immutable.  controls syncing /
                                     # desyncing / read / write of the
-                                    # above, opts.
-                                    # Although local, can be set on 
+                                    # above (opts).
+                                    # Although local, it can be set on 
                                     # groups of components using the 
                                     # default section of a project 
                                     # config.ini, or passed as a
                                     # Grasshopper parameter between
-                                    # components
+                                    # components.
 
         #sDNA_GH_path = sDNA_GH_path
         #sDNA_GH_package = sDNA_GH_package
@@ -2815,9 +2943,9 @@ def component_decorator( BaseClass
                     self.Params.Output.Remove(param)
         
 
-        def auto_insert_extra_tools(self, tools, Params):
+        def auto_insert_tools(self, tools, Params):
             #type(type[any], list) -> None
-            if tools == None:
+            if tools is None:
                 tools = self.my_tools
             tools = tools[:]
 
@@ -2827,7 +2955,7 @@ def component_decorator( BaseClass
                 tools = insert_tool_after_targets(   self
                                                     ,tools
                                                     ,Params
-                                                    ,read_shapes_and_data_from_shapefile
+                                                    ,read_shapefile
                                                     ,lambda tool : func_name(tool) == 'run_sDNA_wrapper'
                                                     ,sDNA_GH_names
                                                     )
@@ -2837,7 +2965,7 @@ def component_decorator( BaseClass
                                                     ,tools
                                                     ,Params
                                                     ,parse_data
-                                                    ,lambda tool : tool == read_shapes_and_data_from_shapefile
+                                                    ,lambda tool : tool == read_shapefile
                                                     ,[]
                                                     )     
             
@@ -2852,68 +2980,142 @@ def component_decorator( BaseClass
                                                     )    
             return tools
 
+        def update_Input_or_Output_Params(self
+                                         ,Input_or_Output
+                                         ,Params = None
+                                         ,tools = None
+                                         ,params_current = None
+                                         ,params_needed = None
+                                         ):
+            #type(str, list, list) -> None   
 
-        def update_component_outputs( self
-                                     ,Params = None
-                                     ,tools = None  
-                                     ):
-            global do_not_add
-            
-            if tools == None:
+
+            assert Input_or_Output in ['Input', 'Output']
+
+            if Params is None:
+                Params = self.Params
+
+            if params_current is None:
+                params_current = getattr(Params, Input_or_Output)[:]
+
+            self.do_not_add = do_not_add[:]
+
+
+            if tools is None:
                 tools = self.tools
-            tool = tools[-1] 
-            params_needed = tool.show_outputs
-            
-            report_value(params_needed)
-            if Params == None:
-                try:
-                    Params = self.Params
-                except:
-                    Params = ghenv.Component.Params
-                #Params = getattr(self, 'Params', ghenv.Component.Params) 
 
-            params_current = Params.Output[:]
+            if params_needed is None:
+                tools = self.tools
+                if Input_or_Output == 'Input':
+                    params_needed = [ input for tool in tools 
+                                            for input in tool.show['Input'] ]
+                else:
+                    tool = tools[-1]
+                    params_needed = list(tool.show['Output'])
+
 
             report(   'params_current NickNames =='
                     + ' '.join(str(param.NickName) for param in params_current)
-                  )
+                )
 
             for param in params_current:  
                 if param.NickName in params_needed:
-                    report('Param already there, adding to do_not_add == '
-                           + str(param.NickName))
-                    do_not_add += [param.NickName]
+                    report('Param already there, adding to self.do_not_add == '
+                        + str(param.NickName))
+                    self.do_not_add += [param.NickName]
                 elif (param.NickName not in do_not_remove and
-                      len(param.Recipients) == 0   ):
-                    report('Removing param == ' + str(param.NickName))
-                    Params.Output.Remove(param) #TODO:  Check not connected to anything first?
+                    len(getattr(param, 'Recipients', [])) == 0 and  
+                    len(getattr(param, 'Sources',    [])) == 0     ):
+                    report(    'Param ' 
+                            + str(param.NickName) 
+                            + ' not needed, and can be removed.  ')
+                    #report('Removing param ' + str(param.NickName))
+                    #Params.UnregisterOutputParameter(param)
+                    #Params.Output.Count -=1
+                    #Params.Output.Remove(param) 
+                    #Params.OnParametersChanged()
                 else:
                     report('Leaving param alone.  User added output? == ' 
-                           + str(param.NickName))
+                        + str(param.NickName))
 
                 # else:  Leave alone.  The user added the param, 
                 # or the component was supplied that way by ourselves.
-                    do_not_add += [param.NickName]
+                    self.do_not_add += [param.NickName]
 
             for param_name in params_needed:
-                if param_name not in do_not_add: 
+                if param_name not in self.do_not_add: 
+                    self.do_not_add += [param_name]
                     report('Adding param == ' + param_name)
+
                     #var = Grasshopper.Kernel.Parameters.Param_String(NickName = param_name)
-                    if param_name in ['rectangle']:
+                    if param_name in ['leg_frame']:
                         new_param_type = Grasshopper.Kernel.Parameters.Param_Geometry
+                    #elif param_name in ['leg_cols']:
                     else:
                         new_param_type = Grasshopper.Kernel.Parameters.Param_GenericObject
+                    #else:
+                    #    new_param_type = Grasshopper.Kernel.Parameters.Param_String
 
-                    var = new_param_type(NickName = param_name)
+                    if param_name == 'Data':
+                        Access = Grasshopper.Kernel.GH_ParamAccess.tree
+                    else: 
+                        Access = Grasshopper.Kernel.GH_ParamAccess.list
 
-                    #var.NickName = param
-                    #var.Name = param
-                    #var.Description = "test var"
-                    var.Access = Grasshopper.Kernel.GH_ParamAccess.list
-                    Params.RegisterOutputParam(var)
+                    var = new_param_type(NickName = param_name
+                                        ,Name = param_name
+                                        ,Description = param_name
+                                        ,Access = Access
+                                        ,Optional = True
+                                        )
+
+                    #var.NickName = param_name
+                    #var.Name = param_name
+                    #var.Description = param_name
+                    #if param_name == 'Data':
+                    #    var.Access = Grasshopper.Kernel.GH_ParamAccess.tree
+                    #else: 
+                    #    var.Access = Grasshopper.Kernel.GH_ParamAccess.list
+
+                    #var.Optional = True
+
+                    #index = getattr(Params, Input_or_Output).Count
+
+                    registers = dict(Input  = 'RegisterInputParam'
+                                    ,Output = 'RegisterOutputParam'
+                                    )
+                    getattr(Params, registers[Input_or_Output])(var) #, index)
+                    #Params.Output.Count +=1
+                    Params.OnParametersChanged()
+
                 else:
-                    report('Param in do_not_add == ' + param_name)
-            Params.OnParametersChanged()
+                    report('Param in self.do_not_add == ' + param_name)
+
+        def update_Params(   self
+                            ,Params = None
+                            ,tools = None
+                         ):
+            
+
+            if Params is None:
+                try:
+                    Params = ghenv.Component.Params
+                except:
+                    Params = self.Params
+                #Params = getattr(self, 'Params', ghenv.Component.Params) 
+
+            if tools is None:
+                tools = self.tools
+
+            ParamsSyncObj = Params.EmitSyncObject()
+
+
+            
+            self.update_Input_or_Output_Params('Output', Params, tools)
+            self.update_Input_or_Output_Params('Input', Params, tools)
+
+            Params.Sync(ParamsSyncObj)
+            Params.RepairParamAssociations()
+
             return Params
     
 
@@ -2950,7 +3152,7 @@ def component_decorator( BaseClass
 
 
         def update_name(self, new_name = None):
-            if new_name == None:
+            if new_name is None:
                 try:
                     new_name = self.Attributes.Owner.NickName 
                 except:
@@ -2960,7 +3162,7 @@ def component_decorator( BaseClass
                         try:
                             new_name = ghenv.Component.NickName
                         except:
-                            new_name = "selftest"     
+                            new_name = "Self_test"     
 
             if not hasattr(self, 'nick_name') or (
                self.opts['metas'].allow_components_to_change_type
@@ -3022,21 +3224,19 @@ def component_decorator( BaseClass
         def __init__(self, *args, **kwargs):
 
             BaseClass.__init__(self, *args, **kwargs)
+            self.ghenv = ghenv
             self.loader = loader
-            self.a = WriteableFlushableList()
 
             self.update_sDNA() 
+            
             #self.update_name()  All runs anyway at start of RunScript even if
             #                    go == False
             #self.my_tools = self.update_tools() elsewhere requires name to 
             #                                    be updated
-            #self.tools = self.auto_insert_extra_tools(self.my_tools) 
-            #self.update_component_outputs(self.Params, self.tools)
+            #self.tools = self.auto_insert_tools(self.my_tools) 
+            #self.update_Params(self.Params, self.tools)
 
-            add_file_to_logger = wrapper_logging.add_custom_file_to_logger
-            add_file_to_logger(  logger
-                                ,self.a
-                                ,self.opts['options'].logger_custom_level)
+
 
 
 
@@ -3049,22 +3249,22 @@ def component_decorator( BaseClass
                                             # Grasshopper.Folders.AppDataFolder + r'\Libraries'
                                             # %appdata%  + r'\Grasshopper\Libraries'
                                             # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
-        def RunScript(self, go, Data, Geom, f_name, *args):
+        def RunScript(self, *args): #go, Data, Geom, f_name, *args):
             # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
-            
-            #if not 'opts' in globals():
-            #    global opts
-            if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
-                    f_name=f_name[0] 
-            
-            self.a = WriteableFlushableList() 
-            #Output from previous calls to RunScript is already logged elsewhere.
 
-            args_dict = {key.Name : val for key, val in zip(self.Params.Input[4:], args) } # type: ignore
+            args_dict = {key.Name : val for key, val in zip(self.Params.Input, args) } # .Input[4:] type: ignore
             
-            report_value(args_dict.keys())
+            report_value(args_dict)
             report('self.Params.Input Names == ' + ' '.join(key.Name for key in self.Params.Input))
             report_value(args)
+
+            go = args_dict.get('go', False)
+            Data = args_dict.get('Data', None)
+            Geom = args_dict.get('Geom', None)
+            f_name = args_dict.get('file', '')
+
+            if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
+                    f_name=f_name[0] 
 
             external_opts = unpack_first_item_from_list(args_dict.get('opts', {}))
             report_value(external_opts)
@@ -3081,11 +3281,14 @@ def component_decorator( BaseClass
                 pass
                 self.my_tools = self.update_tools()
             
-            self.tools = self.auto_insert_extra_tools(self.my_tools, self.Params)  # Other components may mean this needs changing
-            self.Params = self.update_component_outputs(self.Params, self.tools)
+                self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
+                        # Other components may mean self.tools needs extra tools adding or /removing
+                        # but this is likely to annoy most users.
+                #self.Params = 
+                self.update_Params()#self.Params, self.tools)
 
             
-            synced = self.local_metas.sync_to_shared_global_opts
+            synced = self.local_metas.sync_to_module_opts
             old_sDNA = self.opts['metas'].sDNA
 
             
@@ -3098,6 +3301,7 @@ def component_decorator( BaseClass
                                                 ,self.nick_name
                                                 )
 
+            args_dict['opts'] = self.opts
 
             report('Opts overridden....    ')
             output(' self.local_metas == ' + str(self.local_metas),'DEBUG')
@@ -3112,11 +3316,11 @@ def component_decorator( BaseClass
 
             if self.opts['metas'].allow_components_to_change_type: 
                 
-                if self.local_metas.sync_to_shared_global_opts != synced:
-                    if self.local_metas.sync_to_shared_global_opts:
-                        self.opts = opts 
+                if self.local_metas.sync_to_module_opts != synced:
+                    if self.local_metas.sync_to_module_opts:
+                        self.opts = opts #sync
                     else:
-                        self.opts = self.opts.copy()
+                        self.opts = self.opts.copy() #desync
 
                 if self.opts['metas'].sDNA != old_sDNA:
                     self.update_sDNA()
@@ -3124,8 +3328,9 @@ def component_decorator( BaseClass
                                           # But this is unavoidable (rare), else the 
                                           # now incorrect reference
                                           # to the old sDNA in self.my_tools will persist.
-                    self.tools = self.auto_insert_extra_tools(self.my_tools, self.Params)
-                    self.Params = self.update_component_outputs(self.Params, self.tools)
+                    self.tools = self.auto_insert_tools(self.my_tools, self.Params)
+                    #self.Params = 
+                    self.update_Params()#self.Params, self.tools)
             
 
 
@@ -3176,11 +3381,8 @@ def component_decorator( BaseClass
                         )
 
 
-                ret_vals_dict = run_tools(   self.tools
-                                            ,f_name
-                                            ,geom_data_map
-                                            ,self.opts
-                                            )
+                ret_vals_dict = run_tools(   self.tools, args_dict)
+
                 gdm = ret_vals_dict['gdm']
                 #print (str(gdm))
                 if isinstance(gdm, dict):
@@ -3195,44 +3397,41 @@ def component_decorator( BaseClass
 
                 ret_vals_dict['Data'] = NewData
                 ret_vals_dict['Geom'] = NewGeometry
-                if 'rectangle' in ret_vals_dict:
-                    ret_vals_dict['gdm'] = ret_vals_dict['rectangle']
-                ret_vals_dict['OK'] = (ret_vals_dict['retcode'] == 0)
+                #if 'leg_frame' in ret_vals_dict:
+                #    ret_vals_dict['rect'] = ret_vals_dict['leg_frame']
                 ret_vals_dict['opts'] = [self.opts.copy()]
                 ret_vals_dict['l_metas'] = self.local_metas
-                ret_vals_dict['a'] = self.a
 
                 def get_val(key):
                     return                    ret_vals_dict.get(key,
                                     getattr(self.opts['metas'], key,
                                   getattr(self.opts['options'], key,
                                       getattr(self.local_metas, key,
-                        getattr(self.opts.get(self.nick_name,{}).get(self.opts['metas'].sDNA,{}),key, None)))))
+                        getattr( self.opts.get( self.nick_name
+                                               ,{}
+                                               ).get(self.opts['metas'].sDNA
+                                                     ,{}
+                                                    )
+                                 ,key
+                                 ,'Nope! No variable or field called ' 
+                                    + key 
+                                    + ' found.  '
+                                  )))))
 
                 #if func_name(self.tools[-1]) == 'recolour_objects':
                 #    report('Making new rect.  ')
                 #    rect = rs.AddRectangle(rs.WorldXYPlane(), 20, 60)
                     #rect = Grasshopper.Kernel.GH_Convert.ToGHCurve(rect)
                     #rs.MoveObject(rect, [60, 0])
-                #    ret_vals_dict['rectangle'] = rect
+                #    ret_vals_dict['leg_frame'] = rect
                     #report('sc.doc == ' + str(sc.doc))
 
 
                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)
                 return ret_vals
-                                            #In Python 3 .keys() returns a dictview not a list
             else:   
                 return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
-                #return False, Data, Geom, f_name, self.a #, self.opts.copy(), self.local_metas
-                return ( False
-                        ,Data
-                        ,Geom
-                        ,f_name
-                        ,[gdm]
-                        ,self.a
-                        ,[self.opts.copy()]
-                        ,[self.local_metas]
-                        )
+
 #def deco(BaseClass):
     #class M(BaseClass):
     #    def RunScript(self, go, Data, Geom, f_name, *args):

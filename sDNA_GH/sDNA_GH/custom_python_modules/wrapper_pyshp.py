@@ -263,7 +263,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
     attribute_tables = OrderedDict()
 
-    if field_names == None or options.cache_iterable_when_writing_to_shp: 
+    if field_names is None or options.cache_iterable_when_writing_to_shp: 
         
         for item in my_iterable:    
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)

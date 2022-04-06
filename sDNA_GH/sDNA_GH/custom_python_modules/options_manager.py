@@ -203,7 +203,7 @@ def load_ini_file( file_path
 
 def type_coercer_factory(old_val, config, d = None, **kwargs):
     # type (any, Class, dict) -> function
-    if d == None or not isinstance(d,dict) or any(
+    if d is None or not isinstance(d,dict) or any(
         [not isinstance(k,type) for k in d] ) or any(
         [not hasattr(config,v) for v in ['get'] + d.values()] ):
             d = OrderedDict( [ (bool, config.getboolean)

@@ -48,8 +48,6 @@ def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.
             getattr(sDNA_GH_tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
         except:
             print(message_with_level)
-            if hasattr(inst,'a') and hasattr(inst.a,'write'):
-                inst.a.write("From sDNA_GH_launcher via inst: " + message_with_level)
     return message_with_level
 
 
