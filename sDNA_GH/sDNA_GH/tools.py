@@ -245,11 +245,12 @@ class HardcodedOptions():
     #sDNA
     Default_sDNA_GH_file_path = __file__
     overwrite_input_shapefile = False
-    auto_get_Geom = True
-    auto_read_Usertext = True
-    auto_write_new_Shp_file = True
-    auto_read_Shp = True
-    auto_plot_Shp_data = True
+    auto_get_Geom = False
+    auto_read_Usertext = False
+    auto_write_new_Shp_file = False
+    auto_read_Shp = False
+    auto_parse_data = False
+    auto_plot_data = False
     #Plotting results
     field = 'BtEn'
     plot_max = None
@@ -1261,9 +1262,9 @@ def get_objects_from_Rhino___factory(retvals = None):
                            # the names can be different.  The ones in args
                            # are used as keys in vals_dict and for 
                            # input Param names on the component
-    component_inputs = ('go', 'Geom', 'Data') + args
+    component_inputs = ('go', args[1]) # 'Geom', 'Data') + args
     
-    def get_objs(geom_data_map, opts):
+    def get_Geom(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
 
         options = opts['options']
@@ -1298,19 +1299,19 @@ def get_objects_from_Rhino___factory(retvals = None):
 
         retcode = 0
         locs = locals().copy()
-        return [locs[retval] for retval in get_objs.retvals]
+        return [locs[retval] for retval in get_Geom.retvals]
     if retvals is None:
-        get_objs.retvals = 'retcode', 'gdm'
+        get_Geom.retvals = 'retcode', 'gdm'
     else:
-        get_objs.retvals = retvals
-    get_objs.show = {}
-    get_objs.args = args
-    get_objs.show['Input'] = component_inputs
-    get_objs.show['Output'] = ('OK', 'Geom') + get_objs.retvals[1:]
+        get_Geom.retvals = retvals
+    get_Geom.show = {}
+    get_Geom.args = args
+    get_Geom.show['Input'] = component_inputs
+    get_Geom.show['Output'] = ('OK', 'Geom') + get_Geom.retvals[1:]
     # The values in show are only used by the auto param updater, so unlike retvals can 
     # contain different names to the internal function variable names
 
-    return get_objs
+    return get_Geom
 
 get_Geom = get_objects_from_Rhino___factory()
 
@@ -2084,7 +2085,7 @@ parse_data = parse_data_factory()
 def recolour_objects_factory(retvals = None):
     #type() -> function
     args = ('gdm', 'opts')
-    component_inputs = ('go', 'Data', 'Geom') + args
+    component_inputs = ('go', 'Data', 'Geom', 'bbox') + args
 
 
     def recolour_objects(geom_data_map, opts):
@@ -2596,7 +2597,7 @@ def dev_tools_factory(name, name_map, inst, retvals = None):
                                  ,auto_read_Usertext = False
                                  ,auto_write_new_Shp_file = False
                                  ,auto_read_Shp = False
-                                 ,auto_plot_Shp_data = False
+                                 ,auto_plot_data = False
                                  )
 
         metas = opts_at_call['metas']
@@ -2969,7 +2970,7 @@ def component_decorator( BaseClass
                                                     ,sDNA_GH_names
                                                     )
             
-            if options.auto_plot_Shp_data:
+            if options.auto_parse_data:
                 tools = insert_tool_after_targets(   self
                                                     ,tools
                                                     ,Params
@@ -2979,7 +2980,7 @@ def component_decorator( BaseClass
                                                     )     
             
             
-            if options.auto_plot_Shp_data:
+            if options.auto_plot_data:
                 tools = insert_tool_after_targets(   self
                                                     ,tools
                                                     ,Params
@@ -3290,11 +3291,11 @@ def component_decorator( BaseClass
                 pass
                 self.my_tools = self.update_tools()
             
-                self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
-                        # Other components may mean self.tools needs extra tools adding or /removing
-                        # but this is likely to annoy most users.
-                #self.Params = 
-                self.update_Params()#self.Params, self.tools)
+            self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
+                    # Other components may mean self.tools needs extra tools adding or /removing
+                    # but this could - annoy many users.  TODO!  Get early feedback!
+            #self.Params = 
+            self.update_Params()#self.Params, self.tools)
 
             
             synced = self.local_metas.sync_to_module_opts
