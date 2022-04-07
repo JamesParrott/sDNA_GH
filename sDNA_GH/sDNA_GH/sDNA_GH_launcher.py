@@ -19,17 +19,19 @@ except ImportError:
 
     class Grasshopper:
         class Folders:
-            #DefaultAssemblyFolder = r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01'
-            DefaultAssemblyFolder = os.getenv('APPDATA') + r'\Grasshopper\Libraries'
+            DefaultAssemblyFolder = os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
-#sDNA_GH_search_paths = [r'C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH']
-sDNA_GH_search_paths = [ join(Grasshopper.Folders.DefaultAssemblyFolder, sDNA_GH_subfolder) ]  
+sDNA_GH_search_paths = [ join(Grasshopper.Folders.DefaultUserObjectFolder, sDNA_GH_subfolder) ]
+                                            #join(Grasshopper.Folders.DefaultAssemblyFolder, sDNA_GH_subfolder) ]  
                                             # Grasshopper.Folders.AppDataFolder + r'\Libraries'
                                             # %appdata%  + r'\Grasshopper\Libraries'
                                             # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
+                                            # Grasshopper.Folders.AppDataFolder + r'\UserObjects'
+                                            # %appdata%  + r'\Grasshopper\UserObjects'
+                                            # os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
 
 

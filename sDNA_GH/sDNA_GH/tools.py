@@ -60,24 +60,17 @@ else:
     from collections.abc import Hashable, Iterable
 
 from .custom_python_modules.options_manager import (                     
-                                     load_toml_file,
-                                     make_nested_namedtuple     
-                                    ,load_ini_file                             
-                                    ,override_namedtuple        
-)
+                                                     load_toml_file
+                                                    ,make_nested_namedtuple     
+                                                    ,load_ini_file                             
+                                                    ,override_namedtuple        
+                                                    )
 
 from .custom_python_modules import wrapper_logging
 
 from .custom_python_modules.wrapper_pyshp import (get_fields_recs_and_shapes_from_shapefile
                                                  ,get_unique_filename_if_not_overwrite
                                                  ,write_from_iterable_to_shapefile_writer)
-
-def get_stem_and_folder(path):
-    #type(str)-> list
-    #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
-    if isfile(path):
-        path=dirname(path)
-    return split(path)  # os.split
 
 class HardcodedMetas(): 
     config = join( dirname(dirname(__file__)), r'config.toml')
@@ -91,9 +84,11 @@ class HardcodedMetas():
     sDNA_path = ''  # Read only.  Determined after loading sDNAUISpec to which ever below
                     # it is found in.
                     # after loading, assert opts['metas'].sDNA_path == dirname(opts['options'].UISpec.__file__)
-    sDNA_UISpec_path = r'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
-    sDNA_search_paths = [sDNA_UISpec_path, join(os.getenv('APPDATA'),'sDNA')]
-    sDNA_search_paths += [join(os.getenv('APPDATA'), get_stem_and_folder(sDNA_search_paths[0])[1]) ]
+    #sDNA_UISpec_path = r'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
+    #sDNA_search_paths = [sDNA_UISpec_path, 
+    sDNA_search_paths  = [r'C:\Program Files (x86)\sDNA']
+    sDNA_search_paths += [join(os.getenv('APPDATA'),'sDNA')]
+    sDNA_search_paths += [path for path in os.getenv('PATH').split(';') if 'sDNA' in path ]
     auto_update_Rhino_doc_path = True
                         #Abbreviation = Tool Name
 #######################################################################################################################
@@ -155,23 +150,7 @@ class HardcodedMetas():
                         ,'Build_components' : 'Dev tools' 
                     }
 #######################################################################################################################
-    #share_installation_defaults_key = "sDNA_GH_installation_default_options"
-    #share_sDNA_tools_key = "sDNA_UI_Spec_tools"
-    #if all(['ghdoc' in globals, hasattr(ghdoc,'Path'), isfile(ghdoc.Path)]):    
-    #    join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH')
-    #    join(Grasshopper.Folders.AppDataFolder,'Libraries','sDNA_GH')
-    #    join(os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH')
-    #    __file__
-    #else: 
-    #    installation_log_file = r'C:\Users\James\AppData\Roaming\Grasshopper\Libraries\sDNA_GH'
 
-
-#    append_iterable_values_do_not_overwrite = True # TODO: implement this!
-#    allocate_misnamed_GH_component_input_names_in_order = False # TODO: implement this!
-#    allocate_all_GH_component_input_names_in_order = False # TODO: implement this!
-#    modules_subdirectories = [   r'third_party_python_modules'   
-#                                ,r'custom_python_modules'
-#                                ] 
 
 valid_re_normalisers = ['linear', 'exponential', 'logarithmic']
 
@@ -303,6 +282,8 @@ class HardcodedLocalMetas():
 
 def get_namedtuple_etc_from_class(Class, name):
     # type: ( type[any], str) -> namedtuple
+    #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
+
     fields = [attr for attr in dir(Class) if not attr.startswith('_')]
     factory = namedtuple(name, fields, rename=True)   
     return factory(**{x : getattr(Class, x) for x in fields})
@@ -616,6 +597,20 @@ else:
 #
 ####################################################################################################################
 
+folders = [r'C:\Program Files\Python27'
+          ,r'%appdata%\Python27'
+          ,r'C:\Program Files (x86)\Python27'
+          ]
+pythons = ['python.exe'
+          ,'py27.exe'
+          ]
+
+possible_pythons = (join(folder, python) for folder in folders for python in pythons)
+
+while not isfile(opts['options'].python_exe):
+    opts['options']._replace(python_exe = next(possible_pythons))
+
+assert isfile(opts['options'].python_exe)
 
 if not hasattr(sys.modules['sDNA_GH.tools'], 'logger'):
     

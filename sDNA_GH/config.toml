@@ -13,9 +13,12 @@ runsdna = 'runsdnacommand'
 sDNA_path = ''  # Read only.  Determined after loading sDNAUISpec to which ever below
                 # it is found in.
                 # after loading, assert opts['metas'].sDNA_path == dirname(opts['options'].UISpec.__file__)
-sDNA_UISpec_path = 'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
 #sDNA_search_paths = [sDNA_UISpec_path, join(os.getenv('APPDATA'),'sDNA')]
 #sDNA_search_paths += [join(os.getenv('APPDATA'), get_stem_and_folder(sDNA_search_paths[0])[1]) ]
+sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
+                     'C:\Program Files\sDNA',
+                     '%appdata%\sDNA',
+                     ]
 auto_update_Rhino_doc_path = true
 #########################################################################################
 [metas.name_map]
