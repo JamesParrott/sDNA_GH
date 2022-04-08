@@ -159,7 +159,7 @@ if GH_env_exists:
     TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
 #class sDNA_GH_Test_Runner_Component(component):
-def run_launcher_tests(self, go, Data, Geom, f_name, *args):
+def run_launcher_tests(self,*args):
     import sys
     tests_log_file_suffix = '_test_results'
     test_log_file_path = (    self.ghdoc.Path.rpartition('.')[0]  #type: ignore
@@ -180,8 +180,8 @@ def run_launcher_tests(self, go, Data, Geom, f_name, *args):
         unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
         
         
-    a=''
-    return a   
+    
+    return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
 
 """ if ( __name__ == '__main__' and
      '__file__' in dir(__builtins__) and

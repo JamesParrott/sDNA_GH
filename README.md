@@ -7,7 +7,7 @@ sDNA is able to calculate Betweenness, Closeness, Angular distance, and many oth
 ## sDNA_GH functionality
 sDNA_GH: 
   - Reads a network's polyline Geometry from Rhino or Grashopper, and Data from any Usertext on it. 
-  - Writes the network links (formed by one or more polylines) and user Data to a Shapefile.  
+  - Writes the network polylines (formed by one or more polylines) and user Data to a Shapefile.  
   - Initiates an sDNA tool that processes that shapefile, and e.g. carries out a network preparation or an analysis.
   - Reads the shapefile produced by the sDNA tool.
   - Displays the results from sDNA by colouring a new layer of new polylines or the original ones
@@ -65,23 +65,23 @@ Writes the provided data and geometry (polylines) to a shapefile.  If not specif
 ###### Read_Shp (read_shapefile)
 Read in the polylines and data from the specified shapefile.  Output the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to calculate a legend frame with.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown ist may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Parse_Data Component is detected connected to its outputs downstream (unless auto_parse_data = False), Parse_Data is called afterwards.  
 ###### Parse_Data (parse_data)
-Parse the data in a data tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshoper Colour Gradient component  wARNING!  Data outputted may be false - rescaled and renormalised, especially if objects are coloured according only to the bin / class they are in.  Max and Min bounds can be overridden, else they are calculated on the whole data range.  If no separate Recolour_objects Component is detected connected to its outputs downstream (unless auto_plot_data = False), Parse_Data is called afterwards.   
+Parse the data in a data tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshoper Colour Gradient component  WARNING!  The inputted Data is not changed, but the Data outputted may be, and probably is, false.  After parsing the data, the legend tags are the definitive reference for what each colour means, not the data values.  The user can rescale, renormalise, exponentially and logarithmically re map the data to the (`plot_min`, `plot_max`) domaine, in order to produce the most pleasing plot.  Especially if objects are coloured according only to the midpoint of the bin / class they are in, in which case the parsed data will likely take far fewer distinct values than the number of polylines in a large network.  Max and Min bounds can be overridden, else they are calculated on the whole data range.  If no separate Recolour_objects Component is detected connected to its outputs downstream (unless auto_plot_data = False), Recolour_objects is called afterwards.   
 ###### Recolour_objects
 Recolour objects (and legend tags) based on pre parsed and renormalised data, or already calculated colours (RGB).  Custom colour calculation is possible, as is the Grasshopper Colour Gradient internally via Node In Code.  Create a legend by connecting the outputs to a Grasshopper Legend component and the outputs provided.  Custom legend tag templates and class boundaries are supported.  Recolouring unbaked Grasshopper geometry instead of Rhino Geometry requires the outputs to be connected to a Custom Preview component.
 If unparsed data is input, Parse_Data is first called.
 ##### Usertext tools    
 
 ###### Read_Usertext
-Reads Usertext from Rhino and Grasshopper Geometry whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless auto_get_Geom = False)
+Reads Usertext from Rhino and Grasshopper Geometry whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = False)
 ###### Write_Usertext
 Write_Usertext to Rhino and Grasshopper geometric objects using a customisable pattern for the keys.
 ###### bake_Usertext
-Transfers Usertext stored on Grasshopper objects to Usertext on the Baked Rhino objects (same keys).  A normal `custom' bake is carried out, but reading the Usertext too into a dictionary.  Then Write_Usertext is called on the resulting Rhino objects with the Usertext data.
+Transfers Usertext stored on Grasshopper objects to Usertext on the Baked Rhino objects (under the same keys).  A normal `custom' bake is carried out, but reading the Usertext too into a dictionary.  Then Write_Usertext is called on the resulting Rhino objects with the Usertext data.
 
 ##### Analysis tools
 ###### sDNAIntegral
-sDNA Integral wrapper.  This, and all sDNA wrapper components below, will automatically call other support commponents (unless     auto_write_new_Shp_file = False, ,  and )
-If no input shape file is specified, Write_Shp is first called (this itself may call Read_Usertext, which in turn may first call Read_From_Rhino).  The component attempts to check if any Read_Usertext components are already connected to its outputs (downstream).  Otherwise after running sDNA (unless auto_read_Shp = False) it will afterwards call Read_Usertext.  Similarly this also may trigger Parse_Data or Recolour_objects afterwards.   Therefore any sDNA component on its own can handle an entire process, from reading in Rhino Geometry, reading Usertext (e.g. for user weights), writing a shapefile, right through to reading in the sDNA output shapefiles, parsing it and recolouring it back in Rhino (writing data back to user text and baking still need to be done additionally).
+sDNA Integral wrapper.  This, and all sDNA wrapper components below, will automatically call other support commponents (unless     `auto_write_new_Shp_file` = False, ,  and )
+If no input shape file is specified, Write_Shp is first called (this itself may call Read_Usertext, which in turn may first call Read_From_Rhino).  The component attempts to check if any Read_Usertext components are already connected to its outputs (downstream).  Otherwise after running sDNA (unless `auto_read_Shp` = False) Read_Usertext will be added to the end of the tools list, to be run afterwards.  Similarly this also may trigger Parse_Data or Recolour_objects to be added to the list and run afterwards.   Therefore any sDNA component on its own can handle an entire typical process, from reading in Rhino Geometry, reading Usertext (e.g. for user weights), writing a shapefile, right through to reading in the sDNA output shapefiles, parsing it and recolouring it back in Rhino. Writing data back to user text and baking still need to be done additionally.
 ###### sDNASkim
 sDNA Skim wrapper
 ###### sDNAIntFromOD
@@ -111,21 +111,51 @@ Run any other component by feeding the name of it into the "tool" input param. A
 ###### Python
 Output the names of all the sDNA tool classes for the sDNA installation provided in opts, as well as all the sDNA_GH support tool names.  
 ###### Self_test
+Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will
+cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests to the functions in the launcher, can also be added to the launcher code.
 ###### Build_components 
 Easily build all the other components for the sDNA installation provided.  User Objects still need to be built manually, but components are all the same launcher code in a Gh_Python component, but with different names.  Functionality is provided by tools.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
 
 
 #### Options.  
-sDNA_Gh is customisable.  This is controlled by setting options.  
+sDNA_GH is customisable.  This is controlled by setting options.  Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Options data structures (`opts`) may be passed in from other components as well, via Grasshopper connections.  
 ##### Meta options.
+###### Primary meta (options file)
 Some options are particularly important as they may change other options, change how they are read, or add new parts to the whole options data structure (`opts`).  These are called meta options. All options can be set on the Input Params of a GH_sDNA component (zoom in, add a new Input Param, and rename it to the desired option name.  This is case sensitive).  The most import of these options, is the meta option `config` (the "primary meta").  This may be 
-set to a file path of a project specific options file.  To create one, copy and paste `config.toml` and edit its values (to the right of the equals signs) in a text editor (the keys (to the left of the equals signs) must be left unchanged else their values will be ignored, or cause a name clash).  The file can be renamed, but should still end in `.toml` or `.ini`.  It may contain other meta options, tool options and local metas, but not another primary meta.  Tool options may refer to any named tool or nick named component, not necessarily the tools of the component that reads the file.  This is intended to enable cleaner Grasshopper definitions, with fewer required connections, by storing the values of options that do not need to be changed away in a separate file.  The next most important meta option is `name_map`, in which custom nick names for user-created sDNA_components (and entire work sequences of tools) may be defined.  Options data structures (`opts`) may be passed in from other components as well, via Grasshopper connections.  The component input param options override options in the primary meta.  The primary meta overrides options from external components.  Options from external components override the installation wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  This overrides the hard coded default options in tools.py
+set to a file path of a project specific options file.  To create one, copy and paste `config.toml` and edit its values (to the right of the equals signs) in a text editor (the keys (to the left of the equals signs) must be left unchanged else their values will be ignored, or cause a name clash).  The file can be renamed, but should still end in `.toml` or `.ini`.  It may contain other meta options, tool options and local metas, but not another primary meta.  Tool options in the file may refer to any named tool or nick named component, not necessarily the tools of the component that reads the file.  This is intended to enable cleaner Grasshopper definitions, with fewer required connections, by storing the values of options that do not need to be changed away in a separate file.  
+###### Name map (abbreviations, nick names and work flows)
+The next most important meta option is `name_map`, in which custom nick names for user-created sDNA_components (and entire work sequences of tools) may be defined.  
+###### Options override priority order
+The component input param options override options in the primary meta.  The primary meta overrides options from another Grasshopper component.  Other component's options override the installation wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  Finally this file overrides the hard coded default options in tools.py
 ##### Tool options.
 Each nick name in name map creates a new set of options.  These contain options for each tool (real name) in the list of tools used under that nick name.  These then have a set of options for each version of sDNA encountered by the component so far.  Primarily this is where the settings for sDNA wrapper tools are stored (apart from a couple of helper overrides, like `file`).  Support tools and sDNA_GH tools use options and meta options in the common name root space (which is the same for all sDNA versions sDNA_GH has found).  
-##### Local meta options
+##### Local meta options.
 By default all sDNA_GH components share (and may change) the same global dictionary of options (and meta options, together in opts) in the tools.py module.  If only one of each tool is needed (and there is only one version of sDNA) that will suffice for most users.  Each component with a given nickname in name_map also has its own set of tool options (one for each version of sDNA).  However for one support component to have a different set of options to another, one of them must no longer update the global options, and desynchronise from them.  This syncing and desyncing is controlled by each component's individual local meta-options, (in local_metas) sync_to_module_opts, read_from_shared_global_opts.  By default these booleans are both equal to True.  More than one "primary meta" is then possible - just create a new project specific options file (`config.toml`) for each, and specify it's name on the `config` input of the desired components.  
 
-### Example Grasshopper definitions
+##### Module wide options.
+It is therefore tempting to conclude that Input parameter options are the most important, followed by the project specific options file (primary meta), and in turn by an external component's options.  This is largley true, but not necessarily the case on startup.  The sDNA_GH design forces all of its components in the same Grasshopper instance to share the same Python package, which is only imported once by the first component to run (subsequent ones refer to it directly in sys.modules).  This import occurs, before the main method of the Grasshopper Python component class runs.  This method (RunScript) is responsible for reading in the component's input Params.  Therefore any setup code that runs before this method cannot possibly know about the values of the Input Params, the primary meta, nor any other component's options.  Before the main method runs and reads in the user's input params, the component can only refer to the installation wide options (plus a few necessary hard coded settings in the launcher).  
+
+##### Logging options
+Not only is the sDNA_GH component class definition defined in the shared package, the root logger is set up there too when the module is first imported, for all components to subsequently refer to.  So in particular, the advance loading of the default options and installation wide options, mean logging options (e.g. custom logging levels for verbose or quiet output, and the name of the actual log file) have to be set up there, i.e. in the installation wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  The same goes for any other options that control code that runs on component setup and module import, before Grasshopper calls RunScript and reads in the component's inputs.  Ordinarily, the higher priority options would override the lower priority ones.  But for code that must run before this override process happens at all, (especially on setup) it is simply too late for some options defined there to have any affect.   
+<!-- TODO.  Put such options into their own section of "setup options" -->
+
+### Example Grasshopper definitions.
+#### Running sDNA Integral on a random grid read from Rhino.
+##### Selecting and specifying an sDNA Results field.
+##### Reading shapefile data with existing geometry.
+##### Using a Grasshopper Colour gradient component.
+##### Adding a legend with a Legend component.
+##### Customising legend class boundaries and tag names.
+
+#### Running sDNA Integral on a random grid of Grasshopper geometry (colouring with the Custom Preview component).
+#### Running sDNA Integral on a network of polylines, approximating a network of arcs from intersecting circles. 
+##### Recolouring the arcs instead of polylines.
+#### Writing polylines and data to shapefiles.
+#### Reading in polylines and data from shapefiles.
+#### Writing Usertext.
+#### Reading Usertext for sDNA (e.g. User weights).
+#### Baking (saving Grasshopper objects to a Rhino document) with Usertext.
+
 
 ### License.
 See [license.md](license.md)

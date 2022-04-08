@@ -20,7 +20,10 @@ from numbers import Number
 import locale
 from math import log
 from importlib import import_module
-
+if sys.version < '3.3':
+    from collections import Hashable, Iterable
+else:
+    from collections.abc import Hashable, Iterable
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
@@ -54,23 +57,21 @@ if 'ghdoc' not in globals():
 
 
 
-if sys.version < '3.3':
-    from collections import Hashable, Iterable
-else:
-    from collections.abc import Hashable, Iterable
 
-from .custom_python_modules.options_manager import (                     
-                                                     load_toml_file
-                                                    ,make_nested_namedtuple     
-                                                    ,load_ini_file                             
-                                                    ,override_namedtuple        
-                                                    )
-
+from .custom_python_modules.options_manager import (load_toml_file
+                                                   ,make_nested_namedtuple     
+                                                   ,load_ini_file                             
+                                                   ,override_namedtuple        
+                                                   )
 from .custom_python_modules import wrapper_logging
-
 from .custom_python_modules.wrapper_pyshp import (get_fields_recs_and_shapes_from_shapefile
                                                  ,get_unique_filename_if_not_overwrite
-                                                 ,write_from_iterable_to_shapefile_writer)
+                                                 ,write_from_iterable_to_shapefile_writer
+                                                 )
+from .sDNA_GH_launcher import Output, load_modules
+
+
+output = Output()
 
 class HardcodedMetas(): 
     config = join( dirname(dirname(__file__)), r'config.toml')
@@ -79,7 +80,10 @@ class HardcodedMetas():
     typecheck_opts_namedtuples = True
     typecheck_opts_fields = True
     sDNAUISpec = 'sDNAUISpec'
-    runsdna = 'runsdnacommand'
+    runsdna = 'runsdnacommand' # not used. Kept in case we use work out how
+                               # to run runsdnacommand.runsdnacommand in future 
+                               # with and env, while being able to get the 
+                               # sDNA stderr and stdout to the sDNA_GH logging
     sDNA = (sDNAUISpec, runsdna)  # Read only.  Auto updates from above two.
     sDNA_path = ''  # Read only.  Determined after loading sDNAUISpec to which ever below
                     # it is found in.
@@ -322,26 +326,27 @@ def get_path(inst = None):
     return path
 
 
-tmp_logs = []
 
-def output(s, logging_level = "INFO", logging_dict = {} ):
-    #type: (str, str, dict) -> str
+# tmp_logs = []
+
+# def output(s, logging_level = "INFO", logging_dict = {}, tmp_logs=tmp_logs ):
+#     #type: (str, str, dict, list) -> str
     
-    #print(s)
+#     #print(s)
 
-    if logging_dict == {} and 'logger' in globals(): 
-        logging_dict = dict( DEBUG = logger.debug
-                            ,INFO = logger.info
-                            ,WARNING = logger.warning
-                            ,ERROR = logger.error
-                            ,CRITICAL = logger.critical
-                            )
+#     if logging_dict == {} and 'logger' in globals(): 
+#         logging_dict = dict( DEBUG = logger.debug
+#                             ,INFO = logger.info
+#                             ,WARNING = logger.warning
+#                             ,ERROR = logger.error
+#                             ,CRITICAL = logger.critical
+#                             )
 
-    logging_dict.get( logging_level
-                     ,lambda x : tmp_logs.append( (x, logging_level) ) 
-                     )(s)
+#     logging_dict.get( logging_level
+#                      ,lambda x : tmp_logs.append( (x, logging_level) ) 
+#                      )(s)
 
-    return logging_level + ' : ' + s + ' '
+#     return logging_level + ' : ' + s + ' '
 
 #
 #
@@ -356,26 +361,41 @@ def func_name(f):
 #
 #
 
-def report(s):
-    #type(str)->str
-    return output(str(s)+' ','DEBUG')
+class Debugger:
+    def __init__(self, output = None):
+        #type(type[any], function) -> None  # callable object
+        if output is None:
+            output = Output()
+        self.output = output # want to call an instance that we also use for
+                             # higher logging level messages so 
+                             # composition instead of inheritance is used
+    def __call__(self, x):
+        c = inspect.currentframe().f_back.f_locals.items()
 
-def report_value(x, x_val = None):
-    # type(type[any]) -> str
-    if x_val is None:
-        if type(x).__name__ == 'generator':
-            x_val = " Generator " # don't use up now just for reporting
+        names = [name.strip("'") for name, val in c if val is x]
+        # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+
+        if names:
+            return self.output(str(names) + ' == ' + str(x)+' ','DEBUG')
         else:
-            x_val = x
+            return self.output(str(x)+' ','DEBUG')
 
-    c = inspect.currentframe().f_back.f_locals.items()
-    names = [var_name.strip("'") for var_name, var_val in c if var_val is x]
-    # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+debug = Debugger(output)
 
+# def debug(x):
+#     # type(type[any]) -> str
 
-    return report(str(names) + ' == ' + str(x_val)+' ')
+#     c = inspect.currentframe().f_back.f_locals.items()
 
-#report_value(component)
+#     names = [name.strip("'") for name, val in c if val is x]
+#     # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+
+#     if names:
+#         return output(str(names) + ' == ' + str(x)+' ','DEBUG')
+#     else:
+#         return output(str(x)+' ','DEBUG')
+
+#debug(component)
 #
 ####################################################################################################################
 #
@@ -404,7 +424,7 @@ def unpack_first_item_from_list(l):
 
 #if 'logger' not in globals():
 
-report(opts['options'].message)
+debug(opts['options'].message)
 
 
 ####################################################################################################################
@@ -482,15 +502,15 @@ def override_all_opts( args_dict
         path = args_metas['config']
         file_ext = path.rpartition('.')[2]
         if file_ext == 'ini':
-            report('Loading options from .ini file: ' + path)
+            debug('Loading options from .ini file: ' + path)
             config_file_override =  load_ini_file( path, **kwargs('', local_opts) )
         elif file_ext == 'toml':
-            report('Loading options from .toml file: ' + path)
+            debug('Loading options from .toml file: ' + path)
             config_file_override =  load_toml_file( path )
         else:
-            report('config_file_override = ' + str(config_file_override))
+            debug('config_file_override = ' + str(config_file_override))
     else:
-        report('No valid config file in args.  ')
+        debug('No valid config file in args.  ')
 
 
     def config_file_reader(key):
@@ -591,7 +611,7 @@ if isfile(default_metas.config):
                         ,empty_NT #external_local_metas
                         ,'')
 
-    report("After override: opts['options'].message == " + opts['options'].message)
+    debug("After override: opts['options'].message == " + opts['options'].message)
 else:
     output('Config file: ' + default_metas.config + ' not found. ','WARNING')    
 #
@@ -630,13 +650,11 @@ if not hasattr(sys.modules['sDNA_GH.tools'], 'logger'):
                                         ,opts['options'].logger_custom_level
                                         )
 
-    sDNA_logger = wrapper_logging.logging.getLogger('sDNA')
+    sDNA_tool_logger = wrapper_logging.logging.getLogger('sDNA')
 
-    report('Logging set up in sDNA_GH.tools ')
+    output.set_logger(logger)
 
-    for tmp_log in tmp_logs:
-        output(*tmp_log)
-
+    debug('Logging set up in sDNA_GH.tools ')
 
 
 
@@ -689,14 +707,14 @@ def override_gdm_with_gdm(lesser, override, opts):
     #type(dict, dict, dict) -> dict
     # overwrite ?
     # call update on the sub dicts?:
-    #report_value(lesser)
-    #report_value(override)
+    #debug(lesser)
+    #debug(override)
 
     if not lesser:
         lesser = OrderedDict()
-    #report_value(lesser)
+    #debug(lesser)
     if opts['options'].merge_Usertext_subdicts_instead_of_overwriting:
-        report('Merging gdms.  ')
+        debug('Merging gdms.  ')
         for key in override:
             if   key in lesser and all(
                  isinstance(override[key], dict)
@@ -706,7 +724,7 @@ def override_gdm_with_gdm(lesser, override, opts):
                 lesser[key] = override[key]
     else:
         lesser.update(**override)
-    #report_value(lesser)
+    #debug(lesser)
     return lesser
 
 
@@ -981,17 +999,17 @@ def try_to_make_dict_else_leave_alone(list_of_key_list_and_val_list):
 def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
     # type (type[any], list, dict)-> dict
     
-    #report_value(Geom)
+    #debug(Geom)
     if Geom in [None, [None]]:
-        report(' No Geom. Processing Data only ')
+        debug(' No Geom. Processing Data only ')
         Geom = []
 
 
-    #report_value(Geom)
-    #report_value(sc.doc)
+    #debug(Geom)
+    #debug(sc.doc)
 
     if isinstance(Geom, str) or not isinstance(Geom, Iterable):
-        report('Listifying Geom.  ')
+        debug('Listifying Geom.  ')
         Geom = [Geom]
     elif (isinstance(Geom, list) 
           and len(Geom) >= 1 and
@@ -1007,27 +1025,27 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
     #if  any( not is_an_obj_in_GH_or_Rhino(x) 
     #         and not is_a_group_in_GH_or_Rhino(x) 
     #                                for x in Geom ):
-    #    report('Is an obj[0] doc == ' + str(is_an_obj_in_GH_or_Rhino(Geom[0])))
-    #   #report_value(sc.doc)
+    #    debug('Is an obj[0] doc == ' + str(is_an_obj_in_GH_or_Rhino(Geom[0])))
+    #   #debug(sc.doc)
     #
-    #    report('Is a group[0] doc == ' + str(is_a_group_in_GH_or_Rhino(Geom[0])))
-    #    #report_value(sc.doc)
+    #    debug('Is a group[0] doc == ' + str(is_a_group_in_GH_or_Rhino(Geom[0])))
+    #    #debug(sc.doc)
     #    raise ValueError(output( 'Invalid obj in Geom:  ' 
     #           +' '.join([str(x) for x in Geom if not is_an_obj_in_GH_or_Rhino(x)
     #                                          and not is_a_group_in_GH_or_Rhino(x)]) 
     #           ,'ERROR'))
 
     # 
-    report_value(Data)
+    debug(Data)
     if (Data in [[], None, [None]] or
         getattr(Data,'BranchCount',999)==0):
         Data = OrderedDict()
     elif (isinstance(Data, DataTree[object]) 
           and getattr(Data, 'BranchCount', 0) > 0):
-        report('Datatree inputted to Data.  Converting....  ')
+        debug('Datatree inputted to Data.  Converting....  ')
         Data = th.tree_to_list(Data)
     elif not isinstance(Data, list):
-        report('Listifying Data.  ')
+        debug('Listifying Data.  ')
         Data = [Data]
         # Tuples don't get split over multiple geometric objects
 
@@ -1056,9 +1074,9 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
         # same as any other list below:
 
 
-    #report('Data == ' + str(Data))
-    report('len(Geom) == ' + str(len(Geom)))
-    report('len(Data) == ' + str(len(Data)))
+    #debug('Data == ' + str(Data))
+    debug('len(Geom) == ' + str(len(Geom)))
+    debug('len(Data) == ' + str(len(Data)))
 
     #print Geom
     #print Data
@@ -1073,10 +1091,10 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
         #print('Chaining worked')
     else:
         if len(Geom) > len(Data):
-            report('repeating OrderedDict() after Data... ')
+            debug('repeating OrderedDict() after Data... ')
             Data = chain( Data,  repeat(OrderedDict()) )
         else:
-            report( "Data and Geom equal length.  " )
+            debug( "Data and Geom equal length.  " )
         component_inputs_gen_exp =  izip(Geom, Data)
 
 
@@ -1093,7 +1111,7 @@ def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data, options):
 
     #geom_data_map = make_gdm( izip(Geom, imap( izip, key_lists, val_lists)), make_obj_key)
 
-    #report_value(geom_data_map)
+    #debug(geom_data_map)
 
     return geom_data_map
 #
@@ -1164,27 +1182,27 @@ def insert_tool_after_targets(   compnt
                             if tool_to_insert in tool_list]
                         # tools_dict is keyed on all present nick names 
                         # as well as names of tools defined in this module
-        report_value(already_have_tool)
-        report_value(tools_dict)
+        debug(already_have_tool)
+        debug(tools_dict)
         #if (  not are_GhPython_components_in_GH(compnt, already_have_tool) and
 
         name_map = compnt.opts['metas'].name_map
-        report_value(name_map)
+        debug(name_map)
 
         nick_names = nick_names_that_map_to(func_name(tool_to_insert), name_map)
         nick_names += already_have_tool
-        report_value(nick_names)
+        debug(nick_names)
 
 
-        report('not are_GhPython_downstream(nick_names, Params) == ' 
+        debug('not are_GhPython_downstream(nick_names, Params) == ' 
                + str(not are_GhPython_downstream(nick_names, Params)) )
         if  ( not are_GhPython_downstream(nick_names, Params)     ):
                              # check tool not already there in another 
                              # component that will be executed next.
                              # TODO: None in entire canvas is too strict?
             for i, tool in enumerate(tools):
-                report('is_target(tool) : ' + str(is_target(tool)))
-                report('tool : ' + str(tool))
+                debug('is_target(tool) : ' + str(is_target(tool)))
+                debug('tool : ' + str(tool))
                 if is_target(tool) and tool_to_insert not in tools[i:]:
                          # check tool not already inserted 
                          # in tools after specials
@@ -1209,14 +1227,14 @@ def run_tools(tools, args_dict):  #f_name, gdm, opts):
                 #             ]
                 #            )
 
-    report_value(tools)                            
+    debug(tools)                            
     for tool in tools:
         if tool:
-            report_value(tool)
+            debug(tool)
 
             #returncode, f_name, gdm
 
-            inputs = [vals_dict[input] for input in tool.args]
+            inputs = [vals_dict.get(input, None) for input in tool.args]
             retvals = tool( *inputs)
                             #  if input not in (('Data','Geom','go')
                             #  +opt)] 
@@ -1231,7 +1249,7 @@ def run_tools(tools, args_dict):  #f_name, gdm, opts):
             vals_dict['OK'] = (vals_dict['retcode'] == 0)
 
             retcode = vals_dict['retcode']
-            report('Tool name == ' + func_name(tool) + ' return code == ' + str(retcode))
+            debug('Tool name == ' + func_name(tool) + ' return code == ' + str(retcode))
             if retcode != 0:
                 raise Exception(output(  'Tool ' + func_name(tool) + ' exited '
                                         +'with status code ' 
@@ -1284,10 +1302,10 @@ def get_objects_from_Rhino___factory(retvals = None):
 
 
 
-        report('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
+        debug('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
         if len(gdm) > 0:
-            report('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
-        report('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
+            debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
+        debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
 
         gdm = override_gdm_with_gdm(gdm, geom_data_map, opts)
         sc.doc = ghdoc # type: ignore 
@@ -1319,7 +1337,7 @@ def read_Usertext_factory(retvals = None):
     def read_Usertext(geom_data_map, opts):
         #type(str, dict, dict) -> int, str, dict, list
 
-        report('Starting read_Usertext... ')
+        debug('Starting read_Usertext... ')
         options = opts['options']
 
         if (options.auto_get_Geom and
@@ -1395,7 +1413,7 @@ def write_shapefile_factory(retvals = None):
                                                 #                 format_string)
 
         def get_list_of_lists_from_tuple(obj):
-            #report_value(obj)
+            #debug(obj)
             #if is_an_obj_in_GH_or_Rhino(obj):
             target_doc = is_an_obj_in_GH_or_Rhino(obj)    
             if target_doc:
@@ -1434,10 +1452,10 @@ def write_shapefile_factory(retvals = None):
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
 
-        #report('Type of geom_data_map == '+ type(geom_data_map).__name__)                         
-        #report('Size of geom_data_map == ' + str(len(geom_data_map)))
-        #report('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_map.keys() )) )
-        #report('Gdm.values == ' + ' '.join(map(str,geom_data_map.values())))
+        #debug('Type of geom_data_map == '+ type(geom_data_map).__name__)                         
+        #debug('Size of geom_data_map == ' + str(len(geom_data_map)))
+        #debug('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_map.keys() )) )
+        #debug('Gdm.values == ' + ' '.join(map(str,geom_data_map.values())))
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
@@ -1495,7 +1513,7 @@ def create_new_groups_layer_from_points_list(
         objs_list = []
         
         for points_list in obj:
-            #report_value(points_list)
+            #debug(points_list)
             objs_list += [rhino_obj_maker(points_list) ] 
     # Creates not necessarily returned Rhino object as intentional side effect
         if len(objs_list) > 1:
@@ -1511,8 +1529,8 @@ def create_new_groups_layer_from_points_list(
 def get_shape_file_rec_ID(options = opts['options']): 
     #type(namedtuple) -> function
     def f(obj, rec):
-        #report_value(obj)
-        #report(type(obj).__name__)
+        #debug(obj)
+        #debug(type(obj).__name__)
         if is_uuid(obj):
             target_doc = is_an_obj_in_GH_or_Rhino(obj)    
             if target_doc:
@@ -1523,7 +1541,7 @@ def get_shape_file_rec_ID(options = opts['options']):
             d = rec.as_dict()
             if options.uuid_shp_file_field_name in d:
                 obj_ID = d[options.uuid_shp_file_field_name]     
-                #report_value(obj_ID)
+                #debug(obj_ID)
                 # For future use.  Not possible until sDNA round trips through
                 # Userdata into the output .shp file, including our uuid
                 target_doc = is_an_obj_in_GH_or_Rhino(obj_ID)    
@@ -1571,8 +1589,8 @@ def read_shapefile_factory(retvals = None):
 
         field_names = [ x[0] for x in fields ]
 
-        report('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
-        report_value(field_names)
+        debug('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
+        debug(field_names)
 
         shapes_to_output = ([shp.points] for shp in shapes )
         
@@ -1597,7 +1615,7 @@ def read_shapefile_factory(retvals = None):
                     # These points shouldn't be used, as by definition they 
                     # come from objects that already
                     # exist in Rhino.  But if they are to be used, then use this!
-                #report_value(shapes_to_output)    
+                #debug(shapes_to_output)    
 
 
         shp_file_gen_exp  = izip( shapes_to_output
@@ -1622,9 +1640,9 @@ def read_shapefile_factory(retvals = None):
         if not options.bbox and not options.legend_extent:
             opts['options'] = opts['options']._replace(bbox = bbox)
         else:
-            report('Using supplied bounding box or legend extent in options.  ')
+            debug('Using supplied bounding box or legend extent in options.  ')
 
-        report_value(bbox)
+        debug(bbox)
 
         #override_gdm_with_gdm(gdm, gdm, opts)   # TODO:What for?
 
@@ -1907,7 +1925,7 @@ def parse_data_factory(retvals = None):
         field = options.field
 
         data = [ val[field] for val in geom_data_map.values()]
-        report('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
+        debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
         x_max = max(data) if options.plot_max is None else options.plot_max
         x_min = min(data) if options.plot_min is None else options.plot_min
         # bool(0) == False so in case x_min==0 we can't use 
@@ -1944,9 +1962,9 @@ def parse_data_factory(retvals = None):
                 classes = [ val[field] for val in 
                                     gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
                                 ]  # classes include their lower bound
-                report('num class boundaries == ' + str(len(classes)))
-                report_value(options.number_of_classes)
-                report_value(n)
+                debug('num class boundaries == ' + str(len(classes)))
+                debug(options.number_of_classes)
+                debug(n)
                 assert len(classes) + 1 == options.number_of_classes
             else: 
                 classes = [
@@ -2005,7 +2023,7 @@ def parse_data_factory(retvals = None):
                                                 )
                     ]
         mid_points += [ 0.5*(x_max + max(classes))]
-        report_value(mid_points)
+        debug(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
@@ -2049,7 +2067,7 @@ def parse_data_factory(retvals = None):
 
         assert len(legend_tags) == options.number_of_classes == len(mid_points)
 
-        report_value(legend_tags)
+        debug(legend_tags)
 
         #first_legend_tag_format_string = 'below {upper}'
         #inner_tag_format_string = '{lower} - {upper}' # also supports {mid}
@@ -2096,16 +2114,16 @@ def recolour_objects_factory(retvals = None):
         if objs_to_parse:
             ret_code, x_min, x_max, gdm_in, opts = parse_data(objs_to_parse, opts)
                                                                             
-            report_value(x_min)
-            report_value(x_max)
+            debug(x_min)
+            debug(x_max)
         else:
             gdm_in = {}
             x_min, x_max = options.plot_min, options.plot_max
-            report_value(options.plot_min)
-            report_value(options.plot_max)     
+            debug(options.plot_min)
+            debug(options.plot_max)     
 
-        report_value(opts['options'].plot_min)
-        report_value(opts['options'].plot_max)
+        debug(opts['options'].plot_min)
+        debug(opts['options'].plot_max)
 
         objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
                                                 if isinstance(v, Number) 
@@ -2175,7 +2193,7 @@ def recolour_objects_factory(retvals = None):
         objects_to_widen_lines = []
 
         for obj, new_colour in objs_to_recolour.items():
-            #report_value(obj)
+            #debug(obj)
             if is_uuid(obj): # and is_an_obj_in_GH_or_Rhino(obj):
                 target_doc = is_an_obj_in_GH_or_Rhino(obj)    
                 if target_doc:
@@ -2236,7 +2254,7 @@ def recolour_objects_factory(retvals = None):
         #bbox_ymin = min(list(p)[1] for p in bbox.box.GetCorners()[:4] )
         #bbox_ymax = max(list(p)[1] for p in bbox.box.GetCorners()[:4] )
 
-        report_value(options)
+        debug(options)
 
         if options.legend_extent or options.bbox:
             if options.legend_extent:
@@ -2244,7 +2262,7 @@ def recolour_objects_factory(retvals = None):
                 ,legend_ymin
                 ,legend_xmax
                 ,legend_ymax] = options.legend_extent
-                report('legend extent == ' + str(options.legend_extent))
+                debug('legend extent == ' + str(options.legend_extent))
             elif options.bbox:
                 bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
 
@@ -2252,7 +2270,7 @@ def recolour_objects_factory(retvals = None):
                 legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
                 legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
                 
-                report('bbox == ' + str(bbox))
+                debug('bbox == ' + str(bbox))
 
 
                 #leg_frame = Rectangle( XYPlane(pt)
@@ -2267,7 +2285,7 @@ def recolour_objects_factory(retvals = None):
                                             ,legend_ymax - legend_ymin 
                                             )
 
-                report( 'Rectangle width * height == ' 
+                debug( 'Rectangle width * height == ' 
                        +str(legend_xmax - legend_xmin)
                        +' * '
                        +str(legend_ymax - legend_ymin)
@@ -2281,7 +2299,7 @@ def recolour_objects_factory(retvals = None):
                                                     leg_frame = leg_frame 
                                                                         )
 
-                #report_value(leg_frame)
+                #debug(leg_frame)
                 #leg_frame = sc.doc.Objects.FindGeometry(leg_frame)
                 #leg_frame = sc.doc.Objects.Find(leg_frame)
 
@@ -2292,7 +2310,7 @@ def recolour_objects_factory(retvals = None):
     
 
 
-        report_value(leg_frame)
+        debug(leg_frame)
 
         #def c():
             #return GH_Colour(Color.FromArgb(r(0,255), r(0,255), r(0,255)))
@@ -2683,7 +2701,7 @@ def sDNA_wrapper_factory(tool_name
     #    tools_dict[tool_name] = support_tool_wrapper   
         #
         #
-    args = ('file', 'gdm', 'opts')
+    args = ('file', 'opts')
     component_inputs = ('go', ) + args #args[0], 'Geom', 'Data') + args[1:]
 
 
@@ -2701,10 +2719,10 @@ def sDNA_wrapper_factory(tool_name
             raise ValueError(tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
         tool_opts = opts[nick_name]
-        report_value(tool_opts)
+        debug(tool_opts)
 
         tool_opts = tool_opts.get(tool_name, tool_opts)
-        report_value(tool_opts)
+        debug(tool_opts)
 
         dot_shp = options.shp_file_extension
 
@@ -2760,7 +2778,7 @@ def sDNA_wrapper_factory(tool_name
                     + ' ' + syntax["config"]
                     )
         
-        sDNA_logger.debug(command)
+        sDNA_tool_logger.debug(command)
 
         try:
             output_lines = check_output(command)
@@ -2772,7 +2790,7 @@ def sDNA_wrapper_factory(tool_name
             try:
                 line_end = '\r\n' if '\r\n' in output_lines else '\n'
                 for line in output_lines.split(line_end):
-                    sDNA_logger.debug(line)
+                    sDNA_tool_logger.debug(line)
             except:
                 pass
         #return_code = call(command)   
@@ -2794,7 +2812,7 @@ def sDNA_wrapper_factory(tool_name
     run_sDNA_wrapper.show = {}
     run_sDNA_wrapper.args = args
     run_sDNA_wrapper.show['Input'] = component_inputs
-    run_sDNA_wrapper.show['Output'] = ('OK', 'file', 'Geom', 'Data') + run_sDNA_wrapper.retvals[2:]
+    run_sDNA_wrapper.show['Output'] = ('OK', 'file', run_sDNA_wrapper.retvals[-1])
    
     return run_sDNA_wrapper
 
@@ -2882,7 +2900,7 @@ def tool_factory(self, nick_name, name_map, local_opts):
                     tools_dict[nick_name] = [sDNA_wrapper_factory(mapped_name, nick_name, local_opts)]  
                     # assert isinstance(sDNA_wrapper_factory(map_result, nick_name, name_map, local_opts), list)
 
-        report('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name][0]) )
+        debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name][0]) )
         return tools_dict[nick_name] 
     else:
         output('Non-hashable variable given for key' + str(nick_name),'ERROR')
@@ -2891,25 +2909,25 @@ def tool_factory(self, nick_name, name_map, local_opts):
 
 
 
-def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_search_paths):
-    modules = ()
-    try:
-        tmp = sys.path
-        for test_path in path_lists: 
-            #TODO support nested lists
-            sys.path = [test_path]
-            if all(isfile(join(test_path, m_name) + '.py' )
-                    for m_name in m_names):
-                path = test_path
-                break
-        for m_name in m_names:
-            modules += ( import_module(m_names[0],''), )
-    finally:
-        sys.path = tmp
+# def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_search_paths):
+#     modules = ()
+#     try:
+#         tmp = sys.path
+#         for test_path in path_lists: 
+#             #TODO support nested lists
+#             sys.path = [test_path]
+#             if all(isfile(join(test_path, m_name) + '.py' )
+#                     for m_name in m_names):
+#                 path = test_path
+#                 break
+#         for m_name in m_names:
+#             modules += ( import_module(m_names[0],''), )
+#     finally:
+#         sys.path = tmp
 
-    return modules + (path,)
-    #return tuple(strict_import(name, path, '') for name in m_names) + (path,)
-    #return self.UISpec, self.run, path
+#     return modules + (path,)
+#     #return tuple(strict_import(name, path, '') for name in m_names) + (path,)
+#     #return self.UISpec, self.run, path
 
 
 
@@ -2917,7 +2935,7 @@ def module_loader( self, m_names, path_lists ): #sDNA, self.opts['metas'].sDNA_s
 def component_decorator( BaseClass
                         ,ghenv
                         ,nick_name = 'Self_test'
-                        ,loader = module_loader
+                        ,loader = load_modules
                         ):
     #type:(type[type], str, object, function) -> type[type]
     class sDNA_GH_Component(BaseClass):
@@ -2945,7 +2963,7 @@ def component_decorator( BaseClass
         def remove_component_output(self, name):
             for param in self.Params.Output:
                 if param.NickName == name:
-                    self.Params.Output.Remove(param)
+                    self.Params.UnregisterOutputParam(param)
         
 
         def auto_insert_tools(self, tools, Params):
@@ -3019,28 +3037,28 @@ def component_decorator( BaseClass
                     params_needed = list(tool.show['Output'])
 
 
-            report(   'params_current NickNames =='
+            debug(   'params_current NickNames =='
                     + ' '.join(str(param.NickName) for param in params_current)
                 )
 
             for param in params_current:  
                 if param.NickName in params_needed:
-                    report('Param already there, adding to self.do_not_add == '
+                    debug('Param already there, adding to self.do_not_add == '
                         + str(param.NickName))
                     self.do_not_add += [param.NickName]
                 elif (param.NickName not in do_not_remove and
                     len(getattr(param, 'Recipients', [])) == 0 and  
                     len(getattr(param, 'Sources',    [])) == 0     ):
-                    report(    'Param ' 
+                    debug(    'Param ' 
                             + str(param.NickName) 
                             + ' not needed, and can be removed.  ')
-                    #report('Removing param ' + str(param.NickName))
+                    #debug('Removing param ' + str(param.NickName))
                     #Params.UnregisterOutputParameter(param)
                     #Params.Output.Count -=1
                     #Params.Output.Remove(param) 
                     #Params.OnParametersChanged()
                 else:
-                    report('Leaving param alone.  User added output? == ' 
+                    debug('Leaving param alone.  User added output? == ' 
                         + str(param.NickName))
 
                 # else:  Leave alone.  The user added the param, 
@@ -3050,7 +3068,7 @@ def component_decorator( BaseClass
             for param_name in params_needed:
                 if param_name not in self.do_not_add: 
                     self.do_not_add += [param_name]
-                    report('Adding param == ' + param_name)
+                    debug('Adding param == ' + param_name)
 
                     #var = Grasshopper.Kernel.Parameters.Param_String(NickName = param_name)
                     if param_name in ['leg_frame']:
@@ -3093,7 +3111,7 @@ def component_decorator( BaseClass
                     Params.OnParametersChanged()
 
                 else:
-                    report('Param in self.do_not_add == ' + param_name)
+                    debug('Param in self.do_not_add == ' + param_name)
 
         def update_Params(   self
                             ,Params = None
@@ -3142,7 +3160,7 @@ def component_decorator( BaseClass
                     +'\n'.join([str(tool) for tool in tools])
                     ,'DEBUG')
 
-            #report_value(self.opts)
+            #debug(self.opts)
             output('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
                                                 for k,v in self.opts.items()
                                                 if k not in ('options','metas')
@@ -3259,9 +3277,9 @@ def component_decorator( BaseClass
 
             args_dict = {key.Name : val for key, val in zip(self.Params.Input, args) } # .Input[4:] type: ignore
             
-            report_value(args_dict)
-            report('self.Params.Input Names == ' + ' '.join(key.Name for key in self.Params.Input))
-            report_value(args)
+            debug(args_dict)
+            debug('self.Params.Input Names == ' + ' '.join(key.Name for key in self.Params.Input))
+            debug(args)
 
             go = args_dict.get('go', False)
             Data = args_dict.get('Data', None)
@@ -3272,14 +3290,14 @@ def component_decorator( BaseClass
                     f_name=f_name[0] 
 
             external_opts = unpack_first_item_from_list(args_dict.get('opts', {}))
-            report_value(external_opts)
+            debug(external_opts)
 
             
 
             external_local_metas = unpack_first_item_from_list(args_dict.get('local_metas', {}))
             gdm = args_dict.get('gdm', {})
 
-            report('gdm from start of RunScript == ' + str(gdm)[:50])
+            debug('gdm from start of RunScript == ' + str(gdm)[:50])
             #print('#1 self.local_metas == ' + str(self.local_metas))
             
             if self.update_name() == 'Name updated':
@@ -3308,9 +3326,9 @@ def component_decorator( BaseClass
 
             args_dict['opts'] = self.opts
 
-            report('Opts overridden....    ')
+            debug('Opts overridden....    ')
             output(' self.local_metas == ' + str(self.local_metas),'DEBUG')
-            report('options after override in RunScript == ' + str(self.opts['options']))
+            debug('options after override in RunScript == ' + str(self.opts['options']))
             
             if (self.opts['metas'].auto_update_Rhino_doc_path 
                 or not isfile(self.opts['options'].Rhino_doc_path)        ):
@@ -3391,12 +3409,12 @@ def component_decorator( BaseClass
                 gdm = ret_vals_dict.get('gdm', {})
                 #print (str(gdm))
                 if isinstance(gdm, dict):
-                    report('Converting gdm to Data and Geometry')
+                    debug('Converting gdm to Data and Geometry')
                     (NewData, NewGeometry) = (
                     convert_dictionary_to_data_tree_or_lists(gdm)
                                         )    
-                    #report_value(NewData)
-                    #report_value(NewGeometry)                    
+                    #debug(NewData)
+                    #debug(NewGeometry)                    
                 else:
                     NewData, NewGeometry = None, None
 
@@ -3424,12 +3442,12 @@ def component_decorator( BaseClass
                                   )))))
 
                 #if func_name(self.tools[-1]) == 'recolour_objects':
-                #    report('Making new rect.  ')
+                #    debug('Making new rect.  ')
                 #    rect = rs.AddRectangle(rs.WorldXYPlane(), 20, 60)
                     #rect = Grasshopper.Kernel.GH_Convert.ToGHCurve(rect)
                     #rs.MoveObject(rect, [60, 0])
                 #    ret_vals_dict['leg_frame'] = rect
-                    #report('sc.doc == ' + str(sc.doc))
+                    #debug('sc.doc == ' + str(sc.doc))
 
 
                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)

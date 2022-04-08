@@ -7,50 +7,95 @@ __version__ = '0.01'
 import os, sys 
 from os.path import isfile, isdir, join, split, dirname
 from importlib import import_module
-
-try:        
-    from ghpythonlib.componentbase import executingcomponent as component
-    import Grasshopper
-    import scriptcontext as sc
-except ImportError:
-    print( "No Grasshopper env found.  Building test environment.  ")
-    
-    component = object
-
-    class Grasshopper:
-        class Folders:
-            DefaultAssemblyFolder = os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
+     
 
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
-sDNA_GH_search_paths = [ join(Grasshopper.Folders.DefaultUserObjectFolder, sDNA_GH_subfolder) ]
-                                            #join(Grasshopper.Folders.DefaultAssemblyFolder, sDNA_GH_subfolder) ]  
-                                            # Grasshopper.Folders.AppDataFolder + r'\Libraries'
-                                            # %appdata%  + r'\Grasshopper\Libraries'
-                                            # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
-                                            # Grasshopper.Folders.AppDataFolder + r'\UserObjects'
-                                            # %appdata%  + r'\Grasshopper\UserObjects'
-                                            # os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
 
 
-def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
-                         # Inst is a proxy argument for both 'self' and 'cls'.
-    #type: (str, MyComponent, str) -> None
-    message = s
-    if hasattr(inst,'nick_name'):
-        message = inst.nick_name + ' : ' + message
-    message_with_level =  'sDNA_GH_launcher' + '  ' + level + ' : ' + message
-    #print(message_with_level)
-    try:
-        sDNA_GH_tools.output(message, level, inst)
-    except:
-        try:
-            getattr(sDNA_GH_tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
-        except:
-            print(message_with_level)
-    return message_with_level
+# This output function is used to define two functions from this single 
+# code definition.  Python scripts can happily import themselves, but here
+# this is because all the code in this file 
+# must be read into a GhPython component via its the code input (which 
+# essentially copy and pastes it to there).
+# The first function definition is when the code in this file runs 
+# in a GH component.  
+# The second function definition is during import of sDNA_GH.tools below, 
+# as it itself imports this function from .sDNA_GH_launcher
+# Therefore there really are two functions in Python, with two separate caches.
+#
+# The behaviours can be different of course if changes are made to one and not
+# the other, e.g. if the code is forgotten to be copied into the component.
+
+class Output: #def output
+
+    def set_logger(self, logger, flush = True):
+        self.logger = logger
+        if flush and self._tmp_logs:
+            self.flush()
+
+    def __init__(self
+                ,tmp_logs = None
+                ,logger = None
+                ):
+        if not isinstance(tmp_logs, list): #assert not isinstance(None, list)
+            tmp_logs = []
+        self.tmp_logs = tmp_logs
+        if logger is not None:
+            self.set_logger(logger, flush = False)
+
+
+
+    def store(self, message, logging_level):
+        self.tmp_logs.append( (message, logging_level) )
+
+    def __call__(self, message, logging_level = "INFO", logging_dict = {}):
+        #type: (str, str, dict, list) -> str
+        
+        #print(s)
+
+        if logging_dict == {} and hasattr(self, 'logger'): 
+            logging_dict = dict( DEBUG = self.logger.debug
+                                ,INFO = self.logger.info
+                                ,WARNING = self.logger.warning
+                                ,ERROR = self.logger.error
+                                ,CRITICAL = self.logger.critical
+                                )
+
+        logging_level = logging_level.upper()
+        if logging_level in logging_dict:
+            logging_dict[logging_level](message)
+        else:
+            self.store(message, logging_level)
+
+        return logging_level + ' : ' + message + ' '
+
+    def flush(self):
+        tmp_logs = self.tmp_logs[:] # __call__ might cache back to tmp_logs
+        self.tmp_logs[:] = [] # Mutate list initialised with
+        for tmp_log_message, tmp_log_level in tmp_logs:
+            self.__call__(tmp_log_message, tmp_log_level)
+
+output = Output()
+
+# def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
+#                          # Inst is a proxy argument for both 'self' and 'cls'.
+#     #type: (str, MyComponent, str) -> None
+#     message = s
+#     if hasattr(inst,'nick_name'):
+#         message = inst.nick_name + ' : ' + message
+#     message_with_level =  'sDNA_GH_launcher' + '  ' + level + ' : ' + message
+#     #print(message_with_level)
+#     try:
+#         sDNA_GH_tools.output(message, level, inst)
+#     except:
+#         try:
+#             getattr(sDNA_GH_tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
+#         except:
+#             print(message_with_level)
+#     return message_with_level
 
 
 def strict_import(  module_name = ''
@@ -112,8 +157,8 @@ def load_modules(self, m_names, path_lists):
     for path_list in path_lists:
         test_paths = path_list if isinstance(path_list, list) else [path_list]
         test_paths = test_paths[:]
-        #output('Type(path_list) : ' + type(path_list).__name__,'DEBUG')
-        #output('Type(test_paths) : ' + type(test_paths).__name__,'DEBUG')
+        output('Type(path_list) : ' + type(path_list).__name__,'DEBUG')
+        output('Type(test_paths) : ' + type(test_paths).__name__,'DEBUG')
 
         for path in test_paths:
             output('Type(path) : ' + type(path).__name__ + ' path == ' + path,'DEBUG')
@@ -128,60 +173,67 @@ def load_modules(self, m_names, path_lists):
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
     return None
 
+if __name__ == '__main__': # False in a compiled component.  But then the user
+                           # can't add or remove Params to the component.  
+    
+    from ghpythonlib.componentbase import executingcomponent as component
+    import Grasshopper
+    import scriptcontext as sc
+    sDNA_GH_search_paths = [ join(Grasshopper.Folders.DefaultUserObjectFolder, sDNA_GH_subfolder) ]
+                                            #join(Grasshopper.Folders.DefaultAssemblyFolder, sDNA_GH_subfolder) ]  
+                                            # Grasshopper.Folders.AppDataFolder + r'\Libraries'
+                                            # %appdata%  + r'\Grasshopper\Libraries'
+                                            # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
+                                            # Grasshopper.Folders.AppDataFolder + r'\UserObjects'
+                                            # %appdata%  + r'\Grasshopper\UserObjects'
+                                            # os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
-#try:
-from Grasshopper.Folders import DefaultAssemblyFolder
-sDNA_GH_search_paths += [join(DefaultAssemblyFolder
+    sDNA_GH_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
                                 ,sDNA_GH_subfolder
                                 ) 
-                        ]            
-# except:
-#     raise ImportError(output( 'Unable to import the main sDNA_GH Python Package.  '
-#                              +'Check the folder sDNA_GH containing the package '
-#                              +'is a sub folder of the '
-#                              +'sDNA_GH folder containing the plug-in components'
-#                              +'and the installation procedure was done correctly'
-#                              +'as per README.md'
-#                              ,'ERROR'
-#                              )
-#                       )
+                            ]  # Might need to install sDNA_GH 
+                               # in \Grasshopper\Libraries in Rhino 6?
 
-
-try:
     nick_name = ghenv.Component.NickName #type: ignore
-except:
-    nick_name = 'selftest'
 
-sc.doc = ghdoc #type: ignore
 
-sDNA_GH_tools, _ = load_modules( None
-                                ,sDNA_GH_package + '.tools'
-                                ,sDNA_GH_search_paths
-                                )         
+    sc.doc = ghdoc #type: ignore
 
-class MyComponent(component):
-    pass  # Required.  Idiomatic to Grasshopper.  Must be called "MyComponent"  
-          # too, otherwise Grasshopper may not find the class building on 
-          # component.  Despite component being passed to the class decorator
-          # and overwriting this very class immediately below.  
-          # Initial parser step / scope check trips this?
+    sDNA_GH_tools, _ = load_modules(None
+                                   ,sDNA_GH_package + '.tools'
+                                   ,sDNA_GH_search_paths
+                                   )         
 
-MyComponent = sDNA_GH_tools.component_decorator( component
-                                                ,ghenv #type: ignore
-                                                ,nick_name
-                                                ,load_modules
+
+    logger = sDNA_GH_tools.logger.getChild('launcher')
+    output.set_logger(logger, flush = True)
+
+
+    class MyComponent(component):
+        pass  # Required.  Idiomatic to Grasshopper.  Must be called "MyComponent"  
+            # too, otherwise Grasshopper may not find the class building on 
+            # component.  Despite component being passed to the class decorator
+            # and overwriting this very class immediately below.  
+            # Initial parser step / scope check trips this?
+
+    MyComponent = sDNA_GH_tools.component_decorator( component
+                                                    ,ghenv #type: ignore
+                                                    ,nick_name
+                                                    ,load_modules
+                                                    )
+
+
+    if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
+
+        if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
+            from .tests.unit_tests import unit_tests_sDNA_GH
+        else:
+            unit_tests_sDNA_GH, _ = load_modules(None
+                                                ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
+                                                ,sDNA_GH_search_paths
                                                 )
 
+        MyComponent._RunScript = MyComponent.RunScript
+        MyComponent.RunScript = unit_tests_sDNA_GH.run_launcher_tests  
 
-if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
 
-    if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
-        from .tests.unit_tests import unit_tests_sDNA_GH
-    else:
-        unit_tests_sDNA_GH, _ = load_modules( None
-                                             ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
-                                             ,sDNA_GH_search_paths
-                                             )
-
-    MyComponent._RunScript = MyComponent.RunScript
-    MyComponent.RunScript = unit_tests_sDNA_GH.run_launcher_tests  
