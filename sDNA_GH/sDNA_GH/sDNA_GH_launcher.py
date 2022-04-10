@@ -33,7 +33,7 @@ class Output: #def output
 
     def set_logger(self, logger, flush = True):
         self.logger = logger
-        if flush and self._tmp_logs:
+        if flush and self.tmp_logs:
             self.flush()
 
     def __init__(self
@@ -143,7 +143,7 @@ def strict_import(  module_name = ''
     return module       
 
 
-def load_modules(self, m_names, path_lists):
+def load_modules(m_names, path_lists):
     m_names = m_names if isinstance(m_names, tuple) else [m_names] 
     output('m_names == ' + str(m_names) + ' of type : ' + type(m_names).__name__,'DEBUG')
     if any((name.startswith('.') or name.startswith('..')) in name for name in m_names):
@@ -200,8 +200,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     sc.doc = ghdoc #type: ignore
 
-    sDNA_GH_tools, _ = load_modules(None
-                                   ,sDNA_GH_package + '.tools'
+    sDNA_GH_tools, _ = load_modules(sDNA_GH_package + '.tools'
                                    ,sDNA_GH_search_paths
                                    )         
 
@@ -220,7 +219,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     MyComponent = sDNA_GH_tools.component_decorator( component
                                                     ,ghenv #type: ignore
                                                     ,nick_name
-                                                    ,load_modules
                                                     )
 
 
@@ -229,8 +227,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
             from .tests.unit_tests import unit_tests_sDNA_GH
         else:
-            unit_tests_sDNA_GH, _ = load_modules(None
-                                                ,'sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
+            unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
                                                 ,sDNA_GH_search_paths
                                                 )
 
