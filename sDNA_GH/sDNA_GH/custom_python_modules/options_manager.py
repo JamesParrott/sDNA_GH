@@ -216,12 +216,12 @@ def type_coercer_factory(old_val, config, d = None, **kwargs):
     return config.get     # TODO:  Fix: Trying to override a list or a dict 
                           # will replace it with a string.
 
-def override_namedtuple_with_config(     nt_lesser
-                                        ,config 
-                                        ,section_name = 'DEFAULT'
-                                        ,leave_as_strings = False
-                                        ,**kwargs
-                                      ):
+def override_namedtuple_with_config(nt_lesser
+                                   ,config 
+                                   ,section_name = 'DEFAULT'
+                                   ,leave_as_strings = False
+                                   ,**kwargs
+                                   ):
     #type ([str,RawConfigParser], namedtuple,Boolean, Boolean, Boolean, Boolean) -> namedtuple
     
     #assert isinstance(ConfigParser.ConfigParser()
@@ -239,14 +239,14 @@ def override_namedtuple_with_config(     nt_lesser
                 getter = type_coercer_factory( old_dict[key],  config )
                 new_dict[key] = getter( section_name,  key )
             except:
-                message += (".  failed to parse value in field "
+                message +=  (".  failed to parse value in field "
                             + key
                             +'  old_dict[key]) == ' 
                             + str(old_dict[key]) 
                             +'   type(old_dict[key]) == ' 
                             + type(old_dict[key]).__name__ 
                             + 'getter = ' + getter.__name__
-                           ) 
+                            ) 
                 raise TypeError(message)
 
         else:
@@ -258,7 +258,8 @@ def override_namedtuple_with_config(     nt_lesser
     return override_namedtuple_with_dict(nt_lesser
                                         ,new_dict
                                         ,strict = False
-                                        ,**kwargs)      
+                                        ,**kwargs
+                                        )      
 
         # We know new_dict is a dict so strict == False.
         # We may have already done some type checking

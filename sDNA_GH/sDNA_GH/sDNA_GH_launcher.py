@@ -138,9 +138,9 @@ def strict_import(  module_name = ''
             return None
 
     output('Trying import... ','DEBUG')
-    m = import_module(module_name, '')           
+    module = import_module(module_name, '')           
     sys.path = tmp
-    return m       
+    return module       
 
 
 def load_modules(self, m_names, path_lists):
@@ -171,6 +171,7 @@ def load_modules(self, m_names, path_lists):
                 ):
                 output('Importing ' + str(m_names) +' ','DEBUG')
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
+                # tuple of modules, followed by the path to them
     return None
 
 if __name__ == '__main__': # False in a compiled component.  But then the user
