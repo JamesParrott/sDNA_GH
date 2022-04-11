@@ -3,7 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.01'
 
-import sys, os  
+import sys, os, logging  
 from os.path import (join, split, isfile, dirname, isdir, sep, normpath
                      ,basename as filename
                      )
@@ -728,6 +728,8 @@ write_Usertext = WriteUsertext()
 bake_Usertext = BakeUsertext()
 parse_data = ParseData()
 recolour_objects = RecolourObjects()
+return_component_names = ReturnComponentNames()
+build_components = Buildcomponents()
 
 
 
@@ -738,54 +740,50 @@ tools_dict = dict(get_Geom = get_Geom
                  ,write_Usertext = write_Usertext
                  ,bake_Usertext = bake_Usertext
                  ,parse_data = parse_data
-                 ,recolour_objects = recolour_objects # Needed in iterable wrappers
+                 ,recolour_objects = recolour_objects 
+                 ,Python = return_component_names
+                 ,Build_components = build_components
                  )
 
-support_component_names = list(tools_dict.keys())[:] # In Python 3, .keys() and 
-                                                     # .values() are dict views
-                                                     # not lists
+def insert_sDNA_tool(mapped_name
+                    ,name_map
+                    ,tools_dict
+                    ):
+    tools_dict.setdefault(mapped_name
+                         ,sDNAWrapper(mapped_name)
+                         )
 
-special_names =           [  'sDNA_General'
-                            ]
-
-  
-return_component_names = ReturnComponentNames()
-tools_dict['Python'] = return_component_names
-
-build_components = Buildcomponents()
-tools_dict['Build_components'] = build_components
-
-tools_dict['Self_test'] = lambda *args : args  # TODO!  Make it do something!
-
-
-#def sDNA_wrapper_factory
-
-
+def tool_not_found_error(mapped_name
+                        ,name_map
+                        ,tools_dict
+                        ):
+    raise ValueError('Tool: ' + mapped_name + ' not found')
 
 def tool_factory(nick_name
-                ,local_opts
+                ,name_map
+                ,tools_dict = tools_dict
+                ,tool_not_found = tool_not_found_error 
                 ):  
-    #type( str, namedtuple, dict ) -> list
-
-    sDNA = local_opts['metas'].sDNA
-    name_map = local_opts['metas'].name_map
-    global tools_dict
-    # A special component that takes its nickname from the parameters provided,
-    # only working out which tools to run at run time.  
+    #type( str, dict, dict, function ) -> list
 
     if not isinstance(nick_name, Hashable):
-        raise TypeError(output('Non-hashable variable given for key' + str(nick_name),'ERROR'))
+        msg = 'Non-hashable variable given for key' + str(nick_name)
+        logging.error(msg)
+        raise TypeError(msg)
 
-    if (   nick_name not in tools_dict ):  #or 
-            #sDNA not in local_opts.get(nick_name, {})   ):
-        map_result = getattr(name_map, nick_name, nick_name)  # in case nick_name == tool_name
+    if nick_name not in tools_dict:   
+        map_result = getattr(name_map, nick_name, nick_name)  
+        # in case nick_name is a tool_name
+        
         if not isinstance(map_result, str):
-            debug('Processing list of tools found for ' + nick_name)
+            logging.debug('Processing list of tools found for ' + nick_name)
             tools =[]
             #nick_name_opts = {}
             for mapped_name in map_result:
                 tools.append(tool_factory(mapped_name
-                                         ,local_opts 
+                                         ,name_map 
+                                         ,tools_dict
+                                         ,tool_not_found
                                          )
                             )
 
@@ -794,64 +792,20 @@ def tool_factory(nick_name
             tools_dict.setdefault(nick_name, tools )
         else:
             mapped_name = map_result
-            debug(nick_name + ' maps to ' + mapped_name)
+            logging.debug(nick_name + ' maps to ' + mapped_name)
+            if mapped_name in tools_dict:
+                logging.debug('Tool: ' + mapped_name + ' already in tools_dict')
+            else:
+                tool_not_found(mapped_name
+                              ,name_map
+                              ,tools_dict
+                              )
 
-            tools_dict.setdefault(mapped_name
-                                 ,sDNAWrapper(mapped_name)
-                                 )
 
-
-    debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
+    logging.debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
     return tools_dict[nick_name] 
 
 
-class ToolFactoryWrapper(Tool):
-    args = ('file', 'gdm', 'opts', 'tool')
-    component_inputs = ('go', args[0], 'Geom', 'Data') + args[1:]
-    def __init__(self): #, component):
-        pass
-        #self.component = component
-
-
-    #def tool_factory_wrapper(f_name, gdm, opts, tool = None):
-    def __call__(self, f_name, gdm, opts, tool, *args):
-
-        name_map = opts['metas'].name_map
-        if tool is None:
-            tool_name = opts['options'].tool_name
-        tools = tool_factory(tool_name 
-                            ,opts 
-                            )
-            
-        #tools = self.component.auto_insert_tools(tools
-        #                                        ,self.component.Params
-        #                                        )
-        #inst.Params = 
-        #self.component.update_Params(self.component.ghenv.Component.Params
-        #                            ,tools
-        #                            )
-
-        # TODO:  How do component args work?!
-
-        return run_tools(tools
-                        ,dict(f_name = f_name
-                             ,gdm = gdm
-                             ,opts = opts
-                             )
-                        ) 
-    # tool_factory_wrapper.show = {}
-    # tool_factory_wrapper.args = args
-    # tool_factory_wrapper.show['Input'] = component_inputs
-    # tool_factory_wrapper.retvals = 'retcode', 'Geom', 'Data', 'f_name', 'gdm', 'opts'
-    # tool_factory_wrapper.show['Output'] = ('OK', ) + tool_factory_wrapper.retvals[1:3] + ('file',) + tool_factory_wrapper.retvals[4:]
-    retvals = 'retcode', 'Geom', 'Data', 'f_name', 'gdm', 'opts'
-
-    show = dict(Input = component_inputs
-               ,Output = ('OK', ) + retvals[1:3] + ('file',) + retvals[4:]
-               )
-
-tool_factory_wrapper = ToolFactoryWrapper()
-tools_dict['sDNA_General'] = tool_factory_wrapper
 
 
 sDNA_GH_names = tools_dict.keys()
@@ -1099,7 +1053,7 @@ def component_decorator( BaseClass
             return Params
     
 
-        def update_tools(self):
+        def update_tools(self, nick_name = None):
             #self.my_tools = []
 
             #for tool in tools:
@@ -1108,7 +1062,10 @@ def component_decorator( BaseClass
             #    self.my_tools +=[getattr(self, func_name(tool))]
             
             #Avoid issues with calling tools stored as methods with self:
-            tools = tool_factory(self.local_metas.nick_name
+            if nick_name is None:
+                nick_name = self.local_metas.nick_name
+
+            tools = tool_factory(nick_name
                                 ,self.opts
                                 )
             debug(tools)
@@ -1224,29 +1181,7 @@ def component_decorator( BaseClass
             self.update_sDNA() 
 
 
-            
 
-            
-            #self.update_name()  All runs anyway at start of RunScript even if
-            #                    go == False
-            #self.my_tools = self.update_tools() elsewhere requires name to 
-            #                                    be updated
-            #self.tools = self.auto_insert_tools(self.my_tools) 
-            #self.update_Params(self.Params, self.tools)
-
-
-
-
-
-
-
-
-
-
-        #sDNA_GH = strict_import('sDNA_GH', join(Grasshopper.Folders.DefaultAssemblyFolder,'sDNA_GH'), sub_folder = 'sDNA_GH')   
-                                            # Grasshopper.Folders.AppDataFolder + r'\Libraries'
-                                            # %appdata%  + r'\Grasshopper\Libraries'
-                                            # os.getenv('APPDATA') + r'\Grasshopper\Libraries'
         def RunScript(self, *args): #go, Data, Geom, f_name, *args):
             # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
 
@@ -1276,8 +1211,13 @@ def component_decorator( BaseClass
             #print('#1 self.local_metas == ' + str(self.local_metas))
             
             if self.update_name() == 'Name updated':
-                pass
-                self.my_tools = self.update_tools()
+                nick_name = self.local_metas.nick_name
+                if (nick_name.lower()
+                             .replace('_','')
+                             .replace(' ','') == 'sdnageneral'
+                    and 'tool' in args_dict):
+                    nick_name = args_dict['tool']
+                self.my_tools = self.update_tools(nick_name)
             
             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
                     # Other components may mean self.tools needs extra tools adding or /removing
@@ -1322,25 +1262,6 @@ def component_decorator( BaseClass
                     self.update_sDNA()
                     #self.Params = 
                     self.update_Params()#self.Params, self.tools)
-            
-
-
-                    
-
-            # Defined_tools = [y for z in tools_dict.values() for y in z]
-            # debug(Defined_tools)
-            # debug(type(Defined_tools))
-            # Undefined_tools = [x for x in self.my_tools if x not in Defined_tools]
-
-            if False:
-                debug('Defined_tools == ' + str(Defined_tools))
-                debug('Undefined tools == ' + str(Undefined_tools))
-                raise ValueError(output('Tool function not in cache, possibly ' 
-                                       + 'unsupported.  Check input tool_name '
-                                       +'if sDNAGeneral, else tool_factory '
-                                       ,'ERROR'
-                                       )
-                                )
 
 
             if go in [True, [True]]: # [True] in case go set to List Access in GH component 
@@ -1416,15 +1337,7 @@ def component_decorator( BaseClass
                                                                     )
                                                             )
                                                     )                            
-                                            )
-
-                #if func_name(self.tools[-1]) == 'recolour_objects':
-                #    debug('Making new rect.  ')
-                #    rect = rs.AddRectangle(rs.WorldXYPlane(), 20, 60)
-                    #rect = Grasshopper.Kernel.GH_Convert.ToGHCurve(rect)
-                    #rs.MoveObject(rect, [60, 0])
-                #    ret_vals_dict['leg_frame'] = rect
-                    #debug('sc.doc == ' + str(sc.doc))
+                                            ) #TODO: Make this a while loop over a list of sources and add in locals()
 
 
                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)
@@ -1432,17 +1345,9 @@ def component_decorator( BaseClass
             else:   
                 return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
 
-#def deco(BaseClass):
-    #class M(BaseClass):
-    #    def RunScript(self, go, Data, Geom, f_name, *args):
-    #        a = 'Running Runscript from class deco'
-    #        print(a)
-    #        return a
-    #return M                    
+   
     return sDNA_GH_Component
 
-""" loc = tool_factory()
-comp = sDNA_GH_component_deco(object) """
 
 
 

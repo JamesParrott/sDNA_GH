@@ -70,6 +70,7 @@ def make_nested_namedtuple(d
                           ,d_namedtuple_class_name
                           ,strict = True
                           ,class_prefix = 'NamedTuple_'
+                          ,convert_subdicts = False
                           ,**kwargs
                           ):
     #type (dict, str, str) -> namedtuple(d), tree (Class)
@@ -79,7 +80,7 @@ def make_nested_namedtuple(d
 
     d = d.copy() 
     for key, val in d.items():
-        if isinstance(val, dict):
+        if isinstance(val, dict) and convert_subdicts:
             d[key] = make_nested_namedtuple(val
                                            ,key
                                            ,False # strict. already checked 

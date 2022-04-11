@@ -15,10 +15,7 @@ from ..custom.helpers.funcs import (ghdoc
                                    )
 from ..launcher import Output, Debugger
 from ..custom.tools import Tool
-from ..__main__ import (support_component_names
-                       ,special_names
-                       ,return_component_names
-                       )
+from ..setup import tools_dict
 
 logger = logging.getLogger('sDNA_GH').addHandler(logging.NullHandler())
 #logger = logging.getLogger(__name__)
@@ -53,6 +50,51 @@ def make_new_component(name
 
 
 
+def validate_name_map(name_map, known_tool_names):
+    #type(dict, list) -> bool
+    if not isinstance(name_map, dict):
+        msg = ('Name map is of type: ' + str(type(name_map))
+              +'but is required to be a dictionary.  '
+              )
+        logging.error(msg)
+        raise TypeError(msg)
+                                                            # No nick names allowed that are 
+                                                            # a tool's full / real name.
+    nickname_clashes = [name for name in known_tool_names if name in name_map]
+    if nickname_clashes:
+        msg = ('Nick names in name map clash with known tool names: ' 
+              +' '.join(nickname_clashes)
+              )
+        logging.error(msg)
+        raise ValueError(msg)
+    else:
+        logging.debug('No clashes found in name_map with known tool names.'
+                     +' Good job! '
+                     )
+
+    
+    names_and_nicknames = known_tool_names + list(name_map.keys())
+    def points_to_valid_tools(tool_names):
+        if not isinstance(tool_names, list):
+            tool_names = [tool_names]
+        return all(name in names_and_nicknames for name in tool_names)
+    invalid_name_map_vals = {key : val for key, val in name_map._asdict().items()
+                                        if not points_to_valid_tools(val)}
+
+    if invalid_name_map_vals:
+        msg = ('Invalid name_map entries: ' 
+              +'\n'.join([k + (v if not isinstance(v, list) else
+                               ' '.join([n for n in v if not points_to_valid_tools(n)])
+                              )
+                          for k, v in invalid_name_map_vals.items()
+                         ])
+              )
+        logging.error(msg)
+        raise ValueError(msg)
+    else:
+        logging.info('Name_map links all point to known names or other name_map links. Cycles not checked. ','INFO')
+
+    return True
 
 
 
@@ -61,58 +103,14 @@ class ReturnComponentNames(Tool): # (name, name_map, inst, retvals = None):
     args = ('opts',)
     component_inputs = ('go',) + args
 
-    def __call__(self, local_opts):
+    def __call__(self, local_opts, **kwargs):
         
-        sDNAUISpec = local_opts['options'].sDNAUISpec
         name_map = local_opts['metas'].name_map
+        names = list(tools_dict.keys())
+        sDNAUISpec = local_opts['options'].sDNAUISpec
+        names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
-        sDNA_tool_names = [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
-        names_lists = [support_component_names, special_names, sDNA_tool_names]
-        names_list = [x for z in names_lists for x in z]
-        clash_test_passed = no_name_clashes( name_map,  names_lists )
-
-
-        if not clash_test_passed:
-            output('Component name/abbrev clash.  Rename component or abbreviation. ','WARNING') 
-            output('name_map == ' + str(name_map),'INFO') 
-            output('names_lists == ' + str(names_lists),'INFO') 
-            output('names_list == ' + str(names_list),'INFO') 
-        else:
-            output('Component name/abbrev test passed. ','INFO') 
-
-        assert clash_test_passed
-                                                                # No nick names allowed that are 
-                                                                # a tool's full / real name.
-        names_and_nicknames = names_list + list(name_map._fields) #name_map.keys()   
-        def points_to_valid_tools(tool_names):
-            if not isinstance(tool_names, list):
-                tool_names = [tool_names]
-            return all(name in names_and_nicknames for name in tool_names)
-        invalid_name_map_vals = {key : val for key, val in name_map._asdict().items()
-                                           if not points_to_valid_tools(val)}
-        # TODO.  Lowest priority: Check there are no non-trivial cycles.  this is only devtool validation code - 
-        #        not likely a user will expect
-        #        correct results if they alter name_map to include a non-trivial cycle.
-        if invalid_name_map_vals:
-            output('Invalid name_map entries: ' 
-                  +'\n'.join([k + (v if not isinstance(v, list) else
-                                   ' '.join([n for n in v if not points_to_valid_tools(n)])
-                                  )
-                              for k, v in invalid_name_map_vals.items()])
-                   ,'CRITICAL'
-                   )
-        else:
-            output('Name_map validated successfully.  ','INFO')
-        assert not invalid_name_map_vals
-        #return special_names + support_component_names + sDNA_tool_names, None, None, None
-
-        names = ([name for name in names_list 
-                           if name not in name_map] #.values()] 
-                     + list(name_map._fields) #keys())
-                    )
-
-        #return 0, None, {}, ret_names, #names_list
-        retcode = 0
+        retcode = 0 if validate_name_map(name_map, names) else 1
         locs = locals().copy()
         return [locs[retval] for retval in self.retvals]
 
@@ -124,12 +122,15 @@ class ReturnComponentNames(Tool): # (name, name_map, inst, retvals = None):
 
 
 class Buildcomponents(Tool): 
-    args = ('launcher_code', 'opts')
-    component_inputs = ('go',) + args[1:] + ('name_map', 'categories')
+    args = ('launcher_code', 'plug_in', 'component_names', 'opts', 'd_h', 'w')
+    component_inputs = ('go',) + args[1:-2] + ('name_map', 'categories')
 
-    def __call__(self, code, opts_at_call):
+    def __call__(self, code, plug_in_name, names, opts_at_call, d_h = None, w = None):
         #type(str, dict) -> None
-
+        # = (kwargs[k] for k in self.args)
+        d_h = 175 if d_h is None else d_h
+        w = 800 if w is None else w
+        
         while (isinstance(code, Iterable) 
                and not isinstance(code, str)):
             code = code[0]
@@ -150,7 +151,8 @@ class Buildcomponents(Tool):
 
         name_map = metas.name_map._asdict()
 
-        retcode, names  = return_component_names(opts_at_call)
+        #retcode, names  = return_component_names(opts_at_call)
+        #names now from param input
 
         nicknameless_names = [name for name in names if name not in name_map.values()]
 
@@ -158,16 +160,7 @@ class Buildcomponents(Tool):
             if name_map.get(name, name) not in categories:
                 raise ValueError(output('No category for ' + name, 'ERROR'))
             else:
-                i *= 175
-                w = 800
-                #make_new_component(  name
-                #                    ,'sDNA'
-                #                    ,categories[name_map.get(name, name)]
-                #                    ,code
-                #                    ,this_comp
-                #                    [i % w, i // w]
-                #                    )
-
+                i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 comp = GhPython.Component.ZuiPythonComponent()
     
@@ -182,8 +175,9 @@ class Buildcomponents(Tool):
                 comp.Name = name
                 comp.Params.Clear()
                 comp.IsAdvancedMode = True
-                comp.Category = 'sDNA'
-                comp.SubCategory = categories[name_map.get(name, name)]
+                comp.Category = plug_in_name #'sDNA'
+                if name_map.get(name, name) in categories:
+                    comp.SubCategory = categories[name_map.get(name, name)]
 
                 GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
                 GH_doc.AddObject(comp, False)

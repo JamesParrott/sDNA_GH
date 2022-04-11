@@ -207,7 +207,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     sc.doc = ghdoc #type: ignore
 
-    sDNA_GH, _ = load_modules(sDNA_GH_package #+ '.tools'
+    sDNA_GH, _ = load_modules(sDNA_GH_package + '.setup'
                              ,sDNA_GH_search_paths
                              )         
 
@@ -224,9 +224,9 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # Initial parser step / scope check trips this?
 
     MyComponent = sDNA_GH.component_decorator( component
-                                                    ,ghenv #type: ignore
-                                                    ,nick_name
-                                                    )
+                                             ,ghenv #type: ignore
+                                             ,nick_name
+                                             )
 
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  

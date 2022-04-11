@@ -57,7 +57,7 @@ from .helpers.funcs import (ghdoc
                            ,three_point_quadratic_spline
 
                            )
-from .helpers.quacks_like import quacks_like
+from .skel.tool_runner import Tool
 from ..launcher import Output, Debugger
 from .options_manager import (make_nested_namedtuple
                              ,
@@ -86,122 +86,12 @@ from .gdm_from_GH_Datatree import (make_gdm
 
 
 
-#import logging
-logger = logging.getLogger('sDNA_GH').addHandler(logging.NullHandler())
-#logger = logging.getLogger(__name__)
-
+logger = logging.getLogger(__name__)
 output = Output(tmp_logs = [], logger = logger)
 debug = Debugger(output)
 
 
-class ToolABC(ABC):    #Template for tools that can be run by run_tools()
-                    # Subclass of this is not enforced, to permit tools from
-                    # functions with attributes via ducktyping
-    @abstractmethod
-    def args(self):
-        return ()   # Only the order need correspond to 
-                # __call__'s args. The names can be 
-                # different.  The ones in the args tuple
-                # are used as keys in vals_dict.  
-                # show['Inputs'] defines the
-                # input Param names of the component 
-
-    @abstractmethod
-    def __call__(self, *args):
-        assert len(args) == len(self.args)
-        '''  Main tool function'''
-        retcode=0
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
-    
-    @abstractmethod
-    def retvals(self): 
-        return ('retcode',) # strings of variable names inside __call__, to be used 
-                 # keys in vals_dict.  show['Outputs'] defines the required 
-                 # output Param names on the 
-                 # GH component
-
-    @abstractmethod
-    def show(self):
-        return dict(Inputs = ()
-                   ,Outputs = ()
-                   )
-
-class Tool(ToolABC):
-    def __str__(self):
-        s = self.tool_name if hasattr(self, 'tool_name') else ''
-        s += ' an instance of ' + self.__class__ +'.  '
-        return s
-
-def run_tools(tools
-             ,args_dict
-             ):  #f_name, gdm, opts):
-    #type(list[Tool], dict)-> dict
-
-    if not isinstance(tools, list):
-        tools = list(tools)
-    invalid_tools = [tool for tool in tools 
-                          if not ( isinstance(tool, ToolABC) 
-                                   or quacks_like(ToolABC, tool)
-                                 )
-                    ]
-    if invalid_tools:
-        raise ValueError(output('Invalid tool(s) == ' + str(invalid_tools),'ERROR'))
-    
-    opts = args_dict['opts']
-    metas = opts['metas']
-    name_map = metas.name_map._asdict()
-
-    #tool_names = []
-    #assert not any(key == name_map[key] for key in name_map)
-    # return_component_names checked for clashes and cycles etc.
-
-    # def get_tools(name):
-    #     for tool_name in name_map[name]:
-    #         if tool_name in name_map:
-    #             tool_names += get_tools(tool_name)  
-    #         else:
-    #             tool_names += [tool_name]
-
-    # assert len(tool_names) == len(tools)
-
-    vals_dict = args_dict 
-                #OrderedDict( [   ('f_name', f_name)
-                #                ,('gdm', gdm)
-                #                ,('opts', opts)
-                #             ]
-                #            )
-
-    debug(tools)                            
-    for tool in tools:
-        debug(tool)
-
-
-        inputs = [vals_dict.get(input, None) for input in tool.args]
-        retvals = tool( *inputs)
-                        #  if input not in (('Data','Geom','go')
-                        #  +opt)] 
-                        # vals_dict['f_name']
-                        #,vals_dict['gdm']
-                        #,vals_dict['opts'] 
-                        #)
-        vals_dict.update( OrderedDict(zip(tool.retvals, retvals)) )
-        vals_dict.setdefault( 'file'
-                            , vals_dict.get('f_name')
-                            )
-        vals_dict['OK'] = (vals_dict['retcode'] == 0)
-
-        retcode = vals_dict['retcode']
-        debug(' return code == ' + str(retcode))
-        if retcode != 0:
-            raise Exception(output(  'Tool ' + func_name(tool) + ' exited '
-                                    +'with status code ' 
-                                    + str(retcode)
-                                    ,'ERROR'
-                                    )
-                            )
-
-    return vals_dict        
+   
 
 sDNA_tool_logger = logging.getLogger('sDNA')
 
@@ -789,7 +679,7 @@ class WriteUsertext(Tool):
 
 
 
-class BakeUsertext(Tool):
+class BakeUsertext(WriteUsertext):
     args = ('gdm', 'opts')
     component_inputs = ('go', 'Geom') + args
 
@@ -1010,7 +900,7 @@ GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             ,7 : 'Zebra'
                             }
 
-class RecolourObjects(Tool):
+class RecolourObjects(ParseData):
     args = ('gdm', 'opts')
     component_inputs = ('go', 'Data', 'Geom', 'bbox') + args
 

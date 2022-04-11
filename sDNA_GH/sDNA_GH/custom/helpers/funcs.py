@@ -55,15 +55,6 @@ def get_path(opts = get_path_default_opts, inst = None):
 
 
 
-def func_name(f):
-    #type(function)->str
-    if hasattr(f,'__qualname__'):
-        return f.__qualname__  
-    elif hasattr(f,'__name__'):
-        return f.__name__  
-    else:
-        return f.func_name
-
 def unpack_first_item_from_list(l, null_container = {}):
     #type(type[any])-> dict
     #hopefully!
