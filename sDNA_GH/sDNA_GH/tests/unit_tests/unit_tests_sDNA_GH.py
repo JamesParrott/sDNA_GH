@@ -18,7 +18,7 @@ except:
     component = object
 
 
-from ...tools import (  opts
+from ...custom.tools import (  opts
                         ,convert_Data_tree_and_Geom_list_to_gdm
                         )
 

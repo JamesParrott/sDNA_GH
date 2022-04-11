@@ -4,7 +4,7 @@ from sys import path as sys_path
 from os.path import isfile, sep, normpath
 
 import logging
-from ..custom_python_modules import wrapper_logging
+from ..custom import wrapper_logging
 
 default_options=dict(    overwrite_shp_file = True
                         ,suppress_overwrite_warning = False

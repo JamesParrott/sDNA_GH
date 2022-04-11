@@ -4,7 +4,7 @@ __author__ = 'James Parrott'
 __version__ = '0.01'
 
 
-import os, sys 
+import os, sys, inspect
 from os.path import isfile, isdir, join, split, dirname
 from importlib import import_module
      
@@ -15,15 +15,15 @@ reload_config_and_other_modules_if_already_loaded = False
 
 
 
-# This output function is used to define two functions from this single 
+# This Output class is used to define two Classes from this single 
 # code definition.  Python scripts can happily import themselves, but here
 # this is because all the code in this file 
 # must be read into a GhPython component via its the code input (which 
 # essentially copy and pastes it to there).
 # The first function definition is when the code in this file runs 
 # in a GH component.  
-# The second function definition is during import of sDNA_GH.tools below, 
-# as it itself imports this function from .sDNA_GH_launcher
+# The second function definition is during import of sDNA_GH below, 
+# as it itself imports this function from .launcher
 # Therefore there really are two functions in Python, with two separate caches.
 #
 # The behaviours can be different of course if changes are made to one and not
@@ -80,22 +80,27 @@ class Output: #def output
 
 output = Output()
 
-# def output(s, level='INFO', inst = None):        # e.g. inst is a MyComponent.  
-#                          # Inst is a proxy argument for both 'self' and 'cls'.
-#     #type: (str, MyComponent, str) -> None
-#     message = s
-#     if hasattr(inst,'nick_name'):
-#         message = inst.nick_name + ' : ' + message
-#     message_with_level =  'sDNA_GH_launcher' + '  ' + level + ' : ' + message
-#     #print(message_with_level)
-#     try:
-#         sDNA_GH_tools.output(message, level, inst)
-#     except:
-#         try:
-#             getattr(sDNA_GH_tools.wrapper_logging.logging,level.lower())("From sDNA_GH_launcher via logging: " + message)
-#         except:
-#             print(message_with_level)
-#     return message_with_level
+
+class Debugger:
+    def __init__(self, output = None):
+        #type(type[any], function) -> None  # callable object
+        if output is None:
+            output = Output()
+        self.output = output # want to call an instance that we also use for
+                             # higher logging level messages so 
+                             # composition instead of inheritance is used
+    def __call__(self, x):
+        c = inspect.currentframe().f_back.f_locals.items()
+
+        names = [name.strip("'") for name, val in c if val is x]
+        # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+        # https://stackoverflow.com/a/40536047
+
+        if names:
+            return self.output(str(names) + ' == ' + str(x)+' ','DEBUG')
+        else:
+            return self.output(str(x)+' ','DEBUG')
+
 
 
 def strict_import(  module_name = ''
@@ -112,7 +117,7 @@ def strict_import(  module_name = ''
         return None
     output(module_name,'DEBUG')
     if module_name in sys.modules:   # sys.modules is also shared between GHPython components 
-                                    # and is even saved until Rhino is closed.
+                                     # (and is even saved until Rhino is closed).
         output('Module ' + module_name + ' already in sys.modules.  ','DEBUG')
         if reload_config_and_other_modules_if_already_loaded:
             output('Reloading ' +  module_name  + '.... ','DEBUG')
@@ -141,6 +146,7 @@ def strict_import(  module_name = ''
     module = import_module(module_name, '')           
     sys.path = tmp
     return module       
+
 
 
 def load_modules(m_names, path_lists):
@@ -174,6 +180,7 @@ def load_modules(m_names, path_lists):
                 # tuple of modules, followed by the path to them
     return None
 
+
 if __name__ == '__main__': # False in a compiled component.  But then the user
                            # can't add or remove Params to the component.  
     
@@ -200,12 +207,12 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     sc.doc = ghdoc #type: ignore
 
-    sDNA_GH_tools, _ = load_modules(sDNA_GH_package + '.tools'
-                                   ,sDNA_GH_search_paths
-                                   )         
+    sDNA_GH, _ = load_modules(sDNA_GH_package #+ '.tools'
+                             ,sDNA_GH_search_paths
+                             )         
 
 
-    logger = sDNA_GH_tools.logger.getChild('launcher')
+    logger = sDNA_GH.logger.getChild('launcher')
     output.set_logger(logger, flush = True)
 
 
@@ -216,7 +223,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # and overwriting this very class immediately below.  
             # Initial parser step / scope check trips this?
 
-    MyComponent = sDNA_GH_tools.component_decorator( component
+    MyComponent = sDNA_GH.component_decorator( component
                                                     ,ghenv #type: ignore
                                                     ,nick_name
                                                     )

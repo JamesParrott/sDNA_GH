@@ -13,6 +13,8 @@ from collections import OrderedDict, namedtuple
 from datetime import date
 from re import match
 
+import rhinoscriptsyntax as rs
+
 if sys.version < '3.3':
     from collections import Iterable
 else:
@@ -33,7 +35,7 @@ if __name__=='__main__':
 else:
     import logging
     logger = logging.getLogger(file_name_no_ext)
-    from ..third_party_python_modules.PyShp import shapefile as shp  
+    from ..third_party.PyShp import shapefile as shp  
 
 
     #print("Wrapper_Pyshp Being imported as a module.  __name__ == " + __name__)
@@ -68,7 +70,88 @@ else:
 
 #print("After config import if block type(options) == " + str(type(options)))
 
+Rhino_obj_converter_Shp_file_shape_map = dict(NULL = None
+                                             ,POINT = 'PointCoordinates'
+                                             ,MULTIPATCH = 'MeshVertices'  # Unsupported.  Complicated.  TODO!  
+                                             ,POLYLINE = 'PolylineVertices'  # Works on Line too, unlike the checker.
+                                             ,POLYGON = 'PolylineVertices'   
+                                             ,MULTIPOINT = 'PointCloudPoints'  # Unsupported.  Needs chaining to list or POINT
+                                             ,POINTZ = 'PointCoordinates'
+                                             ,POLYLINEZ = 'PolylineVertices'
+                                             ,POLYGONZ = 'PolylineVertices'  
+                                             ,MULTIPOINTZ = 'PointCloudPoints'  #see MULTIPOINT
+                                             ,POINTM = 'PointCoordinates'
+                                             ,POLYLINEM = 'PolylineVertices'
+                                             ,POLYGONM = 'PolylineVertices'    
+                                             ,MULTIPOINTM = 'PointCloudPoints'  #see MULTIPOINT
+                                             )  
 
+def get_points_list_from_geom_obj(x, shp_type='POLYLINEZ'):
+    #type(str, dict) -> list
+    f = getattr(rs, Rhino_obj_converter_Shp_file_shape_map[shp_type])
+    return [list(y) for y in f(x)]
+
+Rhino_obj_checker_Shp_file_shape_map = dict( 
+     NULL = [None]
+    ,POINT = ['IsPoint']
+    ,MULTIPATCH = ['IsMesh']    # Unsupported.  Complicated.  TODO!
+    ,POLYLINE = ['IsLine','IsPolyline']  #IsPolyline ==False for lines, 
+#                                        # on which PolylineVertices works fine
+    ,POLYGON = ['IsPolyline'] #2 pt Line not a Polygon.Doesn't check closed
+    ,MULTIPOINT = ['IsPoint']   # Need to define lambda l : any(IsPoint(x) for x in l)
+    ,POINTZ = ['IsPoint']
+    ,POLYLINEZ = ['IsLine','IsPolyline']
+    ,POLYGONZ = ['IsPolyline']   #Doesn't check closed
+    ,MULTIPOINTZ = ['IsPoints']  # see MULTIPOINT
+    ,POINTM = ['IsPoint']
+    ,POLYLINEM = ['IsLine','IsPolyline']
+    ,POLYGONM = ['IsPolyline']   #Doesn't check closed 
+    ,MULTIPOINTM = ['IsPoints']  # see MULTIPOINT
+                                            )  
+
+def check_is_specified_obj_type(obj, shp_type):   #e.g. polyline
+    # type(str) -> bool
+
+    allowers = Rhino_obj_checker_Shp_file_shape_map[ shp_type]
+    return any( getattr(rs, allower )( obj ) for allower in allowers)
+
+Rhino_obj_getter_code_Shp_file_shape_map = dict(NULL = None
+                                               ,POINT = 1          # Untested.  TODO
+                                               ,MULTIPATCH = 32    # Unsupported.  Complicated.  TODO!
+                                               ,POLYLINE = 4
+                                               ,POLYGON = 4  
+                                               ,MULTIPOINT = 2     # Untested.  TODO
+                                               ,POINTZ = 1         
+                                               ,POLYLINEZ = 4
+                                               ,POLYGONZ = 4   
+                                               ,MULTIPOINTZ = 2 
+                                               ,POINTM = 1
+                                               ,POLYLINEM = 4
+                                               ,POLYGONM = 4  
+                                               ,MULTIPOINTM = 2
+                                               )  
+
+def get_all_shp_type_Rhino_objects(shp_type='POLYLINEZ'):
+    #type (None) -> list
+    return rs.ObjectsByType( Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
+                            ,select=False
+                            ,state=0)
+
+Rhino_obj_adder_Shp_file_shape_map = dict(NULL = None
+                                         ,POINT = 'AddPoint'
+                                         ,MULTIPATCH = 'AddMesh'    # Unsupported.  Complicated.  TODO!
+                                         ,POLYLINE = 'AddPolyline'
+                                         ,POLYGON = 'AddPolyline'   # check Pyshp closes them
+                                         ,MULTIPOINT = 'AddPoints'
+                                         ,POINTZ = 'AddPoint'
+                                         ,POLYLINEZ = 'AddPolyline'
+                                         ,POLYGONZ = 'AddPolyline'   # check Pyshp closes them
+                                         ,MULTIPOINTZ = 'AddPoints'
+                                         ,POINTM = 'AddPoint'
+                                         ,POLYLINEM = 'AddPolyline'
+                                         ,POLYGONM = 'AddPolyline'    # check Pyshp closes them
+                                         ,MULTIPOINTM = 'AddPoints'
+                                         )  
 
 
 type_dict = {}
@@ -362,6 +445,41 @@ def get_fields_recs_and_shapes_from_shapefile(shapefile_path):
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} for shape, rec in zip(shapes, recs)  }
     
     return fields, recs, shapes, bbox
+
+def add_objects_to_group(objs, group_name):
+    #type(list, str) -> int
+    return rs.AddObjectsToGroup(objs, group_name)  
+
+def make_new_group(group_name = None):
+    #type(str) -> str
+    return rs.AddGroup(group_name)
+
+def create_new_groups_layer_from_points_list(
+       options
+      ,make_new_group = make_new_group
+      ,add_objects_to_group = add_objects_to_group
+      ,Rhino_obj_adder_Shp_file_shape_map = Rhino_obj_adder_Shp_file_shape_map
+      ):
+    #type(namedtuple, function, function, dict) -> function
+    shp_type = options.shp_file_shape_type            
+    rhino_obj_maker = getattr(rs, Rhino_obj_adder_Shp_file_shape_map[shp_type])
+
+    def g(obj, rec):
+        objs_list = []
+        
+        for points_list in obj:
+            #debug(points_list)
+            objs_list += [rhino_obj_maker(points_list) ] 
+    # Creates not necessarily returned Rhino object as intentional side effect
+        if len(objs_list) > 1:
+            new_group_name = make_new_group()
+            add_objects_to_group(objs_list, new_group_name)
+            return new_group_name
+        elif len(objs_list)==1:
+            return objs_list[0]
+        else: 
+            return None
+    return g
 
 
 if __name__=='__main__':

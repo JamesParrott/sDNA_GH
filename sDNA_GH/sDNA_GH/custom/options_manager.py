@@ -18,7 +18,7 @@ if version_info.major >= 3 : # version > '3':   # if Python 3
 else:   # e.g.  Python 2
     import ConfigParser    
 
-from ..third_party_python_modules.toml.decoder import load
+from ..third_party.toml.decoder import load
 
 
 if __name__=='__main__':
@@ -27,6 +27,44 @@ if __name__=='__main__':
 #FixedOptions = namedtuple('FixedOptions', config.options.keys(), rename = True)
 # TODO: Check for renamed reserved or duplicated field names due to see if 'rename = True' above changed anything
 # defaults = FixedOptions(**defaults)
+
+
+
+def get_namedtuple_etc_from_class(Class, name):
+    # type: ( type[any], str) -> namedtuple
+    #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
+
+    fields = [attr for attr in dir(Class) if not attr.startswith('_')]
+    factory = namedtuple(name, fields, rename=True)   
+    return factory(**{x : getattr(Class, x) for x in fields})
+
+
+
+def list_contains(check_list, name, name_map):
+    # type( MyComponent, list(str), str, dict(str, str) ) -> bool
+    #name_map
+    return name in check_list or (name in name_map._fields and 
+                                  getattr(name_map, name) in check_list
+                                  )
+    #return name in check_list or (name in name_map and name_map[name] in check_list)
+
+
+def no_name_clashes(name_map, list_of_names_lists):
+    #type( MyComponent, dict(str, str), list(str) ) -> bool
+
+    num_names = sum(len(names_list) for names_list in list_of_names_lists)
+
+    super_set = set(name for names_list in list_of_names_lists 
+                         for name in names_list
+                   )
+    # Check no duplicated name entries in list_of_names_lists.
+    if set(['options', 'metas']) & super_set:
+        return False  # Clashes with internal reserved names.  Still best avoided even though tool options
+                      # are now a level below (under the sDNA version key)
+    return num_names == len(super_set) and not any([x == getattr(name_map, x) 
+                                                   for x in name_map._fields])  
+                                                   # No trivial cycles
+
 
 def make_nested_namedtuple(d
                           ,d_namedtuple_class_name
