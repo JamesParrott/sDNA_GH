@@ -25,7 +25,7 @@ from .pyshp_wrapper import (create_new_groups_layer_from_points_list
                            )
 
 #import logging
-logger = logging.getLogger('sDNA_GH').addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__).addHandler(logging.NullHandler())
 #logger = logging.getLogger(__name__)
 
 output = Output(tmp_logs = [], logger = logger)

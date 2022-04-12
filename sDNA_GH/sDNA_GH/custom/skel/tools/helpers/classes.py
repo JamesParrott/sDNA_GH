@@ -3,6 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+
 import sys
 from abc import abstractmethod
 if sys.version < '3.4':

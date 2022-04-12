@@ -6,7 +6,7 @@ __version__ = '0.02'
 import logging
 from collections import OrderedDict
 
-from .helpers.classes import Tool, ToolABC
+from .helpers.classes import ToolABC
 from .helpers.quacks_like import quacks_like
 from .helpers.funcs import tool_name
 

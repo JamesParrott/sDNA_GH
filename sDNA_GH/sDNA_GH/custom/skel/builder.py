@@ -5,15 +5,15 @@ __version__ = '0.02'
 
 import sys, logging
 if sys.version < '3.3':
-    from collections import Hashable, Iterable, MutableMapping
+    from collections import Iterable
 else:
-    from collections.abc import Hashable, Iterable, MutableMapping
+    from collections.abc import Iterable
 
 import GhPython
 from System import SizeF, PointF   # .Net Classes, e.g. via Iron Python.
 
 from .tools.helpers.classes import Tool
-from ..skel.basic.GH_env import ghdoc
+from .basic.ghdoc import ghdoc
 
 
 logger = logging.getLogger(__name__)

@@ -3,13 +3,11 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+
 import Rhino, GhPython
 import GhPython
-import Grasshopper.Kernel 
-from ghpythonlib import treehelpers as th
-from Grasshopper import DataTree
-import rhinoscriptsynax as rs
 import scriptcontext as sc
+
 
 if 'ghdoc' not in globals():
     if sc.doc == Rhino.RhinoDoc.ActiveDoc:

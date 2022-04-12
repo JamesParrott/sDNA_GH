@@ -3,6 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+
 def tool_name(tool):
     #type(type[any] / function) -> str
     if hasattr(tool, 'tool_name'):

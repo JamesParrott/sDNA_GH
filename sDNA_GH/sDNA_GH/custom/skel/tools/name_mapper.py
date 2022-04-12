@@ -9,12 +9,10 @@ if sys.version < '3.3':
 else:
     from collections.abc import Hashable
 
-from .custom.skel.tools.helpers.funcs import (tool_name
-                                             )
-
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
+
 
 def validate_name_map(name_map, known_tool_names):
     #type(dict, list) -> bool
