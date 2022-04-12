@@ -1,11 +1,11 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
-__version__ = '0.01'
+__version__ = '0.02'
 
 
 import os, sys, inspect
-from os.path import isfile, isdir, join, split, dirname
+from os.path import isfile, isdir, join, dirname
 from importlib import import_module
      
 

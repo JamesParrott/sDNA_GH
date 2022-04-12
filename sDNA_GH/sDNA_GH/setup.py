@@ -1,23 +1,14 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
-__version__ = '0.01'
+__version__ = '0.02'
 
-import sys, os, logging  
-from os.path import (join, split, isfile, dirname, isdir, sep, normpath
+import sys, os
+from os.path import (join, isfile, dirname, isdir
                      ,basename as filename
                      )
 from itertools import repeat
 from collections import namedtuple, OrderedDict
-if sys.version < '3.3':
-    from collections import Hashable
-else:
-    from collections.abc import Hashable
-
-
-import GhPython
-import Grasshopper.Kernel 
-
 
 from .custom.options_manager import (load_toml_file
                                     ,make_nested_namedtuple     
@@ -25,21 +16,24 @@ from .custom.options_manager import (load_toml_file
                                     ,override_namedtuple  
                                     ,get_namedtuple_etc_from_class      
                                     )
-from .custom import wrapper_logging
+from .custom import logging_wrapper
 from .launcher import Output, Debugger, load_modules
+from .custom.skel.tools.runner import (run_tools)
 from .custom.helpers.funcs import (ghdoc
-                                  ,func_name
                                   ,unpack_first_item_from_list
                                   ,valid_re_normalisers
                                   ,get_path
                                   )
 from .custom.gdm_from_GH_Datatree import (convert_Data_tree_and_Geom_list_to_gdm
                                          ,override_gdm_with_gdm
-                                         , convert_dictionary_to_data_tree_or_lists
+                                         ,convert_dictionary_to_data_tree_or_lists
                                          )
-from .custom.tools import (Tool
-                          ,run_tools
-                          ,GetObjectsFromRhino
+from .custom.skel.tools.inserter import insert_tool
+from .custom.skel.tools.runner import run_tools
+from .custom.skel.tools.name_mapper import tool_factory
+from .custom.skel.add_params import add_tool_params
+from .custom.skel.builder import BuildComponents
+from .custom.tools import (GetObjectsFromRhino
                           ,ReadUsertext
                           ,WriteShapefile
                           ,ReadShapefile
@@ -49,9 +43,8 @@ from .custom.tools import (Tool
                           ,RecolourObjects
                           ,sDNAWrapper
                           )
-from .dev_tools.dev_tools import (ReturnComponentNames
-                                 ,Buildcomponents
-                                 )
+from .dev_tools.dev_tools import ReturnComponentNames
+
 
 
 output = Output()
@@ -285,16 +278,6 @@ module_opts = OrderedDict( metas = default_metas
                          )                
            
 
-
-
-    
-
-
-
-
-
-#if 'logger' not in globals():
-
 debug(module_opts['options'].message)
 
 
@@ -527,7 +510,7 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
     # wrapper_logging.logging.shutdown() # Ineffective in GH :(
 
 
-    logger = wrapper_logging.new_Logger( 'sDNA_GH'
+    logger = logging_wrapper.new_Logger( 'sDNA_GH'
                                         ,join(logs_directory, module_opts['options'].log_file)
                                         ,module_opts['options'].logger_file_level
                                         ,module_opts['options'].logger_console_level
@@ -536,7 +519,7 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
                                         )
 
 
-    output.set_logger(logger)
+    output.set_logger(logger) # Flushes cached log messages to above handlers
 
     debug('Logging set up in sDNA_GH package ')
 
@@ -547,151 +530,7 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
 
 #
 # 
-def nick_names_that_map_to(names, name_map):
-    #type(list, namedtuple) -> list
-    if isinstance(names, str):
-        names = [names]
-    #nick_names = [nick_name for nick_name, mapped_names in name_map._asdict().items()
-    #              if (nick_name not in names and 
-    #                  any((name == mapped_names or name in mapped_names) for name in names))]
-    #nick_names += nick_names_that_map_to(nick_names, name_map)
-    #nick_names += names
 
-    nick_names = [nick_name for nick_name in name_map._fields if getattr(name_map, nick_name) in names
-                                                                and nick_name not in names] 
-    if nick_names == []:
-        return names
-    else:
-        return nick_names_that_map_to(nick_names + names, name_map)
-
-
-def are_GhPython_components_in_GH(compnt, names):
-    #type(str)->bool
-    doc = compnt.Attributes.Owner.OnPingDocument() #type: ignore
-    return any( type(GH_component) is GhPython.Component.ZuiPythonComponent 
-                and GH_component.NickName in names
-                for GH_component in doc.Objects
-              )
-#
-#
-class Connected_Components():
-    IO = {'upstream':'Input', 'downstream':'Output'}
-    connected = {'upstream':'Sources', 'downstream':'Recipients'}
-                    
-    def __call__(self, up_or_downstream, Params):
-        #type(str, type[any]) -> bool
-        assert up_or_downstream in self.keys
-        return [comp.Attributes.GetTopLevel.DocObject
-                for param in getattr(Params
-                                    ,self.IO[up_or_downstream]
-                                    ) 
-                for comp in getattr(param
-                                   ,self.connected[up_or_downstream]
-                                   )
-                ]
-connected_components = Connected_Components()
-
-def downstream_components(Params):
-    return [recipient.Attributes.GetTopLevel.DocObject
-            for param in Params.Output 
-            for recipient in param.Recipients
-            ]
-
-def are_any_GhPython_comps(up_or_downstream, names, Params):
-    #type(str, list, type[any])-> bool
-    comps = connected_components(up_or_downstream, Params) #compnt, Params)
-    GhPython_compnt_NickNames = [ comp.NickName for comp in comps
-                                if type( comp.Attributes.GetTopLevel.DocObject ) 
-                                   is GhPython.Component.ZuiPythonComponent
-                                ]
-    return ( any(name in GhPython_compnt_NickNames 
-                for name in names
-                )
-            or
-            any(are_any_GhPython_comps(up_or_downstream, names, comp.Params) 
-                for comp in comps
-                if hasattr(comp, 'Params') 
-                ) 
-            )
-            
-def are_GhPython_downstream(names, Params):
-    comps = downstream_components(Params) #compnt, Params)
-    GhPython_compnt_NickNames = [ comp.NickName for comp in comps
-                                  if type( comp.Attributes.GetTopLevel.DocObject ) 
-                                     is GhPython.Component.ZuiPythonComponent
-                                ]
-    return ( any(name in GhPython_compnt_NickNames 
-                 for name in names
-                 )
-             or
-             any(are_GhPython_downstream(names, comp.Params) 
-                 for comp in comps
-                 if hasattr(comp, 'Params') 
-                 ) 
-            )
-
-up_or_downstream_dict = dict(before = 'upstream'
-                            ,after =  'downstream'
-                            )
-
-def insert_tool(compnt
-               ,before_or_after
-               ,tools
-               ,Params
-               ,tool_to_insert
-               ,is_target
-               ,not_target
-               ):
-    #type(type[any], str, list, type[any], class, function, list) -> list
-    assert before_or_after in ('before', 'after')
-    up_or_downstream = up_or_downstream_dict[before_or_after]
-    offset = 1 if before_or_after == 'after' else 0
-    if any(func_name(tool) not in not_target for tool in tools):  
-                    # Not just last tool.  Else no point checking more
-                    # than one downstream component?  The user may 
-                    # wish to do other stuff after the tool
-                    # and name_map is now a meta option too.
-        already_have_tool = [name for name, tool_list in tools_dict.items() 
-                            if tool_to_insert in tool_list]
-                        # tools_dict is keyed on all present nick names 
-                        # as well as names of tools defined in this module
-        debug(already_have_tool)
-        debug(tools_dict)
-        #if (  not are_GhPython_components_in_GH(compnt, already_have_tool) and
-
-        name_map = compnt.opts['metas'].name_map
-        debug(name_map)
-
-        nick_names = nick_names_that_map_to(func_name(tool_to_insert), name_map)
-        nick_names += already_have_tool
-        debug(nick_names)
-
-        tool_in_other_components = are_any_GhPython_comps(up_or_downstream
-                                                         ,nick_names
-                                                         ,Params
-                                                         )
-
-        debug('tool_in_other_components == ' 
-              + str(not tool_in_other_components) 
-             )
-        if  not tool_in_other_components:
-                             # check tool not already there in another 
-                             # component that will be executed next.
-                             # TODO: None in entire canvas is too strict?
-            for i, tool in enumerate(tools):
-                debug('is_target(tool) : ' + str(is_target(tool)))
-                debug('tool : ' + str(tool))
-                if before_or_after == 'after':
-                    tools_run_anyway = tools[i:] 
-                else:
-                    tools_run_anyway = tools[:i] 
-
-                if is_target(tool) and tool_to_insert not in tools_run_anyway:
-                         # check tool not already inserted 
-                         # in tools after specials
-                    output('Inserting tool : ' + str(tool_to_insert), 'INFO')
-                    tools.insert(i + offset, tool_to_insert)
-    return tools
 
 
                 
@@ -713,6 +552,8 @@ do_not_remove = ('out'   # TODO: Removing Params has proved to be a
                 ,'retcode' # But if user adds it, we won't remove it
                 ,'classes'
                 )
+geom_params =  ['leg_frame']
+
 #
 do_not_remove += default_metas._fields
 do_not_remove += default_options._fields
@@ -729,7 +570,7 @@ bake_Usertext = BakeUsertext()
 parse_data = ParseData()
 recolour_objects = RecolourObjects()
 return_component_names = ReturnComponentNames()
-build_components = Buildcomponents()
+build_components = BuildComponents()
 
 
 
@@ -745,7 +586,7 @@ tools_dict = dict(get_Geom = get_Geom
                  ,Build_components = build_components
                  )
 
-def insert_sDNA_tool(mapped_name
+def cache_sDNA_tool(mapped_name
                     ,name_map
                     ,tools_dict
                     ):
@@ -753,57 +594,7 @@ def insert_sDNA_tool(mapped_name
                          ,sDNAWrapper(mapped_name)
                          )
 
-def tool_not_found_error(mapped_name
-                        ,name_map
-                        ,tools_dict
-                        ):
-    raise ValueError('Tool: ' + mapped_name + ' not found')
 
-def tool_factory(nick_name
-                ,name_map
-                ,tools_dict = tools_dict
-                ,tool_not_found = tool_not_found_error 
-                ):  
-    #type( str, dict, dict, function ) -> list
-
-    if not isinstance(nick_name, Hashable):
-        msg = 'Non-hashable variable given for key' + str(nick_name)
-        logging.error(msg)
-        raise TypeError(msg)
-
-    if nick_name not in tools_dict:   
-        map_result = getattr(name_map, nick_name, nick_name)  
-        # in case nick_name is a tool_name
-        
-        if not isinstance(map_result, str):
-            logging.debug('Processing list of tools found for ' + nick_name)
-            tools =[]
-            #nick_name_opts = {}
-            for mapped_name in map_result:
-                tools.append(tool_factory(mapped_name
-                                         ,name_map 
-                                         ,tools_dict
-                                         ,tool_not_found
-                                         )
-                            )
-
-            if len(tools) == 1:
-                tools = tools[0]
-            tools_dict.setdefault(nick_name, tools )
-        else:
-            mapped_name = map_result
-            logging.debug(nick_name + ' maps to ' + mapped_name)
-            if mapped_name in tools_dict:
-                logging.debug('Tool: ' + mapped_name + ' already in tools_dict')
-            else:
-                tool_not_found(mapped_name
-                              ,name_map
-                              ,tools_dict
-                              )
-
-
-    logging.debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
-    return tools_dict[nick_name] 
 
 
 
@@ -892,181 +683,65 @@ def component_decorator( BaseClass
                                    ,sDNA_GH_names
                                    )
             
-            if options.auto_parse_data:
-                tools = insert_tool(self
-                                   ,'after'
-                                   ,tools
-                                   ,Params
-                                   ,parse_data
-                                   ,lambda tool : tool == read_shapefile
-                                   ,[]
-                                   )     
+            # if options.auto_parse_data:
+            #     tools = insert_tool(self
+            #                        ,'after'
+            #                        ,tools
+            #                        ,Params
+            #                        ,parse_data
+            #                        ,lambda tool : tool == read_shapefile
+            #                        ,[]
+            #                        )     
             
             
-            if options.auto_plot_data:
+            if options.auto_plot_data: # already parses if no colours
                 tools = insert_tool(self
                                    ,'after'                
                                    ,tools
                                    ,Params
                                    ,recolour_objects
-                                   ,lambda tool : tool == parse_data
+                                   ,lambda tool : tool == read_shapefile #parse_data
                                    ,[]
                                    )    
             return tools
 
-        def update_Input_or_Output_Params(self
-                                         ,Input_or_Output
-                                         ,Params = None
-                                         ,tools = None
-                                         ,params_current = None
-                                         ,params_needed = None
-                                         ):
-            #type(str, list, list) -> None   
 
-
-            assert Input_or_Output in ['Input', 'Output']
-
-            if Params is None:
-                Params = self.Params
-
-            if params_current is None:
-                params_current = getattr(Params, Input_or_Output)[:]
-
-            self.do_not_add = do_not_add[:]
-
-
-            if tools is None:
-                tools = self.tools
-
-            if params_needed is None:
-                tools = self.tools
-                if Input_or_Output == 'Input':
-                    params_needed = [ input for tool in tools 
-                                            for input in tool.show['Input'] ]
-                else:
-                    tool = tools[-1]
-                    params_needed = list(tool.show['Output'])
-
-
-            debug(   'params_current NickNames =='
-                    + ' '.join(str(param.NickName) for param in params_current)
-                )
-
-            for param in params_current:  
-                if param.NickName in params_needed:
-                    debug('Param already there, adding to self.do_not_add == '
-                        + str(param.NickName))
-                    self.do_not_add += [param.NickName]
-                elif (param.NickName not in do_not_remove and
-                    len(getattr(param, 'Recipients', [])) == 0 and  
-                    len(getattr(param, 'Sources',    [])) == 0     ):
-                    debug(    'Param ' 
-                            + str(param.NickName) 
-                            + ' not needed, and can be removed.  ')
-                    #debug('Removing param ' + str(param.NickName))
-                    #Params.UnregisterOutputParameter(param)
-                    #Params.Output.Count -=1
-                    #Params.Output.Remove(param) 
-                    #Params.OnParametersChanged()
-                else:
-                    debug('Leaving param alone.  User added output? == ' 
-                        + str(param.NickName))
-
-                # else:  Leave alone.  The user added the param, 
-                # or the component was supplied that way by ourselves.
-                    self.do_not_add += [param.NickName]
-
-            for param_name in params_needed:
-                if param_name not in self.do_not_add: 
-                    self.do_not_add += [param_name]
-                    debug('Adding param == ' + param_name)
-
-                    #var = Grasshopper.Kernel.Parameters.Param_String(NickName = param_name)
-                    if param_name in ['leg_frame']:
-                        new_param_type = Grasshopper.Kernel.Parameters.Param_Geometry
-                    #elif param_name in ['leg_cols']:
-                    else:
-                        new_param_type = Grasshopper.Kernel.Parameters.Param_GenericObject
-                    #else:
-                    #    new_param_type = Grasshopper.Kernel.Parameters.Param_String
-
-                    if param_name == 'Data':
-                        Access = Grasshopper.Kernel.GH_ParamAccess.tree
-                    else: 
-                        Access = Grasshopper.Kernel.GH_ParamAccess.list
-
-                    var = new_param_type(NickName = param_name
-                                        ,Name = param_name
-                                        ,Description = param_name
-                                        ,Access = Access
-                                        ,Optional = True
-                                        )
-
-                    #var.NickName = param_name
-                    #var.Name = param_name
-                    #var.Description = param_name
-                    #if param_name == 'Data':
-                    #    var.Access = Grasshopper.Kernel.GH_ParamAccess.tree
-                    #else: 
-                    #    var.Access = Grasshopper.Kernel.GH_ParamAccess.list
-
-                    #var.Optional = True
-
-                    #index = getattr(Params, Input_or_Output).Count
-
-                    registers = dict(Input  = 'RegisterInputParam'
-                                    ,Output = 'RegisterOutputParam'
-                                    )
-                    getattr(Params, registers[Input_or_Output])(var) #, index)
-                    #Params.Output.Count +=1
-                    Params.OnParametersChanged()
-
-                else:
-                    debug('Param in self.do_not_add == ' + param_name)
 
         def update_Params(   self
                             ,Params = None
                             ,tools = None
-                         ):
-            
+                            ):
+            #type(type[any], type[any, list]) -> type[any]
 
             if Params is None:
                 try:
                     Params = ghenv.Component.Params
                 except:
                     Params = self.Params
-                #Params = getattr(self, 'Params', ghenv.Component.Params) 
 
             if tools is None:
                 tools = self.tools
 
-            ParamsSyncObj = Params.EmitSyncObject()
 
 
-            
-            self.update_Input_or_Output_Params('Output', Params, tools)
-            self.update_Input_or_Output_Params('Input', Params, tools)
-
-            Params.Sync(ParamsSyncObj)
-            Params.RepairParamAssociations()
-
-            return Params
+            return add_tool_params(Params
+                                  ,tools
+                                  ,do_not_add
+                                  ,do_not_remove
+                                  ,geom_params
+                                  )
     
 
         def update_tools(self, nick_name = None):
-            #self.my_tools = []
+            #type(type[any], str) -> type[any]
 
-            #for tool in tools:
-            #    # some are unique closures so no #if not hasattr(self, tool.func_name):
-            #    setattr(self, func_name(tool), tool)
-            #    self.my_tools +=[getattr(self, func_name(tool))]
-            
-            #Avoid issues with calling tools stored as methods with self:
             if nick_name is None:
                 nick_name = self.local_metas.nick_name
 
             tools = tool_factory(nick_name
-                                ,self.opts
+                                ,self.opts['metas'].name_map
+                                ,tools_dict
+                                ,cache_sDNA_tool
                                 )
             debug(tools)
                  
@@ -1094,7 +769,7 @@ def component_decorator( BaseClass
                         new_name = nick_name 
                     except:
                         try:
-                            new_name = ghenv.Component.NickName
+                            new_name = self.ghenv.Component.NickName
                         except:
                             new_name = "Self_test"     
 

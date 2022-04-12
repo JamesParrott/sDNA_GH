@@ -1,3 +1,9 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
+
+
 if      '__file__' in __builtins__  and  __name__ in __file__ and '__main__' not in __file__ and '<module>' not in __file__:                     
     # Assert:  We're in a module!
     pass

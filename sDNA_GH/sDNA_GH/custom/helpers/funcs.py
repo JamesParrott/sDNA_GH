@@ -1,3 +1,8 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
+
 import sys, UUID
 from math import log
 from os.path import isfile
@@ -41,7 +46,7 @@ def get_path(opts = get_path_default_opts, inst = None):
             path = ghdoc.Path
         except:
             try:
-                path = inst.ghdoc.Path #type: ignore
+                path = inst.ghdoc.Path 
             except:
                 try:
                     path = sc.doc.Path

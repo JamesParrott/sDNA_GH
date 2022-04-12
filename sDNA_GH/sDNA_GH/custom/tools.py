@@ -1,3 +1,8 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
+
 import sys, logging
 from collections import OrderedDict
 from abc import abstractmethod
@@ -57,12 +62,12 @@ from .helpers.funcs import (ghdoc
                            ,three_point_quadratic_spline
 
                            )
-from .skel.tool_runner import Tool
+from .skel.tools.runner import Tool
 from ..launcher import Output, Debugger
 from .options_manager import (make_nested_namedtuple
                              ,
                              )
-from .wrapper_pyshp import (get_unique_filename_if_not_overwrite
+from .pyshp_wrapper import (get_unique_filename_if_not_overwrite
                            ,get_points_list_from_geom_obj
                            ,write_from_iterable_to_shapefile_writer
                            ,get_fields_recs_and_shapes_from_shapefile

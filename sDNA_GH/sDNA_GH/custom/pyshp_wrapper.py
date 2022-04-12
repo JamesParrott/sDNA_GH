@@ -1,11 +1,10 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
-#
+__author__ = 'James Parrott'
+__version__ = '0.02'
 # Convenience wrappers to read and write .shp files 
 # from any iterable object and to any function
-#
-__author__ = 'James Parrott'
-__version__ = '0.01'
+
 
 import sys
 from os.path import normpath, join, split, isfile, isdir, dirname 

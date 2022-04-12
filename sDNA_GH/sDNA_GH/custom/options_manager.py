@@ -1,10 +1,11 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
 #
 # Functions to manage options data structures, e.g. fix dictionaries into named tuples
 #
-__author__ = 'James Parrott'
-__version__ = '0.01'
+
 #
 # No logging here so that we can use wrapper_logger before the options object is fixed
 #

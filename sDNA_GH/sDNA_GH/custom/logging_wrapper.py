@@ -1,12 +1,12 @@
-#! /usr/bin/python2.7
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
-#
+
 # Convenience wrapper to run Vinay Sajip's logger recipe with customisable
 # console  output in each module
 #
 __author__  = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
 __license__ = 'Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
-__version__ = '0.01'
+__version__ = '0.02'
 
 import sys
 from os.path import sep, join

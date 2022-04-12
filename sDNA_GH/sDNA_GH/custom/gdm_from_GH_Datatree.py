@@ -1,3 +1,8 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
+
 import sys, logging
 from collections import OrderedDict
 from itertools import chain, repeat, izip
@@ -14,7 +19,7 @@ from Grasshopper import DataTree
 
 from ..launcher import Output, Debugger
 from .helpers.funcs import is_uuid, ghdoc
-from .wrapper_pyshp import (create_new_groups_layer_from_points_list
+from .pyshp_wrapper import (create_new_groups_layer_from_points_list
                            ,get_all_shp_type_Rhino_objects
                            ,check_is_specified_obj_type
                            )

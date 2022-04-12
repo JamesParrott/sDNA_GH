@@ -1,21 +1,32 @@
-def create_random_grid_network():
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+__author__ = 'James Parrott'
+__version__ = '0.02'
+
+def create_random_grid_network(go, x, y, p):
     import rhinoscriptsyntax as rs
     import scriptcontext
     import Rhino
 
+    import sys
+    from random import random as random_num
+    from math import floor
+
+    if sys.version < '3':
+        range = xrange #type: ignore
 
     def grid_point_coords(n, m):
-        for y in xrange(n):
-            for x in xrange(m):
+        for y in range(n):
+            for x in range(m):
                 yield x, y
 
-    def make_poly_line(x1, y1, x2, y2, store,offset = [x, y]):
+    def make_poly_line(x1, y1, x2, y2, store, offset = [x, y]):
         if random_num() > p:
             x1 += offset[0]; x2 += offset[0]
             y1 += offset[1]; y2 += offset[1]
             store += [rs.AddLine([x1, y1, 0], [x2, y2, 0])]
 
-    if Go == True:  #if Go is canonical in Rhino.  ==True stops execution on
+    if go == True:  #if Go is canonical in Rhino.  ==True stops execution on
                 # input of a truthy variable
         M, N = map(floor,[M, N])
         geometries = []
