@@ -69,3 +69,7 @@ def quacks_like(Duck
                                                 )
                     )
             )
+
+def basic_function():
+    pass
+

@@ -29,32 +29,17 @@ from numbers import Number
 import locale
 from math import log
 from importlib import import_module
-if sys.version < '3.3':
-    from collections import Hashable, Iterable, MutableMapping
-else:
-    from collections.abc import Hashable, Iterable, MutableMapping
+
 
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
-import ghpythonlib.treehelpers as th
 from System.Drawing import Color as Colour
-from System.Drawing import PointF, SizeF
 from Grasshopper.GUI.Gradient import GH_Gradient
-import GhPython
-import Grasshopper.Kernel 
-from ghpythonlib.components import ( BoundingBox
-                                    ,Rectangle
-                                    ,Legend 
-                                    ,XYPlane
-                                    ,XZPlane
-                                    ,YZPlane
-                                    ,CustomPreview
-                                    )
+
 from .helpers.funcs import (ghdoc
                            ,is_uuid
-                           ,func_name
                            ,make_regex
                            ,splines
                            ,linearly_interpolate
