@@ -5,6 +5,7 @@ __version__ = '0.02'
 
 
 import sys
+from collections import namedtuple
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
@@ -12,6 +13,12 @@ if sys.version < '3.4':
         __metaclass__ = ABCMeta
 else:
     from abc import ABC
+
+from Grasshopper.Kernel.Parameters import Param_ScriptVariable
+                                          
+
+from ...basic.smart_comp import get_args_spec
+from ...add_params import ParamInfo
    
 
 class ToolABC(ABC):    
@@ -20,14 +27,6 @@ class ToolABC(ABC):
                     # to permit running of regular
                     # functions with attributes via ducktyping check
                     # in quacks_like
-    @abstractmethod
-    def args(self):
-        return ()   # Only the order need correspond to 
-                    # __call__'s args. The names can be 
-                    # different.  The ones in the args tuple
-                    # are used as keys in vals_dict.  
-                    # show['Inputs'] defines the
-                    # input Param names of the component 
 
     @abstractmethod
     def __call__(self, *args):
@@ -37,6 +36,7 @@ class ToolABC(ABC):
         locs = locals().copy()
         return [locs[retval] for retval in self.retvals]
     
+    @property
     @abstractmethod
     def retvals(self): 
         return ('retcode',) 
@@ -45,14 +45,58 @@ class ToolABC(ABC):
                  # output Param names on the 
                  # GH component
 
+    @property
     @abstractmethod
     def show(self):
-        return dict(Inputs = ()
-                   ,Outputs = ()
+        return dict(Inputs = ()   # Input  / Output Params to display.  Extras 
+                   ,Outputs = ()  # e.g. to go into **kwargs and thence options
+                                  # and ommissions with default values are
+                                  # supported
                    )
 
+    anon_pos_args = None    # Names of params that aren't named in the argspec
+                            # to put in *args
+    anon_kwargs = None      # Names of params that aren't named in the argspec
+                            # to put in **kwargs
+
+
+
+
+
+
 class Tool(ToolABC):
+    @property
+    def args(self):
+        return tuple(get_args_spec(self).args)
+
+
     def __str__(self):
         s = self.tool_name if hasattr(self, 'tool_name') else ''
-        s += ' an instance of ' + self.__class__ +'.  '
+        s += ' an instance of ' + self.__class__.__name__ +'.  '
         return s
+
+    @property
+    def component_inputs(self):
+        return self.args
+
+    @property
+    def component_outputs(self):
+        return self.retvals
+
+    factories_dict = {}
+
+    def params_list(self, names):
+        return [ParamInfo(factory = self.factories_dict.get(name
+                                                           ,Param_ScriptVariable
+                                                           )
+                         ,NickName = name
+                         ) for name in names
+               ]
+
+    @property
+    def input_params(self):
+        return self.params_list(self.component_inputs)
+    
+    @property
+    def output_params(self):
+        return self.params_list(self.component_outputs)

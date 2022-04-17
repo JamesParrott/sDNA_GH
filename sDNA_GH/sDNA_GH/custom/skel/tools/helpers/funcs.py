@@ -4,17 +4,8 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import sys
-from inspect import getargspec
-if sys.version < '3.3':
-    from collections import Callable
-else:
-    from collections.abc import Callable
-
-from sDNA_GH.sDNA_GH.custom.skel.tools.helpers.quacks_like import (quacks_like
-                                                                  ,basic_function
-                                                                  )
-            
+from uuid import UUID
+           
 
 def tool_name(tool):
     #type(type[any] / function) -> str
@@ -31,13 +22,11 @@ def tool_name(tool):
     else:
         return tool.__class__.__name__
 
-def get_args(callable):
-    if not isinstance(callable, Callable):
-        return None
-    # assert hasattr(callable, '__call__')
-    if (type(f).__name__ == 'function' or
-        f.__class__.__name__ == 'function' or
-        quacks_like(basic_function)):
-        return getargspec(f)
-    elif hasattr(f, '__call__'):
-        return getargspec(f.__call__)
+
+def is_uuid(val):
+    try:
+        UUID(str(val))
+        return True
+    except ValueError:
+        return False
+#https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid

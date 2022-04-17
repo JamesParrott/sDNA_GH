@@ -8,7 +8,7 @@ __version__ = '0.02'
 
 import sys
 from os.path import normpath, join, split, isfile, isdir, dirname 
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 from datetime import date
 from re import match
 
@@ -247,7 +247,7 @@ def get_unique_filename_if_not_overwrite(f, opts):
     if not opts.overwrite_shp_file:
         i = 1
         file_dir, full_file_name = split(f)   #os.path.split
-        [file_name, dot, file_extension] = full_file_name.rpartition('.')  #str.split
+        [file_name, _, file_extension] = full_file_name.rpartition('.')  #str.split
         while isfile(f):
             f = join(file_dir, file_name + opts.duplicate_file_name_suffix.format(i) + '.' + file_extension) #os.path.join
             i += 1  # Not good practice to change the value of the input argument shp_file_path, but if it's a str it's immutable, so no side effects

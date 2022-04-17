@@ -5,7 +5,6 @@ __version__ = '0.02'
 
 import sys, os
 from os.path import (join, isfile, dirname, isdir
-                     ,basename as filename
                      )
 from itertools import repeat
 from collections import namedtuple, OrderedDict
@@ -18,7 +17,7 @@ from .custom.options_manager import (load_toml_file
                                     )
 from .custom import logging_wrapper
 from .launcher import Output, Debugger, load_modules
-from .custom.helpers.funcs import (unpack_first_item_from_list
+from .custom.helpers.funcs import (first_item_if_seq
                                   ,get_path
                                   ,valid_re_normalisers
                                   )
@@ -26,10 +25,10 @@ from .custom.gdm_from_GH_Datatree import (convert_Data_tree_and_Geom_list_to_gdm
                                          ,override_gdm_with_gdm
                                          ,convert_dictionary_to_data_tree_or_lists
                                          )
-from .custom.skel.basic.smart_comp import SmartComponent  
+from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, get_args_spec  
 from .custom.skel.basic.ghdoc import ghdoc                                       
 from .custom.skel.tools.inserter import insert_tool
-from .custom.skel.tools.runner import run_tools
+from .custom.skel.tools.runner import run_tools, tools_dict
 from .custom.skel.tools.name_mapper import tool_factory
 from .custom.skel.add_params import add_tool_params
 from .custom.skel.builder import BuildComponents
@@ -230,7 +229,7 @@ class HardcodedOptions():
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' 
     assert re_normaliser in valid_re_normalisers 
-    classes = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+    class_bounds = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
     legend_extent = None  # [xmin, ymin, xmax, ymax]
     bbox = None  # [xmin, ymin, xmax, ymax]
     number_of_classes = 7
@@ -352,7 +351,9 @@ def override_all_opts( args_dict
     #
     config_file_override = {}
 
-    if 'config' in args_metas and isfile(args_metas['config']): 
+    if (args_metas and 
+        'config' in args_metas and 
+        isfile(args_metas['config'])): 
         path = args_metas['config']
         file_ext = path.rpartition('.')[2]
         if file_ext == 'ini':
@@ -364,7 +365,7 @@ def override_all_opts( args_dict
         else:
             debug('config_file_override = ' + str(config_file_override))
     else:
-        debug('No valid config file in args.  ')
+        debug('No valid config file in args.  ' + str(args_metas))
         file_ext = ''
 
 
@@ -550,9 +551,8 @@ do_not_remove = ('out'   # TODO: Removing Params has proved to be a
                 ,'opts'
                 ,'l_metas'
                 ,'retcode' # But if user adds it, we won't remove it
-                ,'classes'
+                ,'class_bounds'
                 )
-geom_params =  ['leg_frame']
 
 #
 do_not_remove += default_metas._fields
@@ -574,7 +574,7 @@ build_components = BuildComponents()
 
 
 
-tools_dict = dict(get_Geom = get_Geom
+tools_dict.update(get_Geom = get_Geom
                  ,read_Usertext = read_Usertext
                  ,write_shapefile = write_shapefile
                  ,read_shapefile = read_shapefile
@@ -621,17 +621,16 @@ class sDNA_GH_Component(SmartComponent):
     #sDNA_GH_path = sDNA_GH_path
     #sDNA_GH_package = sDNA_GH_package
 
-    def remove_component_output(self, name):
-        for param in self.Params.Output:
-            if param.NickName == name:
-                self.Params.UnregisterOutputParam(param)
     
 
-    def auto_insert_tools(self, tools, Params):
+    def auto_insert_tools(self, tools = None, Params = None):
         #type(type[any], list) -> None
         if tools is None:
             tools = self.my_tools
         tools = tools[:] if isinstance(tools, list) else [tools]
+
+        if Params is None:
+            Params = self.Params
 
         options = self.opts['options']
         
@@ -700,7 +699,8 @@ class sDNA_GH_Component(SmartComponent):
                                 ,recolour_objects
                                 ,lambda tool : tool == read_shapefile #parse_data
                                 ,[]
-                                )    
+                                ) 
+                                          
         return tools
 
 
@@ -722,11 +722,11 @@ class sDNA_GH_Component(SmartComponent):
 
 
         return add_tool_params(Params
-                                ,tools
-                                ,do_not_add
-                                ,do_not_remove
-                                ,geom_params
-                                )
+                              ,tools
+                              ,do_not_add
+                              ,do_not_remove
+                              ,wrapper = self.main
+                              )
 
 
     def update_tools(self, nick_name = None):
@@ -760,8 +760,8 @@ class sDNA_GH_Component(SmartComponent):
     def update_name(self, new_name = None):
         if new_name is None:
             new_name = self.Attributes.Owner.NickName 
-            # IfF this is run before __init__ has run, there is no 
-            # Attributes attribute yet, but can use ghenv.Component
+            # If this is run before __init__ has run, there is no 
+            # Attributes attribute yet (ghenv.Component can be used instead).
 
 
         if not hasattr(self, 'nick_name') or (
@@ -822,6 +822,7 @@ class sDNA_GH_Component(SmartComponent):
 
             self.sDNA = sDNA
             self.sDNA_path = path
+            debug('Path sDNAUISpec imported from == ' + path)
             self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
                                                                 ,sDNA_path = path 
                                                             )
@@ -837,7 +838,7 @@ class sDNA_GH_Component(SmartComponent):
 
 
     def __init__(self, *args, **kwargs):
-
+        debug('Calling parent initialiser')
         SmartComponent.__init__(self, *args, **kwargs)
         self.load_modules = load_modules
         self.ghdoc = ghdoc
@@ -846,26 +847,25 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-    def main(self, args_dict):        
+    def main(self, **args_dict):        
+        debug('self.main started... \n')
         debug(args_dict)
-        debug('self.Params.Input Names == ' + ' '.join(key.Name for key in self.Params.Input))
+        args_dict = OrderedDict()
 
-
-        go = args_dict.get('go', False)
+        go = first_item_if_seq(args_dict.get('go', False), False) 
+             # Input Params set 
+             # to list acess so
+             # strip away outer 
+             # list container
         Data = args_dict.get('Data', None)
         Geom = args_dict.get('Geom', None)
-        f_name = args_dict.get('file', '')
 
-        if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
-                f_name=f_name[0] 
-
-        external_opts = unpack_first_item_from_list(args_dict.get('opts', {}), {})
+        f_name = first_item_if_seq(args_dict.get('file', ''), '')
+        external_opts = first_item_if_seq(args_dict.get('opts', {}), {})
+        external_local_metas = first_item_if_seq(args_dict.get('local_metas', empty_NT), empty_NT)
         debug(external_opts)
 
-        
-
-        external_local_metas = unpack_first_item_from_list(args_dict.get('local_metas', empty_NT), empty_NT)
-        gdm = args_dict.get('gdm', {})
+        gdm = first_item_if_seq(args_dict.get('gdm', {}))
 
         debug('gdm from start of RunScript == ' + str(gdm)[:50])
         #print('#1 self.local_metas == ' + str(self.local_metas))
@@ -901,7 +901,7 @@ class sDNA_GH_Component(SmartComponent):
 
         debug('Opts overridden....    ')
         debug(self.local_metas)
-        debug('options after override in RunScript == ' + str(self.opts['options']))
+        debug('options after override in main == ' + str(self.opts['options']))
         
         if (self.opts['metas'].auto_update_Rhino_doc_path 
             or not isfile(self.opts['options'].Rhino_doc_path)        ):
@@ -914,18 +914,23 @@ class sDNA_GH_Component(SmartComponent):
             
             if self.local_metas.sync_to_module_opts != synced:
                 if self.local_metas.sync_to_module_opts:
-                    self.opts = module_opts #sync
+                    self.opts = module_opts #resync
                 else:
                     self.opts = self.opts.copy() #desync
+                    #
+                    #
+                    # TODO: option so make module_opts = self.opts
+                    # Write but not read?  Wouldn't such a component
+                    # be synced anyway, with all others on read only?
 
             if self.opts['metas'].sDNA != old_sDNA:
                 self.update_sDNA()
                 #self.Params = 
                 self.update_Params()#self.Params, self.tools)
 
+        debug(go)
 
-        if go in [True, [True]]: # [True] in case go set to List Access in GH component 
-            returncode = 999
+        if go == True: 
             assert isinstance(self.tools, list)
 
             debug('my_tools == '
@@ -933,28 +938,29 @@ class sDNA_GH_Component(SmartComponent):
                     )
 
             geom_data_map = convert_Data_tree_and_Geom_list_to_gdm(Geom
-                                                                    ,Data
-                                                                    ,self.opts
-                                                                    )
+                                                                  ,Data
+                                                                  ,self.opts
+                                                                  )
             
             debug('type(geom_data_map) == '
-                    +str(type(geom_data_map))
-                    )
+                 +str(type(geom_data_map))
+                 )
             
 
-            geom_data_map = override_gdm_with_gdm(gdm
-                                                    ,geom_data_map
-                                                    ,self.opts
-                                                    )
+            gdm = override_gdm_with_gdm(gdm
+                                       ,geom_data_map
+                                       ,self.opts
+                                       )
 
-            debug('After merge type(geom_data_map) == ' 
-                    +str(type(geom_data_map))
+            debug('After merge type(gdm) == ' 
+                    +str(type(gdm))
                     )                
             
-            debug('After merge geom_data_map == ' 
-                    +str(geom_data_map.items()[:3])
+            debug('After merge gdm == ' 
+                    +str(gdm.items()[:3])
                     +' ...'
                     )
+            args_dict['gdm'] = gdm
 
 
             ret_vals_dict = run_tools(self.tools, args_dict)
@@ -973,12 +979,39 @@ class sDNA_GH_Component(SmartComponent):
 
             ret_vals_dict['Data'] = NewData
             ret_vals_dict['Geom'] = NewGeometry
-            #if 'leg_frame' in ret_vals_dict:
-            #    ret_vals_dict['rect'] = ret_vals_dict['leg_frame']
+            ret_vals_dict['file'] = ret_vals_dict['f_name']
             ret_vals_dict['opts'] = [self.opts.copy()]
             ret_vals_dict['l_metas'] = self.local_metas #immutable
-            return ret_vals_dict
 
+
+            tool_opts = self.opts
+            nick_name = self.local_metas.nick_name
+            sDNA = self.opts['metas'].sDNA
+            if nick_name in self.opts:
+                tool_opts = self.opts[nick_name]
+                if isinstance(tool_opts, dict):
+                    tmp = {}
+                    for tool_name in tool_opts:
+                        tmp.update(tool_opts[tool_name]._asdict())
+                    tool_opts = tmp
+        else:
+            debug('go was not == True')
+            ret_vals_dict = {}
+            ret_vals_dict['OK'] = False
+            tool_opts = {}
+        retval_names = [Param.Name for Param in self.Params.Output]
+        logger.debug('From self.main : \n\n')
+        return custom_retvals(retval_names
+                             ,[  ret_vals_dict
+                              ,  self.opts['metas']
+                              ,  self.opts['options']
+                              ,  self.local_metas
+                              ,  tool_opts
+                              ]
+                             ,return_locals = True
+                             )
+    main.input_params = get_args_spec(main).args
+    main.output_params = ['OK', 'opts']  
 
 
 
@@ -1249,12 +1282,12 @@ class sDNA_GH_Component(SmartComponent):
 #             if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
 #                     f_name=f_name[0] 
 
-#             external_opts = unpack_first_item_from_list(args_dict.get('opts', {}), {})
+#             external_opts = first_item_if_seq(args_dict.get('opts', {}), {})
 #             debug(external_opts)
 
             
 
-#             external_local_metas = unpack_first_item_from_list(args_dict.get('local_metas', empty_NT), empty_NT)
+#             external_local_metas = first_item_if_seq(args_dict.get('local_metas', empty_NT), empty_NT)
 #             gdm = args_dict.get('gdm', {})
 
 #             debug('gdm from start of RunScript == ' + str(gdm)[:50])

@@ -4,24 +4,25 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import sys, UUID
+import sys
 from math import log
 from os.path import isfile
 if sys.version < '3.3':
-    from collections import Iterable
+    from collections import Sequence
 else:
-    from collections.abc import Iterable
+    from collections.abc import Sequence
 
-import Rhino, GhPython
-import rhinoscriptsynax as rs
+import Rhino
+import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
-from .skel.basic.GH_env import ghdoc
+from ..skel.basic.ghdoc import ghdoc
 
 
 class GetPathDefaults:
     Default_sDNA_GH_file_path = None
 get_path_default_opts = dict(options = GetPathDefaults)
+
 
 def get_path(opts = get_path_default_opts, inst = None):
     #type(dict, type[any]) -> str
@@ -47,17 +48,17 @@ def get_path(opts = get_path_default_opts, inst = None):
     return path
 
 
-
-def unpack_first_item_from_list(l, null_container = {}):
+def first_item_if_seq(l, null_container = {}):
     #type(type[any])-> dict
     #hopefully!
     if l:
-        if isinstance(l, Iterable) and not isinstance(l, str):
+        if isinstance(l, Sequence) and not isinstance(l, str):
             return l[0]
         else:
             return l
     else:
         return null_container        
+
 
 def make_regex(pattern):
     # type (str) -> str
@@ -70,17 +71,6 @@ def make_regex(pattern):
         pattern = pattern.replace(c,'\\' + c)
     pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
     return r'\A' + pattern + r'\Z'
-
-
-
-def is_uuid(val):
-    try:
-        UUID(str(val))
-        return True
-    except ValueError:
-        return False
-#https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
-
 
 
 def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
@@ -115,6 +105,7 @@ def exp_spline(x, x_min, base, x_max, y_min, y_max):
                                                               ,base 
                                                               )
                        )
+
 
 valid_re_normalisers = ['linear', 'exponential', 'logarithmic']
 

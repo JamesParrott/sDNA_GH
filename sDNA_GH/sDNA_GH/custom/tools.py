@@ -5,49 +5,49 @@ __version__ = '0.02'
 
 import sys, logging
 from collections import OrderedDict
-from abc import abstractmethod
-if sys.version < '3.4':
-    from abc import ABCMeta
-    class ABC:
-        __metaclass__ = ABCMeta
-else:
-    from abc import ABC
-
-import sys, os  
-from os.path import (join, split, isfile, dirname, isdir, sep, normpath
-                     ,basename as filename
+import os  
+from os.path import (join, isfile, dirname, isdir
                      )
 
 from re import match
-from subprocess import check_output, call
+from subprocess import check_output
 from time import asctime
-from collections import namedtuple, OrderedDict
-from itertools import chain, izip, repeat #, cycle
-from uuid import UUID
+from collections import OrderedDict
+from itertools import izip
 import csv
 from numbers import Number
 import locale
-from math import log
-from importlib import import_module
-
-
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 from System.Drawing import Color as Colour
 from Grasshopper.GUI.Gradient import GH_Gradient
+from Grasshopper.Kernel.Parameters import (Param_Boolean
+                                          ,Param_Geometry
+                                          ,Param_String
+                                          ,Param_FilePath
+                                          ,Param_Guid
+                                          ,Param_Integer
+                                          ,Param_Line
+                                          ,Param_Rectangle
+                                          ,Param_Colour
+                                          ,Param_Number
+                                          ,Param_ScriptVariable
+                                          )
 
-from .helpers.funcs import (ghdoc
-                           ,is_uuid
-                           ,make_regex
+
+from .helpers.funcs import (make_regex
                            ,splines
                            ,linearly_interpolate
                            ,map_f_to_three_tuples
                            ,three_point_quadratic_spline
-
                            )
-from .skel.tools.runner import Tool
+from .skel.basic.ghdoc import ghdoc
+from .skel.basic.smart_comp import custom_retvals
+from .skel.tools.helpers.funcs import is_uuid
+from .skel.tools.helpers.classes import Tool
+from .skel.add_params import ParamInfo
 from ..launcher import Output, Debugger
 from .options_manager import (make_nested_namedtuple
                              ,
@@ -79,15 +79,45 @@ from .gdm_from_GH_Datatree import (make_gdm
 logger = logging.getLogger(__name__)
 output = Output(tmp_logs = [], logger = logger)
 debug = Debugger(output)
-
-
-   
-
 sDNA_tool_logger = logging.getLogger('sDNA')
 
-class sDNAWrapper(Tool):
+
+
+
+
+class sDNA_GH_Tool(Tool):
+
+    factories_dict = dict(go = Param_Boolean
+                         ,OK = Param_Boolean
+                         ,file = Param_FilePath
+                         ,Geom = Param_Geometry
+                         ,Data = Param_ScriptVariable
+                         ,leg_frame = Param_Rectangle
+                         ,gdm = Param_ScriptVariable
+                         ,opts = Param_ScriptVariable
+                         ,config = Param_FilePath
+                         ,l_metas = Param_ScriptVariable
+                         ,field = Param_String
+                         ,plot_min = Param_Number
+                         ,plot_max = Param_Number
+                         ,class_bounds = Param_Number
+                         ,abbrevs = Param_ScriptVariable
+                         ,sDNA_fields = Param_ScriptVariable
+                         ,bbox = Param_ScriptVariable
+                         )
+
+    def params_list(self, names):
+        return [ParamInfo(factory = self.factories_dict.get(name
+                                                           ,Param_ScriptVariable
+                                                           )
+                         ,NickName = name
+                         ,Access = 'tree' if name == 'Data' else 'list'
+                         ) for name in names                            
+               ]
+
+class sDNAWrapper(sDNA_GH_Tool):
     # This class is instantiated once per sDNA tool name.  In addition to the 
-    # other necessary attributes of Tool, instances know their own name, in
+    # other necessary attributes of sDNA_GH_Tool, instances know their own name, in
     # self.tool_name.  Only when instances are called, are Nick_names and sDNA
     # are looked up in local_metas, and opts['metas'], in the args.
     # 
@@ -157,16 +187,17 @@ class sDNAWrapper(Tool):
         sDNA = opts['metas'].sDNA
         global do_not_remove
         do_not_remove += tuple(tool_opts[sDNA]._fields)
+        self.component_inputs = ('file',) #self.args[:1]
 
 
-    args = ('file', 'opts', 'l_metas')
-    component_inputs = ('go', ) + args[:2]
+    # args = ('file', 'opts', 'l_metas')
+    #component_inputs = ('go', ) + self.args[:2]
 
 
     def __call__(self # the callable instance / func, not the GH component.
                 ,f_name
                 ,opts
-                ,local_metas
+                ,l_metas
                 ):
         #type(Class, dict(namedtuple), str, Class, DataTree)-> Boolean, str
 
@@ -180,7 +211,7 @@ class sDNAWrapper(Tool):
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
 
-        tool_opts, get_syntax = self.get_tool_opts_and_syntax(opts, local_metas)
+        tool_opts, get_syntax = self.get_tool_opts_and_syntax(opts, l_metas)
 
 
         dot_shp = options.shp_file_extension
@@ -230,7 +261,7 @@ class sDNAWrapper(Tool):
                     + ' --om ' + run_sDNA.map_to_string( syntax["outputs"] )
                     + ' ' + syntax["config"]
                     )
-        
+        logger.info('sDNA command run = ' + command)
         sDNA_tool_logger.debug(command)
 
         try:
@@ -256,25 +287,19 @@ class sDNAWrapper(Tool):
                                                                 # os.environ["PYTHONPATH"] not found in Iron Python
 
         #return return_code, tool_opts[sDNA].output, gdm, a
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+
+        return custom_retvals(self.retvals, [], True)
     
     retvals = 'retcode', 'f_name', 'gdm', 'opts'
-    show = dict(Input = component_inputs
-                ,Output = ('OK', 'file', retvals[-1])
-                )
+    component_outputs = ('file',) # retvals[-1])
 
 
 
-class GetObjectsFromRhino(Tool):
-    args = ('gdm', 'opts') # Only the order need correspond to the 
-                           # function's args. The names can be 
-                           # different.  The ones in the args tuple
-                           # are used as keys in vals_dict and for 
-                           # input Param names on the component
-    component_inputs = ('go', args[1]) # 'Geom', 'Data') + args
+class GetObjectsFromRhino(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = (self.args[0], 'config') 
     
-    def __call__(self, geom_data_map, opts):
+    def __call__(self, opts, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
 
         options = opts['options']
@@ -285,14 +310,15 @@ class GetObjectsFromRhino(Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         
         #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
-        gdm = make_gdm(get_objs_and_OrderedDicts(
-                                                options
+        if gdm:
+            tmp_gdm = gdm
+        gdm = make_gdm(get_objs_and_OrderedDicts(options
                                                 ,get_all_shp_type_Rhino_objects
                                                 ,get_all_groups
                                                 ,get_members_of_a_group
                                                 ,lambda *args, **kwargs : {} 
                                                 ,check_is_specified_obj_type
-                                                            ) 
+                                                ) 
                                 )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
 
@@ -303,41 +329,37 @@ class GetObjectsFromRhino(Tool):
         if len(gdm) > 0:
             debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
         debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
-
-        gdm = override_gdm_with_gdm(gdm, geom_data_map, opts)
+        if tmp_gdm:
+            gdm = override_gdm_with_gdm(gdm, tmp_gdm, opts)
         sc.doc = ghdoc # type: ignore 
 
-        retcode = 0
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
-
-    retvals = 'retcode', 'gdm'
-    show = dict(Input = component_inputs
-               ,Output = ('OK', 'Geom') + retvals[1:]
-               )
+        return custom_retvals(self.retvals, [], True)
 
 
-class ReadUsertext(Tool):
-    args = ('gdm', 'opts')
-    component_inputs = ('go', 'Data', args[0])
+    retvals = ('gdm',)
+    component_outputs = ('Geom', ) 
 
-    def __call__(self, gdm, opts):
+
+class ReadUsertext(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = ('Geom',) # self.args[0])
+
+    def __call__(self, gdm):
         #type(str, dict, dict) -> int, str, dict, list
 
         debug('Starting read_Usertext... ')
-        options = opts['options']
 
         # if (options.auto_get_Geom and
-        #    (not geom_data_map or not hasattr(geom_data_map, 'keys') or
-        #    (len(geom_data_map.keys()) == 1 and geom_data_map.keys()[0] == tuple() ))):
+        #    (not gdm or not hasattr(gdm, 'keys') or
+        #    (len(gdm.keys()) == 1 and gdm.keys()[0] == tuple() ))):
         #     #
-        #     retcode, gdm = get_Geom( geom_data_map
+        #     retcode, gdm = get_Geom( gdm
         #                             ,opts
         #                             )
         #     #
         # else:
         #     retcode = 0
-        #     gdm = geom_data_map
+        #     gdm = gdm
         #if opts['options'].read_overides_Data_from_Usertext:
 
         read_Usertext_as_tuples = get_OrderedDict()
@@ -348,32 +370,30 @@ class ReadUsertext(Tool):
         # switching the target to RhinoDoc if needed, hence the following line 
         # is important:
         sc.doc = ghdoc # type: ignore 
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
+
 
     retvals = 'retcode', 'gdm'
-
-    show = dict(Input = component_inputs
-               ,Output = ('OK', 'Geom', 'Data') + retvals[1:]
-               )
+    component_outputs = ('Data', ) 
+               
 
 
-class WriteShapefile(Tool):
-    args = ('file', 'gdm', 'opts')
-    component_inputs = ('go', args[0], 'Geom', 'Data') + args[1:]
+class WriteShapefile(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = ('file', 'Geom', 'Data') 
 
-    def __call__(self, f_name, geom_data_map, opts):
+    def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         
         options = opts['options']
 
         shp_type = options.shp_file_shape_type            
-        #print geom_data_map
+        #print gdm
         # if (options.auto_read_Usertext and
-        #         (not geom_data_map or not hasattr(geom_data_map, 'values')
-        #         or all(len(v) ==0  for v in geom_data_map.values()))):
-        #     retcode, f_name, geom_data_map = read_Usertext(  f_name
-        #                                                     ,geom_data_map
+        #         (not gdm or not hasattr(gdm, 'values')
+        #         or all(len(v) ==0  for v in gdm.values()))):
+        #     retcode, f_name, gdm = read_Usertext(  f_name
+        #                                                     ,gdm
         #                                                     ,opts
         #                                                     )
 
@@ -418,10 +438,10 @@ class WriteShapefile(Tool):
             return obj #tupl[0].ToString() # uuid
 
         def find_keys(obj):
-            return geom_data_map[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
+            return gdm[obj].keys() #tupl[1].keys() #rs.GetUserText(x,None)
 
         def get_data_item(obj, key):
-            return geom_data_map[obj][key] #tupl[1][key]
+            return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
             if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
@@ -433,14 +453,14 @@ class WriteShapefile(Tool):
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
 
-        #debug('Type of geom_data_map == '+ type(geom_data_map).__name__)                         
-        #debug('Size of geom_data_map == ' + str(len(geom_data_map)))
-        #debug('Gdm keys == ' + ' '.join( map(lambda x : x[:5],geom_data_map.keys() )) )
-        #debug('Gdm.values == ' + ' '.join(map(str,geom_data_map.values())))
+        #debug('Type of gdm == '+ type(gdm).__name__)                         
+        #debug('Size of gdm == ' + str(len(gdm)))
+        #debug('Gdm keys == ' + ' '.join( map(lambda x : x[:5],gdm.keys() )) )
+        #debug('Gdm.values == ' + ' '.join(map(str,gdm.values())))
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
-                                                geom_data_map
+                                                gdm
                                         #my_iter 
                                                 ,f_name 
                                         #shp_file 
@@ -464,22 +484,18 @@ class WriteShapefile(Tool):
         # switch the targeted file to RhinoDoc if needed, hence the following line 
         # is important:
         sc.doc = ghdoc # type: ignore 
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
 
     retvals = 'retcode', 'f_name', 'gdm'
-
-    show = dict(Input = component_inputs
-               ,Output = ('OK', 'file') #+ write_shp.retvals[2:]
-               )
+    component_outputs =  ('file',) 
+               
 
 
-class ReadShapefile(Tool):
-    #type() -> function
-    args = ('file', 'gdm', 'opts')
-    component_inputs = ('go', args[0], 'Geom') + args[1:]
+class ReadShapefile(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = ('file', )
 
-    def __call__(self, f_name, geom_data_map, opts ):
+    def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts['options']
 
@@ -490,11 +506,11 @@ class ReadShapefile(Tool):
 
         if not recs:
             output('No data read from Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, geom_data_map, None    
+            return 1, f_name, gdm, None    
             
         if not shapes:
             output('No shapes in Shapefile ' + f_name + ' ','WARNING')
-            return 1, f_name, geom_data_map, None
+            return 1, f_name, gdm, None
 
         if not bbox:
             output('No Bounding Box in Shapefile.  '
@@ -519,15 +535,15 @@ class ReadShapefile(Tool):
             obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
             # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
         
-            if isinstance(geom_data_map, dict) and len(geom_data_map) == len(recs):
+            if isinstance(gdm, dict) and len(gdm) == len(recs):
                 # figuring out an override for different number of overrided geom objects
                 # to shapes/recs is to open a large a can of worms.  Unsupported.
                 # If the override objects are in Rhino anyway then the uuid field in the shape
                 # file will be picked up in any case in get_shape_file_rec_ID
                 if sys.version_info.major < 3:
-                    shape_keys = geom_data_map.viewkeys()  
+                    shape_keys = gdm.viewkeys()  
                 else: 
-                    shape_keys = geom_data_map.keys()
+                    shape_keys = gdm.keys()
                 shapes_to_output = [shp_key for shp_key in shape_keys]
                     # These points shouldn't be used, as by definition they 
                     # come from objects that already
@@ -564,20 +580,19 @@ class ReadShapefile(Tool):
 
         retcode = 0
 
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
+
 
     retvals = 'retcode', 'gdm', 'abbrevs', 'sDNA_fields', 'bbox', 'opts'
-    show = dict(Input = component_inputs
-               ,Output = ('OK', 'Geom', 'Data') + retvals[1:]
-               ) 
+    component_outputs = ('Geom', 'Data') + retvals[1:]
+               
 
 
 
 
-class WriteUsertext(Tool):
-    args = ('gdm', 'opts')
-    component_inputs = ('go', 'Geom', 'Data') + args
+class WriteUsertext(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = ('Geom', 'Data')
 
 
     def __call__(self, gdm, opts):
@@ -659,63 +674,67 @@ class WriteUsertext(Tool):
         
         retcode = 0
 
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
     
-    retvals = ('retcode', 'gdm')
-    show = dict(Input = component_inputs
-               ,Output = ('OK',) #[0] + ('Geom', 'Data') + write_Usertext.retvals[1:]
-               )
+    retvals = ('retcode')
+    component_outputs = () 
+               
 
 
 
-class BakeUsertext(WriteUsertext):
-    args = ('gdm', 'opts')
-    component_inputs = ('go', 'Geom') + args
+class BakeUsertext(sDNA_GH_Tool):
 
-    write_Usertext = WriteUsertext.__call__
+    def __init__(self, *args, **kwargs):
+        self.write_Usertext = WriteUsertext(*args, **kwargs)
+        self.component_inputs = ('Geom', 'Data')
 
-    def __call__(self, geom_data_map, opts):
+    def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list  
 
-        gdm = OrderedDict()
-        for obj in geom_data_map:
+        tmp_gdm = OrderedDict()
+
+        add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
+
+
+        for obj in gdm:
             doc_obj = ghdoc.Objects.Find(obj)
             if doc_obj:
                 geometry = doc_obj.Geometry
                 attributes = doc_obj.Attributes
                 if geometry:
-                    add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
                     # trying to avoid constantly switching sc.doc
 
-                    gdm[add_to_Rhino(geometry, attributes)] = geom_data_map[obj] # The bake
+                    # The actual bake
+                    tmp_gdm[add_to_Rhino(geometry, attributes)] = gdm[obj] 
+                    # tmp_gdm keys are uuids to Rhino objects, 
+                    # not GH objects in gdm keys
         
-        retcode, gdm = self.write_Usertext(gdm, opts)
+        retcode = self.write_Usertext(tmp_gdm, opts)
+        gdm = tmp_gdm
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
 
-    retvals = ('retcode',) #'f_name', 'gdm'
-    show = dict(Input = component_inputs
-               ,Output = ('OK',) #bake_Usertext.retvals #[0] + ('Geom', 'Data') + bake_Usertext.retvals[1:]
-               )
+    retvals = ('retcode', 'gdm') #'f_name', 'gdm'
+    component_outputs =  ('Geom') 
+               
 
 
 
 
-class ParseData(Tool):
-    args = ('gdm', 'opts')
-    component_inputs = ('go', 'Geom', 'Data', args[0], 'field', 'plot_max', 'plot_min', 'classes') + args[1:]
+class ParseData(sDNA_GH_Tool):
+    def __init__(self):
+        self.component_inputs = ('Geom', 'Data', self.args[0], 'field', 'plot_max'
+                                ,'plot_min', 'class_bounds')
 
-    def __call__(self, geom_data_map, opts):
+    def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
         options = opts['options']
 
         field = options.field
 
-        data = [ val[field] for val in geom_data_map.values()]
+        data = [ val[field] for val in gdm.values()]
         debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
         x_max = max(data) if options.plot_max is None else options.plot_max
         x_min = min(data) if options.plot_min is None else options.plot_min
@@ -723,21 +742,20 @@ class ParseData(Tool):
         # if options.plot_min if options.plot_min else min(data) 
 
 
-        no_manual_classes = (not isinstance(options.classes, list)
+        no_manual_classes = (not isinstance(options.class_bounds, list)
                             or not all( isinstance(x, Number) 
-                                            for x in options.classes
+                                            for x in options.class_bounds
                                         )
                             )
 
         if options.sort_data or (no_manual_classes 
            and options.class_spacing == 'equal_spacing'  ):
             # 
-            gdm = OrderedDict( sorted(geom_data_map.items()
+            gdm = OrderedDict( sorted(gdm.items()
                                     ,key = lambda tupl : tupl[1][field]
                                     ) 
                             )
-        else:
-            gdm = geom_data_map
+
 
         #valid_class_spacers = valid_renormalisers + ['equal number of members'] 
 
@@ -748,17 +766,17 @@ class ParseData(Tool):
             m = options.number_of_classes
             if options.class_spacing == 'equal number of members':
                 n = len(gdm)
-                objs_per_class, rem = divmod(n, m)
+                objs_per_class = n // m
                 # assert gdm is already sorted
-                classes = [ val[field] for val in 
+                class_bounds = [ val[field] for val in 
                                     gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
                                 ]  # classes include their lower bound
-                debug('num class boundaries == ' + str(len(classes)))
+                debug('num class boundaries == ' + str(len(class_bounds)))
                 debug(options.number_of_classes)
                 debug(n)
-                assert len(classes) + 1 == options.number_of_classes
+                assert len(class_bounds) + 1 == options.number_of_classes
             else: 
-                classes = [
+                class_bounds = [
                     splines[options.class_spacing](  
                                     i
                                     ,0
@@ -769,10 +787,10 @@ class ParseData(Tool):
                                                 )     for i in range(1, m + 1) 
                                     ]
         else:
-            classes = options.classes
+            class_bounds = options.class_bounds
         
         # opts['options'] = opts['options']._replace(
-        #                                     classes = classes
+        #                                     class_bounds = class_bounds
         #                                    ,plot_max = x_max
         #                                    ,plot_min = x_min
         #                                                         )
@@ -793,11 +811,11 @@ class ParseData(Tool):
             #'linear' # exponential, logarithmic
             def classifier(x): 
 
-                highest_lower_bound = x_min if x < classes[0] else max(y 
-                                                for y in classes + [x_min] 
+                highest_lower_bound = x_min if x < class_bounds[0] else max(y 
+                                                for y in class_bounds + [x_min] 
                                                 if y <= x                       )
                 #Classes include their lower bound
-                least_upper_bound = x_max if x >= classes[-1] else min(y for y in classes + [x_max] 
+                least_upper_bound = x_max if x >= class_bounds[-1] else min(y for y in class_bounds + [x_max] 
                                         if y > x)
 
                 return re_normaliser (0.5*(least_upper_bound + highest_lower_bound))
@@ -808,18 +826,18 @@ class ParseData(Tool):
         # e.g. thousand seperators
 
 
-        mid_points = [0.5*(x_min + min(classes))]
-        mid_points += [0.5*(x + y) for (x,y) in zip(  classes[0:-1]
-                                                    ,classes[1:]  
+        mid_points = [0.5*(x_min + min(class_bounds))]
+        mid_points += [0.5*(x + y) for (x,y) in zip(  class_bounds[0:-1]
+                                                    ,class_bounds[1:]  
                                                 )
                     ]
-        mid_points += [ 0.5*(x_max + max(classes))]
+        mid_points += [ 0.5*(x_max + max(class_bounds))]
         debug(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
         x_min_s = options.num_format.format(x_min)
-        upper_s = options.num_format.format(min( classes ))
+        upper_s = options.num_format.format(min( class_bounds ))
         mid_pt_s = options.num_format.format( mid_points[0] )
 
         legend_tags = [options.first_legend_tag_format_string.format( 
@@ -829,9 +847,9 @@ class ParseData(Tool):
                                                                     )
                                                         ]
         for lower_bound, mid_point, upper_bound in zip( 
-                                            classes[0:-1]
+                                            class_bounds[0:-1]
                                             ,mid_points[1:-1]
-                                            ,classes[1:]  
+                                            ,class_bounds[1:]  
                                                     ):
             
             lower_s = options.num_format.format(lower_bound)
@@ -845,7 +863,7 @@ class ParseData(Tool):
                                                                 )
                             ]
 
-        lower_s = options.num_format.format(max( classes ))
+        lower_s = options.num_format.format(max( class_bounds ))
         x_max_s = options.num_format.format(x_max)
         mid_pt_s = options.num_format.format(mid_points[-1])
 
@@ -867,18 +885,17 @@ class ParseData(Tool):
         #retvals['max'] = x_max = max(data)
         #retvals['min'] = x_min = min(data)
 
-        gdm = OrderedDict(zip( geom_data_map.keys() + legend_tags 
+        gdm = OrderedDict(zip( gdm.keys() + legend_tags 
                             ,(classifier(x) for x in data + mid_points)
                             )
                         )
         plot_min, plot_max = x_min, x_max
         retcode = 0
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
-    retvals = 'retcode', 'plot_min', 'plot_max', 'gdm', 'opts', 'classes'
-    show = dict(Input = component_inputs
-               ,Output = ('OK',) + retvals[1:3] + ('Data', 'Geom') + retvals[3:-1]
-               )
+        return custom_retvals(self.retvals, [], True)
+
+    retvals = 'retcode', 'plot_min', 'plot_max', 'gdm', 'opts'
+    component_outputs = ('OK',) + retvals[1:3] + ('Data', 'Geom') + retvals[3:-1]
+               
 
 GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             ,1 : 'Forest'
@@ -890,20 +907,21 @@ GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
                             ,7 : 'Zebra'
                             }
 
-class RecolourObjects(ParseData):
-    args = ('gdm', 'opts')
-    component_inputs = ('go', 'Data', 'Geom', 'bbox') + args
 
-    parse_data = ParseData.__call__
+class RecolourObjects(sDNA_GH_Tool):
 
-    def __call__(self, geom_data_map, opts):
+    def __init__(self, *args, **kwargs):
+        self.parse_data = ParseData(*args, **kwargs)
+        self.component_inputs = ('Data', 'Geom', 'bbox')
+
+    def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
 
         options = opts['options']
         
         field = options.field
-        objs_to_parse = OrderedDict(  (k, v) for k, v in geom_data_map.items()
+        objs_to_parse = OrderedDict(  (k, v) for k, v in gdm.items()
                                     if isinstance(v, dict) and field in v    
                                     )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse:
@@ -920,7 +938,7 @@ class RecolourObjects(ParseData):
         debug(opts['options'].plot_min)
         debug(opts['options'].plot_max)
 
-        objs_to_get_colour = OrderedDict( (k, v) for k, v in geom_data_map.items()
+        objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
                                                 if isinstance(v, Number) 
                                         )
         objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
@@ -964,7 +982,7 @@ class RecolourObjects(ParseData):
                     bounded_colour += ( max(0, min(255, channel)), )
                 return rs.CreateColor(bounded_colour)
 
-        objs_to_recolour = OrderedDict( (k, v) for k, v in geom_data_map.items()
+        objs_to_recolour = OrderedDict( (k, v) for k, v in gdm.items()
                                             if isinstance(v, Colour)  
                                     )
             
@@ -1130,13 +1148,10 @@ class RecolourObjects(ParseData):
 
         retcode = 0
 
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return custom_retvals(self.retvals, [], True)
     
     retvals = 'retcode', 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
-    show = dict(Input = component_inputs    
-               ,Output = ('OK', 'Geom', 'Data') + retvals[1:]
-               )
+    component_outputs = ('OK', 'Geom', 'Data') + retvals[1:]
           # To recolour GH Geom with a native Preview component
 
 

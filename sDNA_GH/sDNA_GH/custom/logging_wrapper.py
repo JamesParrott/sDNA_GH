@@ -9,7 +9,7 @@ __license__ = 'Python Software Foundation 2.7.18'   #https://docs.python.org/2.7
 __version__ = '0.02'
 
 import sys
-from os.path import sep, join
+from os.path import join
 import logging
 
 if __name__=='__main__':

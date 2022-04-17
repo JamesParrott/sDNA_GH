@@ -10,7 +10,7 @@ else:
     from collections.abc import Iterable
 
 import GhPython
-from System import SizeF, PointF   # .Net Classes, e.g. via Iron Python.
+from System.Drawing import SizeF, PointF   # .Net Classes, e.g. via Iron Python.
 
 from .tools.helpers.classes import Tool
 from .basic.ghdoc import ghdoc

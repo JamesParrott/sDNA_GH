@@ -10,11 +10,11 @@ __version__ = '0.02'
 # No logging here so that we can use wrapper_logger before the options object is fixed
 #
 
-from sys import path as sys_path, argv as sys_argv, version_info
-from os.path import normpath, join, isfile
+import sys
+from os.path import join, isfile
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
-if version_info.major >= 3 : # version > '3':   # if Python 3
+if sys.version_info.major >= 3 : # version > '3':   # if Python 3
     import configparser as ConfigParser
 else:   # e.g.  Python 2
     import ConfigParser    
@@ -23,7 +23,7 @@ from ..third_party.toml.decoder import load
 
 
 if __name__=='__main__':
-    sys_path += [join(sys_path[0], '..')]
+    sys.path += [join(sys.path[0], '..')]
 
 #FixedOptions = namedtuple('FixedOptions', config.options.keys(), rename = True)
 # TODO: Check for renamed reserved or duplicated field names due to see if 'rename = True' above changed anything
@@ -130,8 +130,8 @@ def override_ordereddict_with_dict( d_lesser
                 and type(d_lesser[key]) != type(new_od[key])   ):
                 del new_od[key]
     
-    if version_info.major > 3 or (    version_info.major == 3 
-                                  and version_info.minor >= 9 ):
+    if sys.version_info.major > 3 or (    sys.version_info.major == 3 
+                                  and sys.version_info.minor >= 9 ):
         return d_lesser | new_od    # I like this! :)  There's otherwise no 
                                     # need to check >= Python 3.9
                                     # n.b. dict key insertion order guaranteed 
@@ -214,7 +214,7 @@ def load_ini_file( file_path
     if not isfile(file_path):
         return None
     else:
-        if version_info.major >= 3 : # version > '3':   # if Python 3
+        if sys.version_info.major >= 3 : # version > '3':   # if Python 3
             config = ConfigParser.ConfigParser(empty_lines_in_values, interpolation)
         else:   # e.g.  Python 2
             config = ConfigParser.RawConfigParser()   # to turn off interpolation.  Python 3 documentation implies RawConfigParser is 
@@ -225,7 +225,7 @@ def load_ini_file( file_path
         f = open(file_path,'rU')
         f_gen = readline_generator(f)
 
-        if version_info.major < 3 or (version_info.major ==3 and version_info.minor < 2) :  
+        if sys.version_info.major < 3 or (sys.version_info.major ==3 and sys.version_info.minor < 2) :  
             class G():
                 pass
             G.readline = f_gen.next
@@ -310,7 +310,7 @@ def override_namedtuple_with_config(nt_lesser
 
 def override_namedtuple_with_ini_file(   
                                    nt_lesser
-                                  ,config_path = join(sys_path[0],'config.ini')
+                                  ,config_path = join(sys.path[0],'config.ini')
                                   ,**kwargs
                                      ):
     #type (namedtuple, [str,RawConfigParser]) -> namedtuple
@@ -322,7 +322,7 @@ def override_namedtuple_with_ini_file(
                                                 ,**kwargs 
                                            )
 
-def load_toml_file(  config_path = join(sys_path[0],'config.toml')
+def load_toml_file(  config_path = join(sys.path[0],'config.toml')
                     ,**kwargs
                    ):
     #type (namedtuple, str) -> namedtuple

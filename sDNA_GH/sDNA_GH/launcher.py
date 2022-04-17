@@ -7,7 +7,7 @@ __version__ = '0.02'
 import os, sys, inspect
 from os.path import isfile, isdir, join, dirname
 from importlib import import_module
-     
+
 
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
@@ -197,8 +197,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                             # os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
     sDNA_GH_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
-                                ,sDNA_GH_subfolder
-                                ) 
+                                 ,sDNA_GH_subfolder
+                                 ) 
                             ]  # Might need to install sDNA_GH 
                                # in \Grasshopper\Libraries in Rhino 6?
 
@@ -207,12 +207,16 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     sc.doc = ghdoc #type: ignore
 
-    sDNA_GH, _ = load_modules(sDNA_GH_package + '.setup'
+    print(sDNA_GH_search_paths)
+
+    class sDNA_GH:
+        pass
+    sDNA_GH.setup, _ = load_modules(sDNA_GH_package + '.setup'
                              ,sDNA_GH_search_paths
                              )         
 
 
-    logger = sDNA_GH.logger.getChild('launcher')
+    logger = sDNA_GH.setup.logger.getChild('launcher')
     output.set_logger(logger, flush = True)
 
 
@@ -223,10 +227,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # and overwriting this very class immediately below.  
             # Initial parser step / scope check trips this?
 
-    MyComponent = sDNA_GH.component_decorator( component
-                                             ,ghenv #type: ignore
-                                             ,nick_name
-                                             )
+    MyComponent = sDNA_GH.setup.sDNA_GH_Component
 
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  

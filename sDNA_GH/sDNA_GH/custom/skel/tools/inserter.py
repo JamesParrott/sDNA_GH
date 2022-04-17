@@ -4,12 +4,14 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 import GhPython
 
 from .helpers.funcs import tool_name
+
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def nick_names_that_map_to(names, name_map):
@@ -38,8 +40,8 @@ def are_GhPython_components_in_GH(compnt, names):
                 and GH_component.NickName in names
                 for GH_component in doc.Objects
               )
-#
-#
+
+
 class Connected_Components():
     IO = {'upstream':'Input', 'downstream':'Output'}
     connected = {'upstream':'Sources', 'downstream':'Recipients'}
@@ -181,3 +183,10 @@ def insert_tool(before_or_after
                     logging.info('Inserting tool : ' + str(tool_to_insert), 'INFO')
                     tools.insert(i + offset, tool_to_insert)
     return tools
+
+    
+def remove_component_output(self, name):
+    """Very buggy and glitchy.  But this is how you can do it... """
+    for param in self.Params.Output:
+        if param.NickName == name:
+            self.Params.UnregisterOutputParam(param)

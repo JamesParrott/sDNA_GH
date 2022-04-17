@@ -4,17 +4,15 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
-logger = logging.getLogger('sDNA_GH').addHandler(logging.NullHandler())
 
-
-
-
+from ..custom.skel.basic.smart_comp import custom_retvals
 from ..custom.skel.tools.name_mapper import validate_name_map
 from ..launcher import Output, Debugger
 from ..custom.tools import Tool
 from ..setup import tools_dict
 
-logger = logging.getLogger('sDNA_GH').addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 #logger = logging.getLogger(__name__)
 
 output = Output(tmp_logs = [], logger = logger)
@@ -23,24 +21,30 @@ debug = Debugger(output)
 
 class ReturnComponentNames(Tool): # (name, name_map, inst, retvals = None): 
 
-    args = ('opts',)
-    component_inputs = ('go',) + args
+    def __init__(self):
+        self.component_inputs = ()
 
-    def __call__(self, local_opts, **kwargs):
+    def __call__(self, opts):
         
-        name_map = local_opts['metas'].name_map
+        name_map = opts['metas'].name_map
         names = list(tools_dict.keys())
-        sDNAUISpec = local_opts['options'].sDNAUISpec
+        sDNAUISpec = opts['options'].sDNAUISpec
         names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
         retcode = 0 if validate_name_map(name_map, names) else 1
-        locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        logger.debug('From ReturnComponentNames : \n\n')
+
+        return custom_retvals(self.retvals
+                             ,sources = []
+                             ,return_locals = True
+                             )
+
 
     retvals = 'retcode', 'names'
-    
-    show = dict(Input = component_inputs
-               ,Output = ('OK',) + retvals[1:]
-               )
+    @property
+    def input_params(self):
+        return self.component_inputs
+    output_params = retvals[1:]
+               
 
 

@@ -18,7 +18,8 @@ from ghpythonlib import treehelpers as th
 from Grasshopper import DataTree
 
 from ..launcher import Output, Debugger
-from .helpers.funcs import is_uuid, ghdoc
+from .skel.tools.helpers.funcs import is_uuid
+from .skel.basic.ghdoc import ghdoc
 from .pyshp_wrapper import (create_new_groups_layer_from_points_list
                            ,get_all_shp_type_Rhino_objects
                            ,check_is_specified_obj_type
@@ -243,14 +244,13 @@ def get_shape_file_rec_ID(options):
     return f    
 
 
-def get_objs_and_OrderedDicts( 
-                              options #= module_opts['options']
+def get_objs_and_OrderedDicts(options #= module_opts['options']
                              ,all_objs_getter = get_all_shp_type_Rhino_objects
                              ,group_getter = get_all_groups
                              ,group_objs_getter = get_members_of_a_group
                              ,OrderedDict_getter = get_OrderedDict()
                              ,obj_type_checker = check_is_specified_obj_type
-                            ):
+                             ):
     #type(function, function, function) -> function
     shp_type = options.shp_file_shape_type            
     def generator():
