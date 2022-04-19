@@ -5,8 +5,14 @@ __version__ = '0.02'
 
 
 import os, sys, inspect
-from os.path import isfile, isdir, join, dirname
 from importlib import import_module
+if (not hasattr(__builtins__, 'reload') 
+    and (isinstance(__builtins__, dict) 
+         and 'reload' not in __builtins__ )):  
+    from importlib import reload 
+    # reload was builtin until Python 3.4
+    # __builtins__ is a dict in GhPython not a module as elsewhere
+
 
 
 sDNA_GH_subfolder = 'sDNA_GH' 
@@ -29,7 +35,7 @@ reload_config_and_other_modules_if_already_loaded = False
 # The behaviours can be different of course if changes are made to one and not
 # the other, e.g. if the code is forgotten to be copied into the component.
 
-class Output: #def output
+class Output: 
 
     def set_logger(self, logger, flush = True):
         self.logger = logger
@@ -102,7 +108,7 @@ class Debugger:
             return self.output(str(x)+' ','DEBUG')
 
 
-
+# We only know the sDNA version to import as a string.  This is more secure too.
 def strict_import(  module_name = ''
                    ,folder = ''
                    ,sub_folder = ''
@@ -128,10 +134,10 @@ def strict_import(  module_name = ''
     # Load module_name for first time:
     #
     #
-    search_path = join(folder, sub_folder)
+    search_path = os.path.join(folder, sub_folder)
 
     tmp = sys.path
-    if search_path and isinstance(search_path, str) and isdir(search_path):
+    if search_path and isinstance(search_path, str) and os.path.isdir(search_path):
         output('Search path == ' + search_path, 'DEBUG')
         if search_folder_only:
             sys.path = [search_path]
@@ -168,9 +174,9 @@ def load_modules(m_names, path_lists):
 
         for path in test_paths:
             output('Type(path) : ' + type(path).__name__ + ' path == ' + path,'DEBUG')
-            if isfile(path):
-                path = dirname(path)
-            if all( any(isfile(join(path, name.replace('.', os.sep) + ending)) 
+            if os.path.isfile(path):
+                path = os.path.dirname(path)
+            if all( any(os.path.isfile(os.path.join(path, name.replace('.', os.sep) + ending)) 
                         for ending in ['.py','.pyc'] 
                         )
                     for name in m_names
@@ -184,10 +190,20 @@ def load_modules(m_names, path_lists):
 if __name__ == '__main__': # False in a compiled component.  But then the user
                            # can't add or remove Params to the component.  
     
+    # Grasshopper will look for class MyComponent(component) in global scope
+    # so a main function is a little tricky to define.
+
     from ghpythonlib.componentbase import executingcomponent as component
     import Grasshopper
     import scriptcontext as sc
-    sDNA_GH_search_paths = [ join(Grasshopper.Folders.DefaultUserObjectFolder, sDNA_GH_subfolder) ]
+    # Do Grasshopper API imports here separately to
+    # Let the above functions be accessed outside the GhPython
+
+
+    sDNA_GH_search_paths = [ os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                         , sDNA_GH_subfolder
+                                         ) 
+                           ]
                                             #join(Grasshopper.Folders.DefaultAssemblyFolder, sDNA_GH_subfolder) ]  
                                             # Grasshopper.Folders.AppDataFolder + r'\Libraries'
                                             # %appdata%  + r'\Grasshopper\Libraries'
@@ -196,9 +212,9 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                             # %appdata%  + r'\Grasshopper\UserObjects'
                                             # os.getenv('APPDATA') + r'\Grasshopper\UserObjects'
 
-    sDNA_GH_search_paths += [join(Grasshopper.Folders.DefaultAssemblyFolder
-                                 ,sDNA_GH_subfolder
-                                 ) 
+    sDNA_GH_search_paths += [os.path.join(Grasshopper.Folders.DefaultAssemblyFolder
+                                         ,sDNA_GH_subfolder
+                                         ) 
                             ]  # Might need to install sDNA_GH 
                                # in \Grasshopper\Libraries in Rhino 6?
 
@@ -232,7 +248,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
 
-        if sys.argv[0].endswith(join(sDNA_GH_package,'__main__.py')):   
+        if sys.argv[0].endswith(os.path.join(sDNA_GH_package,'__main__.py')):   
             from .tests.unit_tests import unit_tests_sDNA_GH
         else:
             unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'

@@ -3,17 +3,10 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, logging
+import sys, os, logging, subprocess, itertools, re
 from collections import OrderedDict
-import os  
-from os.path import (join, isfile, dirname, isdir
-                     )
 
-from re import match
-from subprocess import check_output
 from time import asctime
-from collections import OrderedDict
-from itertools import izip
 import csv
 from numbers import Number
 import locale
@@ -46,8 +39,16 @@ from .helpers.funcs import (make_regex
 from .skel.basic.ghdoc import ghdoc
 from .skel.basic.smart_comp import custom_retvals
 from .skel.tools.helpers.funcs import is_uuid
-from .skel.tools.helpers.classes import Tool
-from .skel.add_params import ParamInfo
+from .skel.tools.helpers.checkers import (get_OrderedDict
+                                         ,get_obj_keys
+                                         ,write_obj_val
+                                         ,is_an_obj_in_GH_or_Rhino
+                                         ,is_a_group_in_GH_or_Rhino
+                                         ,get_all_groups
+                                         ,get_members_of_a_group
+                                         )
+from .skel.tools.runner import RunnableTool                                         
+from .skel.add_params import ToolWithParams, ParamInfo
 from ..launcher import Output, Debugger
 from .options_manager import (make_nested_namedtuple
                              ,
@@ -57,42 +58,37 @@ from .pyshp_wrapper import (get_unique_filename_if_not_overwrite
                            ,write_from_iterable_to_shapefile_writer
                            ,get_fields_recs_and_shapes_from_shapefile
                            ,create_new_groups_layer_from_points_list
+                           ,get_all_shp_type_Rhino_objects
+                           ,get_shape_file_rec_ID
                            )
-
+from .logging_wrapper import ClassLogger
 from .gdm_from_GH_Datatree import (make_gdm
-                                  ,get_objs_and_OrderedDicts
-                                  ,get_all_shp_type_Rhino_objects
-                                  ,get_all_groups
-                                  ,get_members_of_a_group
+
                                   ,check_is_specified_obj_type
                                   ,override_gdm_with_gdm
-                                  ,get_OrderedDict
-                                  ,get_shape_file_rec_ID
-                                  ,get_obj_keys
-                                  ,write_obj_val
-                                  ,is_an_obj_in_GH_or_Rhino
-                                  ,is_a_group_in_GH_or_Rhino
+
                                   )
 
 
 
+
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 output = Output(tmp_logs = [], logger = logger)
 debug = Debugger(output)
-sDNA_tool_logger = logging.getLogger('sDNA')
 
 
 
 
 
-class sDNA_GH_Tool(Tool):
+class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
 
     factories_dict = dict(go = Param_Boolean
                          ,OK = Param_Boolean
                          ,file = Param_FilePath
                          ,Geom = Param_Geometry
                          ,Data = Param_ScriptVariable
-                         ,leg_frame = Param_Rectangle
+                         ,leg_frame = Param_Geometry
                          ,gdm = Param_ScriptVariable
                          ,opts = Param_ScriptVariable
                          ,config = Param_FilePath
@@ -106,10 +102,11 @@ class sDNA_GH_Tool(Tool):
                          ,bbox = Param_ScriptVariable
                          )
 
-    def params_list(self, names):
-        return [ParamInfo(factory = self.factories_dict.get(name
-                                                           ,Param_ScriptVariable
-                                                           )
+    @classmethod
+    def params_list(cls, names):
+        return [ParamInfo(factory = cls.factories_dict.get(name
+                                                          ,Param_ScriptVariable
+                                                          )
                          ,NickName = name
                          ,Access = 'tree' if name == 'Data' else 'list'
                          ) for name in names                            
@@ -127,24 +124,30 @@ class sDNAWrapper(sDNA_GH_Tool):
                                 ):
         metas = opts['metas']
         nick_name = local_metas.nick_name
+        self.nick_name = nick_name
+
         sDNAUISpec = opts['options'].sDNAUISpec
         sDNA = opts['metas'].sDNA
+        self.sDNA = sDNA
 
         tool_opts = opts.setdefault(nick_name, {})
+        if self.tool_name != nick_name:
+            tool_opts = opts.setdefault(self.tool_name, {})
+
         debug(tool_opts)
-        tool_opts = tool_opts.setdefault(self.tool_name, tool_opts)
         # Note, this is intended to do nothing if nick_name == self.tool_name
         try:
-            sDNA_Tool = getattr(sDNAUISpec, self.tool_name)
+            sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
         except:
             raise ValueError(output('No tool called '
                                    +self.tool_name
                                    +sDNAUISpec.__name__
                                    +'.  Rename tool_name or change sDNA version.  '
+                                   ,'ERROR'
                                    )
                             )
-        input_spec = sDNA_Tool.getInputSpec()
-        get_syntax = sDNA_Tool.getSyntax     
+        self.input_spec = sDNA_Tool.getInputSpec()
+        self.get_syntax = sDNA_Tool.getSyntax     
 
         defaults_dict = { varname : default for (varname
                                                 ,displayname
@@ -152,22 +155,23 @@ class sDNAWrapper(sDNA_GH_Tool):
                                                 ,filtr
                                                 ,default
                                                 ,required
-                                                ) in input_spec  
+                                                ) in self.input_spec  
                         }            
         if sDNA in tool_opts:
             tool_opts_dict = defaults_dict.update( tool_opts[sDNA]._asdict() ) 
         else:
             tool_opts_dict = defaults_dict
-        namedtuple_class_name = (nick_name 
-                                +(self.tool_name if self.tool_name != nick_name else '') 
-                                +sDNAUISpec.__file__
+        namedtuple_class_name = (nick_name + '_'
+                                +(self.tool_name if self.tool_name != nick_name
+                                                 else '') + '_'
+                                +os.path.basename(sDNAUISpec.__file__).rpartition('.')[0]
                                 )
+        self.debug(namedtuple_class_name)
         tool_opts[sDNA] = make_nested_namedtuple(tool_opts_dict
                                                 ,namedtuple_class_name
                                                 ,strict = True
                                                 ) 
-
-        return tool_opts, get_syntax
+        self.tool_opts = tool_opts
 
 
     def __init__(self
@@ -182,13 +186,13 @@ class sDNAWrapper(sDNA_GH_Tool):
             #
             #
         self.tool_name = tool_name
-        tool_opts, _ = self.get_tool_opts_and_syntax(opts, local_metas)
+        self.get_tool_opts_and_syntax(opts, local_metas)
 
-        sDNA = opts['metas'].sDNA
-        global do_not_remove
-        do_not_remove += tuple(tool_opts[sDNA]._fields)
-        self.component_inputs = ('file',) #self.args[:1]
 
+
+    
+    
+    component_inputs = ('file', 'config') #self.args[:1]
 
     # args = ('file', 'opts', 'l_metas')
     #component_inputs = ('go', ) + self.args[:2]
@@ -211,19 +215,25 @@ class sDNAWrapper(sDNA_GH_Tool):
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
 
-        tool_opts, get_syntax = self.get_tool_opts_and_syntax(opts, l_metas)
-
+        if (self.nick_name != l_metas.nick_name or 
+            self.sDNA != opts['metas'].sDNA):
+            self.get_tool_opts_and_syntax(opts
+                                         ,l_metas
+                                         )
 
         dot_shp = options.shp_file_extension
 
-        input_file = tool_opts[sDNA].input
+        input_file = self.tool_opts[sDNA].input
         
 
         #if (not isinstance(input_file, str)) or not isfile(input_file): 
-        if (isinstance(f_name, str) and isfile(f_name)
+        if (isinstance(f_name, str) and os.path.isfile(f_name)
             and f_name.rpartition('.')[2] in [dot_shp[1:],'dbf','shx']):  
             input_file = f_name
-    
+
+        self.debug(input_file)
+
+
             # if options.auto_write_new_Shp_file and (
             #     options.overwrite_input_shapefile 
             #     or not isfile(input_file)):
@@ -235,7 +245,7 @@ class sDNAWrapper(sDNA_GH_Tool):
             
 
 
-        output_file = tool_opts[sDNA].output
+        output_file = self.tool_opts[sDNA].output
         if output_file == '':
             output_suffix = options.output_shp_file_suffix
             if self.tool_name == 'sDNAPrepare':
@@ -244,15 +254,16 @@ class sDNAWrapper(sDNA_GH_Tool):
 
         output_file = get_unique_filename_if_not_overwrite(output_file, options)
 
-            
-        syntax = get_syntax(tool_opts[sDNA]._asdict().update(input = input_file))
+        input_args = self.tool_opts[sDNA]._asdict()
+        input_args.update(input = input_file, output = output_file)
+        syntax = self.get_syntax(input_args)
 
         f_name = output_file
 
         command =   (options.python_exe 
                     + ' -u ' 
                     + '"' 
-                    + join(  dirname(sDNAUISpec.__file__)
+                    + os.path.join(  os.path.dirname(sDNAUISpec.__file__)
                             ,'bin'
                             ,syntax['command'] + '.py'  
                             ) 
@@ -261,22 +272,16 @@ class sDNAWrapper(sDNA_GH_Tool):
                     + ' --om ' + run_sDNA.map_to_string( syntax["outputs"] )
                     + ' ' + syntax["config"]
                     )
-        logger.info('sDNA command run = ' + command)
-        sDNA_tool_logger.debug(command)
+        self.info('sDNA command run = ' + command)
 
-        try:
-            output_lines = check_output(command)
-            #print output_lines
-            retcode = 0
-        except:
-            retcode = 1
-        finally:
-            try:
-                line_end = '\r\n' if '\r\n' in output_lines else '\n'
-                for line in output_lines.split(line_end):
-                    sDNA_tool_logger.debug(line)
-            except:
-                pass
+        output_lines = subprocess.check_output(command)
+        retcode = 0
+
+        self.info(output_lines)
+        # line_end = '\r\n' if '\r\n' in output_lines else '\n'
+        # for line in output_lines.split(line_end):
+        #    self.debug(line)
+
         #return_code = call(command)   
         
         #return_code = run_sDNA.runsdnacommand(    syntax
@@ -295,9 +300,53 @@ class sDNAWrapper(sDNA_GH_Tool):
 
 
 
+def get_objs_and_OrderedDicts(all_objs_getter = get_all_shp_type_Rhino_objects
+                             ,group_getter = get_all_groups
+                             ,group_objs_getter = get_members_of_a_group
+                             ,OrderedDict_getter = get_OrderedDict()
+                             ,obj_type_checker = check_is_specified_obj_type
+                             ,shp_type = 'POLYLINEZ'
+                             ,include_groups = False
+                             ):
+    #type(function, function, function) -> function
+    def generator():
+        #type( type[any]) -> list, list
+        #
+        # Groups first search.  If a special Usertext key on member objects 
+        # is used to indicate groups, then an objects first search 
+        # is necessary instead, to test every object for membership
+        # and track the groups yielded to date, in place of group_getter
+        objs_in_any_group = []
+
+        if include_groups:
+            groups = group_getter()
+            for group in groups:
+                objs = group_objs_getter(group)
+                if ( objs and
+                    any(obj_type_checker(x, shp_type) 
+                                                for x in objs) ):                                                 
+                    objs_in_any_group += objs
+                    d = {}
+                    for obj in objs:
+                        d.update(OrderedDict_getter(obj))
+                    yield group, d
+
+        objs = all_objs_getter(shp_type)
+        for obj in objs:
+            if ((not include_groups) or 
+                 obj not in objs_in_any_group):
+                d = OrderedDict_getter(obj)
+                yield obj, d
+        return 
+
+    return generator()
+
+
 class GetObjectsFromRhino(sDNA_GH_Tool):
-    def __init__(self):
-        self.component_inputs = (self.args[0], 'config') 
+
+    @property
+    def component_inputs(self):
+        return () 
     
     def __call__(self, opts, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -310,16 +359,18 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         
         #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
-        if gdm:
-            tmp_gdm = gdm
-        gdm = make_gdm(get_objs_and_OrderedDicts(options
-                                                ,get_all_shp_type_Rhino_objects
+        tmp_gdm = gdm if gdm else OrderedDict()
+
+            
+        gdm = make_gdm(get_objs_and_OrderedDicts(get_all_shp_type_Rhino_objects
                                                 ,get_all_groups
                                                 ,get_members_of_a_group
                                                 ,lambda *args, **kwargs : {} 
                                                 ,check_is_specified_obj_type
+                                                ,options.shp_file_shape_type
+                                                ,options.include_groups_in_gdms 
                                                 ) 
-                                )
+                       )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
 
 
@@ -330,7 +381,7 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
             debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
         debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
         if tmp_gdm:
-            gdm = override_gdm_with_gdm(gdm, tmp_gdm, opts)
+            gdm = override_gdm_with_gdm(gdm, tmp_gdm, options.merge_Usertext_subdicts_instead_of_overwriting)
         sc.doc = ghdoc # type: ignore 
 
         return custom_retvals(self.retvals, [], True)
@@ -341,8 +392,8 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
 
 
 class ReadUsertext(sDNA_GH_Tool):
-    def __init__(self):
-        self.component_inputs = ('Geom',) # self.args[0])
+    
+    component_inputs = ('Geom',) 
 
     def __call__(self, gdm):
         #type(str, dict, dict) -> int, str, dict, list
@@ -373,18 +424,20 @@ class ReadUsertext(sDNA_GH_Tool):
         return custom_retvals(self.retvals, [], True)
 
 
-    retvals = 'retcode', 'gdm'
+    retvals = ('gdm',)
     component_outputs = ('Data', ) 
-               
+
+
+
+   
 
 
 class WriteShapefile(sDNA_GH_Tool):
-    def __init__(self):
-        self.component_inputs = ('file', 'Geom', 'Data') 
+
+    component_inputs = ('file', 'Geom', 'Data', 'config') 
 
     def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
-        
         options = opts['options']
 
         shp_type = options.shp_file_shape_type            
@@ -403,7 +456,7 @@ class WriteShapefile(sDNA_GH_Tool):
         def pattern_match_key_names(x):
             #type: (str)-> object #re.MatchObject
 
-            return match(pattern, x) 
+            return re.match(pattern, x) 
             #           if m else None #, m.group('fieldtype'), 
                                                 # m.group('size') if m else None
                                                 # can get 
@@ -444,20 +497,16 @@ class WriteShapefile(sDNA_GH_Tool):
             return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
-            if (   options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
-                and isdir(dirname( options.shape_file_to_write_Rhino_data_to_from_sDNA_GH ))   ):
-                f_name = options.shape_file_to_write_Rhino_data_to_from_sDNA_GH
+            if (   options.shp_file_to_write_to
+                and os.path.isdir( os.path.dirname( options.shp_file_to_write_to ) )   ):
+                f_name = options.shp_file_to_write_to
             else:
                 f_name = options.Rhino_doc_path.rpartition('.')[0] + options.shp_file_extension
                             # file extensions are actually optional in PyShp, 
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
+        debug(f_name)
 
-        #debug('Type of gdm == '+ type(gdm).__name__)                         
-        #debug('Size of gdm == ' + str(len(gdm)))
-        #debug('Gdm keys == ' + ' '.join( map(lambda x : x[:5],gdm.keys() )) )
-        #debug('Gdm.values == ' + ' '.join(map(str,gdm.values())))
-        sc.doc = Rhino.RhinoDoc.ActiveDoc 
         (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
                                                 gdm
@@ -492,8 +541,8 @@ class WriteShapefile(sDNA_GH_Tool):
 
 
 class ReadShapefile(sDNA_GH_Tool):
-    def __init__(self):
-        self.component_inputs = ('file', )
+
+    component_inputs = ('file', )
 
     def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -527,12 +576,12 @@ class ReadShapefile(sDNA_GH_Tool):
 
         shapes_to_output = ([shp.points] for shp in shapes )
         
-        obj_key_maker = create_new_groups_layer_from_points_list( options ) 
+        obj_key_maker = create_new_groups_layer_from_points_list() 
 
 
 
         if not options.create_new_groups_layer_from_shapefile:   #TODO: put new objs in a new layer or group
-            obj_key_maker = get_shape_file_rec_ID(options) # key_val_tuples
+            obj_key_maker = get_shape_file_rec_ID(options.uuid_shp_file_field_name) # key_val_tuples
             # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
         
             if isinstance(gdm, dict) and len(gdm) == len(recs):
@@ -540,10 +589,8 @@ class ReadShapefile(sDNA_GH_Tool):
                 # to shapes/recs is to open a large a can of worms.  Unsupported.
                 # If the override objects are in Rhino anyway then the uuid field in the shape
                 # file will be picked up in any case in get_shape_file_rec_ID
-                if sys.version_info.major < 3:
-                    shape_keys = gdm.viewkeys()  
-                else: 
-                    shape_keys = gdm.keys()
+
+                shape_keys = list(gdm.keys())
                 shapes_to_output = [shp_key for shp_key in shape_keys]
                     # These points shouldn't be used, as by definition they 
                     # come from objects that already
@@ -551,20 +598,20 @@ class ReadShapefile(sDNA_GH_Tool):
                 #debug(shapes_to_output)    
 
 
-        shp_file_gen_exp  = izip( shapes_to_output
-                                ,(rec.as_dict() for rec in recs)
-                                )
+        shp_file_gen_exp  = itertools.izip(shapes_to_output
+                                          ,(rec.as_dict() for rec in recs)
+                                          )
         
         #(  (shape, rec) for (shape, rec) in 
         #                                       izip(shapes_to_output, recs)  )              
         sc.doc = Rhino.RhinoDoc.ActiveDoc
-        gdm = make_gdm(shp_file_gen_exp, obj_key_maker)
+        gdm = make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc # type: ignore
         
         dot_shp = options.shp_file_extension
         csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
         sDNA_fields = {}
-        if isfile(csv_f_name):
+        if os.path.isfile(csv_f_name):
             f = open(csv_f_name, 'rb')
             f_csv = csv.reader(f)
             sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
@@ -575,7 +622,7 @@ class ReadShapefile(sDNA_GH_Tool):
 
         #override_gdm_with_gdm(gdm, gdm, opts)   # TODO:What for?
 
-        if options.delete_shapefile_after_reading and isfile(f_name): 
+        if options.delete_shapefile_after_reading and os.path.isfile(f_name): 
             os.remove(f_name)  # TODO: Fix, currently Win32 error
 
         retcode = 0
@@ -591,8 +638,9 @@ class ReadShapefile(sDNA_GH_Tool):
 
 
 class WriteUsertext(sDNA_GH_Tool):
-    def __init__(self):
-        self.component_inputs = ('Geom', 'Data')
+
+
+    component_inputs = ('Geom', 'Data')
 
 
     def __call__(self, gdm, opts):
@@ -672,11 +720,9 @@ class WriteUsertext(sDNA_GH_Tool):
 
         sc.doc = ghdoc # type: ignore 
         
-        retcode = 0
-
         return custom_retvals(self.retvals, [], True)
     
-    retvals = ('retcode')
+    retvals = ()
     component_outputs = () 
                
 
@@ -686,7 +732,8 @@ class BakeUsertext(sDNA_GH_Tool):
 
     def __init__(self, *args, **kwargs):
         self.write_Usertext = WriteUsertext(*args, **kwargs)
-        self.component_inputs = ('Geom', 'Data')
+    
+    component_inputs = ('Geom', 'Data')
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list  
@@ -709,13 +756,13 @@ class BakeUsertext(sDNA_GH_Tool):
                     # tmp_gdm keys are uuids to Rhino objects, 
                     # not GH objects in gdm keys
         
-        retcode = self.write_Usertext(tmp_gdm, opts)
+        self.write_Usertext(tmp_gdm, opts)
         gdm = tmp_gdm
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
         return custom_retvals(self.retvals, [], True)
 
-    retvals = ('retcode', 'gdm') #'f_name', 'gdm'
+    retvals = ('gdm',) #'f_name', 'gdm'
     component_outputs =  ('Geom') 
                
 
@@ -724,7 +771,7 @@ class BakeUsertext(sDNA_GH_Tool):
 
 class ParseData(sDNA_GH_Tool):
     def __init__(self):
-        self.component_inputs = ('Geom', 'Data', self.args[0], 'field', 'plot_max'
+        self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
                                 ,'plot_min', 'class_bounds')
 
     def __call__(self, gdm, opts):
@@ -890,29 +937,30 @@ class ParseData(sDNA_GH_Tool):
                             )
                         )
         plot_min, plot_max = x_min, x_max
-        retcode = 0
+        
         return custom_retvals(self.retvals, [], True)
 
-    retvals = 'retcode', 'plot_min', 'plot_max', 'gdm', 'opts'
+    retvals = 'plot_min', 'plot_max', 'gdm', 'opts'
     component_outputs = ('OK',) + retvals[1:3] + ('Data', 'Geom') + retvals[3:-1]
                
-
-GH_Gradient_preset_names = { 0 : 'EarthlyBrown'
-                            ,1 : 'Forest'
-                            ,2 : 'GreyScale'
-                            ,3 : 'Heat'
-                            ,4 : 'SoGay'
-                            ,5 : 'Spectrum'
-                            ,6 : 'Traffic'
-                            ,7 : 'Zebra'
-                            }
 
 
 class RecolourObjects(sDNA_GH_Tool):
 
     def __init__(self, *args, **kwargs):
         self.parse_data = ParseData(*args, **kwargs)
-        self.component_inputs = ('Data', 'Geom', 'bbox')
+        self.GH_Gradient_preset_names = {0 : 'EarthlyBrown'
+                                        ,1 : 'Forest'
+                                        ,2 : 'GreyScale'
+                                        ,3 : 'Heat'
+                                        ,4 : 'SoGay'
+                                        ,5 : 'Spectrum'
+                                        ,6 : 'Traffic'
+                                        ,7 : 'Zebra'
+                                        }
+
+    
+    component_inputs = ('Data', 'Geom')
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -946,7 +994,7 @@ class RecolourObjects(sDNA_GH_Tool):
                                         # and isinstance(x, Number)
         if options.GH_Gradient:
             grad = getattr( GH_Gradient()
-                        ,GH_Gradient_preset_names[options.GH_Gradient_preset])
+                        ,self.GH_Gradient_preset_names[options.GH_Gradient_preset])
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)
                 # May need either rhinoscriptsyntax.CreateColor
@@ -1026,7 +1074,7 @@ class RecolourObjects(sDNA_GH_Tool):
                                             )
                                     )
 
-            elif any(  bool(match(pattern, obj)) 
+            elif any(  bool(re.match(pattern, obj)) 
                         for pattern in legend_tag_patterns ):
                 sc.doc = ghdoc
                 legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
@@ -1069,13 +1117,13 @@ class RecolourObjects(sDNA_GH_Tool):
 
         debug(options)
 
-        if options.legend_extent or options.bbox:
-            if options.legend_extent:
+        if options.leg_extent or options.bbox:
+            if options.leg_extent:
                 [legend_xmin
                 ,legend_ymin
                 ,legend_xmax
-                ,legend_ymax] = options.legend_extent
-                debug('legend extent == ' + str(options.legend_extent))
+                ,legend_ymax] = options.leg_extent
+                debug('legend extent == ' + str(options.leg_extent))
             elif options.bbox:
                 bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
 
@@ -1146,11 +1194,9 @@ class RecolourObjects(sDNA_GH_Tool):
         sc.doc =  ghdoc # type: ignore
         sc.doc.Views.Redraw()
 
-        retcode = 0
-
         return custom_retvals(self.retvals, [], True)
     
-    retvals = 'retcode', 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
+    retvals = 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
     component_outputs = ('OK', 'Geom', 'Data') + retvals[1:]
           # To recolour GH Geom with a native Preview component
 

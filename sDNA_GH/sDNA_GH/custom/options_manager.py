@@ -10,8 +10,7 @@ __version__ = '0.02'
 # No logging here so that we can use wrapper_logger before the options object is fixed
 #
 
-import sys
-from os.path import join, isfile
+import sys, os
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
 if sys.version_info.major >= 3 : # version > '3':   # if Python 3
@@ -19,11 +18,10 @@ if sys.version_info.major >= 3 : # version > '3':   # if Python 3
 else:   # e.g.  Python 2
     import ConfigParser    
 
-from ..third_party.toml.decoder import load
-
+from ..third_party.toml import decoder
 
 if __name__=='__main__':
-    sys.path += [join(sys.path[0], '..')]
+    sys.path += [os.path.join(sys.path[0], '..')]
 
 #FixedOptions = namedtuple('FixedOptions', config.options.keys(), rename = True)
 # TODO: Check for renamed reserved or duplicated field names due to see if 'rename = True' above changed anything
@@ -78,7 +76,6 @@ def make_nested_namedtuple(d
     #
     if strict and not isinstance(d, dict):
         return None
-
     d = d.copy() 
     for key, val in d.items():
         if isinstance(val, dict) and convert_subdicts:
@@ -174,7 +171,8 @@ def override_namedtuple_with_dict( nt_lesser
                                      ,nt_lesser.__class__.__name__
                                      ,strict
                                      ,''   # NT Class name prefix
-                                     ,**kwargs) 
+                                     ,**kwargs
+                                     ) 
 
 
 # ftrick = namedtuple('Trick',trick.keys())(**trick)
@@ -211,7 +209,7 @@ def load_ini_file( file_path
                  ,empty_lines_in_values = False
                  ,interpolation = None
                  ,**kwargs):
-    if not isfile(file_path):
+    if not os.path.isfile(file_path):
         return None
     else:
         if sys.version_info.major >= 3 : # version > '3':   # if Python 3
@@ -271,7 +269,6 @@ def override_namedtuple_with_config(nt_lesser
 
     old_dict = nt_lesser._asdict()
     new_dict = {}
-    #print('Parsing config file...  '+'INFO')
     for key, value in config.items(section_name):
         message = key + ' : ' + value
         if not leave_as_strings and key in old_dict:   
@@ -308,13 +305,14 @@ def override_namedtuple_with_config(nt_lesser
         # means the user cannot override e.g. lists or dicts
         # until we make type_coercer_factory support them
 
-def override_namedtuple_with_ini_file(   
-                                   nt_lesser
-                                  ,config_path = join(sys.path[0],'config.ini')
-                                  ,**kwargs
+def override_namedtuple_with_ini_file(nt_lesser
+                                     ,config_path = os.path.join(sys.path[0]
+                                                                ,'config.ini'
+                                                                )
+                                     ,**kwargs
                                      ):
     #type (namedtuple, [str,RawConfigParser]) -> namedtuple
-    if not isinstance(config_path, str) and not isfile(config_path):
+    if not isinstance(config_path, str) and not os.path.isfile(config_path):
         return nt_lesser
     config = load_ini_file(config_path, **kwargs)
     return override_namedtuple_with_config(     nt_lesser
@@ -322,9 +320,9 @@ def override_namedtuple_with_ini_file(
                                                 ,**kwargs 
                                            )
 
-def load_toml_file(  config_path = join(sys.path[0],'config.toml')
-                    ,**kwargs
-                   ):
+def load_toml_file(config_path = os.path.join(sys.path[0],'config.toml')
+                  ,**kwargs
+                  ):
     #type (namedtuple, str) -> namedtuple
 
     # Please note, .toml tables are mapped to correctly to OrderedDictionaries
@@ -334,7 +332,7 @@ def load_toml_file(  config_path = join(sys.path[0],'config.toml')
     # make_nested_namedtuple called on it, turning the .toml table
     # into a namedtuple.
     
-    return load(config_path, _dict = OrderedDict)      #toml.decoder
+    return decoder.load(config_path, _dict = OrderedDict)
 
 
 

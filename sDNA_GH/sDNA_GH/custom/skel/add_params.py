@@ -3,18 +3,29 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import logging
+import sys,logging
+from abc import abstractmethod
+if sys.version < '3.4':
+    from abc import ABCMeta
+    class ABC:
+        __metaclass__ = ABCMeta
+else:
+    from abc import ABC
 
-import Grasshopper.Kernel
-import Grasshopper.Kernel.Parameters
+import Grasshopper.Kernel 
+from Grasshopper.Kernel.Parameters import Param_ScriptVariable
 
-from ..skel.basic.smart_comp import get_args_spec
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+class ParamInfoABC(ABC):
+    @abstractmethod
+    def make(self):
+        """Makes instance of a type in Grasshopper.Kernel.Parameters """
 
-class ParamInfo(dict):
+
+class ParamInfo(dict, ParamInfoABC):
     access_methods = ('item', 'list', 'tree')
     def __init__(self
                 ,NickName
@@ -30,7 +41,7 @@ class ParamInfo(dict):
                 factory = 'Param_' + factory
             factory = getattr(Grasshopper.Kernel.Parameters, factory, None)
         if factory is None:
-            factory = Grasshopper.Kernel.Parameters.Param_ScriptVariable
+            factory = Param_ScriptVariable
             logger.debug('Using factory Param_ScriptVariable for param : ' + NickName)
         self.factory = factory
 
@@ -55,6 +66,45 @@ class ParamInfo(dict):
         return self.factory(**self)
 
 
+class ToolwithParamsABC(ABC):
+    @property
+    @abstractmethod
+    def input_params(self):
+        """ List of input ParamInfo instances """
+    @property
+    @abstractmethod
+    def output_params(self):
+        """ List of output ParamInfo instances """
+
+def param_info_maker(param_names, factories = {}):
+    return [ParamInfo(NickName = name
+                     ,factory = factories.get(name
+                                             ,Param_ScriptVariable
+                                             )
+                     ) for name in param_names                            
+           ]
+
+class ToolWithParams(ToolwithParamsABC):
+
+    factories_dict = {}
+
+    def params_list(self, names):
+        return param_info_maker(param_names = names, factories = self.factories_dict)
+
+
+    component_inputs = ()
+
+    component_outputs = ()
+
+    @property
+    def input_params(self):
+        return self.params_list(self.component_inputs)
+    
+    @property
+    def output_params(self):
+        return self.params_list(self.component_outputs)
+
+
 def update_Input_or_Output_Params(Input_or_Output
                                  ,do_not_add
                                  ,do_not_remove
@@ -62,7 +112,7 @@ def update_Input_or_Output_Params(Input_or_Output
                                  ,params_current
                                  ,params_needed
                                  ):
-    #type(str, list, list, type[any], list, list, list[ParamInfo]) -> None   
+    #type(str, list, list, type[any], list, list[Param], list[ParamInfo]) -> None   
 
 
     assert Input_or_Output in ['Input', 'Output']
@@ -74,14 +124,18 @@ def update_Input_or_Output_Params(Input_or_Output
                     + ' '.join(str(param.NickName) for param in params_current)
                 )
 
-    names_needed = [param['NickName'] for param in params_needed]
+    needed_NickNames = [str(param['NickName']) for param in params_needed]
+
+    logger.debug(   'params_needed NickNames == '
+                    + ' '.join(needed_NickNames)
+                )
 
     registers = dict(Input  = 'RegisterInputParam'
                     ,Output = 'RegisterOutputParam'
                     )
 
     for param in params_current:  
-        if param.NickName in params_needed:
+        if param.NickName in needed_NickNames:
             logger.debug('Param already there, adding to self.do_not_add == '
                 + str(param.NickName))
             do_not_add += [param.NickName]
@@ -156,7 +210,7 @@ def add_tool_params(Params
                    ,do_not_remove
                    ,wrapper = None
                    ):
-    #type(type[any], list, list, list) -> type[any]
+    #type(type[any], list[ToolwithParamsABC], list, list, function) -> type[any]
     
     ParamsSyncObj = Params.EmitSyncObject()
 

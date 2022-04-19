@@ -3,7 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-
+import inspect
 from uuid import UUID
            
 
@@ -18,9 +18,12 @@ def tool_name(tool):
     elif hasattr(tool,'func_name'):
         return tool.func_name
     elif hasattr(tool,'__qualname__'):
-        return tool.__qualname__  
+        return tool.__qualname__
     else:
-        return tool.__class__.__name__
+        c = inspect.currentframe().f_back.f_locals.items()
+        names = [name.strip("'") for name, val in c if val is tool]  
+        return names[0]
+
 
 
 def is_uuid(val):

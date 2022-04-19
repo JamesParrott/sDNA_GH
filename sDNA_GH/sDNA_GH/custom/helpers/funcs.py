@@ -4,9 +4,8 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import sys
+import sys, os
 from math import log
-from os.path import isfile
 if sys.version < '3.3':
     from collections import Sequence
 else:
@@ -19,18 +18,15 @@ import scriptcontext as sc
 from ..skel.basic.ghdoc import ghdoc
 
 
-class GetPathDefaults:
-    Default_sDNA_GH_file_path = None
-get_path_default_opts = dict(options = GetPathDefaults)
 
 
-def get_path(opts = get_path_default_opts, inst = None):
+def get_path(inst = None):
     #type(dict, type[any]) -> str
     #refers to `magic' global ghdoc so needs to be in main
     
     path = Rhino.RhinoDoc.ActiveDoc.Path
                     
-    if not isinstance(path, str) or not isfile(path):
+    if not isinstance(path, str) or not os.path.isfile(path):
         try:
             path = ghdoc.Path
         except:
@@ -43,7 +39,7 @@ def get_path(opts = get_path_default_opts, inst = None):
                     path = None
         finally:
             if not path:
-                path = opts['options'].Default_sDNA_GH_file_path
+                path = None
     
     return path
 
@@ -51,13 +47,13 @@ def get_path(opts = get_path_default_opts, inst = None):
 def first_item_if_seq(l, null_container = {}):
     #type(type[any])-> dict
     #hopefully!
-    if l:
-        if isinstance(l, Sequence) and not isinstance(l, str):
-            return l[0]
-        else:
-            return l
-    else:
+    if not l:
         return null_container        
+
+    if isinstance(l, Sequence) and not isinstance(l, str):
+        l = l[0]
+    
+    return l
 
 
 def make_regex(pattern):

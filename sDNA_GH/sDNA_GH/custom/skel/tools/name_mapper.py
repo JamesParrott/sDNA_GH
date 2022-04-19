@@ -42,7 +42,7 @@ def validate_name_map(name_map, known_tool_names):
         if not isinstance(tool_names, list):
             tool_names = [tool_names]
         return all(name in names_and_nicknames for name in tool_names)
-    invalid_name_map_vals = {key : val for key, val in name_map._asdict().items()
+    invalid_name_map_vals = {key : val for key, val in name_map.items()
                                         if not points_to_valid_tools(val)}
 
     if invalid_name_map_vals:
@@ -56,19 +56,21 @@ def validate_name_map(name_map, known_tool_names):
         logger.error(msg)
         raise ValueError(msg)
     else:
-        logger.info('Name_map links all point to known names or other name_map links. Cycles not checked. ','INFO')
+        logger.info('Name_map links all point to known names or other name_map links. Cycles not checked. ')
 
     return True
 
 
-def tool_not_found_error(mapped_name
+def tool_not_found_error(inst
+                        ,mapped_name
                         ,name_map
                         ,tools_dict
                         ):
     raise ValueError('Tool: ' + mapped_name + ' not found')
 
 
-def tool_factory(nick_name
+def tool_factory(inst
+                ,nick_name
                 ,name_map
                 ,tools_dict
                 ,tool_not_found = tool_not_found_error 
@@ -89,7 +91,8 @@ def tool_factory(nick_name
             tools =[]
             #nick_name_opts = {}
             for mapped_name in map_result:
-                tools.append(tool_factory(mapped_name
+                tools.append(tool_factory(inst
+                                         ,mapped_name
                                          ,name_map 
                                          ,tools_dict
                                          ,tool_not_found
@@ -105,7 +108,8 @@ def tool_factory(nick_name
             if mapped_name in tools_dict:
                 logging.debug('Tool: ' + mapped_name + ' already in tools_dict')
             else:
-                tool_not_found(mapped_name
+                tool_not_found(inst
+                              ,mapped_name
                               ,name_map
                               ,tools_dict
                               )

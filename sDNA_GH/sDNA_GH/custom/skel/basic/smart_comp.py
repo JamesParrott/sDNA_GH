@@ -4,10 +4,9 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import logging
+import sys, logging, inspect
 import sys
 from collections import OrderedDict, defaultdict
-from inspect import currentframe, getargspec
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
@@ -33,10 +32,10 @@ def get_args_spec(callable):
         raise TypeError('Argument is not callable, therefore has no args')
     # assert hasattr(callable, '__call__')
     try:
-        arg_spec = getargspec(callable)
+        arg_spec = inspect.getargspec(callable)
     except:
         try:
-            arg_spec = getargspec(callable.__call__)
+            arg_spec = inspect.getargspec(callable.__call__)
         except:
             raise Exception("Could not get argspec for " + str(callable))
     
@@ -49,7 +48,7 @@ def get_args_spec(callable):
     # if (type(callable).__name__ == 'function' or
     #     callable.__class__.__name__ == ('function','instancemethod') or
     #     quacks_like(basic_function, callable)):
-    #     return getargspec(callable)
+    #     return inspect.getargspec(callable)
     # elif hasattr(callable, '__call__'):
 
 def get_val(key, sources):
@@ -62,24 +61,27 @@ def get_val(key, sources):
     return 'No variable or field: ' + key + ' found. '
 
 
-def custom_retvals(retval_names, sources = [], return_locals = False, frames_back = 1):
+def custom_retvals(retval_names
+                  ,sources = []
+                  ,return_locals = False
+                  ,frames_back = 1
+                  ):
     #type(list[str], list, bool) -> tuple(type[any])
-    """ To get inspect.currentframe to target the correct scope,
+    """ To get inspect.inspect.currentframe to target the correct scope,
         if you wrap this function in n functions, that are called from the target
         call it with frames_back = n"""
     if return_locals:
-        calling_frame = currentframe()
+        calling_frame = inspect.currentframe()
         for _ in range(frames_back):
             calling_frame = calling_frame.f_back
         sources += [ calling_frame.f_locals.copy() ]
-        logger.debug(sources)
+        #logger.debug(sources)
     return tuple(get_val(retval_name, sources) for retval_name in retval_names)
 
 
 def component_Outputs(self, sources):
     
     return custom_retvals([param.NickName for param in self.Params.Output]
-                         
                          ,sources
                          ,return_locals = True
                          ,frames_back = 2
@@ -89,9 +91,10 @@ def component_Outputs(self, sources):
 
 def prepare_args(function
                 ,params_dict
-                ,anon_pos_args = None
-                ,anon_kwargs = None
+                ,anon_pos_args = []
+                ,anon_kwargs = []
                 ,prioritise_kwargs = True
+                ,add_unrecognised_names_to_pos_args = False
                 ):
     #type(function) -> tuple, dict
     argspec = get_args_spec(function)
@@ -102,7 +105,7 @@ def prepare_args(function
     params_dict = params_dict.copy()  #We'll be popping keys out later
 
     args_dict = {}
-    pos_args = defaultdict(default_factory = tuple) # positional arguments
+    pos_args = {} # positional arguments
     unnamed_pos_args = ()
     req_pos_args = argspec.args
 
@@ -114,19 +117,19 @@ def prepare_args(function
     
     missing_req_pos_args = []
     
-
     for param_name in req_pos_args:  # Try to fill required positional
-                                        # args with names in Params.
+                                     # args with names in Params.
         if param_name in params_dict:
-            pos_args[param_name] += (params_dict.pop(param_name),)
+            pos_args[param_name] = params_dict.pop(param_name)
         else:
             missing_req_pos_args += [param_name]
 
-    
-    for param_name in params_dict:   # Try to fill other named args
-                                        # with names in Params.
+    #logger.debug('pos_args == ' + str(pos_args))
+
+    for param_name in params_dict.copy():   # Try to fill other named args
+                                            # with names in Params.
         if param_name in argspec.args: 
-            assert param_name not in req_pos_args # i.e., it has a 
+            assert param_name not in req_pos_args   # i.e., it has a 
                                                     # default value
                                                     # so occurs after
                                                     # req_pos_args
@@ -163,8 +166,8 @@ def prepare_args(function
     
     #Try to assign params whose names could not be found to
     # missing required positional args (before ones with defaults).
-    if argspec.varargs:
-        for req_pos_arg, param_name in zip(missing_req_pos_args, params_dict):
+    if add_unrecognised_names_to_pos_args:
+        for req_pos_arg, param_name in zip(missing_req_pos_args[:], params_dict.copy()):
             if missing_req_pos_args:
                 pos_args[req_pos_arg] = params_dict.pop(param_name)
                 missing_req_pos_args.remove(req_pos_arg)
@@ -176,44 +179,36 @@ def prepare_args(function
         logger.warning(msg)
         raise TypeError(msg)
     
-
-    if prioritise_kwargs and argspec.keywords:
-        logger.debug('Adding all remaining Input Params to args_dict')
-        args_dict.update(params_dict)
-    elif  argspec.varargs:
-        unnamed_pos_args += tuple(params_dict.values())
-        logger.debug('Adding all remaining Input Params to unnamed_pos_args')
-    elif params_dict:
-        logger.error('Could not allocate Input Params to args : ' + str(params_dict))
-    else:
-        logger.warning('Inconsistent vargs / kwargs with priority bool')
+    if params_dict:
+        if prioritise_kwargs and argspec.keywords:
+            logger.debug('Adding all remaining Input Params to args_dict')
+            args_dict.update(params_dict)
+        elif argspec.varargs:
+            unnamed_pos_args += tuple(params_dict.values())
+            logger.debug('Adding all remaining Input Params to unnamed_pos_args')
+        else:
+            logger.warning('Inconsistent vargs / kwargs with priority bool')
 
 
-    unnamed_pos_args = tuple(pos_args.values()) + unnamed_pos_args
+    pos_args_tupl = (tuple(pos_args[arg] for arg in argspec.args if arg in pos_args) 
+                     + unnamed_pos_args)
 
-    logger.debug('unnamed_pos_args == ' + str(unnamed_pos_args))
+    #logger.debug('pos_args == ' + str(pos_args_tupl))
     logger.debug('args_dict' + str(args_dict))
 
-    return unnamed_pos_args, args_dict
+    return pos_args_tupl, args_dict
 
 
 def custom_inputs_class_deco(BaseComponent
-                            ,anon_pos_args = None
-                            ,anon_kwargs = None
+                            ,anon_pos_args = []
+                            ,anon_kwargs = []
                             ,prioritise_kwargs = True
                             ):
     #type(type[any], list, list, bool) -> type[any]
 
-
-    if anon_pos_args is None:
-            anon_pos_args = []
-
-    if anon_kwargs == None:
-            anon_kwargs = []
-
     class Decorated(BaseComponent):
     
-        main = BaseComponent.RunScript
+        script = BaseComponent.RunScript
 
         def RunScript(self, *param_vals):
             param_names = [param.Name for param in self.Params.Input]
@@ -221,7 +216,7 @@ def custom_inputs_class_deco(BaseComponent
             logger.debug('Params_dict == ' + str(params_dict))
 
 
-            pos_args, args_dict = prepare_args(self.main
+            pos_args, args_dict = prepare_args(self.script
                                               ,params_dict = params_dict
                                               ,anon_pos_args = anon_pos_args
                                               ,anon_kwargs = anon_kwargs
@@ -230,7 +225,7 @@ def custom_inputs_class_deco(BaseComponent
 
  
 
-            return self.main(*pos_args, **args_dict)
+            return self.script(*pos_args, **args_dict)
             # BaseClass.RunScript needs to call:
             # component_Outputs(on its retvals) itself
     return Decorated
@@ -242,7 +237,7 @@ class MyComponentWithMainABC(component, ABC):
        and returning suitable
        outputs based on the user specified Output Params.  """
     @abstractmethod
-    def main(self, *args, **kwargs):
+    def script(self, *args, **kwargs):
         """ Specify the main script / method here instead of RunScript. 
             In an instance of CustomInputsComponentABC or in a class produced
             by the custom_inputs_class_deco decorator, RunScript now inspects 
@@ -251,12 +246,12 @@ class MyComponentWithMainABC(component, ABC):
 
             To also use Custom Outputs in your own code, you need to add the 
             method component_Outputs to the component, in 
-            your own code end each exit point of main with
+            your own code end each exit point of script with
             'return self.component_Outputs(sources)' with 
             sources as a list of whichever dicts or namedtuples whose contents 
             you wish to make available on the Output params.
             
-            By default the locals in the scope of main are added to sources so
+            By default the locals in the scope of script are added to sources so
             sources can be omitted.  
             
             Returning primitives is not supported - 
@@ -284,6 +279,6 @@ SmartComponent.component_Outputs = component_Outputs
 # def old_smart_RunScript(self, *args):
 #     args_dict = {key.Name : val for key, val in zip(self.Params.Input, args) } # .Input[4:] type: ignore
 #     logger.debug(args)
-#     ret_vals_dict = self.main(**args_dict)
+#     ret_vals_dict = self.script(**args_dict)
 #     go = args_dict.get('go', False)
 

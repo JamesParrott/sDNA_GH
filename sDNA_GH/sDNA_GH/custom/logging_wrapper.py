@@ -8,12 +8,10 @@ __author__  = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
 __license__ = 'Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
 __version__ = '0.02'
 
-import sys
-from os.path import join
-import logging
+import sys, os, logging
 
 if __name__=='__main__':
-    sys.path += [join(sys.path[0], '..')]
+    sys.path += [os.path.join(sys.path[0], '..')]
 else:
     pass
     #print "Import attempted of wrapper_logging"
@@ -55,7 +53,9 @@ def add_custom_file_to_logger(logger
         pass
 
 def new_Logger(  logger_name = 'main'
-                ,file_name = join(sys.path[0], sys.argv[0].rsplit('.')[0] + '.log')
+                ,file_name = os.path.join(sys.path[0]
+                                         ,sys.argv[0].rsplit('.')[0] + '.log'
+                                         )
                 ,file_logging_level = 'DEBUG'
                 ,console_logging_level = 'WARNING'
                 ,custom_file_object = None
@@ -92,6 +92,22 @@ def new_Logger(  logger_name = 'main'
     #
     #######################################################################
 #print "After func def in wrapper_logging..."
+
+
+def make_log_message_maker(name):
+    def f(self, message, *args):
+        if not hasattr(self, 'logger'):
+            self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+            self.logger.addHandler(logging.NullHandler())
+        getattr(self.logger, name.lower())(message, *args)
+        return message
+    return f
+
+class ClassLogger():
+    pass
+for name in ('debug', 'info', 'warning', 'error', 'critical'):
+    setattr(ClassLogger, name, make_log_message_maker(name))
+
 
 if __name__ == '__main__':
     logger=new_Logger('test','wrapper_logging_test_log','DEBUG','INFO')

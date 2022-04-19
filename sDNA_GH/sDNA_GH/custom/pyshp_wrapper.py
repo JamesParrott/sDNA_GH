@@ -6,68 +6,41 @@ __version__ = '0.02'
 # from any iterable object and to any function
 
 
-import sys
-from os.path import normpath, join, split, isfile, isdir, dirname 
+import sys, os, logging
 from collections import OrderedDict
 from datetime import date
-from re import match
-
-import rhinoscriptsyntax as rs
-
+import re
 if sys.version < '3.3':
     from collections import Iterable
 else:
     from collections.abc import Iterable
 
 
-file_name_no_ext = split(__file__)[-1].split('.')[0]             #os.path.split and string.split
+import rhinoscriptsyntax as rs
+import scriptcontext as sc
+
+from .skel.tools.helpers.funcs import is_uuid
+from .skel.tools.helpers.checkers import is_an_obj_in_GH_or_Rhino
+                                  
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
+
+file_name_no_ext = os.path.split(__file__)[-1].split('.')[0]             #os.path.split and string.split
 
 if __name__=='__main__':
-    sys.path += [join(sys.path[0], '..')]
-    sys.path += [join(sys.path[0], r'..',r'third_party_python_modules')]
+    sys.path += [os.path.join(sys.path[0], '..')]
+    sys.path += [os.path.join(sys.path[0], r'..',r'third_party_python_modules')]
     import shapefile as shp  
-    class Stdout_logger():
-        pass
-    for attr in ['debug','info','warning','error','critical']:
-        setattr(Stdout_logger, attr, lambda s : sys.stdout.write('attr'.upper() + ' : ' + s + '\n'))
-    logger=Stdout_logger()
 else:
-    import logging
-    logger = logging.getLogger(file_name_no_ext)
     from ..third_party.PyShp import shapefile as shp  
 
 
-    #print("Wrapper_Pyshp Being imported as a module.  __name__ == " + __name__)
-
-
-
-#try:
-#    print("type(options) == ",type(options))
-#except:
-#    print("options not present")
 
 ###################################################################
-#
-# TODO: Make functions take options and metas as argument.
-#
-#if 'options' not in globals():
-#    from config import options
-#    if isinstance(options,dict):
-#        from options_manager import makeNestedNamedTuple
-#        options = makeNestedNamedTuple( options ,'Options','')
-
-#################################################################
 
 
-#if 'logging' in globals() and 'logger' in globals():
-#    print "Logger found"
-#else:
-#    import logging, wrapper_logging
-#    logger = wrapper_logging.new_Logger( __name__
-#                                        ,join(sys.path[0],file_name_no_ext) + '.log')
-
-
-#print("After config import if block type(options) == " + str(type(options)))
 
 Rhino_obj_converter_Shp_file_shape_map = dict(NULL = None
                                              ,POINT = 'PointCoordinates'
@@ -181,7 +154,6 @@ shaperback_writer = dict(NULL = 'null'
                         )    # should be the same as val names in shp.shapefile.SHAPETYPE_LOOKUP.values()
 
 
-#print(dir(shp))
 
 assert set(shp.SHAPETYPE_LOOKUP.values()) == set(shaperback_writer.keys())   
 # SHAPETYPE_LOOKUP not in older versions of shapefile.py (especially 1.2.12 from Hiteca's GHshp)
@@ -228,7 +200,7 @@ def shp_type_coercer(x, options):
                 if not options.enforce_yyyy_mm_dd:
                     test_patterns += [  day + sep + month + sep + year   # https://en.wikipedia.org/wiki/Date_format_by_country
                                        ,month + sep + day + sep + year]  # 
-                if any(match(pattern, x) for pattern in test_patterns):
+                if any(re.match(pattern, x) for pattern in test_patterns):
                     return x, shp_field_codes['date']                # TODO, optionally, return datetime.date() object?
                 else:
                     return x, shp_field_codes['str']  # i.e. 'C'  
@@ -246,10 +218,10 @@ def get_unique_filename_if_not_overwrite(f, opts):
 
     if not opts.overwrite_shp_file:
         i = 1
-        file_dir, full_file_name = split(f)   #os.path.split
+        file_dir, full_file_name = os.path.split(f)   #os.path.split
         [file_name, _, file_extension] = full_file_name.rpartition('.')  #str.split
-        while isfile(f):
-            f = join(file_dir, file_name + opts.duplicate_file_name_suffix.format(i) + '.' + file_extension) #os.path.join
+        while os.path.isfile(f):
+            f = os.path.join(file_dir, file_name + opts.duplicate_file_name_suffix.format(i) + '.' + file_extension) #os.path.join
             i += 1  # Not good practice to change the value of the input argument shp_file_path, but if it's a str it's immutable, so no side effects
                     # even if we give it a default value
     elif not opts.suppress_overwrite_warning:
@@ -312,25 +284,28 @@ def write_from_iterable_to_shapefile_writer( my_iterable
     is_path_str = isinstance(shp_file_path, str)
 
 
-    if ( not is_iterable 
+    if ( (not is_iterable) 
          or is_str 
          or not is_path_str
-         or not isdir(dirname(shp_file_path)) 
+         or not os.path.isdir( os.path.dirname(shp_file_path) ) 
         ):
-        print ('returning.  Not writing to .shp file')
-        print (' Is Iterable ==' + str(is_iterable))
-        print (' Is str ==' + str(is_str))
-        print (' Is path str ==' + str(is_path_str))
+        logger.error ('returning.  Not writing to .shp file')
+        msg_1 = ' Is Iterable == ' + str(is_iterable) 
+        logger.info (msg_1)
+        msg_2 = ' Is str ==' + str(is_str)
+        logger.info (msg_2)
+        msg_3 = ' Is path str ==' + str(is_path_str)
+        logger.info (msg_3)
+        msg_4 = 'my_iterable == ' + str(my_iterable)
+        logger.info(msg_4)
         try:
-            print (' Is path path ==' + str(isdir(dirname(shp_file_path))))
+            logger.info (' Is path path ==' + str(os.path.isdir(os.path.dirname(shp_file_path))))
         except:
             pass
-        print ('Path == ' + str(shp_file_path))
-        return 1, shp_file_path, None, None
-
+        logger.info ('Path == ' + str(shp_file_path))
+        raise TypeError('\n'.join([msg_1, msg_1, msg_3, msg_4]))
         
 
-    options.cache_iterable_when_writing_to_shp
 
     max_size = (options.global_shp_file_field_size 
             + options.shp_file_field_size_num_extra_chars)
@@ -372,9 +347,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             } 
                         if val_type == shp_field_codes['float']:
                             fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
-            #print(str(item))
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
-            #print(str(values))
     else:
         for name in field_names:
             fields[name] = { 'size' : max_size
@@ -392,32 +365,27 @@ def write_from_iterable_to_shapefile_writer( my_iterable
         return retval
 
 
-    shapefile_path_to_write_to = get_unique_filename_if_not_overwrite(
-                                                                shp_file_path
-                                                                ,options
-                                                                )
+    shapefile_path_to_write_to = get_unique_filename_if_not_overwrite(shp_file_path
+                                                                     ,options
+                                                                     )
     # wrapper_pyshp can work outside of rhino and grasshopper, so we don't know the name of the Rhino .3dm file.
     # Instead we'll wrap this wrapper function again in the Rhino / GH process in sDNA_GH.py to supply this inner 
     # function it as a normal parameter value for shp_file_path.
         
-    #print('len(attribute_tables) == '+ str(len(attribute_tables))+' ')
 
 
 
     
-    with shp.Writer(  normpath( shapefile_path_to_write_to ), getattr(shp, shape_code)  ) as w:
+    with shp.Writer(  os.path.normpath( shapefile_path_to_write_to ), getattr(shp, shape_code)  ) as w:
         for key, val in fields.items():
             w.field(key, **val)
         #w.field('Name', 'C')
 
-        logging.debug(str(fields))
+        logger.debug(str(fields))
 
         add_geometric_object = getattr( w,  shaperback_writer[shape_code] )
-        #print(add_geometric_object)
         for item, attribute_table in attribute_tables.items():
-            #print item
             list_of_shapes = shape_mangler(item)
-            #print(str(list_of_shapes)) 
             if list_of_shapes:
 
                 add_geometric_object( list_of_shapes )   
@@ -428,7 +396,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                 #    attribute_table = attribute_tables[ shp_ID ]
                 #else:
                 #    attribute_table = default_record_dict( item )
-                logging.debug('Attr table == ' + str(attribute_table))
+                #logger.debug('Attr table == ' + str(attribute_table))
                 w.record( **attribute_table )    
 
 
@@ -454,13 +422,12 @@ def make_new_group(group_name = None):
     return rs.AddGroup(group_name)
 
 def create_new_groups_layer_from_points_list(
-       options
+       shp_type = 'POLYLINEZ'
       ,make_new_group = make_new_group
       ,add_objects_to_group = add_objects_to_group
       ,Rhino_obj_adder_Shp_file_shape_map = Rhino_obj_adder_Shp_file_shape_map
       ):
     #type(namedtuple, function, function, dict) -> function
-    shp_type = options.shp_file_shape_type            
     rhino_obj_maker = getattr(rs, Rhino_obj_adder_Shp_file_shape_map[shp_type])
 
     def g(obj, rec):
@@ -480,6 +447,31 @@ def create_new_groups_layer_from_points_list(
             return None
     return g
 
+def get_shape_file_rec_ID(uuid_shp_file_field_name): 
+    #type(str) -> function
+    def f(obj, record):
+        if is_uuid(obj):
+            target_doc = is_an_obj_in_GH_or_Rhino(obj)    
+            if target_doc:
+                sc.doc = target_doc
+                # and is_an_obj_in_GH_or_Rhino(obj):
+                return obj
+        if hasattr(record, 'as_dict'):
+            d = record.as_dict()
+            if uuid_shp_file_field_name in d:
+                obj_ID = d[uuid_shp_file_field_name]     
+                # For future use.  Not possible until sDNA round trips through
+                # Userdata into the output .shp file, including our uuid
+                target_doc = is_an_obj_in_GH_or_Rhino(obj_ID)    
+                if target_doc:
+                    sc.doc = target_doc
+                    return obj_ID
+                #if (is_an_obj_in_GH_or_Rhino(obj_ID) or 
+                #    is_a_group_in_GH_or_Rhino(obj_ID) ):
+                #    return obj_ID
+        g = create_new_groups_layer_from_points_list()
+        return g(obj, record)
+    return f 
 
 if __name__=='__main__':
     pass
