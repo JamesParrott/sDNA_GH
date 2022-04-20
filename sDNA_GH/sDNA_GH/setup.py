@@ -106,6 +106,7 @@ class HardcodedMetas():
                         #,'sDNALineMeasures'
                         #,'sDNALearn'
                         #,'sDNAPredict'
+                        ,TestPlot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
                     )
                           
     categories = {
@@ -202,7 +203,7 @@ class HardcodedOptions():
     shp_record_max_decimal = 4
     ####################################################################################
     #Writing and Reading Usertext to/from Rhino
-    create_new_groups_layer_from_shapefile = False
+    create_new_geom = False
     max_new_UserText_keys_to_make = 20
     #
     #

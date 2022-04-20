@@ -83,7 +83,7 @@ def tool_factory(inst
         raise TypeError(msg)
 
     if nick_name not in tools_dict:   
-        map_result = getattr(name_map, nick_name, nick_name)  
+        map_result = name_map.get(nick_name, nick_name)  
         # in case nick_name is a tool_name
         
         if not isinstance(map_result, str):

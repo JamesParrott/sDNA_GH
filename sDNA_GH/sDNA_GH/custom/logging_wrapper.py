@@ -1,40 +1,11 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Convenience wrapper to run Vinay Sajip's logger recipe with customisable
-# console  output in each module
-#
-__author__  = 'Vinay Sajip <vinay_sajip at red-dove dot com> & James Parrott'
-__license__ = 'Python Software Foundation 2.7.18'   #https://docs.python.org/2.7/license.html
-__version__ = '0.02'
+
+
 
 import sys, os, logging
 
-if __name__=='__main__':
-    sys.path += [os.path.join(sys.path[0], '..')]
-else:
-    pass
-    #print "Import attempted of wrapper_logging"
-
-
-#if 'metas' not in globals():
-#    print "metas not found wrapper_logging.  "
-#    from config import metas
-#    from options_manager import makeNestedNamedTuple
-#    metas = makeNestedNamedTuple( metas, 'Metas' )
-
-#if 'options' not in globals():
-#    #print "options not found in wrapper_logging.  "
-#    from config import options
-#    if isinstance(options,dict):
-#        from options_manager import makeNestedNamedTuple
-#        options = makeNestedNamedTuple( options, 'Options','' )
-
-
-#print "Main body of wrapper_logging..."
-
-#def new_Logger(*args):
-#    return logging.getLogger(__name__)
 
 # set a format which is simpler for console use
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
@@ -60,14 +31,12 @@ def new_Logger(  logger_name = 'main'
                 ,console_logging_level = 'WARNING'
                 ,custom_file_object = None
                 ,custom_logging_level = 'INFO'):
-    # type : (str,str,str,str,str,stream,str) -> Logger
-    # type(stream)=='file-like object' supporting write() and flush() methods
-    #
-    #
-    ##################################################################
-    # https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook
-    # Logging to multiple destinations
-    # set up logging to file - see previous section for more details
+    # type : (str,str,str,str,stream,str) -> Logger
+    # stream is any'file-like object' supporting write() and flush() methods
+    """ Convenience wrapper for Vinay Sajip's logger recipe with customisable
+        console output 
+        https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook """
+
 
     file_logging_level = file_logging_level.upper()
     console_logging_level = console_logging_level.upper()
@@ -90,26 +59,37 @@ def new_Logger(  logger_name = 'main'
         add_custom_file_to_logger(logger, custom_file_object, custom_logging_level)
     return logger 
     #
-    #######################################################################
-#print "After func def in wrapper_logging..."
+####################################################################################
 
 
-def make_log_message_maker(name):
+def make_log_message_maker(method, logger = None, module_name = None):
+    if module_name is None:
+        module_name = __name__
     def f(self, message, *args):
         if not hasattr(self, 'logger'):
-            self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+            if logger:
+                self.logger = logger.getChild(self.__class__.__name__)
+            else:
+                self.logger = logging.getLogger(module_name + '.' + self.__class__.__name__)
             self.logger.addHandler(logging.NullHandler())
-        getattr(self.logger, name.lower())(message, *args)
+        getattr(self.logger, method)(message, *args)
         return message
     return f
 
-class ClassLogger():
-    pass
-for name in ('debug', 'info', 'warning', 'error', 'critical'):
-    setattr(ClassLogger, name, make_log_message_maker(name))
+def class_logger_factory(logger = None, module_name = None):
+    """ Factory for ClassLogger Classes.  Otherwise __name__ will 
+        be 'wrapper.logging' now matter which module they were instantiated
+        in.  """
+    class ClassLogger:
+        """ Class to inherit a class logger from, e.g. via co-operative 
+            multiple inheritance.  After instantiation, 
+            .SubClassName is appendeded to module_name 
+            in its logs, to aid debugging.  """
+        pass
+    methods = ('debug', 'info', 'warning', 'error', 'critical', 'exception')
+    for method in methods:
+        setattr(ClassLogger, method, make_log_message_maker(method, logger, module_name))
+    return ClassLogger
 
 
-if __name__ == '__main__':
-    logger=new_Logger('test','wrapper_logging_test_log','DEBUG','INFO')
-    logger.info("Logger set up")
 

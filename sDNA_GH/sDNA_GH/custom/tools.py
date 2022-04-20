@@ -61,7 +61,7 @@ from .pyshp_wrapper import (get_unique_filename_if_not_overwrite
                            ,get_all_shp_type_Rhino_objects
                            ,get_shape_file_rec_ID
                            )
-from .logging_wrapper import ClassLogger
+from .logging_wrapper import class_logger_factory
 from .gdm_from_GH_Datatree import (make_gdm
 
                                   ,check_is_specified_obj_type
@@ -71,11 +71,12 @@ from .gdm_from_GH_Datatree import (make_gdm
 
 
 
-
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-output = Output(tmp_logs = [], logger = logger)
-debug = Debugger(output)
+ClassLogger = class_logger_factory(logger)
+
+# output = Output(tmp_logs = [], logger = logger)
+# self.debug = Debugger(output)
 
 
 
@@ -134,18 +135,20 @@ class sDNAWrapper(sDNA_GH_Tool):
         if self.tool_name != nick_name:
             tool_opts = opts.setdefault(self.tool_name, {})
 
-        debug(tool_opts)
+        self.debug(tool_opts)
         # Note, this is intended to do nothing if nick_name == self.tool_name
         try:
             sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
         except:
-            raise ValueError(output('No tool called '
-                                   +self.tool_name
-                                   +sDNAUISpec.__name__
-                                   +'.  Rename tool_name or change sDNA version.  '
-                                   ,'ERROR'
-                                   )
-                            )
+            msg =   ('No tool called '
+                    +self.tool_name
+                    +' found in '
+                    +sDNAUISpec.__file__
+                    +'.  Rename tool_name or change sDNA version.  '
+                    )
+            self.error(msg)
+            raise ValueError(msg)
+                            
         self.input_spec = sDNA_Tool.getInputSpec()
         self.get_syntax = sDNA_Tool.getSyntax     
 
@@ -185,6 +188,7 @@ class sDNAWrapper(sDNA_GH_Tool):
         #    tools_dict[tool_name] = support_tool_wrapper   
             #
             #
+        self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.get_tool_opts_and_syntax(opts, local_metas)
 
@@ -291,11 +295,11 @@ class sDNAWrapper(sDNA_GH_Tool):
         #                                    ,pythonpath = None)   # TODO:  Work out if this is important or not! 
                                                                 # os.environ["PYTHONPATH"] not found in Iron Python
 
-        #return return_code, tool_opts[sDNA].output, gdm, a
+        #return return_code, tool_opts[sDNA].output
 
         return custom_retvals(self.retvals, [], True)
     
-    retvals = 'retcode', 'f_name', 'gdm', 'opts'
+    retvals = 'retcode', 'f_name', 'opts'
     component_outputs = ('file',) # retvals[-1])
 
 
@@ -350,6 +354,7 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
     
     def __call__(self, opts, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
+        self.debug('Creating Class Logger.  ')
 
         options = opts['options']
         #if 'ghdoc' not in globals():
@@ -376,10 +381,10 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
 
 
 
-        debug('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
+        self.logger.debug('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
         if len(gdm) > 0:
-            debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
-        debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
+            self.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
+        self.logger.debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
         if tmp_gdm:
             gdm = override_gdm_with_gdm(gdm, tmp_gdm, options.merge_Usertext_subdicts_instead_of_overwriting)
         sc.doc = ghdoc # type: ignore 
@@ -398,7 +403,7 @@ class ReadUsertext(sDNA_GH_Tool):
     def __call__(self, gdm):
         #type(str, dict, dict) -> int, str, dict, list
 
-        debug('Starting read_Usertext... ')
+        self.debug('Starting read_Usertext..  Creating Class logger. ')
 
         # if (options.auto_get_Geom and
         #    (not gdm or not hasattr(gdm, 'keys') or
@@ -439,6 +444,8 @@ class WriteShapefile(sDNA_GH_Tool):
     def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts['options']
+        self.debug('Creating Class Logger.  ')
+
 
         shp_type = options.shp_file_shape_type            
         #print gdm
@@ -467,7 +474,7 @@ class WriteShapefile(sDNA_GH_Tool):
                                                 #                 format_string)
 
         def get_list_of_lists_from_tuple(obj):
-            #debug(obj)
+            #self.debug(obj)
             #if is_an_obj_in_GH_or_Rhino(obj):
             target_doc = is_an_obj_in_GH_or_Rhino(obj)    
             if target_doc:
@@ -505,7 +512,7 @@ class WriteShapefile(sDNA_GH_Tool):
                             # file extensions are actually optional in PyShp, 
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
-        debug(f_name)
+        self.logger.debug(f_name)
 
         (retcode, f_name, fields, gdm) = ( 
                             write_from_iterable_to_shapefile_writer(
@@ -547,61 +554,81 @@ class ReadShapefile(sDNA_GH_Tool):
     def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         options = opts['options']
+        self.debug('Creating Class Logger.  Reading shapefile... ')
 
-        ( fields
+        ( shp_fields
         ,recs
         ,shapes
         ,bbox ) = get_fields_recs_and_shapes_from_shapefile( f_name )
 
+        self.debug('gdm == ' + str(gdm))
+
+        self.debug('recs[0].as_dict() == ' + str(recs[0].as_dict()))
+
         if not recs:
-            output('No data read from Shapefile ' + f_name + ' ','WARNING')
+            self.logger.warning('No data read from Shapefile ' + f_name + ' ')
             return 1, f_name, gdm, None    
             
         if not shapes:
-            output('No shapes in Shapefile ' + f_name + ' ','WARNING')
+            self.logger.warning('No shapes in Shapefile ' + f_name + ' ')
+            if not gdm:
+                self.logger.warning('No Geom objects in Geom Data Mapping.  ')
             return 1, f_name, gdm, None
 
+
         if not bbox:
-            output('No Bounding Box in Shapefile.  '
+            self.logger.warning('No Bounding Box in Shapefile.  '
                    + f_name 
                    + ' '
                    +'Supply bbox manually or create rectangle to plot legend.  '
-                   ,'WARNING')
+                   )
             
 
-        field_names = [ x[0] for x in fields ]
+        fields = [ x[0] for x in shp_fields ]
 
-        debug('options.uuid_shp_file_field_name in field_names == ' + str(options.uuid_shp_file_field_name in field_names))
-        debug(field_names)
-
-        shapes_to_output = ([shp.points] for shp in shapes )
-        
-        obj_key_maker = create_new_groups_layer_from_points_list() 
+        self.logger.debug('options.uuid_shp_file_field_name in fields == ' + str(options.uuid_shp_file_field_name in fields))
+        self.logger.debug(fields)
 
 
 
-        if not options.create_new_groups_layer_from_shapefile:   #TODO: put new objs in a new layer or group
-            obj_key_maker = get_shape_file_rec_ID(options.uuid_shp_file_field_name) # key_val_tuples
-            # i.e. if options.uuid_shp_file_field_name in field_names but also otherwise
-        
-            if isinstance(gdm, dict) and len(gdm) == len(recs):
-                # figuring out an override for different number of overrided geom objects
-                # to shapes/recs is to open a large a can of worms.  Unsupported.
-                # If the override objects are in Rhino anyway then the uuid field in the shape
-                # file will be picked up in any case in get_shape_file_rec_ID
+        self.logger.debug('Testing existing geom data map.... ')
+        if isinstance(gdm, dict) and len(gdm) == len(recs):
+            # an override for different number of overrided geom objects
+            # to shapes/recs opens a large a can of worms.  Unsupported.
 
-                shape_keys = list(gdm.keys())
-                shapes_to_output = [shp_key for shp_key in shape_keys]
-                    # These points shouldn't be used, as by definition they 
-                    # come from objects that already
-                    # exist in Rhino.  But if they are to be used, then use this!
-                #debug(shapes_to_output)    
+            self.logger.debug('Geom data map matches shapefile.  ')
 
+            shapes_to_output = list(gdm.keys()) # Dict view in Python 3
+        elif options.create_new_geom:   
+                    #shapes_to_output = ([shp.points] for shp in shapes )
+            
+            obj_key_maker = create_new_groups_layer_from_points_list() 
+            shapes_to_output = (obj_key_maker(shp.points) for shp in shapes )
+        else:
+            # Unsupported until can round trip uuid through sDNA 
+            # obj_key_maker = get_shape_file_rec_ID(options.uuid_shp_file_field_name) # key_val_tuples
+            # i.e. if options.uuid_shp_file_field_name in fields but also otherwise
+            msg =   ('Geom data map and shapefile have unequal'
+                    +' lengths len(gdm) == ' + str(len(gdm))
+                    +' len(recs) == ' + str(len(recs))
+                    +' (or invalid gdm), and create_new_geom'
+                    +' == False'
+                    )
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+        # self.logger.debug('list(Shapes_to_output) == ' + str(list(shapes_to_output))    )
+        # raise Exception('Planned break point')
+        # WARNING!!  This uses up the generator.  If the break point Exception is not raised
+        # then if new objects are being created, this can break
+        # or erroneously 'fix' (hide bugs in) subsequent code.   
 
         shp_file_gen_exp  = itertools.izip(shapes_to_output
                                           ,(rec.as_dict() for rec in recs)
                                           )
-        
+
+
+                #self.debug(shapes_to_output)
         #(  (shape, rec) for (shape, rec) in 
         #                                       izip(shapes_to_output, recs)  )              
         sc.doc = Rhino.RhinoDoc.ActiveDoc
@@ -618,7 +645,7 @@ class ReadShapefile(sDNA_GH_Tool):
             abbrevs = [line[0] for line in f_csv ]
 
 
-        debug(bbox)
+        self.logger.debug('bbox == ' + str(bbox))
 
         #override_gdm_with_gdm(gdm, gdm, opts)   # TODO:What for?
 
@@ -630,7 +657,7 @@ class ReadShapefile(sDNA_GH_Tool):
         return custom_retvals(self.retvals, [], True)
 
 
-    retvals = 'retcode', 'gdm', 'abbrevs', 'sDNA_fields', 'bbox', 'opts'
+    retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox', 'opts'
     component_outputs = ('Geom', 'Data') + retvals[1:]
                
 
@@ -648,7 +675,7 @@ class WriteUsertext(sDNA_GH_Tool):
         options = opts['options']
 
         date_time_of_run = asctime()
-
+        self.debug('Creating Class logger at: ' + str(date_time_of_run))
         def write_dict_to_UserText_on_obj(d, rhino_obj):
             #type(dict, str) -> None
             if not isinstance(d, dict):
@@ -682,19 +709,17 @@ class WriteUsertext(sDNA_GH_Tool):
                         UserText_key_name = tmp
                     else:
                         if not options.suppress_overwrite_warning:
-                            output( "UserText key == " 
-                                    + UserText_key_name 
-                                    +" overwritten on object with guid " 
-                                    + str(rhino_obj)
-                                    ,'WARNING'
-                                    )
+                            self.logger.warning( "UserText key == " 
+                                        + UserText_key_name 
+                                        +" overwritten on object with guid " 
+                                        + str(rhino_obj)
+                                        )
                     write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
             else:
-                output('Object: ' 
-                    + key[:10] 
-                    + ' is neither a curve nor a group. '
-                    ,'INFO'
-                    )
+                self.logger.info('Object: ' 
+                         + key[:10] 
+                         + ' is neither a curve nor a group. '
+                         )
 
         for key, val in gdm.items():
             #if is_a_curve_in_GH_or_Rhino(key):
@@ -731,6 +756,7 @@ class WriteUsertext(sDNA_GH_Tool):
 class BakeUsertext(sDNA_GH_Tool):
 
     def __init__(self, *args, **kwargs):
+        self.debug('Initialising Class.  Creating Class Logger. ')
         self.write_Usertext = WriteUsertext(*args, **kwargs)
     
     component_inputs = ('Geom', 'Data')
@@ -771,18 +797,20 @@ class BakeUsertext(sDNA_GH_Tool):
 
 class ParseData(sDNA_GH_Tool):
     def __init__(self):
+        self.debug('Initialising Class.  Creating Class Logger. ')
         self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
                                 ,'plot_min', 'class_bounds')
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
+        self.debug('Starting ParseData tool.  ')
         options = opts['options']
 
         field = options.field
 
         data = [ val[field] for val in gdm.values()]
-        debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
+        self.logger.debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
         x_max = max(data) if options.plot_max is None else options.plot_max
         x_min = min(data) if options.plot_min is None else options.plot_min
         # bool(0) == False so in case x_min==0 we can't use 
@@ -818,9 +846,9 @@ class ParseData(sDNA_GH_Tool):
                 class_bounds = [ val[field] for val in 
                                     gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
                                 ]  # classes include their lower bound
-                debug('num class boundaries == ' + str(len(class_bounds)))
-                debug(options.number_of_classes)
-                debug(n)
+                self.logger.debug('num class boundaries == ' + str(len(class_bounds)))
+                self.logger.debug(options.number_of_classes)
+                self.logger.debug(n)
                 assert len(class_bounds) + 1 == options.number_of_classes
             else: 
                 class_bounds = [
@@ -879,7 +907,7 @@ class ParseData(sDNA_GH_Tool):
                                                 )
                     ]
         mid_points += [ 0.5*(x_max + max(class_bounds))]
-        debug(mid_points)
+        self.logger.debug(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
@@ -923,7 +951,7 @@ class ParseData(sDNA_GH_Tool):
 
         assert len(legend_tags) == options.number_of_classes == len(mid_points)
 
-        debug(legend_tags)
+        self.logger.debug(legend_tags)
 
         #first_legend_tag_format_string = 'below {upper}'
         #inner_tag_format_string = '{lower} - {upper}' # also supports {mid}
@@ -948,6 +976,7 @@ class ParseData(sDNA_GH_Tool):
 class RecolourObjects(sDNA_GH_Tool):
 
     def __init__(self, *args, **kwargs):
+        self.debug('Initialising Class.  Creating Class Logger. ')
         self.parse_data = ParseData(*args, **kwargs)
         self.GH_Gradient_preset_names = {0 : 'EarthlyBrown'
                                         ,1 : 'Forest'
@@ -962,7 +991,7 @@ class RecolourObjects(sDNA_GH_Tool):
     
     component_inputs = ('Data', 'Geom')
 
-    def __call__(self, gdm, opts):
+    def __call__(self, gdm, opts, plot_min = None, plot_max = None, bbox = None):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
 
@@ -972,19 +1001,16 @@ class RecolourObjects(sDNA_GH_Tool):
         objs_to_parse = OrderedDict(  (k, v) for k, v in gdm.items()
                                     if isinstance(v, dict) and field in v    
                                     )  # any geom with a normal gdm dict of keys / vals
-        if objs_to_parse:
-            ret_code, x_min, x_max, gdm_in, opts = self.parse_data(objs_to_parse, opts)
+        if objs_to_parse or plot_min is None or plot_max is None:
+            x_min, x_max, gdm_in, opts = self.parse_data(objs_to_parse, opts)
                                                                             
-            debug(x_min)
-            debug(x_max)
         else:
+            self.debug('Skipping parsing')
             gdm_in = {}
-            x_min, x_max = options.plot_min, options.plot_max
-            debug(options.plot_min)
-            debug(options.plot_max)     
+            x_min, x_max = plot_min, plot_max
 
-        debug(opts['options'].plot_min)
-        debug(opts['options'].plot_max)
+        self.logger.debug('x_min == ' + str(x_min))
+        self.logger.debug('x_max == ' + str(x_max))
 
         objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
                                                 if isinstance(v, Number) 
@@ -1054,7 +1080,7 @@ class RecolourObjects(sDNA_GH_Tool):
         objects_to_widen_lines = []
 
         for obj, new_colour in objs_to_recolour.items():
-            #debug(obj)
+            #self.logger.debug(obj)
             if is_uuid(obj): # and is_an_obj_in_GH_or_Rhino(obj):
                 target_doc = is_an_obj_in_GH_or_Rhino(obj)    
                 if target_doc:
@@ -1067,23 +1093,22 @@ class RecolourObjects(sDNA_GH_Tool):
                         objects_to_widen_lines.append(obj)
 
                 else:
-                    raise ValueError(output( 'sc.doc == ' + str(sc.doc) 
-                                            +' i.e. neither Rhinodoc.ActiveDoc '
-                                            +'nor ghdoc'
-                                            ,'ERROR'
-                                            )
-                                    )
+
+                    msg =   ('sc.doc == ' + str(sc.doc) 
+                            +' i.e. neither Rhinodoc.ActiveDoc '
+                            +'nor ghdoc'
+                            )
+                    self.logger.error(msg)
+                    raise ValueError(msg)
 
             elif any(  bool(re.match(pattern, obj)) 
                         for pattern in legend_tag_patterns ):
                 sc.doc = ghdoc
                 legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
             else:
-                raise NotImplementedError(output( 'Valid colour in Data but ' 
-                                                    +'no geom obj or legend tag.'
-                                                    ,'ERROR'
-                                                )
-                                        )
+                msg = 'Valid colour in Data but no geom obj or legend tag.'
+                self.logger.error(msg)
+                raise NotImplementedError(msg)
 
         sc.doc = ghdoc
         #[x.Geometry for x in list(GH_objs_to_recolour.keys())]
@@ -1115,63 +1140,67 @@ class RecolourObjects(sDNA_GH_Tool):
         #bbox_ymin = min(list(p)[1] for p in bbox.box.GetCorners()[:4] )
         #bbox_ymax = max(list(p)[1] for p in bbox.box.GetCorners()[:4] )
 
-        debug(options)
+        #self.logger.debug(options)
 
-        if options.leg_extent or options.bbox:
+        if options.leg_extent or bbox or options.bbox:
             if options.leg_extent:
                 [legend_xmin
                 ,legend_ymin
                 ,legend_xmax
                 ,legend_ymax] = options.leg_extent
-                debug('legend extent == ' + str(options.leg_extent))
-            elif options.bbox:
-                bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
-
+                self.logger.debug('legend extent == ' + str(options.leg_extent))
+            else: 
+                if options.bbox:
+                    self.logger.debug('Using options.bbox override. ')
+                    bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
+                else:
+                    self.logger.debug('Using bbox from args')
+                    [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = bbox
                 legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
                 legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
                 legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
                 
-                debug('bbox == ' + str(bbox))
+                self.logger.debug('bbox == ' + str(bbox))
 
 
-                #leg_frame = Rectangle( XYPlane(pt)
-                #                      ,[legend_xmin, legend_xmax]
-                #                      ,[legend_ymin, legend_ymax]
-                #                      ,0
-                #                      )
+            #leg_frame = Rectangle( XYPlane(pt)
+            #                      ,[legend_xmin, legend_xmax]
+            #                      ,[legend_ymin, legend_ymax]
+            #                      ,0
+            #                      )
 
-                plane = rs.WorldXYPlane()
-                leg_frame = rs.AddRectangle( plane
-                                            ,legend_xmax - legend_xmin
-                                            ,legend_ymax - legend_ymin 
-                                            )
+            plane = rs.WorldXYPlane()
+            leg_frame = rs.AddRectangle( plane
+                                        ,legend_xmax - legend_xmin
+                                        ,legend_ymax - legend_ymin 
+                                        )
 
-                debug( 'Rectangle width * height == ' 
-                       +str(legend_xmax - legend_xmin)
-                       +' * '
-                       +str(legend_ymax - legend_ymin)
-                       )
+            self.logger.debug('Rectangle width * height == ' 
+                                +str(legend_xmax - legend_xmin)
+                                +' * '
+                                +str(legend_ymax - legend_ymin)
+                                )
 
 
-                rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
-                #rs.MoveObject(leg_frame, [65,0]) #1.07*bbox_xmax, legend_ymin])
+            rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
+            #rs.MoveObject(leg_frame, [65,0]) #1.07*bbox_xmax, legend_ymin])
 
-                # opts['options'] = opts['options']._replace(
-                #                                     leg_frame = leg_frame 
-                #                                                         )
+            # opts['options'] = opts['options']._replace(
+            #                                     leg_frame = leg_frame 
+            #                                                         )
 
-                #debug(leg_frame)
-                #leg_frame = sc.doc.Objects.FindGeometry(leg_frame)
-                #leg_frame = sc.doc.Objects.Find(leg_frame)
+            #self.logger.debug(leg_frame)
+            #leg_frame = sc.doc.Objects.FindGeometry(leg_frame)
+            #leg_frame = sc.doc.Objects.Find(leg_frame)
 
         else:
-            output('No legend rectangle dimensions.  ', 'INFO')
+            self.logger.info('No legend rectangle dimensions.  ')
             leg_frame = None
 
     
 
 
-        debug(leg_frame)
+        self.logger.debug(leg_frame)
 
         #def c():
             #return GH_Colour(Color.FromArgb(r(0,255), r(0,255), r(0,255)))
