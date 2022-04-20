@@ -76,38 +76,29 @@ class HardcodedMetas():
     auto_update_Rhino_doc_path = True
                         #Abbreviation = Tool Name
 #######################################################################################################################
-    name_map = dict(    #sDNA_Demo = [ 'Read_From_Rhino'
-                        #            ,'Read_Usertext'
-                        #            ,'Write_Shp'
-                        #            ,'sDNAIntegral'
-                        #            ,'Read_Shp'
-                        #            ,'Write_Usertext'
-                        #            ,'Parse_Data'
-                        #            ,'Recolour_objects'
-                        #            ]
-                         Read_From_Rhino = 'get_Geom'
-                        ,Read_Usertext = 'read_Usertext'
-                        ,Write_Shp = 'write_shapefile'
-                        ,Read_Shp = 'read_shapefile'
-                        ,Write_Usertext = 'write_Usertext'
-                        ,Bake_UserText = 'bake_Usertext'
-                        ,Parse_Data = 'parse_data'
-                        ,Recolour_objects = 'recolour_objects'
-                        ,Recolor_objects = 'recolour_objects'
-                        #,'main_sequence'
-                        #,'sDNAIntegral'
-                        #,'sDNASkim'
-                        ,sDNAIntFromOD = 'sDNAIntegralFromOD'
-                        #,'sDNAGeodesics'
-                        #,'sDNAHulls'
-                        #,'sDNANetRadii'
-                        ,sDNAAccessMap = 'sDNAAccessibilityMap'
-                        #,'sDNAPrepare'
-                        #,'sDNALineMeasures'
-                        #,'sDNALearn'
-                        #,'sDNAPredict'
-                        ,TestPlot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
-                    )
+    name_map = dict(Read_From_Rhino = 'get_Geom'
+                   ,Read_Usertext = 'read_Usertext'
+                   ,Write_Shp = 'write_shapefile'
+                   ,Read_Shp = 'read_shapefile'
+                   ,Write_Usertext = 'write_Usertext'
+                   ,Bake_UserText = 'bake_Usertext'
+                   ,Parse_Data = 'parse_data'
+                   ,Recolour_Objects = 'recolour_objects'
+                   ,Recolor_Objects = 'recolour_objects'
+                   #,'main_sequence'
+                   #,'sDNAIntegral'
+                   #,'sDNASkim'
+                   ,sDNAIntFromOD = 'sDNAIntegralFromOD'
+                   #,'sDNAGeodesics'
+                   #,'sDNAHulls'
+                   #,'sDNANetRadii'
+                   ,sDNAAccessMap = 'sDNAAccessibilityMap'
+                   #,'sDNAPrepare'
+                   #,'sDNALineMeasures'
+                   #,'sDNALearn'
+                   #,'sDNAPredict'
+                   ,TestPlot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
+                   )
                           
     categories = {
                          'get_Geom'         : 'Support'
@@ -217,13 +208,13 @@ class HardcodedOptions():
     auto_read_Usertext = True
     auto_write_new_Shp_file = True
     auto_read_Shp = True
-    auto_parse_data = True
-    auto_plot_data = True
+    #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
+    auto_plot_data = False
     #Plotting results
     field = 'BtEn'
     plot_max = None
     plot_min = None
-    sort_data = True
+    sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' 
     assert re_normaliser in valid_re_normalisers 
@@ -1069,423 +1060,6 @@ class sDNA_GH_Component(SmartComponent):
     script.input_params = sDNA_GH_Tool.params_list(['go', 'opts'])
     script.output_params = sDNA_GH_Tool.params_list(['OK', 'opts'])
 
-
-
-# def component_decorator( BaseClass
-#                         ,ghenv
-#                         ,nick_name = 'Self_test'
-#                         ):
-#     #type:(type[type], str, object) -> type[type]
-#     class sDNA_GH_Component(BaseClass):
-
-#         # Options from module, from defaults and installation config.toml
-#         opts = module_opts  
-#         local_metas = default_local_metas   # immutable.  controls syncing /
-#                                             # desyncing / read / write of the
-#                                             # above (opts).
-#                                             # Although local, it can be set on 
-#                                             # groups of components using the 
-#                                             # default section of a project 
-#                                             # config.ini, or passed as a
-#                                             # Grasshopper parameter between
-#                                             # components.
-
-#         #sDNA_GH_path = sDNA_GH_path
-#         #sDNA_GH_package = sDNA_GH_package
-
-#         def remove_component_output(self, name):
-#             for param in self.Params.Output:
-#                 if param.NickName == name:
-#                     self.Params.UnregisterOutputParam(param)
-        
-
-#         def auto_insert_tools(self, tools, Params):
-#             #type(type[any], list) -> None
-#             if tools is None:
-#                 tools = self.my_tools
-#             tools = tools[:] if isinstance(tools, list) else [tools]
-
-#             options = self.opts['options']
-            
-
-
-
-#             # if options.auto_write_new_Shp_file and (
-#             #     options.overwrite_input_shapefile 
-#             #     or not os.path.isfile(input_file))
-
-#             if options.auto_write_new_Shp_file:
-#                 tools = insert_tool(self
-#                                    ,'before'
-#                                    ,tools
-#                                    ,Params
-#                                    ,write_shapefile
-#                                    ,lambda tool : tool.__class__ == sDNAWrapper
-#                                    ,sDNA_GH_names
-#                                    )
-#             if options.auto_read_Usertext:
-#                 tools = insert_tool(self
-#                                    ,'before'
-#                                    ,tools
-#                                    ,Params
-#                                    ,read_Usertext
-#                                    ,lambda tool : tool == write_shapefile
-#                                    ,[]
-#                                    )   
-
-#             if options.auto_get_Geom:
-#                 tools = insert_tool(self
-#                                    ,'before'
-#                                    ,tools
-#                                    ,Params
-#                                    ,get_Geom
-#                                    ,lambda tool : tool == read_Usertext
-#                                    ,[]
-#                                    )   
-
-#             if options.auto_read_Shp:
-#                 tools = insert_tool(self
-#                                    ,'after'
-#                                    ,tools
-#                                    ,Params
-#                                    ,read_shapefile
-#                                    ,lambda tool : tool.__class__ == sDNAWrapper
-#                                    ,sDNA_GH_names
-#                                    )
-            
-#             # if options.auto_parse_data:
-#             #     tools = insert_tool(self
-#             #                        ,'after'
-#             #                        ,tools
-#             #                        ,Params
-#             #                        ,parse_data
-#             #                        ,lambda tool : tool == read_shapefile
-#             #                        ,[]
-#             #                        )     
-            
-            
-#             if options.auto_plot_data: # already parses if no colours
-#                 tools = insert_tool(self
-#                                    ,'after'                
-#                                    ,tools
-#                                    ,Params
-#                                    ,recolour_objects
-#                                    ,lambda tool : tool == read_shapefile #parse_data
-#                                    ,[]
-#                                    )    
-#             return tools
-
-
-
-#         def update_Params(   self
-#                             ,Params = None
-#                             ,tools = None
-#                             ):
-#             #type(type[any], type[any, list]) -> type[any]
-
-#             if Params is None:
-#                 try:
-#                     Params = ghenv.Component.Params
-#                 except:
-#                     Params = self.Params
-
-#             if tools is None:
-#                 tools = self.tools
-
-
-
-#             return add_tool_params(Params
-#                                   ,tools
-#                                   ,do_not_add
-#                                   ,do_not_remove
-#                                   ,geom_params
-#                                   )
-    
-
-#         def update_tools(self, nick_name = None):
-#             #type(type[any], str) -> type[any]
-
-#             if nick_name is None:
-#                 nick_name = self.local_metas.nick_name
-
-#             tools = tool_factory(nick_name
-#                                 ,self.opts['metas'].name_map
-#                                 ,tools_dict
-#                                 ,cache_sDNA_tool
-#                                 )
-#             debug(tools)
-                 
-
-#             #debug(self.opts)
-#             debug('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
-#                                                 for k,v in self.opts.items()
-#                                                 if k not in ('options','metas')
-#                                               ) 
-#                  )
-
-#             return tools
-
-
-
-
-
-
-#         def update_name(self, new_name = None):
-#             if new_name is None:
-#                 new_name = self.Attributes.Owner.NickName 
-#                 # IfF this is run before __init__ has run, there is no 
-#                 # Attributes attribute yet, but can use ghenv.Component
-    
-
-#             if not hasattr(self, 'nick_name') or (
-#                self.opts['metas'].allow_components_to_change_type
-#                and self.local_metas.nick_name != new_name    ):  
-#                 #
-#                 self.local_metas = self.local_metas._replace(nick_name = new_name)
-#                 self.logger = logger.getChild(self.local_metas.nick_name)
-
-#                 output( ' Component nick name changed to : ' 
-#                                 + self.local_metas.nick_name, 'INFO' )
-#                 return 'Name updated'
-#             return 'Name not updated'
-
-
-  
-
-
-
-            
-#         def update_sDNA(self):
-#             debug('Self has attr sDNA == ' 
-#                  +str(hasattr(self,'sDNA'))
-#                  )
-#             debug('self.opts[metas].sDNA == (' 
-#                  +str(self.opts['metas'].sDNAUISpec)
-#                  +', '
-#                  +self.opts['metas'].runsdnacommand 
-#                  +') '
-#                  )
-
-#             if hasattr(self,'sDNA'):
-#                 debug('Self has attr sDNA == ' + str(hasattr(self,'sDNA')))
-            
-#             sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
-#                     ,self.opts['metas'].runsdnacommand )   # a dict key => tuple not list
-#                      # these are both just module names.  
-#                      # Python can't import two files with the same name
-#                      # so changing these triggers the change to input the new one
-
-#             if not hasattr(self,'sDNA') or self.sDNA != sDNA:
-#                 self.sDNAUISpec, self.run_sDNA, path = self.load_modules(
-#                                                           sDNA
-#                                                          ,self.opts['metas'].sDNA_search_paths
-#                                                          )
-#                 #  self.sDNAUISpec, self.run_sDNA are the two Python modules
-#                 #  to allow different components to run different sDNA versions
-#                 #  these module references are instance variables
-
-#                 assert self.sDNAUISpec.__name__ == self.opts['metas'].sDNAUISpec
-#                 assert self.run_sDNA.__name__ == self.opts['metas'].runsdnacommand
-
-
-
-
-#                 debug('Self has attr sDNAUISpec == ' + str(hasattr(self,'sDNAUISpec')))
-#                 debug('Self has attr run_sDNA == ' + str(hasattr(self,'run_sDNA')))
-
-#                 self.sDNA = sDNA
-#                 self.sDNA_path = path
-#                 self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
-#                                                                     ,sDNA_path = path 
-#                                                                 )
-#                 self.opts['options'] = self.opts['options']._replace(  sDNAUISpec = self.sDNAUISpec
-#                                                                       ,run_sDNA = self.run_sDNA 
-#                                                                     )  
-
-#                 assert self.opts['metas'].sDNA_path == os.path.dirname(self.opts['options'].sDNAUISpec.__file__)                                                                  
-
-
-
-
-
-
-#         def __init__(self, *args, **kwargs):
-
-#             BaseClass.__init__(self, *args, **kwargs)
-            
-#             self.load_modules = load_modules
-#             self.ghdoc = ghdoc
-#             self.ghenv = ghenv
-
-#             self.update_sDNA() 
-
-
-
-#         def RunScript(self, *args): #go, Data, Geom, f_name, *args):
-#             # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
-
-#             args_dict = {key.Name : val for key, val in zip(self.Params.Input, args) } # .Input[4:] type: ignore
-            
-#             debug(args_dict)
-#             debug('self.Params.Input Names == ' + ' '.join(key.Name for key in self.Params.Input))
-#             debug(args)
-
-#             go = args_dict.get('go', False)
-#             Data = args_dict.get('Data', None)
-#             Geom = args_dict.get('Geom', None)
-#             f_name = args_dict.get('file', '')
-
-#             if f_name and not isinstance(f_name, str) and isinstance(f_name, list):
-#                     f_name=f_name[0] 
-
-#             external_opts = first_item_if_seq(args_dict.get('opts', {}), {})
-#             debug(external_opts)
-
-            
-
-#             external_local_metas = first_item_if_seq(args_dict.get('local_metas', empty_NT), empty_NT)
-#             gdm = args_dict.get('gdm', {})
-
-#             debug('gdm from start of RunScript == ' + str(gdm)[:50])
-#             #print('#1 self.local_metas == ' + str(self.local_metas))
-            
-#             if self.update_name() == 'Name updated':
-#                 nick_name = self.local_metas.nick_name
-#                 if (nick_name.lower()
-#                              .replace('_','')
-#                              .replace(' ','') == 'sdnageneral'
-#                     and 'tool' in args_dict):
-#                     nick_name = args_dict['tool']
-#                 self.my_tools = self.update_tools(nick_name)
-            
-#             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
-#                     # Other components may mean self.tools needs extra tools adding or /removing
-#                     # but this could - annoy many users.  TODO!  Get early feedback!
-#             #self.Params = 
-#             self.update_Params()#self.Params, self.tools)
-
-            
-#             synced = self.local_metas.sync_to_module_opts
-#             old_sDNA = self.opts['metas'].sDNA
-
-#             self.local_metas = override_all_opts(args_dict = args_dict
-#                                                 ,local_opts = self.opts # mutated
-#                                                 ,external_opts = external_opts 
-#                                                 ,local_metas = self.local_metas 
-#                                                 ,external_local_metas = external_local_metas
-#                                                 )
-
-#             args_dict['opts'] = self.opts
-#             args_dict['l_metas'] = self.local_metas
-
-#             debug('Opts overridden....    ')
-#             debug(self.local_metas)
-#             debug('options after override in RunScript == ' + str(self.opts['options']))
-            
-#             if (self.opts['metas'].auto_update_Rhino_doc_path 
-#                 or not os.path.isfile(self.opts['options'].Rhino_doc_path)        ):
-
-#                 path = get_path(self.opts, self)
-
-#                 self.opts['options'] = self.opts['options']._replace( Rhino_doc_path = path )
-
-#             if self.opts['metas'].allow_components_to_change_type: 
-                
-#                 if self.local_metas.sync_to_module_opts != synced:
-#                     if self.local_metas.sync_to_module_opts:
-#                         self.opts = module_opts #sync
-#                     else:
-#                         self.opts = self.opts.copy() #desync
-
-#                 if self.opts['metas'].sDNA != old_sDNA:
-#                     self.update_sDNA()
-#                     #self.Params = 
-#                     self.update_Params()#self.Params, self.tools)
-
-
-#             if go in [True, [True]]: # [True] in case go set to List Access in GH component 
-#                 returncode = 999
-#                 assert isinstance(self.tools, list)
-
-#                 debug('my_tools == '
-#                      +str(self.tools)
-#                      )
-
-#                 geom_data_map = convert_Data_tree_and_Geom_list_to_gdm(Geom
-#                                                                       ,Data
-#                                                                       ,self.opts
-#                                                                       )
-                
-#                 debug('type(geom_data_map) == '
-#                      +str(type(geom_data_map))
-#                      )
-                
-
-#                 geom_data_map = override_gdm_with_gdm(gdm
-#                                                      ,geom_data_map
-#                                                      ,self.opts
-#                                                      )
-
-#                 debug('After merge type(geom_data_map) == ' 
-#                      +str(type(geom_data_map))
-#                      )                
-                
-#                 debug('After merge geom_data_map == ' 
-#                      +str(geom_data_map.items()[:3])
-#                      +' ...'
-#                      )
-
-
-#                 ret_vals_dict = run_tools(self.tools, args_dict)
-
-#                 gdm = ret_vals_dict.get('gdm', {})
-#                 #print (str(gdm))
-#                 if isinstance(gdm, dict):
-#                     debug('Converting gdm to Data and Geometry')
-#                     (NewData, NewGeometry) = (
-#                     convert_dictionary_to_data_tree_or_lists(gdm)
-#                                         )    
-#                     #debug(NewData)
-#                     #debug(NewGeometry)                    
-#                 else:
-#                     NewData, NewGeometry = None, None
-
-#                 ret_vals_dict['Data'] = NewData
-#                 ret_vals_dict['Geom'] = NewGeometry
-#                 #if 'leg_frame' in ret_vals_dict:
-#                 #    ret_vals_dict['rect'] = ret_vals_dict['leg_frame']
-#                 ret_vals_dict['opts'] = [self.opts.copy()]
-#                 ret_vals_dict['l_metas'] = self.local_metas #immutable
-
-#                 def get_val(key):
-#                     return ret_vals_dict.get(key
-#                                             ,getattr(self.opts['metas']
-#                                                     ,key
-#                                                     ,getattr(self.opts['options']
-#                                                             ,key
-#                                                             ,getattr(self.local_metas
-#                                                                     ,key
-#                                                                     ,getattr(self.opts.get(self.local_metas.nick_name
-#                                                                                           ,{}
-#                                                                                           ).get(self.opts['metas'].sDNA
-#                                                                                                ,{}
-#                                                                                                )
-#                                                                             ,key
-#                                                                             ,'No variable or field: ' + key + ' found. '
-#                                                                             )
-#                                                                     )
-#                                                             )
-#                                                     )                            
-#                                             ) #TODO: Make this a while loop over a list of sources and add in locals()
-
-
-#                 ret_vals = tuple(get_val(param.NickName) for param in self.Params.Output)
-#                 return ret_vals
-#             else:   
-#                 return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
-
-   
-#     return sDNA_GH_Component
 
 
 

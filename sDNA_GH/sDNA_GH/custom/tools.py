@@ -969,7 +969,7 @@ class ParseData(sDNA_GH_Tool):
         return custom_retvals(self.retvals, [], True)
 
     retvals = 'plot_min', 'plot_max', 'gdm', 'opts'
-    component_outputs = ('OK',) + retvals[1:3] + ('Data', 'Geom') + retvals[3:-1]
+    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[3:]
                
 
 
@@ -989,9 +989,9 @@ class RecolourObjects(sDNA_GH_Tool):
                                         }
 
     
-    component_inputs = ('Data', 'Geom')
+    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom')
 
-    def __call__(self, gdm, opts, plot_min = None, plot_max = None, bbox = None):
+    def __call__(self, gdm, opts, plot_min, plot_max, bbox = None):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
 
@@ -1079,10 +1079,13 @@ class RecolourObjects(sDNA_GH_Tool):
         GH_objs_to_recolour = OrderedDict()
         objects_to_widen_lines = []
 
+        self.logger.debug(str(objs_to_recolour))
+
         for obj, new_colour in objs_to_recolour.items():
             #self.logger.debug(obj)
-            if is_uuid(obj): # and is_an_obj_in_GH_or_Rhino(obj):
+            if is_uuid(obj): 
                 target_doc = is_an_obj_in_GH_or_Rhino(obj)    
+
                 if target_doc:
                     sc.doc = target_doc
                     if target_doc == ghdoc:
@@ -1101,7 +1104,7 @@ class RecolourObjects(sDNA_GH_Tool):
                     self.logger.error(msg)
                     raise ValueError(msg)
 
-            elif any(  bool(re.match(pattern, obj)) 
+            elif any(  bool(re.match(pattern, obj))
                         for pattern in legend_tag_patterns ):
                 sc.doc = ghdoc
                 legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
@@ -1226,7 +1229,7 @@ class RecolourObjects(sDNA_GH_Tool):
         return custom_retvals(self.retvals, [], True)
     
     retvals = 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
-    component_outputs = ('OK', 'Geom', 'Data') + retvals[1:]
+    component_outputs = ('Geom', 'Data') + retvals[1:]
           # To recolour GH Geom with a native Preview component
 
 

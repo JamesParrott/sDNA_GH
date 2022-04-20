@@ -22,42 +22,41 @@ sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
 auto_update_Rhino_doc_path = true
 #########################################################################################
 [metas.name_map]
-sDNA_Demo = [   
-            'Read_From_Rhino',  # '' maket literal strings in toml, but harmless.
-            'Read_Usertext',
-            'Write_Shp',
-            'sDNAIntegral',
-            'Read_Shp',
-            'Write_Usertext',
-            'Parse_Data',
-            'Recolour_objects',
-            ]
-test_write_Usertext_req = [ 
-            'Read_From_Rhino',
-            'Read_Usertext',
-            'Write_Shp',
-            'sDNAIntegral',
-            'Read_Shp',
-            'Write_Usertext',
-            'Parse_Data',
-            'Recolour_objects',
-            ]
-sDNA_Demo_old_plot = [
-            'Read_From_Rhino',
-            'Read_Usertext',
-            'Write_Shp',
-            'sDNAIntegral',
-            'Read_Shp',
-            'Write_Usertext',
-            'Visualise_Data', #TODO: Delete.  Deprecated.
-            ]
+# sDNA_Demo = [   
+#             'Read_From_Rhino',  # '' maket literal strings in toml, but harmless.
+#             'Read_Usertext',
+#             'Write_Shp',
+#             'sDNAIntegral',
+#             'Read_Shp',
+#             'Write_Usertext',
+#             'Parse_Data',
+#             'Recolour_objects',
+#             ]
+# test_write_Usertext_req = [ 
+#             'Read_From_Rhino',
+#             'Read_Usertext',
+#             'Write_Shp',
+#             'sDNAIntegral',
+#             'Read_Shp',
+#             'Write_Usertext',
+#             'Parse_Data',
+#             'Recolour_objects',
+#             ]
+# sDNA_Demo_old_plot = [
+#             'Read_From_Rhino',
+#             'Read_Usertext',
+#             'Write_Shp',
+#             'sDNAIntegral',
+#             'Read_Shp',
+#             'Write_Usertext',
+#             'Visualise_Data', #TODO: Delete.  Deprecated.
+#             ]
 Read_From_Rhino = 'get_objects_from_Rhino'
 Read_Usertext = 'read_Usertext'
 Write_Shp = 'write_objects_and_data_to_shapefile'
 Read_Shp = 'read_shapes_and_data_from_shapefile'
 Write_Usertext = 'write_data_to_Usertext'
 Bake_UserText = 'bake_and_write_data_as_Usertext_to_Rhino'
-Visualise_Data = 'plot_data_on_Rhino_objects'  #TODO: Delete.  Deprecated.
 Parse_Data = 'parse_data'
 Recolour_objects ='recolour_objects'
 Recolor_objects ='recolour_objects'

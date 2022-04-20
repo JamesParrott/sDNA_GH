@@ -107,6 +107,7 @@ def tool_factory(inst
             logging.debug(nick_name + ' maps to ' + mapped_name)
             if mapped_name in tools_dict:
                 logging.debug('Tool: ' + mapped_name + ' already in tools_dict')
+                tools_dict.setdefault(nick_name, tools_dict[mapped_name])
             else:
                 tool_not_found(inst
                               ,mapped_name
