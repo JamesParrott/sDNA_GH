@@ -12,9 +12,9 @@ else:
 import GhPython
 from System.Drawing import SizeF, PointF   # .Net Classes, e.g. via Iron Python.
 
-from .tools.helpers.classes import Tool
 from .basic.ghdoc import ghdoc
-
+from .tools.runner import RunnableTool
+from .add_params import ToolWithParams
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -46,9 +46,8 @@ def make_new_component(name
     GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
     GH_doc.AddObject(new_comp, False)
 
-class BuildComponents(Tool): 
-    args = ('launcher_code', 'plug_in', 'component_names', 'd_h', 'w')
-    component_inputs = ('go',) + args[1:-2] + ('name_map', 'categories')
+class BuildComponents(ToolWithParams, RunnableTool): 
+    component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'd_h', 'w')
 
     def __call__(self
                 ,code

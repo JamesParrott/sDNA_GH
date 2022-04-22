@@ -12,7 +12,7 @@ if sys.version < '3.4':
 else:
     from abc import ABC
 
-import Grasshopper.Kernel 
+import GhPython, Grasshopper.Kernel 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable
 
 
@@ -34,6 +34,7 @@ class ParamInfo(dict, ParamInfoABC):
                 ,Description = None
                 ,Access = 'list'
                 ,Optional = True
+                ,TypeHint = None 
                 ,**kwargs
                 ):
         if isinstance(factory, str):
@@ -44,6 +45,9 @@ class ParamInfo(dict, ParamInfoABC):
             factory = Param_ScriptVariable
             logger.debug('Using factory Param_ScriptVariable for param : ' + NickName)
         self.factory = factory
+        if TypeHint is None and factory == Param_ScriptVariable:
+            TypeHint = GhPython.Component.GhDocGuidHint()
+        self.TypeHint = TypeHint
 
         if Name is None:
             Name = NickName
@@ -54,7 +58,6 @@ class ParamInfo(dict, ParamInfoABC):
         elif Access not in [getattr(Grasshopper.Kernel.GH_ParamAccess, x) 
                             for x in self.access_methods]:
             logger.warning('Unrecognised access method : ' + str(Access))
-
         super(ParamInfo, self).__init__(NickName = NickName
                                         ,Name = Name
                                         ,Description = Description
@@ -63,7 +66,10 @@ class ParamInfo(dict, ParamInfoABC):
                                         ,**kwargs
                                         )
     def make(self):
-        return self.factory(**self)
+        Param = self.factory(**self)
+        if self.TypeHint:
+            Param.TypeHint = self.TypeHint
+        return Param
 
 
 class ToolwithParamsABC(ABC):
@@ -76,11 +82,19 @@ class ToolwithParamsABC(ABC):
     def output_params(self):
         """ List of output ParamInfo instances """
 
-def param_info_maker(param_names, factories = {}):
+def param_info_list_maker(param_names
+                         ,factories = {}
+                         ,TypeHints = {}
+                         ,access_methods = {}
+                         ):
     return [ParamInfo(NickName = name
                      ,factory = factories.get(name
                                              ,Param_ScriptVariable
                                              )
+                     ,TypeHint = TypeHints.get(name
+                                              ,None
+                                              )
+                     ,Access = access_methods.get(name, 'list')
                      ) for name in param_names                            
            ]
 
@@ -88,8 +102,16 @@ class ToolWithParams(ToolwithParamsABC):
 
     factories_dict = {}
 
+    type_hints_dict = {}
+
+    access_methods_dict = {}
+
     def params_list(self, names):
-        return param_info_maker(param_names = names, factories = self.factories_dict)
+        return param_info_list_maker(param_names = names
+                                    ,factories = self.factories_dict
+                                    ,TypeHints = self.type_hints_dict
+                                    ,access_methods = self.access_methods_dict
+                                    )
 
 
     component_inputs = ()
@@ -156,7 +178,6 @@ def update_Input_or_Output_Params(Input_or_Output
     for param in params_needed:
         param_name = param['NickName']
         if param_name not in do_not_add: 
-            do_not_add += [param_name]
             logger.debug('Adding param == ' + param_name)
 
 
@@ -199,6 +220,7 @@ def update_Input_or_Output_Params(Input_or_Output
             getattr(Params, registers[Input_or_Output])(param.make()) #, index)
             #Params.Output.Count +=1
             Params.OnParametersChanged()
+            do_not_add += [param_name]
 
         else:
             logger.debug('Param in self.do_not_add == ' + param_name)
@@ -217,8 +239,9 @@ def add_tool_params(Params
     current_output_params = getattr(Params, 'Output')[:]
     current_input_params = getattr(Params, 'Input')[:]
 
-    last_tool = tools[-1]
-    needed_output_params = last_tool.output_params
+    needed_output_params = [ output for tool in tools 
+                             for output in tool.output_params 
+                           ]
     needed_input_params = [ input for tool in tools 
                             for input in tool.input_params 
                           ]

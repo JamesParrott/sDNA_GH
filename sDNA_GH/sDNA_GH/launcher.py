@@ -4,7 +4,7 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import os, sys, inspect
+import os, sys
 from importlib import import_module
 if (not hasattr(__builtins__, 'reload') 
     and (isinstance(__builtins__, dict) 
@@ -14,13 +14,21 @@ if (not hasattr(__builtins__, 'reload')
     # __builtins__ is a dict in GhPython not a module as elsewhere
 
 
-
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               
 reload_config_and_other_modules_if_already_loaded = False
 
 
-
+# There may be multiple components, all running this same launcher code.
+# Therefore we want the root logger to live in the sDNA_GH.setup module
+# that they each import.  Te logging system is configurable by the user,
+# but only through the options that are read in during the main package
+# import, and we want to create logs before this too.  So before a 
+# component has imported sDNA_GH.setup, logging is routed through output, 
+# a callable instance of Output, with a cache, defined below.  output's cache 
+# is flushed through the normal logging system, after a logger has been set up 
+# according to the user's configuration, after the main package import.
+#
 # This Output class is used to define two Classes from this single 
 # code definition.  Python scripts can happily import themselves, but here
 # this is because all the code in this file 
@@ -87,25 +95,7 @@ class Output:
 output = Output()
 
 
-class Debugger:
-    def __init__(self, output = None):
-        #type(type[any], function) -> None  # callable object
-        if output is None:
-            output = Output()
-        self.output = output # want to call an instance that we also use for
-                             # higher logging level messages so 
-                             # composition instead of inheritance is used
-    def __call__(self, x):
-        c = inspect.currentframe().f_back.f_locals.items()
 
-        names = [name.strip("'") for name, val in c if val is x]
-        # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
-        # https://stackoverflow.com/a/40536047
-
-        if names:
-            return self.output(str(names) + ' == ' + str(x)+' ','DEBUG')
-        else:
-            return self.output(str(x)+' ','DEBUG')
 
 
 # We only know the sDNA version to import as a string.  This is more secure too.

@@ -6,7 +6,7 @@ __version__ = '0.02'
 
 import sys, logging, inspect
 import sys
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
@@ -60,24 +60,36 @@ def get_val(key, sources):
             return getattr(source, key)
     return 'No variable or field: ' + key + ' found. '
 
-
 def custom_retvals(retval_names
-                  ,sources = []
-                  ,return_locals = False
-                  ,frames_back = 1
+                  ,sources 
                   ):
-    #type(list[str], list, bool) -> tuple(type[any])
-    """ To get inspect.inspect.currentframe to target the correct scope,
-        if you wrap this function in n functions, that are called from the target
-        call it with frames_back = n"""
-    if return_locals:
-        calling_frame = inspect.currentframe()
-        for _ in range(frames_back):
-            calling_frame = calling_frame.f_back
-        sources += [ calling_frame.f_locals.copy() ]
-        #logger.debug(sources)
+    #type(list[str], list) -> tuple(type[any])
     return tuple(get_val(retval_name, sources) for retval_name in retval_names)
 
+##############################################################################
+#
+# Python 3 ish only
+#
+# def custom_retvals(retval_names
+#                   ,sources = None
+#                   ,return_locals = False
+#                   ,frames_back = 1
+#                   ):
+#     #type(list[str], list, bool, int) -> tuple(type[any])
+#     """ To get inspect.inspect.currentframe to target the correct scope,
+#         if you wrap this function in n functions, that are called from 
+#         the target call it with frames_back = n"""
+#     if sources is None:
+#         sources = []
+#     if return_locals:
+#         calling_frame = inspect.currentframe()
+#         for _ in range(frames_back):
+#             calling_frame = calling_frame.f_back
+#         sources += [ calling_frame.f_locals.copy() ]
+#     return tuple(get_val(retval_name, sources) for retval_name in retval_names)
+#
+#
+##############################################################################
 
 def component_Outputs(self, sources):
     

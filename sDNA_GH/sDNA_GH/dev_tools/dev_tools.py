@@ -7,7 +7,6 @@ import logging
 
 from ..custom.skel.basic.smart_comp import custom_retvals
 from ..custom.skel.tools.name_mapper import validate_name_map
-from ..launcher import Output, Debugger
 from ..custom.tools import sDNA_GH_Tool
 from ..setup import tools_dict
 from ..custom.skel.builder import BuildComponents
@@ -16,8 +15,6 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 #logger = logging.getLogger(__name__)
 
-output = Output(tmp_logs = [], logger = logger)
-debug = Debugger(output)
 
 
 class ReturnComponentNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
@@ -36,11 +33,8 @@ class ReturnComponentNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = Non
         retcode = 0 if validate_name_map(name_map, names) else 1
         logger.debug('Returning from ReturnComponentNames.  ')
 
-        return custom_retvals(self.retvals
-                             ,sources = []
-                             ,return_locals = True
-                             )
-
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
     retvals = 'retcode', 'names'
 

@@ -4,7 +4,7 @@
 
 
 
-import sys, os, logging
+import sys, os, logging, inspect
 
 
 # set a format which is simpler for console use
@@ -61,20 +61,33 @@ def new_Logger(  logger_name = 'main'
     #
 ####################################################################################
 
+def make_self_logger(self, logger = None, module_name = '', name = None):
+    if name is None:
+        name = self.__class__.__name__
+    if module_name:
+        module_name += '.'
+    if logger:
+        logger = logger.getChild(name)
+    else:
+        logger = logging.getLogger(module_name + name)
+    logger.addHandler(logging.NullHandler())
+    return logger
 
 def make_log_message_maker(method, logger = None, module_name = None):
     if module_name is None:
         module_name = __name__
     def f(self, message, *args):
         if not hasattr(self, 'logger'):
-            if logger:
-                self.logger = logger.getChild(self.__class__.__name__)
-            else:
-                self.logger = logging.getLogger(module_name + '.' + self.__class__.__name__)
-            self.logger.addHandler(logging.NullHandler())
+            self.logger = make_self_logger(self, logger, module_name)
         getattr(self.logger, method)(message, *args)
         return message
     return f
+
+def add_methods_decorator(obj, methods = None, method_maker = make_log_message_maker, **kwargs):
+    if methods is None:
+        methods = ('debug', 'info', 'warning', 'error', 'critical', 'exception')
+    for method in methods:
+        setattr(obj, method, method_maker(method, **kwargs))
 
 def class_logger_factory(logger = None, module_name = None):
     """ Factory for ClassLogger Classes.  Otherwise __name__ will 
@@ -82,14 +95,110 @@ def class_logger_factory(logger = None, module_name = None):
         in.  """
     class ClassLogger:
         """ Class to inherit a class logger from, e.g. via co-operative 
-            multiple inheritance.  After instantiation, 
-            .SubClassName is appendeded to module_name 
-            in its logs, to aid debugging.  """
+            multiple inheritance (CMI).  After instantiation, .SubClassName is
+            appended to module_name in its logs, e.g. to aid debugging.  
+            
+            To add in a class logger via 
+            composition instead of inheritance, assign the attribute directly 
+            to make_self_logger() with the desired name as an argument"""
         pass
-    methods = ('debug', 'info', 'warning', 'error', 'critical', 'exception')
-    for method in methods:
-        setattr(ClassLogger, method, make_log_message_maker(method, logger, module_name))
+    add_methods_decorator(ClassLogger, logger = logger, module_name = module_name)
     return ClassLogger
 
 
 
+class Output: 
+    """   Wrapper class for logger, logging, print, with a cache.  Example setup:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.addHandler(logging.NullHandler())
+    cache = []
+    output = Output(cache, logger)
+    """
+    def set_logger(self, logger, flush = True):
+        self.logger = logger
+        if flush and self.tmp_logs:
+            self.flush()
+
+    def __init__(self
+                ,tmp_logs = None
+                ,logger = None
+                ):
+        if not isinstance(tmp_logs, list): #assert not isinstance(None, list)
+            tmp_logs = []
+        self.tmp_logs = tmp_logs
+        if logger is not None:
+            self.set_logger(logger, flush = False)
+
+
+
+    def store(self, message, logging_level):
+        self.tmp_logs.append( (message, logging_level) )
+
+    def __call__(self, message, logging_level = "INFO", logging_dict = {}):
+        #type: (str, str, dict, list) -> str
+        
+        #print(message)
+
+        if logging_dict == {} and hasattr(self, 'logger'): 
+            logging_dict = dict( DEBUG = self.logger.debug
+                                ,INFO = self.logger.info
+                                ,WARNING = self.logger.warning
+                                ,ERROR = self.logger.error
+                                ,CRITICAL = self.logger.critical
+                                )
+
+        logging_level = logging_level.upper()
+        if logging_level in logging_dict:
+            logging_dict[logging_level](message)
+        else:
+            self.store(message, logging_level)
+
+        return logging_level + ' : ' + message + ' '
+
+    def flush(self):
+        tmp_logs = self.tmp_logs[:] # __call__ might cache back to tmp_logs
+        self.tmp_logs[:] = [] # Mutate list initialised with
+        for tmp_log_message, tmp_log_level in tmp_logs:
+            self.__call__(tmp_log_message, tmp_log_level)
+
+
+
+##############################################################################
+#
+#
+# Python 3 only
+#
+#
+class Debugger:
+    """ Wrapper class for quick debugging messages that prepends a variable's 
+    name (if it can be found) to its value, then calls an output callable.  
+    Example setup:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.addHandler(logging.NullHandler())
+    cache = []
+    output = Output(cache, logger)
+    debug = Debugger(output)
+    """
+    def __init__(self, output = None):
+        #type(type[any], function) -> None  # callable object
+        if output is None:
+            output = Output()
+        self.output = output # want to call an instance that we also use for
+                             # higher logging level messages so 
+                             # composition instead of inheritance is used
+    def __call__(self, x):
+        c = inspect.currentframe().f_back.f_locals.items()
+
+        names = [name.strip("'") for name, val in c if val is x]
+        # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
+        # https://stackoverflow.com/a/40536047
+
+        if names:
+            return self.output(str(names) + ' == ' + str(x)+' ','DEBUG')
+        else:
+            return self.output(str(x)+' ','DEBUG')
+#
+#
+##############################################################################

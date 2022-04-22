@@ -13,10 +13,12 @@ import locale
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
-import Rhino
+import Rhino, GhPython
 from System.Drawing import Color as Colour
 from Grasshopper.GUI.Gradient import GH_Gradient
-from Grasshopper.Kernel.Parameters import (Param_Boolean
+from Grasshopper.Kernel.Parameters import (Param_Arc
+                                          ,Param_Curve
+                                          ,Param_Boolean
                                           ,Param_Geometry
                                           ,Param_String
                                           ,Param_FilePath
@@ -27,6 +29,8 @@ from Grasshopper.Kernel.Parameters import (Param_Boolean
                                           ,Param_Colour
                                           ,Param_Number
                                           ,Param_ScriptVariable
+                                          ,Param_GenericObject
+                                          ,Param_Guid
                                           )
 
 
@@ -37,7 +41,7 @@ from .helpers.funcs import (make_regex
                            ,three_point_quadratic_spline
                            )
 from .skel.basic.ghdoc import ghdoc
-from .skel.basic.smart_comp import custom_retvals
+#from .skel.basic.smart_comp import custom_retvals
 from .skel.tools.helpers.funcs import is_uuid
 from .skel.tools.helpers.checkers import (get_OrderedDict
                                          ,get_obj_keys
@@ -49,7 +53,6 @@ from .skel.tools.helpers.checkers import (get_OrderedDict
                                          )
 from .skel.tools.runner import RunnableTool                                         
 from .skel.add_params import ToolWithParams, ParamInfo
-from ..launcher import Output, Debugger
 from .options_manager import (make_nested_namedtuple
                              ,
                              )
@@ -73,7 +76,7 @@ from .gdm_from_GH_Datatree import (make_gdm
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-ClassLogger = class_logger_factory(logger)
+ClassLogger = class_logger_factory(logger = logger, module_name = __name__)
 
 # output = Output(tmp_logs = [], logger = logger)
 # self.debug = Debugger(output)
@@ -85,11 +88,11 @@ ClassLogger = class_logger_factory(logger)
 class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
 
     factories_dict = dict(go = Param_Boolean
-                         ,OK = Param_Boolean
+                         ,OK = Param_ScriptVariable
                          ,file = Param_FilePath
-                         ,Geom = Param_Geometry
+                         ,Geom = Param_ScriptVariable
                          ,Data = Param_ScriptVariable
-                         ,leg_frame = Param_Geometry
+                         ,leg_frame = Param_ScriptVariable
                          ,gdm = Param_ScriptVariable
                          ,opts = Param_ScriptVariable
                          ,config = Param_FilePath
@@ -101,7 +104,13 @@ class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
                          ,abbrevs = Param_ScriptVariable
                          ,sDNA_fields = Param_ScriptVariable
                          ,bbox = Param_ScriptVariable
+                         #,Param_GenericObject
+                         #,Param_Guid
                          )
+
+    type_hints_dict = dict(Geom = GhPython.Component.GhDocGuidHint())
+
+    access_methods_dict = dict(Data = 'tree')
 
     @classmethod
     def params_list(cls, names):
@@ -135,7 +144,7 @@ class sDNAWrapper(sDNA_GH_Tool):
         if self.tool_name != nick_name:
             tool_opts = opts.setdefault(self.tool_name, {})
 
-        self.debug(tool_opts)
+        self.logger.debug(tool_opts)
         # Note, this is intended to do nothing if nick_name == self.tool_name
         try:
             sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
@@ -169,7 +178,7 @@ class sDNAWrapper(sDNA_GH_Tool):
                                                  else '') + '_'
                                 +os.path.basename(sDNAUISpec.__file__).rpartition('.')[0]
                                 )
-        self.debug(namedtuple_class_name)
+        self.logger.debug(namedtuple_class_name)
         tool_opts[sDNA] = make_nested_namedtuple(tool_opts_dict
                                                 ,namedtuple_class_name
                                                 ,strict = True
@@ -235,7 +244,7 @@ class sDNAWrapper(sDNA_GH_Tool):
             and f_name.rpartition('.')[2] in [dot_shp[1:],'dbf','shx']):  
             input_file = f_name
 
-        self.debug(input_file)
+        self.logger.debug(input_file)
 
 
             # if options.auto_write_new_Shp_file and (
@@ -276,12 +285,12 @@ class sDNAWrapper(sDNA_GH_Tool):
                     + ' --om ' + run_sDNA.map_to_string( syntax["outputs"] )
                     + ' ' + syntax["config"]
                     )
-        self.info('sDNA command run = ' + command)
+        self.logger.info('sDNA command run = ' + command)
 
         output_lines = subprocess.check_output(command)
         retcode = 0
 
-        self.info(output_lines)
+        self.logger.info(output_lines)
         # line_end = '\r\n' if '\r\n' in output_lines else '\n'
         # for line in output_lines.split(line_end):
         #    self.debug(line)
@@ -297,7 +306,9 @@ class sDNAWrapper(sDNA_GH_Tool):
 
         #return return_code, tool_opts[sDNA].output
 
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
+
     
     retvals = 'retcode', 'f_name', 'opts'
     component_outputs = ('file',) # retvals[-1])
@@ -378,21 +389,23 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
                        )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
 
-
+        Bunion=987
 
 
         self.logger.debug('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
         if len(gdm) > 0:
             self.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
-        self.logger.debug('....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
         if tmp_gdm:
             gdm = override_gdm_with_gdm(gdm, tmp_gdm, options.merge_Usertext_subdicts_instead_of_overwriting)
+        self.logger.debug('after override ....Last objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[-3:]))
+
         sc.doc = ghdoc # type: ignore 
+        self.logger.debug('retvals == ' + str(self.retvals))
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
-        return custom_retvals(self.retvals, [], True)
 
-
-    retvals = ('gdm',)
+    retvals = ('gdm','Bunion')
     component_outputs = ('Geom', ) 
 
 
@@ -404,6 +417,8 @@ class ReadUsertext(sDNA_GH_Tool):
         #type(str, dict, dict) -> int, str, dict, list
 
         self.debug('Starting read_Usertext..  Creating Class logger. ')
+        self.debug('type(gdm) == ' + str(type(gdm)))
+        self.debug('gdm == ' + str(gdm))
 
         # if (options.auto_get_Geom and
         #    (not gdm or not hasattr(gdm, 'keys') or
@@ -426,7 +441,8 @@ class ReadUsertext(sDNA_GH_Tool):
         # switching the target to RhinoDoc if needed, hence the following line 
         # is important:
         sc.doc = ghdoc # type: ignore 
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
 
     retvals = ('gdm',)
@@ -504,43 +520,42 @@ class WriteShapefile(sDNA_GH_Tool):
             return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
-            if (   options.shp_file_to_write_to
-                and os.path.isdir( os.path.dirname( options.shp_file_to_write_to ) )   ):
+            if (options.shp_file_to_write_to and 
+                os.path.isdir( os.path.dirname( options.shp_file_to_write_to )
+                             ) 
+               ):   
+                
                 f_name = options.shp_file_to_write_to
             else:
-                f_name = options.Rhino_doc_path.rpartition('.')[0] + options.shp_file_extension
+                f_name = options.Rhino_doc_path.rpartition('.')[0]
+                f_name += options.shp_file_extension
                             # file extensions are actually optional in PyShp, 
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
         self.logger.debug(f_name)
 
-        (retcode, f_name, fields, gdm) = ( 
-                            write_from_iterable_to_shapefile_writer(
-                                                gdm
-                                        #my_iter 
-                                                ,f_name 
-                                        #shp_file 
-                                                ,get_list_of_lists_from_tuple 
-                                        # shape_mangler, e.g. start_and_end_points
-                                                ,shape_IDer
-                                                ,find_keys 
-                                        # key_finder
-                                                ,pattern_match_key_names 
-                                        #key_matcher
-                                                ,get_data_item 
-                                        #value_demangler e.g. rs.GetUserText
-                                                ,shp_type 
-                                        #"POLYLINEZ" #shape
-                                                ,options 
-                                                ,None 
-                                        # field names
-                            )
-        ) 
+        (retcode
+        ,f_name
+        ,fields
+        ,gdm) = write_from_iterable_to_shapefile_writer(
+                                 my_iterable = gdm
+                                ,shp_file_path = f_name 
+                                ,shape_mangler = get_list_of_lists_from_tuple 
+                                ,shape_IDer = shape_IDer
+                                ,key_finder = find_keys 
+                                ,key_matcher = pattern_match_key_names 
+                                ,value_demangler = get_data_item 
+                                ,shape_code = shp_type 
+                                ,options = options
+                                ,field_names = None 
+                                )
+        
         # get_list_of_lists_from_tuple() will 
         # switch the targeted file to RhinoDoc if needed, hence the following line 
         # is important:
         sc.doc = ghdoc # type: ignore 
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
     retvals = 'retcode', 'f_name', 'gdm'
     component_outputs =  ('file',) 
@@ -654,7 +669,8 @@ class ReadShapefile(sDNA_GH_Tool):
 
         retcode = 0
 
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
 
     retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox', 'opts'
@@ -745,7 +761,8 @@ class WriteUsertext(sDNA_GH_Tool):
 
         sc.doc = ghdoc # type: ignore 
         
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
     
     retvals = ()
     component_outputs = () 
@@ -786,7 +803,8 @@ class BakeUsertext(sDNA_GH_Tool):
         gdm = tmp_gdm
         # write_data_to_USertext context switched when checking so will move
         #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
     retvals = ('gdm',) #'f_name', 'gdm'
     component_outputs =  ('Geom') 
@@ -966,7 +984,8 @@ class ParseData(sDNA_GH_Tool):
                         )
         plot_min, plot_max = x_min, x_max
         
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
     retvals = 'plot_min', 'plot_max', 'gdm', 'opts'
     component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[3:]
@@ -989,9 +1008,9 @@ class RecolourObjects(sDNA_GH_Tool):
                                         }
 
     
-    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom')
+    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox')
 
-    def __call__(self, gdm, opts, plot_min, plot_max, bbox = None):
+    def __call__(self, gdm, opts, plot_min, plot_max, bbox):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
 
@@ -1226,7 +1245,8 @@ class RecolourObjects(sDNA_GH_Tool):
         sc.doc =  ghdoc # type: ignore
         sc.doc.Views.Redraw()
 
-        return custom_retvals(self.retvals, [], True)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
     
     retvals = 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
     component_outputs = ('Geom', 'Data') + retvals[1:]

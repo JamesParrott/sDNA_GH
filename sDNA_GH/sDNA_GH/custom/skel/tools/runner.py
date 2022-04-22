@@ -104,6 +104,8 @@ def run_tools(tools
         
         retvals = tool(*pos_args, **input_kw_args)
 
+        logger.debug('retvals == ' + str(retvals))
+
         vals_dict.update( zip(tool.retvals, retvals) )
         retcode = vals_dict.get('retcode', 0)
 

@@ -16,7 +16,7 @@ from .custom.options_manager import (load_toml_file
                                     ,get_namedtuple_etc_from_class      
                                     )
 from .custom import logging_wrapper
-from .launcher import Output, Debugger, load_modules
+from .launcher import Output, load_modules
 from .custom.helpers.funcs import (first_item_if_seq
                                   ,valid_re_normalisers
                                   )
@@ -46,8 +46,6 @@ from .dev_tools.dev_tools import ReturnComponentNames, sDNA_GH_Builder
 
 
 output = Output()
-debug = Debugger(output)
-
 
 
 class HardcodedMetas(): 
@@ -76,7 +74,7 @@ class HardcodedMetas():
     auto_update_Rhino_doc_path = True
                         #Abbreviation = Tool Name
 #######################################################################################################################
-    name_map = dict(Read_From_Rhino = 'get_Geom'
+    name_map = dict(Read_Geom = 'get_Geom'
                    ,Read_Usertext = 'read_Usertext'
                    ,Write_Shp = 'write_shapefile'
                    ,Read_Shp = 'read_shapefile'
@@ -85,19 +83,19 @@ class HardcodedMetas():
                    ,Parse_Data = 'parse_data'
                    ,Recolour_Objects = 'recolour_objects'
                    ,Recolor_Objects = 'recolour_objects'
-                   #,'main_sequence'
-                   #,'sDNAIntegral'
-                   #,'sDNASkim'
-                   ,sDNAIntFromOD = 'sDNAIntegralFromOD'
-                   #,'sDNAGeodesics'
-                   #,'sDNAHulls'
-                   #,'sDNANetRadii'
-                   ,sDNAAccessMap = 'sDNAAccessibilityMap'
-                   #,'sDNAPrepare'
-                   #,'sDNALineMeasures'
-                   #,'sDNALearn'
-                   #,'sDNAPredict'
-                   ,TestPlot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
+                   ,sDNA_Integral = 'sDNAIntegral'
+                   ,sDNA_Skim = 'sDNASkim'
+                   ,sDNA_Int_From_OD = 'sDNAIntegralFromOD'
+                   ,sDNA_Geodesics = 'sDNAGeodesics'
+                   ,sDNA_Hulls = 'sDNAHulls'
+                   ,sDNA_Net_Radii = 'sDNANetRadii'
+                   ,sDNA_Access_Map = 'sDNAAccessibilityMap'
+                   ,sDNA_Prepare = 'sDNAPrepare'
+                   ,sDNA_Line_Measures = 'sDNALineMeasures'
+                   ,sDNA_Learn = 'sDNALearn'
+                   ,sDNA_Predict = 'sDNAPredict'
+                   ,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
+                   ,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data', 'recolour_objects']
                    )
                           
     categories = {
@@ -205,7 +203,7 @@ class HardcodedOptions():
     Default_sDNA_GH_file_path = __file__
     overwrite_input_shapefile = False
     auto_get_Geom = True
-    auto_read_Usertext = True
+    auto_read_Usertext = False
     auto_write_new_Shp_file = True
     auto_read_Shp = True
     #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
@@ -266,7 +264,7 @@ module_opts = OrderedDict( metas = default_metas
                          )                
            
 
-debug(module_opts['options'].message)
+output(module_opts['options'].message,'DEBUG')
 
 
 
@@ -373,15 +371,15 @@ def override_all_opts( args_dict
         path = args_metas['config']
         file_ext = path.rpartition('.')[2]
         if file_ext == 'ini':
-            debug('Loading options from .ini file: ' + path)
+            output('Loading options from .ini file: ' + path, 'DEBUG')
             config_file_override =  load_ini_file( path, **kwargs('', local_opts) )
         elif file_ext == 'toml':
-            debug('Loading options from .toml file: ' + path)
+            output('Loading options from .toml file: ' + path, 'DEBUG')
             config_file_override =  load_toml_file( path )
         else:
-            debug('config_file_override = ' + str(config_file_override))
+            output('config_file_override = ' + str(config_file_override), 'DEBUG')
     else:
-        debug('No valid config file in args.  ' + str(args_metas))
+        output('No valid config file in args.  ' + str(args_metas), 'DEBUG')
         file_ext = ''
 
 
@@ -495,7 +493,7 @@ if os.path.isfile(default_metas.config):
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
                      ) 
-    debug("After override: opts['options'].message == " + module_opts['options'].message)
+    output("After override: opts['options'].message == " + module_opts['options'].message, 'DEBUG')
 else:
     output('Config file: ' + default_metas.config + ' not found. ','WARNING')    
 #
@@ -539,7 +537,7 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
 
     output.set_logger(logger) # Flushes cached log messages to above handlers
 
-    debug('Logging set up in sDNA_GH package ')
+    logger.debug('Logging set up in sDNA_GH package ')
 
 
 
@@ -661,7 +659,7 @@ class sDNA_GH_Component(SmartComponent):
 
         name_map = metas.name_map
         
-        debug('Inserting tools... ')
+        logger.debug('Inserting tools... ')
 
 
         # if options.auto_write_new_Shp_file and (
@@ -754,7 +752,7 @@ class sDNA_GH_Component(SmartComponent):
             tools = self.tools
 
 
-        debug("Updating Params: " + str(tools))
+        logger.debug("Updating Params: " + str(tools))
         return add_tool_params(Params
                               ,tools
                               ,do_not_add
@@ -775,11 +773,11 @@ class sDNA_GH_Component(SmartComponent):
                             ,tools_dict
                             ,cache_sDNA_tool
                             )
-        debug(tools)
+        logger.debug(tools)
                 
 
-        #debug(self.opts)
-        debug('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
+        #logger.debug(self.opts)
+        logger.debug('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
                                             for k,v in self.opts.items()
                                             if k not in ('options','metas')
                                             ) 
@@ -818,10 +816,10 @@ class sDNA_GH_Component(SmartComponent):
 
         
     def update_sDNA(self):
-        debug('Self has attr sDNA == ' 
+        logger.debug('Self has attr sDNA == ' 
                 +str(hasattr(self,'sDNA'))
                 )
-        debug('self.opts[metas].sDNA == (' 
+        logger.debug('self.opts[metas].sDNA == (' 
                 +str(self.opts['metas'].sDNAUISpec)
                 +', '
                 +self.opts['metas'].runsdnacommand 
@@ -829,7 +827,7 @@ class sDNA_GH_Component(SmartComponent):
                 )
 
         if hasattr(self,'sDNA'):
-            debug('Self has attr sDNA == ' + str(hasattr(self,'sDNA')))
+            logger.debug('Self has attr sDNA == ' + str(hasattr(self,'sDNA')))
         
         sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
                 ,self.opts['metas'].runsdnacommand )   # a dict key => tuple not list
@@ -852,12 +850,12 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-            debug('Self has attr sDNAUISpec == ' + str(hasattr(self,'sDNAUISpec')))
-            debug('Self has attr run_sDNA == ' + str(hasattr(self,'run_sDNA')))
+            logger.debug('Self has attr sDNAUISpec == ' + str(hasattr(self,'sDNAUISpec')))
+            logger.debug('Self has attr run_sDNA == ' + str(hasattr(self,'run_sDNA')))
 
             self.sDNA = sDNA
             self.sDNA_path = path
-            debug('Path sDNAUISpec imported from == ' + path)
+            logger.debug('Path sDNAUISpec imported from == ' + path)
             self.opts['metas'] = self.opts['metas']._replace(    sDNA = self.sDNA
                                                                 ,sDNA_path = path 
                                                             )
@@ -874,7 +872,7 @@ class sDNA_GH_Component(SmartComponent):
 
 
     def __init__(self, *args, **kwargs):
-        debug('Calling parent initialiser')
+        logger.debug('Calling parent initialiser')
         SmartComponent.__init__(self, *args, **kwargs)
         self.load_modules = load_modules
         self.ghdoc = ghdoc
@@ -889,8 +887,8 @@ class sDNA_GH_Component(SmartComponent):
         # If this method is not intended to crash on a missing input param,
         # it needs to accept anything (or a lack thereof) to run in the meantime
         # until the params can be updated.  kwargs are perfect for this.
-        debug('self.script started... \n')
-        debug(kwargs)
+        logger.debug('self.script started... \n')
+        logger.debug(kwargs)
 
         go = first_item_if_seq(kwargs.get('go', False), False) 
              # Input Params set 
@@ -909,11 +907,11 @@ class sDNA_GH_Component(SmartComponent):
 
         external_opts = first_item_if_seq(kwargs.pop('opts', {}), {})
         external_local_metas = first_item_if_seq(kwargs.pop('local_metas', empty_NT), empty_NT)
-        debug(external_opts)
+        logger.debug(external_opts)
 
         gdm = first_item_if_seq(kwargs.get('gdm', {}))
 
-        debug('gdm from start of RunScript == ' + str(gdm)[:50])
+        logger.debug('gdm from start of RunScript == ' + str(gdm)[:50])
         #print('#1 self.local_metas == ' + str(self.local_metas))
         
         if self.update_name() == 'Name updated':
@@ -945,9 +943,9 @@ class sDNA_GH_Component(SmartComponent):
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
 
-        debug('Opts overridden....    ')
-        debug(self.local_metas)
-        #debug('options after override in script == ' + str(self.opts['options']))
+        logger.debug('Opts overridden....    ')
+        logger.debug(self.local_metas)
+        #logger.debug('options after override in script == ' + str(self.opts['options']))
         
         if (self.opts['metas'].auto_update_Rhino_doc_path 
             or not os.path.isfile(self.opts['options'].Rhino_doc_path) ):
@@ -974,12 +972,12 @@ class sDNA_GH_Component(SmartComponent):
                 #self.Params = 
                 self.update_Params()#self.Params, self.tools)
 
-        debug(go)
+        logger.debug(go)
 
         if go == True: 
             assert isinstance(self.tools, list)
 
-            debug('my_tools == '
+            logger.debug('my_tools == '
                     +str(self.tools)
                     )
 
@@ -987,7 +985,7 @@ class sDNA_GH_Component(SmartComponent):
                                                                   ,Data
                                                                   )
             
-            debug('type(geom_data_map) == '
+            logger.debug('type(geom_data_map) == '
                  +str(type(geom_data_map))
                  )
             
@@ -997,11 +995,11 @@ class sDNA_GH_Component(SmartComponent):
                                        ,self.opts['options'].merge_Usertext_subdicts_instead_of_overwriting
                                        )
 
-            debug('After merge type(gdm) == ' 
+            logger.debug('After merge type(gdm) == ' 
                     +str(type(gdm))
                     )                
             
-            debug('After merge gdm == ' 
+            logger.debug('After merge gdm == ' 
                     +str(gdm.items()[:3])
                     +' ...'
                     )
@@ -1013,12 +1011,12 @@ class sDNA_GH_Component(SmartComponent):
             gdm = ret_vals_dict.get('gdm', {})
             #print (str(gdm))
             if isinstance(gdm, dict):
-                debug('Converting gdm to Data and Geometry')
+                logger.debug('Converting gdm to Data and Geometry')
                 (NewData, NewGeometry) = (
                 convert_dictionary_to_data_tree_or_lists(gdm)
                                     )    
-                #debug(NewData)
-                #debug(NewGeometry)                    
+                #logger.debug(NewData)
+                #logger.debug(NewGeometry)                    
             else:
                 NewData, NewGeometry = None, None
 
@@ -1042,20 +1040,21 @@ class sDNA_GH_Component(SmartComponent):
                         tmp.update(tool_opts[tool_name]._asdict())
                     tool_opts = tmp
         else:
-            debug('go was not == True')
+            logger.debug('go was not == True')
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}
         retval_names = [Param.Name for Param in self.Params.Output]
         logger.debug('Returning from self.script ')
+        locs = locals().copy()
         return custom_retvals(retval_names
                              ,[  ret_vals_dict
                               ,  self.opts['metas']
                               ,  self.opts['options']
                               ,  self.local_metas
                               ,  tool_opts
+                              ,  locs
                               ]
-                             ,return_locals = True
                              )
     script.input_params = sDNA_GH_Tool.params_list(['go', 'opts'])
     script.output_params = sDNA_GH_Tool.params_list(['OK', 'opts'])
