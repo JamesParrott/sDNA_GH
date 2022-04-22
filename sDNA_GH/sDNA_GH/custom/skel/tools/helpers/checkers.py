@@ -1,6 +1,9 @@
+#! Grasshopper Python
+# -*- coding: utf-8 -*-
 
 import logging
 from collections import OrderedDict
+import System  #.Net from IronPython
 
 import Rhino
 import rhinoscriptsyntax as rs
@@ -37,7 +40,8 @@ def toggle_Rhino_GH_file_target():
 def is_obj(x):
     #type(str) -> bool
     #return rs.IsObject(x)
-    return bool(sc.doc.Objects.FindGeometry(x)) if x else False
+    return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False
+    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False
 
     
 is_an_obj_in_GH_or_Rhino = multi_context_checker(is_obj, toggle_Rhino_GH_file_target)

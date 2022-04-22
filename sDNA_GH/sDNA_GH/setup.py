@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -95,7 +95,7 @@ class HardcodedMetas():
                    ,sDNA_Learn = 'sDNALearn'
                    ,sDNA_Predict = 'sDNAPredict'
                    ,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
-                   ,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data', 'recolour_objects']
+                   ,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
                    )
                           
     categories = {
@@ -203,11 +203,11 @@ class HardcodedOptions():
     Default_sDNA_GH_file_path = __file__
     overwrite_input_shapefile = False
     auto_get_Geom = True
-    auto_read_Usertext = False
+    auto_read_Usertext = True
     auto_write_new_Shp_file = True
     auto_read_Shp = True
     #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
-    auto_plot_data = False
+    auto_plot_data = True
     #Plotting results
     field = 'BtEn'
     plot_max = None
@@ -932,14 +932,14 @@ class sDNA_GH_Component(SmartComponent):
         
         synced = self.local_metas.sync_to_module_opts
         old_sDNA = self.opts['metas'].sDNA
-
+        #logger.debug('kwargs["field"] == ' + str(kwargs['field']))
         self.local_metas = override_all_opts(args_dict = kwargs
                                             ,local_opts = self.opts # mutated
                                             ,external_opts = external_opts 
                                             ,local_metas = self.local_metas 
                                             ,external_local_metas = external_local_metas
                                             )
-
+        #logger.debug('self.opts["options"].field == ' + str(self.opts['options'].field))
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
 

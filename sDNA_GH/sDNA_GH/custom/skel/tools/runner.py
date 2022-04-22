@@ -1,9 +1,9 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys,logging
+import sys, logging
 from collections import OrderedDict
 
 from abc import abstractmethod
@@ -16,7 +16,6 @@ else:
 
 from ..basic.smart_comp import prepare_args
 from ..basic.quacks_like import quacks_like
-from .helpers.funcs import tool_name
 
 
 logger = logging.getLogger(__name__)
@@ -104,7 +103,6 @@ def run_tools(tools
         
         retvals = tool(*pos_args, **input_kw_args)
 
-        logger.debug('retvals == ' + str(retvals))
 
         vals_dict.update( zip(tool.retvals, retvals) )
         retcode = vals_dict.get('retcode', 0)

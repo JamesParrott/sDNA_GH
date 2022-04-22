@@ -1,9 +1,9 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, os, logging, subprocess, itertools, re
+import os, logging, subprocess, itertools, re
 from collections import OrderedDict
 
 from time import asctime
@@ -14,7 +14,8 @@ import locale
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino, GhPython
-from System.Drawing import Color as Colour
+from System.Drawing import Color as Colour #.Net / C# Class
+                #System is also available in IronPython, but not System.Drawing
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Curve
@@ -62,7 +63,6 @@ from .pyshp_wrapper import (get_unique_filename_if_not_overwrite
                            ,get_fields_recs_and_shapes_from_shapefile
                            ,create_new_groups_layer_from_points_list
                            ,get_all_shp_type_Rhino_objects
-                           ,get_shape_file_rec_ID
                            )
 from .logging_wrapper import class_logger_factory
 from .gdm_from_GH_Datatree import (make_gdm
@@ -351,7 +351,13 @@ def get_objs_and_OrderedDicts(all_objs_getter = get_all_shp_type_Rhino_objects
             if ((not include_groups) or 
                  obj not in objs_in_any_group):
                 d = OrderedDict_getter(obj)
-                yield obj, d
+                yield str(obj), d
+                # changing the Rhino geom obj reference to a str of its uuid
+                # as Grasshopper changes uuids between components, even of 
+                # Rhino objects, effectively destroying the original 
+                # perfectly valid reference.
+                # previously was:
+                # yield obj, d
         return 
 
     return generator()
@@ -692,6 +698,8 @@ class WriteUsertext(sDNA_GH_Tool):
 
         date_time_of_run = asctime()
         self.debug('Creating Class logger at: ' + str(date_time_of_run))
+
+
         def write_dict_to_UserText_on_obj(d, rhino_obj):
             #type(dict, str) -> None
             if not isinstance(d, dict):
@@ -818,7 +826,11 @@ class ParseData(sDNA_GH_Tool):
         self.debug('Initialising Class.  Creating Class Logger. ')
         self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
                                 ,'plot_min', 'class_bounds')
-
+    #
+    # Geom is essentially unused in this function, except that the legend tags
+    # are appended to it, to colour them in exactly the same way as the 
+    # objects.
+    #
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.

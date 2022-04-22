@@ -4,7 +4,8 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import inspect
-from uuid import UUID
+from uuid import UUID # Only used for checking str format. 
+                      # Haven't tried Iron Python / .Net System.Guid
            
 
 def tool_name(tool):

@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python as module, Grasshopper Python as script / main
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'

@@ -1,4 +1,4 @@
-#! /usr/bin/ipy
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -10,7 +10,9 @@ else:
     from collections.abc import Iterable
 
 import GhPython
-from System.Drawing import SizeF, PointF   # .Net Classes, e.g. via Iron Python.
+from System.Drawing import SizeF, PointF   
+                            # .Net / C# Classes.
+                            # System is in Iron Python, but not System.Drawing.
 
 from .basic.ghdoc import ghdoc
 from .tools.runner import RunnableTool

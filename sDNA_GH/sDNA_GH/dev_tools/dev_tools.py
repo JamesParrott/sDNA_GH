@@ -1,11 +1,10 @@
-#! /usr/bin/python2.7
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
 
-from ..custom.skel.basic.smart_comp import custom_retvals
 from ..custom.skel.tools.name_mapper import validate_name_map
 from ..custom.tools import sDNA_GH_Tool
 from ..setup import tools_dict

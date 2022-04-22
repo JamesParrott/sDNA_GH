@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -111,9 +111,7 @@ def prepare_args(function
     #type(function) -> tuple, dict
     argspec = get_args_spec(function)
     logger.debug('argspec(function) == ' + str(argspec))
-    assert isinstance(params_dict, dict), 'OrderedDict of input args required. '
-    if not isinstance(params_dict, OrderedDict):
-        logger.warning('Order of input arguments may not be preserved.  ')
+
     params_dict = params_dict.copy()  #We'll be popping keys out later
 
     args_dict = {}
@@ -206,7 +204,7 @@ def prepare_args(function
                      + unnamed_pos_args)
 
     #logger.debug('pos_args == ' + str(pos_args_tupl))
-    logger.debug('args_dict' + str(args_dict))
+    logger.debug('args_dict == ' + str(args_dict))
 
     return pos_args_tupl, args_dict
 
@@ -223,7 +221,7 @@ def custom_inputs_class_deco(BaseComponent
         script = BaseComponent.RunScript
 
         def RunScript(self, *param_vals):
-            param_names = [param.Name for param in self.Params.Input]
+            param_names = [param.NickName for param in self.Params.Input]
             params_dict = OrderedDict( zip(param_names, param_vals))
             logger.debug('Params_dict == ' + str(params_dict))
 

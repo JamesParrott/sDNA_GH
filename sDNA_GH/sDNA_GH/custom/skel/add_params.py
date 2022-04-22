@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -239,8 +239,8 @@ def add_tool_params(Params
     current_output_params = getattr(Params, 'Output')[:]
     current_input_params = getattr(Params, 'Input')[:]
 
-    needed_output_params = [ output for tool in tools 
-                             for output in tool.output_params 
+    needed_output_params = [ output for tool in reversed(tools)
+                             for output in tool.output_params
                            ]
     needed_input_params = [ input for tool in tools 
                             for input in tool.input_params 

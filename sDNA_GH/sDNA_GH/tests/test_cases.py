@@ -1,12 +1,11 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
 def create_random_grid_network(go, x, y, p):
     import rhinoscriptsyntax as rs
-    import scriptcontext
-    import Rhino
+
 
     import sys
     from random import random as random_num
