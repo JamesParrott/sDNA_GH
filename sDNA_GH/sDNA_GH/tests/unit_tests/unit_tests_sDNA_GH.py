@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! Grasshopper Python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -17,7 +17,7 @@ try:
     import rhinoscriptsyntax as rs
     import scriptcontext as sc
     import ghpythonlib.treehelpers as th
-    GH_env_exists = True
+    GH_env_exists = True # Todo:  Can now just import ghdoc from ...custom.skel.basic.ghdoc
 except:
     GH_env_exists = False
     component = object

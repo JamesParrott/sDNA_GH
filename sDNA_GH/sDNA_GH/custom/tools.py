@@ -217,7 +217,7 @@ class sDNAWrapper(sDNA_GH_Tool):
         if self.sDNA != opts['metas'].sDNA:
             self.update_tool_opts_and_syntax(opts)
 
-        dot_shp = options.shp_file_extension
+        dot_shp = options.dot_shp
 
         input_file = self.tool_opts[sDNA].input
         
@@ -243,9 +243,9 @@ class sDNAWrapper(sDNA_GH_Tool):
 
         output_file = self.tool_opts[sDNA].output
         if output_file == '':
-            output_suffix = options.output_shp_file_suffix
+            output_suffix = options.output_shp_suffix
             if self.tool_name == 'sDNAPrepare':
-                output_suffix = options.prepped_shp_file_suffix   
+                output_suffix = options.prepped_shp_suffix   
             output_file = input_file.rpartition('.')[0] + output_suffix + dot_shp
 
         output_file = get_unique_filename_if_not_overwrite(output_file, options)
@@ -372,8 +372,8 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
                                                 ,get_members_of_a_group
                                                 ,lambda *args, **kwargs : {} 
                                                 ,check_is_specified_obj_type
-                                                ,options.shp_file_shape_type
-                                                ,options.include_groups_in_gdms 
+                                                ,options.shape_type
+                                                ,options.include_groups
                                                 ) 
                        )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
@@ -461,7 +461,7 @@ class WriteShapefile(sDNA_GH_Tool):
         #                                                     ,opts
         #                                                     )
 
-        format_string = options.rhino_user_text_key_format_str_to_read
+        format_string = options.input_key_str
         pattern = make_regex( format_string )
 
         def pattern_match_key_names(x):
@@ -508,15 +508,15 @@ class WriteShapefile(sDNA_GH_Tool):
             return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
-            if (options.shp_file_to_write_to and 
-                os.path.isdir( os.path.dirname( options.shp_file_to_write_to )
+            if (options.output_shp and 
+                os.path.isdir( os.path.dirname( options.output_shp )
                              ) 
                ):   
                 
-                f_name = options.shp_file_to_write_to
+                f_name = options.output_shp
             else:
                 f_name = options.Rhino_doc_path.rpartition('.')[0]
-                f_name += options.shp_file_extension
+                f_name += options.dot_shp
                             # file extensions are actually optional in PyShp, 
                             # but just to be safe and future proof we remove
                             # '.3dm'                                        
@@ -552,7 +552,8 @@ class WriteShapefile(sDNA_GH_Tool):
 
 class ReadShapefile(sDNA_GH_Tool):
 
-    component_inputs = ('file', )
+    component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
+                                        # objects need to be created
 
     def __call__(self, f_name, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -589,7 +590,7 @@ class ReadShapefile(sDNA_GH_Tool):
 
         fields = [ x[0] for x in shp_fields ]
 
-        self.logger.debug('options.uuid_shp_file_field_name in fields == ' + str(options.uuid_shp_file_field_name in fields))
+        self.logger.debug('options.uuid_field in fields == ' + str(options.uuid_field in fields))
         self.logger.debug(fields)
 
 
@@ -602,19 +603,19 @@ class ReadShapefile(sDNA_GH_Tool):
             self.logger.debug('Geom data map matches shapefile.  ')
 
             shapes_to_output = list(gdm.keys()) # Dict view in Python 3
-        elif options.create_new_geom:   
+        elif options.new_geom:   
                     #shapes_to_output = ([shp.points] for shp in shapes )
             
             obj_key_maker = create_new_groups_layer_from_points_list() 
             shapes_to_output = (obj_key_maker(shp.points) for shp in shapes )
         else:
             # Unsupported until can round trip uuid through sDNA 
-            # obj_key_maker = get_shape_file_rec_ID(options.uuid_shp_file_field_name) # key_val_tuples
-            # i.e. if options.uuid_shp_file_field_name in fields but also otherwise
+            # obj_key_maker = get_shape_file_rec_ID(options.uuid_field) # key_val_tuples
+            # i.e. if options.uuid_field in fields but also otherwise
             msg =   ('Geom data map and shapefile have unequal'
                     +' lengths len(gdm) == ' + str(len(gdm))
                     +' len(recs) == ' + str(len(recs))
-                    +' (or invalid gdm), and create_new_geom'
+                    +' (or invalid gdm), and new_geom'
                     +' == False'
                     )
             self.logger.error(msg)
@@ -638,7 +639,7 @@ class ReadShapefile(sDNA_GH_Tool):
         gdm = make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc # type: ignore
         
-        dot_shp = options.shp_file_extension
+        dot_shp = options.dot_shp
         csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
         sDNA_fields = {}
         if os.path.isfile(csv_f_name):
@@ -652,7 +653,7 @@ class ReadShapefile(sDNA_GH_Tool):
 
         #override_gdm_with_gdm(gdm, gdm, opts)   # TODO:What for?
 
-        if options.delete_shapefile_after_reading and os.path.isfile(f_name): 
+        if options.del_shp and os.path.isfile(f_name): 
             os.remove(f_name)  # TODO: Fix, currently Win32 error
 
         retcode = 0
@@ -695,21 +696,21 @@ class WriteUsertext(sDNA_GH_Tool):
                 sc.doc = target_doc        
                 existing_keys = get_obj_keys(rhino_obj)
                 #TODO Move key pattern matching into ReadSHP
-                if options.uuid_shp_file_field_name in d:
-                    obj = d.pop( options.uuid_shp_file_field_name )
+                if options.uuid_field in d:
+                    obj = d.pop( options.uuid_field )
                 
                 for key in d:
 
-                    s = options.sDNA_output_user_text_key_format_str_to_read
+                    s = options.output_key_str
                     UserText_key_name = s.format(name = key
                                                 ,datetime = date_time_of_run
                                                 )
                     
                     if not options.overwrite_UserText:
 
-                        for i in range(0, options.max_new_UserText_keys_to_make):
+                        for i in range(0, options.max_new_keys):
                             tmp = UserText_key_name 
-                            tmp += options.duplicate_UserText_key_suffix.format(i)
+                            tmp += options.dupe_key_suffix.format(i)
                             if tmp not in existing_keys:
                                 break
                         UserText_key_name = tmp
@@ -900,7 +901,7 @@ class ParseData(sDNA_GH_Tool):
                                                     ,x_max
                                                 )
         
-        if not options.all_in_class_same_colour:
+        if not options.colour_as_class:
             classifier = re_normaliser
         elif options.re_normaliser:
             #'linear' # exponential, logarithmic
@@ -935,7 +936,7 @@ class ParseData(sDNA_GH_Tool):
         upper_s = options.num_format.format(min( class_bounds ))
         mid_pt_s = options.num_format.format( mid_points[0] )
 
-        legend_tags = [options.first_legend_tag_format_string.format( 
+        legend_tags = [options.first_leg_tag_str.format( 
                                                                 lower = x_min_s
                                                                 ,upper = upper_s
                                                                 ,mid_pt = mid_pt_s
@@ -951,7 +952,7 @@ class ParseData(sDNA_GH_Tool):
             upper_s = options.num_format.format(upper_bound)
             mid_pt_s = options.num_format.format(mid_point)
 
-            legend_tags += [options.inner_tag_format_string.format(
+            legend_tags += [options.gen_leg_tag_str.format(
                                                     lower = lower_s
                                                     ,upper = upper_s
                                                     ,mid_pt = mid_pt_s 
@@ -962,7 +963,7 @@ class ParseData(sDNA_GH_Tool):
         x_max_s = options.num_format.format(x_max)
         mid_pt_s = options.num_format.format(mid_points[-1])
 
-        legend_tags += [options.last_legend_tag_format_string.format( 
+        legend_tags += [options.last_leg_tag_str.format( 
                                                                 lower = lower_s
                                                                 ,upper = x_max_s 
                                                                 ,mid_pt = mid_pt_s 
@@ -973,9 +974,9 @@ class ParseData(sDNA_GH_Tool):
 
         self.logger.debug(legend_tags)
 
-        #first_legend_tag_format_string = 'below {upper}'
-        #inner_tag_format_string = '{lower} - {upper}' # also supports {mid}
-        #last_legend_tag_format_string = 'above {lower}'
+        #first_leg_tag_str = 'below {upper}'
+        #gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
+        #last_leg_tag_str = 'above {lower}'
 
         #retvals['max'] = x_max = max(data)
         #retvals['min'] = x_min = min(data)
@@ -1039,9 +1040,9 @@ class RecolourObjects(sDNA_GH_Tool):
         objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
                                         # isinstance(x, dict) 
                                         # and isinstance(x, Number)
-        if options.GH_Gradient:
+        if options.Col_Grad:
             grad = getattr( GH_Gradient()
-                        ,self.GH_Gradient_preset_names[options.GH_Gradient_preset])
+                        ,self.GH_Gradient_preset_names[options.Col_Grad_num])
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)
                 # May need either rhinoscriptsyntax.CreateColor
@@ -1087,9 +1088,9 @@ class RecolourObjects(sDNA_GH_Tool):
 
 
         legend_tags = OrderedDict()
-        legend_first_pattern = make_regex(options.first_legend_tag_format_string)
-        legend_inner_pattern = make_regex(options.inner_tag_format_string)
-        legend_last_pattern = make_regex(options.last_legend_tag_format_string)
+        legend_first_pattern = make_regex(options.first_leg_tag_str)
+        legend_inner_pattern = make_regex(options.gen_leg_tag_str)
+        legend_last_pattern = make_regex(options.last_leg_tag_str)
 
         legend_tag_patterns = (legend_first_pattern
                             ,legend_inner_pattern
@@ -1173,12 +1174,13 @@ class RecolourObjects(sDNA_GH_Tool):
                 ,legend_ymax] = options.leg_extent
                 self.logger.debug('legend extent == ' + str(options.leg_extent))
             else: 
-                if options.bbox:
-                    self.logger.debug('Using options.bbox override. ')
-                    bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
-                else:
+                if bbox:
                     self.logger.debug('Using bbox from args')
                     [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = bbox
+                elif options.bbox:
+                    self.logger.debug('Using options.bbox override. ')
+                    bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
+
                 legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
                 legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
                 legend_xmax, legend_ymax = bbox_xmax, bbox_ymax

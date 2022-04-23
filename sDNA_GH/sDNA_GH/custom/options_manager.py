@@ -104,14 +104,14 @@ def override_ordereddict_with_dict( d_lesser
                                    ,strict = True
                                    ,check_types = False
                                    ,delistify = True
-                                   ,add_in_new_options_keys = False
+                                   ,add_new_opts = False
                                    ,**kwargs):
     #type: (dict, OrderedDict, bool, bool, bool, bool, dict) -> OrderedDict
     #
     if strict and not isinstance(od_greater, dict):  # also true for OrderedDict
         return d_lesser
 
-    if not add_in_new_options_keys:
+    if not add_new_opts:
         new_od = OrderedDict( (key, val) 
                    for key, val in od_greater.items() 
                    if key in d_lesser )
@@ -344,7 +344,7 @@ def override_namedtuple( nt_lesser
                         ):                        
     # type(list(object), namedtuple, Boolean, Boolean, Boolean, Class -> namedtuple
     # kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_'}
-    #          override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_in_new_options_keys = True}
+    #          override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
     #          override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
     #          override_namedtuple_with_namedtuple{strict = True}
     #          load_ini_file : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}

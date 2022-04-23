@@ -53,10 +53,10 @@ class HardcodedMetas():
     config = os.path.join(os.path.dirname(  os.path.dirname(__file__)  )
                          ,r'config.toml'  
                          )
-    add_in_new_options_keys = False
-    allow_components_to_change_type = False
-    typecheck_opts_namedtuples = True
-    typecheck_opts_fields = True
+    add_new_opts = False
+    cmpnts_change = False
+    strict_namedtuples = True
+    strict_opts = True
     sDNAUISpec = 'sDNAUISpec'
     runsdnacommand = 'runsdnacommand' # only used for .map_to_string. 
                                # Kept in case we use work out how
@@ -72,7 +72,7 @@ class HardcodedMetas():
     sDNA_search_paths  = [r'C:\Program Files (x86)\sDNA']
     sDNA_search_paths += [os.path.join(os.getenv('APPDATA'),'sDNA')]
     sDNA_search_paths += [path for path in os.getenv('PATH').split(';') if 'sDNA' in path ]
-    auto_update_Rhino_doc_path = True
+    update_path = True
                         #Abbreviation = Tool Name
 #######################################################################################################################
     name_map = dict(Read_Geom = 'get_Geom'
@@ -139,7 +139,6 @@ class HardcodedOptions():
     #System
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8'
-    rhino_executable = r'C:\Program Files\Rhino 7\System\Rhino.exe'
     sDNAUISpec = None
     run_sDNA = None
     Rhino_doc_path = ''  # tbc by auto update
@@ -150,65 +149,62 @@ class HardcodedOptions():
     ####################################################################################
     #Logging    
     #os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH','sDNA_GH.log')
-    logs_subdir_name = 'logs'
+    logs_dir = 'logs'
     log_file = 'sDNA_GH.log'
 
-    tests_subdirectory = r'tests'
-    logger_file_level = 'DEBUG'
-    logger_console_level = 'INFO'
-    logger_custom_level = 'INFO'
+    log_file_level = 'DEBUG'
+    log_console_level = 'INFO'
+    log_custom_level = 'INFO'
 
     ####################################################################################
     #GDM
-    merge_Usertext_subdicts_instead_of_overwriting = True
-    use_initial_groups_if_too_many_in_list = True
-    use_initial_data_if_too_many_in_list = True
-    include_groups_in_gdms = False 
+    merge_data = True
     ####################################################################################
     #Shapefiles
-    shp_file_shape_type = 'POLYLINEZ'
-    cache_iterable_when_writing_to_shp= False
-    shp_file_extension = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
-    supply_sDNA_file_names = True
-    shp_file_to_write_to = r'C:\Users\James\Documents\Rhino\Grasshopper\tmp.shp' # None means Rhino .3dm filename is used.
-    overwrite_shp_file = True
+    shape_type = 'POLYLINEZ'
+    include_groups = False
+    cache_iterable= False
+    dot_shp = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
+    #supply_sDNA_file_names = True
+    output_shp = r'C:\Users\James\Documents\Rhino\Grasshopper\tmp.shp' # None means Rhino .3dm filename is used.
+    overwrite_shp = True
     overwrite_UserText = True
-    duplicate_UserText_key_suffix = r'_{}'
-    prepped_shp_file_suffix = "_prepped"
-    output_shp_file_suffix = "_output"
-    duplicate_file_name_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
-    max_new_files_to_make = 20
-    suppress_overwrite_warning = True     
-    uuid_shp_file_field_name = 'Rhino3D_' # 'object_identifier_UUID_'     
+    dupe_key_suffix = r'_{}'
+    prepped_shp_suffix = "_prepped"
+    output_shp_suffix = "_output"
+    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    max_new_files = 20
+    suppress_warning = True     
+    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
     uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
-    calculate_smallest_field_sizes = True
-    delete_shapefile_after_reading = False
-    global_shp_file_field_size = 30
-    global_shp_number_of_decimal_places = 10
-    shp_file_field_size_num_extra_chars = 2
-    enforce_yyyy_mm_dd = False
-    use_str_decimal = True
-    do_not_convert_floats = True
-    decimal_module_prec = 12
-    shp_record_max_decimal = 4
+    min_sizes = True
+    del_shp = False
+    field_size = 30
+    num_dp = 10 # decimal places
+    extra_chars = 2
+    yyyy_mm_dd = False
+    decimal = True
+    keep_floats = True
+    precision = 12
+    max_dp = 4 # decimal places
     ####################################################################################
     #Writing and Reading Usertext to/from Rhino
-    create_new_geom = False
-    max_new_UserText_keys_to_make = 20
+    new_geom = False
+    max_new_keys = 20
     #
     #
-    rhino_user_text_key_format_str_to_read = 'sDNA input name={name} type={fieldtype} size={size}'  #30,000 characters tested!
-    sDNA_output_user_text_key_format_str_to_read = 'sDNA output={name} run time={datetime}'  #30,000 characters tested!
+    input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'  #30,000 characters tested!
+    output_key_str = 'sDNA output={name} run time={datetime}'  #30,000 characters tested!
     ####################################################################################
     #sDNA
-    Default_sDNA_GH_file_path = __file__
-    overwrite_input_shapefile = False
-    auto_get_Geom = False
-    auto_read_Usertext = False
-    auto_write_new_Shp_file = False
-    auto_read_Shp = False
+    default_path = __file__
+    overwrite_shp = False
+    auto_get_Geom = True
+    auto_read_Usertext = True
+    auto_write_Shp = True
+    auto_read_Shp = True
     #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
-    auto_plot_data = False
+    auto_plot_data = True
     #Plotting results
     field = 'BtEn'
     plot_max = None
@@ -223,15 +219,15 @@ class HardcodedOptions():
     number_of_classes = 7
     class_spacing = 'equal number of members' 
     assert class_spacing in valid_re_normalisers + ['equal number of members']
-    first_legend_tag_format_string = 'below {upper}'
-    inner_tag_format_string = '{lower} - {upper}' # also supports {mid_pt}
-    last_legend_tag_format_string = 'above {lower}'
+    first_leg_tag_str = 'below {upper}'
+    gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
+    last_leg_tag_str = 'above {lower}'
     num_format = '{:.5n}'
     leg_frame = ''  # uuid of GH object
     locale = '' # ''=> auto .  Used for locale.setlocale(locale.LC_ALL,  options.locale)
-    all_in_class_same_colour = False
-    GH_Gradient = False
-    GH_Gradient_preset = 5
+    colour_as_class = False
+    Col_Grad = False
+    Col_Grad_num = 5
     rgb_max = (155, 0, 0) #990000
     rgb_min = (0, 0, 125) #3333cc
     rgb_mid = (0, 155, 0) # guessed
@@ -243,8 +239,8 @@ class HardcodedOptions():
 
 
 class HardcodedLocalMetas():
-    sync_to_module_opts = True    
-    read_from_shared_global_opts = True
+    sync = True    
+    read_only = True
     nick_name = ''
 
 
@@ -289,7 +285,7 @@ def get_path(opts = module_opts, inst = None):
                     path = None
         finally:
             if not path:
-                path = opts['options'].Default_sDNA_GH_file_path
+                path = opts['options'].default_path
     
     return path
 
@@ -355,9 +351,9 @@ def override_all_opts( args_dict
          ,interpolation = None # For load_ini_file above
          ,section_name = key # For override_namedtuple below
          ,leave_as_strings = False 
-         ,strict = local_opts['metas'].typecheck_opts_namedtuples
-         ,check_types = local_opts['metas'].typecheck_opts_fields
-         ,add_in_new_options_keys = local_opts['metas'].add_in_new_options_keys
+         ,strict = local_opts['metas'].strict_namedtuples
+         ,check_types = local_opts['metas'].strict_opts
+         ,add_new_opts = local_opts['metas'].add_new_opts
                 )
         return d
 
@@ -430,8 +426,8 @@ def override_all_opts( args_dict
 
     def overrides_list(key):
         # type (str) -> list
-        if (local_metas.sync_to_module_opts or 
-            not local_metas.read_from_shared_global_opts):
+        if (local_metas.sync or 
+            not local_metas.read_only):
             retval = []  
         else: 
             #if not synced but still reading from module opts, 
@@ -453,11 +449,11 @@ def override_all_opts( args_dict
 
     #overrides_list = lambda key : [ external_opts.get(key,{}).get(sDNA(), {})
     #                              ,config_file_reader, sub_args_dict.get(key, {})]
-    if local_metas.sync_to_module_opts:
+    if local_metas.sync:
         dict_to_update = module_opts # the opts in module's global scope, outside this function
     else:
         dict_to_update = local_opts
-        #if local_metas.read_from_shared_global_opts:
+        #if local_metas.read_only:
           #  overrides = lambda key : [opts.get(key,{}).get(sDNA(), {})] + overrides(key)
 
     for key in dict_to_update:
@@ -518,7 +514,7 @@ assert os.path.isfile(module_opts['options'].python_exe)
 if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? 'sDNA_GH.tools'
     
     logs_directory = os.path.join(os.path.dirname( get_path(module_opts) )
-                                 ,module_opts['options'].logs_subdir_name
+                                 ,module_opts['options'].logs_dir
                                  )
 
     if not os.path.isdir(logs_directory):
@@ -529,10 +525,10 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
 
     logger = logging_wrapper.new_Logger('sDNA_GH'
                                        ,os.path.join(logs_directory, module_opts['options'].log_file)
-                                       ,module_opts['options'].logger_file_level
-                                       ,module_opts['options'].logger_console_level
+                                       ,module_opts['options'].log_file_level
+                                       ,module_opts['options'].log_console_level
                                        ,None # custom_file_object 
-                                       ,module_opts['options'].logger_custom_level
+                                       ,module_opts['options'].log_custom_level
                                        )
 
 
@@ -663,12 +659,12 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('Inserting tools... ')
 
 
-        # if options.auto_write_new_Shp_file and (
-        #     options.overwrite_input_shapefile 
+        # if options.auto_write_Shp and (
+        #     options.overwrite_shp 
         #     or not os.path.isfile(input_file))
 
 
-        if options.auto_write_new_Shp_file:
+        if options.auto_write_Shp:
             tools = insert_tool('before'
                                ,tools
                                ,Params
@@ -799,7 +795,7 @@ class sDNA_GH_Component(SmartComponent):
 
 
         if not hasattr(self, 'nick_name') or (
-            self.opts['metas'].allow_components_to_change_type
+            self.opts['metas'].cmpnts_change
             and self.local_metas.nick_name != new_name    ):  
             #
             self.local_metas = self.local_metas._replace(nick_name = new_name)
@@ -934,7 +930,7 @@ class sDNA_GH_Component(SmartComponent):
         self.update_Params()#self.Params, self.tools)
 
         
-        synced = self.local_metas.sync_to_module_opts
+        synced = self.local_metas.sync
         old_sDNA = self.opts['metas'].sDNA
         #logger.debug('kwargs["field"] == ' + str(kwargs['field']))
         self.local_metas = override_all_opts(args_dict = kwargs
@@ -951,17 +947,17 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug(self.local_metas)
         #logger.debug('options after override in script == ' + str(self.opts['options']))
         
-        if (self.opts['metas'].auto_update_Rhino_doc_path 
+        if (self.opts['metas'].update_path 
             or not os.path.isfile(self.opts['options'].Rhino_doc_path) ):
 
             path = get_path(self.opts, self)
 
             self.opts['options'] = self.opts['options']._replace( Rhino_doc_path = path )
 
-        if self.opts['metas'].allow_components_to_change_type: 
+        if self.opts['metas'].cmpnts_change: 
             
-            if self.local_metas.sync_to_module_opts != synced:
-                if self.local_metas.sync_to_module_opts:
+            if self.local_metas.sync != synced:
+                if self.local_metas.sync:
                     self.opts = module_opts #resync
                 else:
                     self.opts = self.opts.copy() #desync
@@ -996,7 +992,7 @@ class sDNA_GH_Component(SmartComponent):
 
             gdm = override_gdm_with_gdm(gdm
                                        ,geom_data_map
-                                       ,self.opts['options'].merge_Usertext_subdicts_instead_of_overwriting
+                                       ,self.opts['options'].merge_data
                                        )
 
             logger.debug('After merge type(gdm) == ' 

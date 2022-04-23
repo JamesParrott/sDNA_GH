@@ -163,9 +163,9 @@ assert set(shp.SHAPETYPE_LOOKUP.values()) == set(shaperback_writer.keys())
 def shp_type_coercer(x, options):
     #typecoercer function
 
-    if options.use_str_decimal:
+    if options.decimal:
         import decimal as dec
-    dec.getcontext().prec = options.decimal_module_prec #if else options.decimal_module_prec    # significant figures,  >= # decimal places
+    dec.getcontext().prec = options.precision #if else options.precision    # significant figures,  >= # decimal places
     if      x in [True, False] or (hasattr(x, 'lower')
         and x.lower() in ['true','false']):   # if isinstance(x,bool):.  Don't test coercion with bool() first or everything truthy will be 'L'
         return x, shp_field_codes['bool']   # i.e. 'L'
@@ -174,8 +174,8 @@ def shp_type_coercer(x, options):
         return y, shp_field_codes['int']    # i.e.   'N'
     except:
         try:
-            n = options.shp_record_max_decimal
-            if options.use_str_decimal:
+            n = options.max_dp
+            if options.decimal:
                 y = dec.Decimal(x)
                 y = y.quantize(  dec.Decimal('.'*int( bool(n) ) + '0'*(n-1) + '1')  )   # e.g. '1' if n=0, else '0.000... (#n 0s) ...0001'
             else:
@@ -183,7 +183,7 @@ def shp_type_coercer(x, options):
                                                           # before this if 'N' and 'F' are utilised differently
                 y = round(y, n)  #  Beware:  https://docs.python.org/2.7/tutorial/floatingpoint.html#tut-fp-issues                                                      
                 
-            return x if options.do_not_convert_floats else y, shp_field_codes['float']  # Tuple binds to result of ternary operator,
+            return x if options.keep_floats else y, shp_field_codes['float']  # Tuple binds to result of ternary operator,
                                                                                                # not just to y
         except:
             if isinstance(x, date):
@@ -198,7 +198,7 @@ def shp_type_coercer(x, options):
                 day=r'([0-2]?\d)|(3[01])'
                 sep=r'([-.,:/ \\])' # allows different seps r'(?P<sep>[-.,:\\/ ])'
                 test_patterns =  [ year + sep + month + sep + day ]   # datetime.date requires yyyy, mm, dd
-                if not options.enforce_yyyy_mm_dd:
+                if not options.yyyy_mm_dd:
                     test_patterns += [  day + sep + month + sep + year   # https://en.wikipedia.org/wiki/Date_format_by_country
                                        ,month + sep + day + sep + year]  # 
                 if any(re.match(pattern, x) for pattern in test_patterns):
@@ -217,15 +217,15 @@ def dec_places_req(x):
 def get_unique_filename_if_not_overwrite(f, opts):
     #type: (str,dict) -> str
 
-    if not opts.overwrite_shp_file:
+    if not opts.overwrite_shp:
         i = 1
         file_dir, full_file_name = os.path.split(f)   #os.path.split
         [file_name, _, file_extension] = full_file_name.rpartition('.')  #str.split
-        while os.path.isfile(f):
-            f = os.path.join(file_dir, file_name + opts.duplicate_file_name_suffix.format(i) + '.' + file_extension) #os.path.join
+        while os.path.isfile(f) and i <= opts['options'].max_new_files:
+            f = os.path.join(file_dir, file_name + opts.dupe_file_suffix.format(i) + '.' + file_extension) #os.path.join
             i += 1  # Not good practice to change the value of the input argument shp_file_path, but if it's a str it's immutable, so no side effects
                     # even if we give it a default value
-    elif not opts.suppress_overwrite_warning:
+    elif not opts.suppress_warning:
         logger.warning('Overwriting file ' + f + ' !')
     return f
 
@@ -233,7 +233,7 @@ def ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attri
     # type(dict, str, type[any], namedtuple) -> None
     if nice_key in fields:
         fields[nice_key]['size'] = max( fields[nice_key]['size']
-                                    ,len(str(value)) + max(0, options.shp_file_field_size_num_extra_chars)
+                                    ,len(str(value)) + max(0, options.extra_chars)
                                     )
         if val_type == shp_field_codes['float'] and 'decimal' in fields[nice_key]:
             fields[nice_key]['decimal'] = max( fields[nice_key]['decimal'], dec_places_req(value) )
@@ -251,7 +251,7 @@ def ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attri
                 fields[nice_key]['fieldType'] = shp_field_codes['str']
                 #logger.error('Type mismatch in same field.  Cannot store ' + str(value) + ' as .shp record type ' + fields[nice_key]['fieldType'])
     else:
-        fields[nice_key] = { 'size' : len(str(value)) + max(0,options.shp_file_field_size_num_extra_chars)
+        fields[nice_key] = { 'size' : len(str(value)) + max(0,options.extra_chars)
                             ,'fieldType' : val_type
                             }                          # could add a 'name' field, to save looping over the keys to this
                                                     # dict:
@@ -308,24 +308,24 @@ def write_from_iterable_to_shapefile_writer( my_iterable
         
 
 
-    max_size = (options.global_shp_file_field_size 
-            + options.shp_file_field_size_num_extra_chars)
+    max_size = (options.field_size 
+            + options.extra_chars)
 
-    fields = OrderedDict( {options.uuid_shp_file_field_name 
+    fields = OrderedDict( {options.uuid_field 
                                 : { 'fieldType' : shp_field_codes['str']
                                     ,'size' : options.uuid_length
-                                            +max( 0,  options.shp_file_field_size_num_extra_chars )
+                                            +max( 0,  options.extra_chars )
                                     }
                            }
                          )
 
     attribute_tables = OrderedDict()
 
-    if field_names is None or options.cache_iterable_when_writing_to_shp: 
+    if field_names is None or options.cache_iterable: 
         
         for item in my_iterable:    
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
-            values = OrderedDict( {options.uuid_shp_file_field_name : shape_IDer(item) } )   
+            values = OrderedDict( {options.uuid_field : shape_IDer(item) } )   
             for key in keys:
                 # Demangle and cache the user text keys and values
                 nice_match = key_matcher(key)            
@@ -339,7 +339,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
 
 
                     # Update the shp field sizes if they aren't big enough or the field is new, and type check
-                    if options.calculate_smallest_field_sizes:
+                    if options.min_sizes:
                         ensure_field_size_and_types_correct(fields, nice_key, value, val_type, attribute_tables, options)
                         # mutates fields, adding nice_key to it if not already there, else updating its val
                     else:
@@ -347,7 +347,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                                             ,'fieldType' : val_type
                                             } 
                         if val_type == shp_field_codes['float']:
-                            fields[nice_key]['decimal'] = options.global_shp_number_of_decimal_places 
+                            fields[nice_key]['decimal'] = options.num_dp 
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
     else:
         for name in field_names:
@@ -362,7 +362,7 @@ def write_from_iterable_to_shapefile_writer( my_iterable
                             for key in key_finder(item) 
                             if (key_matcher(key) and
                                 key_matcher(key).group('name') in fields)}
-        retval[options.uuid_shp_file_field_name ] = shape_IDer(item)
+        retval[options.uuid_field ] = shape_IDer(item)
         return retval
 
 
@@ -446,7 +446,7 @@ def create_new_groups_layer_from_points_list(
             return None
     return g
 
-def get_shape_file_rec_ID(uuid_shp_file_field_name): 
+def get_shape_file_rec_ID(uuid_field): 
     #type(str) -> function
     def f(obj, record):
         if is_uuid(obj):
@@ -457,8 +457,8 @@ def get_shape_file_rec_ID(uuid_shp_file_field_name):
                 return obj
         if hasattr(record, 'as_dict'):
             d = record.as_dict()
-            if uuid_shp_file_field_name in d:
-                obj_ID = d[uuid_shp_file_field_name]     
+            if uuid_field in d:
+                obj_ID = d[uuid_field]     
                 # For future use.  Not possible until sDNA round trips through
                 # Userdata into the output .shp file, including our uuid
                 target_doc = is_an_obj_in_GH_or_Rhino(obj_ID)    
