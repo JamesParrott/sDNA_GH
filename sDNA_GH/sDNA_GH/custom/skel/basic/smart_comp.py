@@ -186,7 +186,11 @@ def prepare_args(function
 
     if missing_req_pos_args:
         msg = 'Missing named positional argument'
-        logger.warning(msg)
+        logger.debug('missing_req_pos_args == ' + str(missing_req_pos_args))
+        logger.debug('pos_args keys == ' + str(pos_args.keys()))
+        logger.debug('args_dict keys == ' + str(args_dict.keys()))
+
+        logger.error(msg)
         raise TypeError(msg)
     
     if params_dict:
@@ -208,6 +212,13 @@ def prepare_args(function
 
     return pos_args_tupl, args_dict
 
+def delistify(maybe_trivial_list):
+    if isinstance(maybe_trivial_list, list) and len(maybe_trivial_list) == 1:
+        return maybe_trivial_list[0]
+    elif hasattr(maybe_trivial_list, '__len__') and len(maybe_trivial_list) == 0:
+        return None
+    else:
+        return maybe_trivial_list # because then it wasn't a trivial list.
 
 def custom_inputs_class_deco(BaseComponent
                             ,anon_pos_args = []
@@ -221,8 +232,10 @@ def custom_inputs_class_deco(BaseComponent
         script = BaseComponent.RunScript
 
         def RunScript(self, *param_vals):
-            param_names = [param.NickName for param in self.Params.Input]
-            params_dict = OrderedDict( zip(param_names, param_vals))
+            params_dict = OrderedDict( (param.NickName, delistify(param_val))
+                                       for (param, param_val) 
+                                        in zip(self.Params.Input, param_vals)
+                                     )
             logger.debug('Params_dict == ' + str(params_dict))
 
 

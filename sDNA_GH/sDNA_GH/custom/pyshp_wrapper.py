@@ -105,9 +105,10 @@ Rhino_obj_getter_code_Shp_file_shape_map = dict(NULL = None
 
 def get_all_shp_type_Rhino_objects(shp_type='POLYLINEZ'):
     #type (None) -> list
-    return rs.ObjectsByType( Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
-                            ,select=False
-                            ,state=0)
+    return rs.ObjectsByType(geometry_type = Rhino_obj_getter_code_Shp_file_shape_map[shp_type]
+                           ,select = False
+                           ,state = 0
+                           )
 
 Rhino_obj_adder_Shp_file_shape_map = dict(NULL = None
                                          ,POINT = 'AddPoint'

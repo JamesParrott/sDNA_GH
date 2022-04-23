@@ -16,7 +16,7 @@ logger.addHandler(logging.NullHandler())
 
 
 
-class ReturnComponentNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
+class ReturnToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
 
     def __init__(self):
         self.component_inputs = ()
@@ -43,34 +43,59 @@ class ReturnComponentNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = Non
 
 class sDNA_GH_Builder(sDNA_GH_Tool):
     builder = BuildComponents()
-    get_names = ReturnComponentNames()
-    args = ('launcher_code', 'plug_in', 'component_names', 'opts', 'd_h', 'w')
-    component_inputs = ('go',) + args[1:-2] + ('name_map', 'categories')
+    get_names = ReturnToolNames()
+    component_inputs = 'launcher_code', 'plug_in_name'
 
-    def __call__(self, code, plug_in_name, opts_at_call, d_h = None, w = None):
-        global module_opts
-        module_opts['options']._replace(auto_get_Geom = False
-                                       ,auto_read_Usertext = False
-                                       ,auto_write_new_Shp_file = False
-                                       ,auto_read_Shp = False
-                                       ,auto_plot_data = False
-                                       )
+    def __call__(self, launcher_code, plug_in_name, opts):
+        
+        logger.debug('opts.keys() == ' + str(opts.keys()))
 
-        metas = opts_at_call['metas']
+        metas = opts['metas']
+        sDNAUISpec = opts['options'].sDNAUISpec
 
-        sDNAUISpec = opts_at_call['options'].sDNAUISpec
+        opts['options'] = opts['options']._replace(
+                                                 auto_get_Geom = False
+                                                ,auto_read_Usertext = False
+                                                ,auto_write_new_Shp_file = False
+                                                ,auto_read_Shp = False
+                                                ,auto_plot_data = False
+                                                )
+
+
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
         categories.update(metas.categories._asdict())
 
-        name_map = metas.name_map._asdict()
+        name_map = metas.name_map
 
-        names = self.get_names()
+        retcode, names = self.get_names(opts)
 
-        self.builder(code
-                    ,plug_in_name
-                    ,names
-                    ,name_map
-                    ,categories
-                    ,d_h = None
-                    ,w = None
-                    )
+        nicknameless_names = [name for name in names 
+                            if all(name != var and name not in var 
+                                            for var in name_map.values()
+                                    )
+                             ]
+        component_names = list(name_map.keys()) + nicknameless_names
+        logger.debug('list(name_map.keys()) == ' + str(list(name_map.keys())))                           
+        logger.debug('nicknameless_names == ' + str(list(nicknameless_names)))                           
+
+        logger.debug('component_names == ' + str(component_names))                           
+        logger.debug('type(component_names) == ' + str(type(component_names)))
+        unique_component_names = set(component_names)
+        logger.debug('unique_component_names == ' + str(unique_component_names))
+
+        logger.debug('names == ' + str(names))
+
+
+        if retcode == 0:
+            retcode, names_built = self.builder(code = launcher_code
+                                               ,plug_in_name = plug_in_name
+                                               ,names = unique_component_names
+                                               ,name_map = name_map
+                                               ,categories = categories
+                                               ,d_h = None
+                                               ,w = None
+                                               )
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
+
+    retvals = ('retcode', 'names_built')

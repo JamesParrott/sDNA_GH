@@ -92,6 +92,7 @@ def run_tools(tools
 
         anon_pos_args = getattr(tool, 'anon_pos_args', [])
         anon_kwargs = getattr(tool, 'anon_kwargs', [])
+        logger.debug('vals_dict.keys() == ' + str(vals_dict.keys()))
 
         pos_args, input_kw_args = prepare_args(function = tool
                                               ,params_dict = vals_dict

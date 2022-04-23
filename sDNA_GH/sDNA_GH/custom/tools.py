@@ -123,18 +123,15 @@ class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
                ]
 
 class sDNAWrapper(sDNA_GH_Tool):
-    # This class is instantiated once per sDNA tool name.  In addition to the 
-    # other necessary attributes of sDNA_GH_Tool, instances know their own name, in
-    # self.tool_name.  Only when instances are called, are Nick_names and sDNA
-    # are looked up in local_metas, and opts['metas'], in the args.
+    # In addition to the 
+    # other necessary attributes of sDNA_GH_Tool, instances know their own name
+    # and nick name, in self.nick_name
+    # self.tool_name.  When the instance is called, the version of sDNA
+    # is looked up in opts['metas'], from its args.
     # 
-    def get_tool_opts_and_syntax(self
-                                ,opts
-                                ,local_metas
-                                ):
+    def update_tool_opts_and_syntax(self, opts):
         metas = opts['metas']
-        nick_name = local_metas.nick_name
-        self.nick_name = nick_name
+        nick_name = self.nick_name
 
         sDNAUISpec = opts['options'].sDNAUISpec
         sDNA = opts['metas'].sDNA
@@ -186,29 +183,18 @@ class sDNAWrapper(sDNA_GH_Tool):
         self.tool_opts = tool_opts
 
 
-    def __init__(self
-                ,tool_name
-                ,opts
-                ,local_metas
-                ):
-        #if tool_name in support_component_names:
-        #    def support_tool_wrapper(f_name, Geom, Data, opts):  
-        #        return globals()[tool_name](f_name, Geom, Data)
-        #    tools_dict[tool_name] = support_tool_wrapper   
-            #
-            #
+    def __init__(self, tool_name, nick_name, opts):
+
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
-        self.get_tool_opts_and_syntax(opts, local_metas)
+        self.nick_name = nick_name
+        self.update_tool_opts_and_syntax(opts)
 
 
 
     
     
-    component_inputs = ('file', 'config') #self.args[:1]
-
-    # args = ('file', 'opts', 'l_metas')
-    #component_inputs = ('go', ) + self.args[:2]
+    component_inputs = ('file', 'config') 
 
 
     def __call__(self # the callable instance / func, not the GH component.
@@ -216,7 +202,7 @@ class sDNAWrapper(sDNA_GH_Tool):
                 ,opts
                 ,l_metas
                 ):
-        #type(Class, dict(namedtuple), str, Class, DataTree)-> Boolean, str
+        #type(Class, str, dict, namedtuple) -> Boolean, str
 
         sDNA = opts['metas'].sDNA
         sDNAUISpec = opts['options'].sDNAUISpec
@@ -228,11 +214,8 @@ class sDNAWrapper(sDNA_GH_Tool):
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
 
-        if (self.nick_name != l_metas.nick_name or 
-            self.sDNA != opts['metas'].sDNA):
-            self.get_tool_opts_and_syntax(opts
-                                         ,l_metas
-                                         )
+        if self.sDNA != opts['metas'].sDNA:
+            self.update_tool_opts_and_syntax(opts)
 
         dot_shp = options.shp_file_extension
 
@@ -395,7 +378,6 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
                        )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
 
-        Bunion=987
 
 
         self.logger.debug('First objects read: \n' + '\n'.join(str(x) for x in gdm.keys()[:3]))
@@ -411,7 +393,7 @@ class GetObjectsFromRhino(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
 
-    retvals = ('gdm','Bunion')
+    retvals = ('gdm',)
     component_outputs = ('Geom', ) 
 
 
@@ -815,7 +797,7 @@ class BakeUsertext(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     retvals = ('gdm',) #'f_name', 'gdm'
-    component_outputs =  ('Geom') 
+    component_outputs =  ('Geom',) 
                
 
 
@@ -853,12 +835,14 @@ class ParseData(sDNA_GH_Tool):
                                         )
                             )
 
+        print('no_manual_classes == '+ str(no_manual_classes))
+
         if options.sort_data or (no_manual_classes 
-           and options.class_spacing == 'equal_spacing'  ):
+           and options.class_spacing == 'equal number of members'  ):
             # 
             gdm = OrderedDict( sorted(gdm.items()
-                                    ,key = lambda tupl : tupl[1][field]
-                                    ) 
+                                     ,key = lambda tupl : tupl[1][field]
+                                     ) 
                             )
 
 
@@ -880,17 +864,23 @@ class ParseData(sDNA_GH_Tool):
                 self.logger.debug(options.number_of_classes)
                 self.logger.debug(n)
                 assert len(class_bounds) + 1 == options.number_of_classes
+
+                msg = 'x_min == ' + str(x_min) + '\n'
+                msg += 'class bounds == ' + str(class_bounds) + '\n'
+                msg += 'x_max == ' + str(x_max)
+                logger.debug(msg)
+
             else: 
                 class_bounds = [
                     splines[options.class_spacing](  
-                                    i
+                                     i
                                     ,0
                                     ,param.get(options.class_spacing, 'Not used')
                                     ,m + 1
                                     ,x_min
                                     ,x_max
-                                                )     for i in range(1, m + 1) 
-                                    ]
+                                                  )     for i in range(1, m + 1) 
+                                ]
         else:
             class_bounds = options.class_bounds
         
@@ -1020,7 +1010,7 @@ class RecolourObjects(sDNA_GH_Tool):
                                         }
 
     
-    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox')
+    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field')
 
     def __call__(self, gdm, opts, plot_min, plot_max, bbox):
         #type(str, dict, dict) -> int, str, dict, list
@@ -1110,7 +1100,6 @@ class RecolourObjects(sDNA_GH_Tool):
         GH_objs_to_recolour = OrderedDict()
         objects_to_widen_lines = []
 
-        self.logger.debug(str(objs_to_recolour))
 
         for obj, new_colour in objs_to_recolour.items():
             #self.logger.debug(obj)
@@ -1265,3 +1254,11 @@ class RecolourObjects(sDNA_GH_Tool):
           # To recolour GH Geom with a native Preview component
 
 
+class sDNA_General(sDNA_GH_Tool):
+    component_inputs = ('tool',)
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError('this function should never run '
+                                 +' (there may be a problem with sDNA_General). '
+                                 )
+    component_outputs = ()

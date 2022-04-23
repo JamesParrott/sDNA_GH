@@ -87,6 +87,8 @@ def param_info_list_maker(param_names
                          ,TypeHints = {}
                          ,access_methods = {}
                          ):
+    if isinstance(param_names, str):
+        param_names = [param_names]
     return [ParamInfo(NickName = name
                      ,factory = factories.get(name
                                              ,Param_ScriptVariable

@@ -62,11 +62,14 @@ def validate_name_map(name_map, known_tool_names):
 
 
 def tool_not_found_error(inst
+                        ,nick_name
                         ,mapped_name
                         ,name_map
                         ,tools_dict
                         ):
-    raise ValueError('Tool: ' + mapped_name + ' not found')
+    msg = 'Tool: ' + mapped_name + ' not found for nick name ' + nick_name
+    logger.error(msg)
+    raise ValueError(msg)
 
 
 def tool_factory(inst
@@ -79,7 +82,7 @@ def tool_factory(inst
 
     if not isinstance(nick_name, Hashable):
         msg = 'Non-hashable variable given for key' + str(nick_name)
-        logging.error(msg)
+        logger.error(msg)
         raise TypeError(msg)
 
     if nick_name not in tools_dict:   
@@ -87,7 +90,7 @@ def tool_factory(inst
         # in case nick_name is a tool_name
         
         if not isinstance(map_result, str):
-            logging.debug('Processing list of tools found for ' + nick_name)
+            logger.debug('Processing list of tools found for ' + nick_name)
             tools =[]
             #nick_name_opts = {}
             for mapped_name in map_result:
@@ -104,17 +107,21 @@ def tool_factory(inst
             tools_dict.setdefault(nick_name, tools )
         else:
             mapped_name = map_result
-            logging.debug(nick_name + ' maps to ' + mapped_name)
+            logger.debug(nick_name + ' maps to ' + mapped_name)
             if mapped_name in tools_dict:
-                logging.debug('Tool: ' + mapped_name + ' already in tools_dict')
+                logger.debug('Tool: ' + mapped_name + ' already in tools_dict')
                 tools_dict.setdefault(nick_name, tools_dict[mapped_name])
             else:
                 tool_not_found(inst
+                              ,nick_name
                               ,mapped_name
                               ,name_map
                               ,tools_dict
                               )
 
+    try:
+        logger.debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
+    except:
+        logger.debug(nick_name + ' not in tools_dict' )
 
-    logging.debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
     return tools_dict[nick_name] 

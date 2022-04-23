@@ -1,21 +1,15 @@
 # License
 
-GHsDNA and sDNA : https://sdna.cardiff.ac.uk/sdna/legal-license/ 
-sDNAUISpec.py : MIT and  https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/LICENSE.md
-Python standard library modules : Python Software Foundation 2.7.18 https://docs.python.org/2.7/license.html
+sDNA_GH and sDNA : [https://sdna.cardiff.ac.uk/sdna/legal-license/] 
+sDNAUISpec.py : MIT and  [https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/LICENSE.md]
+Python standard library modules : Python Software Foundation 2.7.18 [https://docs.python.org/2.7/license.html]
 wrapper_logging : Python Software Foundation 2.7.18
-PySHP : MIT  ( https://pypi.org/project/pyshp/ )
-Metahopper: 
+PySHP : MIT  ( [https://pypi.org/project/pyshp/] )
 
-    Category:
-    General
-
-    License:
-    no-license
 
 ### The following wordings are correct as of 14th January 2022 :
 
-## GHsDNA and sDNA License.
+## sDNA and sDNA_GH License.
 
 Legal / License
 
@@ -25,7 +19,7 @@ Note that we require that any work arising from use of sDNA includes the citatio
 
 Cooper, C., Chiaradia, A., Webster, C. (year of version used) Spatial Design Network Analysis(+), Cardiff University, www.cardiff.ac.uk/sdna/
 
-Chiaradia, A., Cooper, C., Webster, C. (year of version used), sDNA a software for spatial design network analysis. Specifications, Cardiff University https://sdna.cardiff.ac.uk/sdna/
+Chiaradia, A., Cooper, C., Webster, C. (year of version used), sDNA a software for spatial design network analysis. Specifications, Cardiff University [https://sdna.cardiff.ac.uk/sdna/]
 
 sDNA Licence Agreement
 
@@ -46,7 +40,7 @@ By downloading, installing or using the SOFTWARE, the LICENSEE accepts all of th
 
 Cooper, C., Chiaradia, A., Webster, C. (year of publication) Spatial Design Network Analysis(+), Cardiff University, www.cardiff.ac.uk/sdna/
 
-Chiaradia A, Cooper C, Webster C. (year of publication), sDNA a software for spatial design network analysis. Specifications, Cardiff University https://sdna.cardiff.ac.uk/sdna/
+Chiaradia A, Cooper C, Webster C. (year of publication), sDNA a software for spatial design network analysis. Specifications, Cardiff University [https://sdna.cardiff.ac.uk/sdna/]
 
     The LICENSEE shall ensure that the SOFTWARE is protected against unauthorised copying.
     Except with prior written permission from UC3 or as expressly provided for in this Agreement, the LICENSEE may not extract any part of the SOFTWARE for incorporation into other programs, or modify, reverse-engineer, translate, decompile or otherwise misuse the SOFTWARE, or circumvent the mechanisms by which the SOFTWARE checks it is correctly licensed. Use of the Python and other scripting interfaces to the SOFTWARE is permitted, on the basis that any user of software that connects to these interfaces has themselves installed the SOFTWARE under the terms of this agreement. In cases where the sDNA software is used in conjunction with third party software packages, it is the responsibility of the licensee to ensure they have correct licenses in place for third party software.

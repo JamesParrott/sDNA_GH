@@ -46,7 +46,8 @@ def make_new_component(name
     new_comp.SubCategory = subcategory 
 
     GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
-    GH_doc.AddObject(new_comp, False)
+    success = GH_doc.AddObject(docObject = new_comp, update = False)
+    return success
 
 class BuildComponents(ToolWithParams, RunnableTool): 
     component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'd_h', 'w')
@@ -69,17 +70,12 @@ class BuildComponents(ToolWithParams, RunnableTool):
                and not isinstance(code, str)):
             code = code[0]
 
- 
-        #retcode, names  = return_component_names(opts_at_call)
-        #names now from param input
 
-        nicknameless_names = [name for name in names 
-                                   if all(name != var and name not in var 
-                                                  for var in name_map.values()
-                                         )
-                             ]
 
-        for i, name in enumerate(set(list(name_map.keys()) + nicknameless_names)):
+
+
+        names_built = []
+        for i, name in enumerate(names):
             #if name_map.get(name, name) not in categories:
             #   msg =  'No category for ' + name
             #   logging.error(msg)
@@ -88,17 +84,19 @@ class BuildComponents(ToolWithParams, RunnableTool):
                 i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 subcategory = categories.get(name_map.get(name, name), '')
-                make_new_component(name
-                                  ,category = plug_in_name
-                                  ,subcategory = subcategory
-                                  ,launcher_code = code
-                                  ,position = position
-                                  )
+                success = make_new_component(name
+                                            ,category = plug_in_name
+                                            ,subcategory = subcategory
+                                            ,launcher_code = code
+                                            ,position = position
+                                            )
+                if success:
+                    names_built += [name]
 
         retcode = 0
         locs = locals().copy()
-        return [locs[retval] for retval in self.retvals]
+        return tuple(locs[retval] for retval in self.retvals)
     
-    retvals = ('retcode',)
+    retvals = ('retcode', 'names_built')
 
 

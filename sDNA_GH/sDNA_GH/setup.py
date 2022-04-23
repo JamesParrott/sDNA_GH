@@ -40,8 +40,9 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ParseData
                           ,RecolourObjects
                           ,sDNAWrapper
+                          ,sDNA_General
                           )
-from .dev_tools.dev_tools import ReturnComponentNames, sDNA_GH_Builder
+from .dev_tools.dev_tools import ReturnToolNames, sDNA_GH_Builder
 
 
 
@@ -94,8 +95,8 @@ class HardcodedMetas():
                    ,sDNA_Line_Measures = 'sDNALineMeasures'
                    ,sDNA_Learn = 'sDNALearn'
                    ,sDNA_Predict = 'sDNAPredict'
-                   ,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
-                   ,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
+                   #,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
+                   #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
                    )
                           
     categories = {
@@ -118,7 +119,7 @@ class HardcodedMetas():
                         ,'sDNALineMeasures' : 'Preparation'
                         ,'sDNALearn'        : 'Calibration'
                         ,'sDNAPredict'      : 'Calibration'
-                        ,'sDNA_general'     : 'Dev tools'
+                        ,'sDNA_General'     : 'Dev tools'
                         ,'Python'           : 'Dev tools'
                         ,'Self_test'        : 'Dev tools'
                         ,'Build_components' : 'Dev tools' 
@@ -202,19 +203,19 @@ class HardcodedOptions():
     #sDNA
     Default_sDNA_GH_file_path = __file__
     overwrite_input_shapefile = False
-    auto_get_Geom = True
-    auto_read_Usertext = True
-    auto_write_new_Shp_file = True
-    auto_read_Shp = True
+    auto_get_Geom = False
+    auto_read_Usertext = False
+    auto_write_new_Shp_file = False
+    auto_read_Shp = False
     #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
-    auto_plot_data = True
+    auto_plot_data = False
     #Plotting results
     field = 'BtEn'
     plot_max = None
     plot_min = None
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
-    re_normaliser = 'linear' 
+    re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
     assert re_normaliser in valid_re_normalisers 
     class_bounds = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
     leg_extent = None  # [xmin, ymin, xmax, ymax]
@@ -225,7 +226,7 @@ class HardcodedOptions():
     first_legend_tag_format_string = 'below {upper}'
     inner_tag_format_string = '{lower} - {upper}' # also supports {mid_pt}
     last_legend_tag_format_string = 'above {lower}'
-    num_format = '{:.3n}'
+    num_format = '{:.5n}'
     leg_frame = ''  # uuid of GH object
     locale = '' # ''=> auto .  Used for locale.setlocale(locale.LC_ALL,  options.locale)
     all_in_class_same_colour = False
@@ -584,9 +585,9 @@ write_Usertext = WriteUsertext()
 bake_Usertext = BakeUsertext()
 parse_data = ParseData()
 recolour_objects = RecolourObjects()
-return_component_names = ReturnComponentNames()
+get_tool_names = ReturnToolNames()
 build_components = sDNA_GH_Builder()
-
+sDNA_General_dummy_tool = sDNA_General()
 
 
 tools_dict.update(get_Geom = get_Geom
@@ -597,19 +598,19 @@ tools_dict.update(get_Geom = get_Geom
                  ,bake_Usertext = bake_Usertext
                  ,parse_data = parse_data
                  ,recolour_objects = recolour_objects 
-                 ,Python = return_component_names
+                 ,Python = get_tool_names
                  ,Build_components = build_components
+                 ,sDNA_General = sDNA_General_dummy_tool
                  )
 
 def cache_sDNA_tool(compnt
+                   ,nick_name
                    ,mapped_name
                    ,name_map
                    ,tools_dict
                    ):
-    sDNA_tool = sDNAWrapper(mapped_name, compnt.opts, compnt.local_metas)
-    tools_dict.setdefault(mapped_name
-                         ,sDNA_tool
-                         )
+    sDNA_tool = sDNAWrapper(mapped_name, nick_name, compnt.opts)
+    tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA
     compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   # TODO Add in to update sDNA
 
@@ -767,11 +768,11 @@ class sDNA_GH_Component(SmartComponent):
         if nick_name is None:
             nick_name = self.local_metas.nick_name
 
-        tools = tool_factory(self
-                            ,nick_name
-                            ,self.opts['metas'].name_map
-                            ,tools_dict
-                            ,cache_sDNA_tool
+        tools = tool_factory(inst = self
+                            ,nick_name = nick_name
+                            ,name_map = self.opts['metas'].name_map
+                            ,tools_dict = tools_dict
+                            ,tool_not_found = cache_sDNA_tool
                             )
         logger.debug(tools)
                 
@@ -914,7 +915,7 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('gdm from start of RunScript == ' + str(gdm)[:50])
         #print('#1 self.local_metas == ' + str(self.local_metas))
         
-        if self.update_name() == 'Name updated':
+        if self.update_name() == 'Name updated': # True immediately after __init__
             nick_name = self.local_metas.nick_name
             if (nick_name.lower()
                             .replace('_','')
@@ -924,9 +925,12 @@ class sDNA_GH_Component(SmartComponent):
             self.my_tools = self.update_tools(nick_name)
         
         self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
-                # Other components may mean self.tools needs extra tools adding or /removing
-                # but this could - annoy many users.  TODO!  Get early feedback!
-        #self.Params = 
+                # Other components may mean self.tools needs extra tools adding
+                # or /removing but this could - annoy many users.  
+                # TODO!  Get feedback!
+                # TODO:  Move this to after the opts override?!  But params 
+                # need to feed into the opts?
+
         self.update_Params()#self.Params, self.tools)
 
         
