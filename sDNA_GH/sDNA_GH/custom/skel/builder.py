@@ -3,7 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, logging
+import sys
+import logging
 if sys.version < '3.3':
     from collections import Iterable
 else:
@@ -21,12 +22,12 @@ from .add_params import ToolWithParams
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def make_new_component(name
-                      ,category
-                      ,subcategory
-                      ,launcher_code
-                      ,position
-                      ):
+def make_component(name
+                  ,category
+                  ,subcategory
+                  ,launcher_code
+                  ,position
+                  ):
     # type(str, str, str, str, list) -> None
     new_comp = GhPython.Component.ZuiPythonComponent()
 
@@ -84,7 +85,7 @@ class BuildComponents(ToolWithParams, RunnableTool):
                 i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 subcategory = categories.get(name_map.get(name, name), '')
-                success = make_new_component(name
+                success = make_component(name
                                             ,category = plug_in_name
                                             ,subcategory = subcategory
                                             ,launcher_code = code

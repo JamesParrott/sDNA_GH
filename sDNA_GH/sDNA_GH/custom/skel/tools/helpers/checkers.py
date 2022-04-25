@@ -14,21 +14,7 @@ from ...basic.ghdoc import ghdoc
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def multi_context_checker(is_thing, toggle_context):
-    #type(function, function) -> function
-    def context_toggling_is_thing_checker(x):
-        #type(str)-> bool  
-        if x:
-            if is_thing(x):
-                return sc.doc
-            else:
-                toggle_context()
-                if is_thing(x):
-                    return sc.doc
-            return False
-    return context_toggling_is_thing_checker
-
-def toggle_Rhino_GH_file_target():
+def toggle_sc_doc():
     #type() -> None
     if sc.doc not in (Rhino.RhinoDoc.ActiveDoc, ghdoc): 
         # ActiveDoc may change on Macs 
@@ -37,22 +23,32 @@ def toggle_Rhino_GH_file_target():
         raise NameError(msg)
     sc.doc = Rhino.RhinoDoc.ActiveDoc if sc.doc == ghdoc else ghdoc # type: ignore
 
-def is_obj(x):
+def multi_context_checker(is_thing):
+    #type(function, function) -> function
+    def get_sc_doc_of_thing(x):
+        #type(str)-> bool  
+        if x:
+            if is_thing(x):
+                return sc.doc
+            else:
+                toggle_sc_doc()
+                if is_thing(x):
+                    return sc.doc
+            return False
+    return get_sc_doc_of_thing
+
+
+@multi_context_checker
+def get_sc_doc_of_obj(x):
     #type(str) -> bool
     #return rs.IsObject(x)
     return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False
-    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False
+    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
 
-    
-is_an_obj_in_GH_or_Rhino = multi_context_checker(is_obj, toggle_Rhino_GH_file_target)
-
-def is_curve(x):
+@multi_context_checker
+def get_sc_doc_of_curve(x):
     #type(str) -> bool
     return rs.IsCurve(x) if x else False
-
-is_a_curve_in_GH_or_Rhino = multi_context_checker(is_curve, toggle_Rhino_GH_file_target)
-
-
 
 def get_obj_keys(obj):
     # type(str) -> list
@@ -80,7 +76,7 @@ def get_OrderedDict( keys_getter = get_obj_keys
     def f(obj):
         # type(str, list) -> list
         #if is_a_curve_in_GH_or_Rhino(obj):
-        target_doc = is_an_obj_in_GH_or_Rhino(obj)    
+        target_doc = get_sc_doc_of_obj(obj)    
         if target_doc:
             sc.doc = target_doc        
             keys = keys_getter(obj)
@@ -89,11 +85,10 @@ def get_OrderedDict( keys_getter = get_obj_keys
             return OrderedDict()
     return f
 
-def is_group(x):
+@multi_context_checker
+def get_sc_doc_of_group(x):
     #type( str ) -> boolean
     return rs.IsGroup(x) if x else False
-
-is_a_group_in_GH_or_Rhino = multi_context_checker(is_group, toggle_Rhino_GH_file_target)
 
 def get_all_groups():
     #type( None ) -> list

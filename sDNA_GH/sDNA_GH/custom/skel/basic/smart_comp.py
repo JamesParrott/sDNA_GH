@@ -3,8 +3,9 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-
-import sys, logging, inspect
+import sys
+import logging
+import inspect
 import sys
 from collections import OrderedDict
 from abc import abstractmethod
@@ -212,13 +213,13 @@ def prepare_args(function
 
     return pos_args_tupl, args_dict
 
-def delistify(maybe_trivial_list):
-    if isinstance(maybe_trivial_list, list) and len(maybe_trivial_list) == 1:
-        return maybe_trivial_list[0]
-    elif hasattr(maybe_trivial_list, '__len__') and len(maybe_trivial_list) == 0:
+def delistify(l):
+    if isinstance(l, list) and len(l) == 1:
+        return l[0]
+    elif hasattr(l, '__len__') and len(l) == 0:
         return None
     else:
-        return maybe_trivial_list # because then it wasn't a trivial list.
+        return l # because then it wasn't a trivial list.
 
 def custom_inputs_class_deco(BaseComponent
                             ,anon_pos_args = []

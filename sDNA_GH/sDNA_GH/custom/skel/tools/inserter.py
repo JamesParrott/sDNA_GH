@@ -3,7 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, logging
+import sys
+import logging
 if sys.version < '3.3':
     from collections import Iterable
 else:

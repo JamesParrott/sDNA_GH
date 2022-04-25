@@ -3,8 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-
-import sys, os
+import sys
+import os
 from math import log
 if sys.version < '3.3':
     from collections import Sequence
@@ -115,7 +115,7 @@ splines = dict(zip(  valid_re_normalisers
                )
 
 
-def three_point_quadratic_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
+def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
     #z = 2
     z =  quadratic_mid_spline(x, x_mid, x_min, x_max, 0, y_min) #y_min*((x - x_max)*(x - x_mid)/((x_min - x_max)*(x_min - x_mid)))
     z += quadratic_mid_spline(x, x_min, x_mid, x_max, 0, y_mid) #y_mid*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))

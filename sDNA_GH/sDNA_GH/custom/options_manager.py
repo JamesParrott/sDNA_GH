@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
-#
-# Functions to manage options data structures, e.g. fix dictionaries into named tuples
-#
+"""
+Functions to override namedtuples, from dicts, ini files, toml files 
+and other named tuples e.g. for options data structures.
 
-#
-# No logging here so that we can use wrapper_logger before the options object is fixed
-#
+There is no logger in this module, as loggers themselves may be 
+configured from options calculated from this module.  Logs go to the default
+from logging (i.e. to stderr for >= warning, into the void otherwise).
+"""
 
-import sys, os
+import sys
+import os
+import logging
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
 if sys.version_info.major >= 3 : # version > '3':   # if Python 3
@@ -20,19 +23,15 @@ else:   # e.g.  Python 2
 
 from ..third_party.toml import decoder
 
-if __name__=='__main__':
-    sys.path += [os.path.join(sys.path[0], '..')]
-
-#FixedOptions = namedtuple('FixedOptions', config.options.keys(), rename = True)
-# TODO: Check for renamed reserved or duplicated field names due to see if 'rename = True' above changed anything
-# defaults = FixedOptions(**defaults)
 
 
 
-def get_namedtuple_etc_from_class(Class, name):
+
+def namedtuple_from_class(Class, name = None):
     # type: ( type[any], str) -> namedtuple
     #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
-
+    if name is None:
+        name = 'NT_' + Class.__name__
     fields = [attr for attr in dir(Class) if not attr.startswith('_')]
     factory = namedtuple(name, fields, rename=True)   
     return factory(**{x : getattr(Class, x) for x in fields})
@@ -91,21 +90,22 @@ def make_nested_namedtuple(d
                      ,rename=False 
                      )(**d)  # Don't return nt class
 
-def delistify_dicts(d_lesser, d_greater): # Mutates d_greater.  d_lesser unaltered.
-    #type(dict, dict) -> None
+def delistify_vals_if_not_list_in(d_lesser, d_greater): 
+    #type(dict, dict) -> None   # Mutates d_greater.  d_lesser unaltered.
         for key, val in d_greater.items():
             if isinstance(val, list) and (  key not in d_lesser 
                 or not isinstance(d_lesser[key], list)  ):
                d_greater[key]=val[0]
 
 
-def override_ordereddict_with_dict( d_lesser
-                                   ,od_greater
-                                   ,strict = True
-                                   ,check_types = False
-                                   ,delistify = True
-                                   ,add_new_opts = False
-                                   ,**kwargs):
+def override_OrderedDict_with_dict( d_lesser
+                                  ,od_greater
+                                  ,strict = True
+                                  ,check_types = False
+                                  ,delistify = True
+                                  ,add_new_opts = False
+                                  ,**kwargs
+                                  ):
     #type: (dict, OrderedDict, bool, bool, bool, bool, dict) -> OrderedDict
     #
     if strict and not isinstance(od_greater, dict):  # also true for OrderedDict
@@ -119,7 +119,7 @@ def override_ordereddict_with_dict( d_lesser
         new_od = od_greater.copy() 
     
     if delistify:
-        delistify_dicts(d_lesser, new_od)
+        delistify_vals_if_not_list_in(d_lesser, new_od)
 
     if check_types:
         for key in d_lesser.viewkeys() & new_od:  #.keys():
@@ -144,23 +144,24 @@ def override_ordereddict_with_dict( d_lesser
     # PEP 468
     # https://docs.python.org/3/library/collections.html#collections.OrderedDict
 
-def override_namedtuple_with_dict( nt_lesser
-                                  ,d_greater
-                                  ,strict = True
-                                  ,check_types = True  #types of dict values
-                                  ,delistify = True
-                                  ,**kwargs):  
+def override_namedtuple_with_dict(nt_lesser
+                                 ,d_greater
+                                 ,strict = True
+                                 ,check_types = True  #types of dict values
+                                 ,delistify = True
+                                 ,**kwargs
+                                 ):  
     #type (namedtuple, dict, Boolean, Boolean, Boolean) -> namedtuple
     #
     if strict and not isinstance(d_greater, dict):
         return nt_lesser
     elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:  #.viewkeys doesn't have .issubset method ipy 2.7
         if delistify:
-            delistify_dicts(nt_lesser._asdict(), d_greater)
+            delistify_vals_if_not_list_in(nt_lesser._asdict(), d_greater)
         
         return nt_lesser._replace(**d_greater)
     else:
-        newDict = override_ordereddict_with_dict(nt_lesser._asdict()
+        newDict = override_OrderedDict_with_dict(nt_lesser._asdict()
                                                 ,d_greater
                                                 ,strict
                                                 ,check_types
@@ -178,10 +179,11 @@ def override_namedtuple_with_dict( nt_lesser
 # ftrick = namedtuple('Trick',trick.keys())(**trick)
 # newtrick=ftrick._replace(**{k : asd[k] for k in asd.keys() if k in ftrick._fields})
 
-def override_namedtuple_with_namedtuple( nt_lesser
-                                        ,nt_greater
-                                        ,strict = True        # strictly enforce (opts) 
-                                        ,**kwargs):  
+def override_namedtuple_with_namedtuple(nt_lesser
+                                       ,nt_greater
+                                       ,strict = True        # strictly enforce (opts) 
+                                       ,**kwargs
+                                       ):  
     #type (namedtuple, namedtuple, Boolean, Boolean, Boolean, function) -> namedtuple
     if strict and not isinstance(nt_greater, nt_lesser.__class__):
         return nt_lesser
@@ -189,7 +191,8 @@ def override_namedtuple_with_namedtuple( nt_lesser
         return override_namedtuple_with_dict(nt_lesser
                                             ,nt_greater._asdict()
                                             ,strict = False
-                                            ,**kwargs)
+                                            ,**kwargs
+                                            )
 
 def readline_generator(fp):
     yield '[DEFAULT]'
@@ -208,7 +211,8 @@ def load_ini_file( file_path
                  ,dump_all_in_default_section = False
                  ,empty_lines_in_values = False
                  ,interpolation = None
-                 ,**kwargs):
+                 ,**kwargs
+                 ):
     if not os.path.isfile(file_path):
         return None
     else:
@@ -239,20 +243,26 @@ def load_ini_file( file_path
 
     return config
 
-def type_coercer_factory(old_val, config, d = None, **kwargs):
+def get_coercer(old_val
+               ,config
+               ,d = None
+               ,**kwargs
+               ):
     # type (any, Class, dict) -> function
-    if d is None or not isinstance(d,dict) or any(
-        [not isinstance(k,type) for k in d] ) or any(
-        [not hasattr(config,v) for v in ['get'] + d.values()] ):
-            d = OrderedDict( [ (bool, config.getboolean)
-                              ,(int, config.getint)
-                              ,(float, config.getfloat)] ) 
+    if ( d is None or not isinstance(d, dict) 
+         or any(not isinstance(k, type) for k in d) 
+         or any(not hasattr(config, v) for v in ['get'] + d.values()) ):
+        #
+        d = OrderedDict( [(bool,  config.getboolean)
+                         ,(int,   config.getint)
+                         ,(float, config.getfloat)
+                         ] 
+                       ) 
     for k, v in d.items():
         if type(old_val) is k: # isinstance is quirky: isinstance(True, int)
             return v           # and these getters perhaps shouldn't read 
                                # unsual derived classes from a config.ini file
-    return config.get     # TODO:  Fix: Trying to override a list or a dict 
-                          # will replace it with a string.
+    return config.get     
 
 def override_namedtuple_with_config(nt_lesser
                                    ,config 
@@ -273,7 +283,7 @@ def override_namedtuple_with_config(nt_lesser
         message = key + ' : ' + value
         if not leave_as_strings and key in old_dict:   
             try:
-                getter = type_coercer_factory( old_dict[key],  config )
+                getter = get_coercer( old_dict[key],  config )
                 new_dict[key] = getter( section_name,  key )
             except:
                 message +=  (".  failed to parse value in field "
@@ -315,80 +325,116 @@ def override_namedtuple_with_ini_file(nt_lesser
     if not isinstance(config_path, str) and not os.path.isfile(config_path):
         return nt_lesser
     config = load_ini_file(config_path, **kwargs)
-    return override_namedtuple_with_config(     nt_lesser
-                                                ,config 
-                                                ,**kwargs 
-                                           )
+    return override_namedtuple_with_config(nt_lesser
+                                          ,config 
+                                          ,**kwargs 
+                                          )
 
 def load_toml_file(config_path = os.path.join(sys.path[0],'config.toml')
                   ,**kwargs
                   ):
     #type (namedtuple, str) -> namedtuple
 
-    # Please note, .toml tables are mapped to correctly to OrderedDictionaries
-    # by the line below.  But if this is then 
-    # passed into override_namedtuple, it will pass up through the normal 
-    # heirarchy of functions in this module, finally having 
-    # make_nested_namedtuple called on it, turning the .toml table
-    # into a namedtuple.
+    """ Loads a toml file as a dictionary.  Trivial wrapper, to accept kwargs.
+    
+    https://github.com/uiri/toml/blob/master/toml/decoder.py
+
+    Please note, .toml tables are mapped correctly to OrderedDictionaries
+    by the line below.  But if convert_subdicts == False, then this dict is
+    passed into override_namedtuple, and will pass up through the normal 
+    heirarchy of functions in this options_manager module, finally having 
+    make_nested_namedtuple called on it, turning the .toml table
+    into a namedtuple."""
     
     return decoder.load(config_path, _dict = OrderedDict)
 
 
+override_funcs_dict = {  
+             dict : override_namedtuple_with_dict 
+            ,str : override_namedtuple_with_ini_file # TODO: Write switcher function that also does .toml
+            ,ConfigParser.RawConfigParser : override_namedtuple_with_config
+            ,ConfigParser.ConfigParser : override_namedtuple_with_config
+                        }
 
 
-
-def override_namedtuple( nt_lesser
-                        ,overrides_list
-                        ,**kwargs
-                        ):                        
+def override_namedtuple(nt_lesser
+                       ,overrides_list
+                       ,override_funcs_dict = override_funcs_dict
+                       ,**kwargs
+                       ):                        
     # type(list(object), namedtuple, Boolean, Boolean, Boolean, Class -> namedtuple
-    # kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_'}
-    #          override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
-    #          override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
-    #          override_namedtuple_with_namedtuple{strict = True}
-    #          load_ini_file : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}
-    #          type_coercer_factory : {d : None => {bool : config.getboolean, int : config.getint, float : config.getfloat}
-    #          override_namedtuple_with_config : {section_name = 'DEFAULT', leave_as_strings = False}
-    #          override_namedtuple_with_ini_file : {}
-    #          override_namedtuple : {override_funcs_dict : None => { dict : config.getboolean 
-    #                                                                ,str : override_namedtuple_with_ini_file
-    #                                                                ,ConfigParser.RawConfigParser : override_namedtuple_with_config
-    #                                                                ,ConfigParser.ConfigParser : override_namedtuple_with_config
-    #                                                                ,None : lambda greater, lesser, *args : lesser
-    #                                                                ,nt_lesser.__class__ : override_namedtuple_with_namedtuple}
-    #           }
-    #
+    """ Override an nt, from a list of dicts, configs, ini, toml and nt.
+    
+    Full function heirarchy kwargs
+    kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_', convert_subdicts == False}
+             override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
+             override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
+             override_namedtuple_with_namedtuple{strict = True}
+             load_ini_file : {dump_all_in_default_section = True, empty_lines_in_values = False, interpolation = None}
+             type_coercer_factory : {d : None => {bool : config.getboolean, int : config.getint, float : config.getfloat}
+             override_namedtuple_with_config : {section_name = 'DEFAULT', leave_as_strings = False}
+             override_namedtuple_with_ini_file : {}
+             override_namedtuple : {override_funcs_dict : None => { dict : config.getboolean 
+                                                                   ,str : override_namedtuple_with_ini_file
+                                                                   ,ConfigParser.RawConfigParser : override_namedtuple_with_config
+                                                                   ,ConfigParser.ConfigParser : override_namedtuple_with_config
+                                                                   ,None : lambda greater, lesser, *args : lesser
+                                                                   ,nt_lesser.__class__ : override_namedtuple_with_namedtuple}
+              }
+    """
 
-    if not isinstance(overrides_list,list):
+    if not isinstance(overrides_list, list):
         overrides_list=[overrides_list]
     
-    #if not isinstance(override_funcs_dict,dict) or any(
-    #    [not isinstance(k,type) for k in override_funcs_dict]) or any(
-    #    [not v in globals() for v in override_funcs_dict.values()]):
-    override_funcs_dict = {  
-                 dict : override_namedtuple_with_dict 
-                ,str : override_namedtuple_with_ini_file # TODO: Write switcher function that also does .toml
-                ,ConfigParser.RawConfigParser : override_namedtuple_with_config
-                ,ConfigParser.ConfigParser : override_namedtuple_with_config
-                ,nt_lesser.__class__ : override_namedtuple_with_namedtuple  
-                          }
+    if not isinstance(override_funcs_dict, dict):
+        msg =  'override_funcs_dict is a ' + type(override_funcs_dict).__name__
+        msg += ', not a dictionary.  '
+        if hasattr(override_funcs_dict, 'items'):
+            msg += 'Relying on ducktyping.  '
+            logging.warning(msg)
+        else:
+            msg += '.items() method required.  '
+            logging.error(msg)
+            raise TypeError(msg)
+    
+    
+    def get_nt_overrider_func(override, nt_lesser):
+        #type(type[any], namedtuple) -> function
+        if isinstance(override, str):
+            if override.endswith('.ini'):
+                return override_namedtuple_with_ini_file
+            if override.endswith('.toml'):
+                msg = 'Call load_toml_file first and add dict to overrides'
+                logging.error(msg)
+                raise NotImplementedError(msg)
+
+        if isinstance(override, nt_lesser.__class__):
+            return override_namedtuple_with_namedtuple  
+
+        for key, val in override_funcs_dict.items():
+            if isinstance(override, key):
+                return val 
+        
+        if hasattr(override, 'asdict'):
+            logging.warning('Ducktyping override as namedtuple.  Calling' 
+                           +type(override).__name__ + '.asdict' 
+                           +' to coerce to dict.' 
+                           )
+            return override_namedtuple_with_namedtuple  
+
+        msg = 'Overrider func not found for override type: '
+        msg += type(override).__name__
+        logging.error(msg)
+        raise NotImplementedError(msg)
 
 
-    #print(str(overrides_list))
-    #print('cls.name : ' + nt_lesser.__class__.__name__+' nt_lesser == ' + str(nt_lesser))
+
+
     for override in overrides_list:
         if override: # != None:
-            for key, val in override_funcs_dict.items():
-                #print('override == ' + str(override) + ' key == ' + str(key))
-                if isinstance(override, key):
-                    #print('  override = ' + str(override) + ' key == ' + str(key) + ' val == ' + str(val))
-                    nt_lesser = val( nt_lesser, override, **kwargs ) 
-                    break #inner loop only
+            overrider_func = get_nt_overrider_func(override, nt_lesser)
+            nt_lesser = overrider_func( nt_lesser, override, **kwargs ) 
 
-            #print( ' nt_lesser : ' + str(nt_lesser) 
-            #      +' nt_lesser.__class__.__name__ : ' + nt_lesser.__class__.__name__ 
-            #      +' override = ' + str(override))
 
     return nt_lesser
 

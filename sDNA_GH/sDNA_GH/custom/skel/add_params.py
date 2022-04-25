@@ -3,7 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys,logging
+import sys
+import logging
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
@@ -12,7 +13,8 @@ if sys.version < '3.4':
 else:
     from abc import ABC
 
-import GhPython, Grasshopper.Kernel 
+import GhPython
+import Grasshopper.Kernel 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable
 
 
@@ -129,13 +131,13 @@ class ToolWithParams(ToolwithParamsABC):
         return self.params_list(self.component_outputs)
 
 
-def update_Input_or_Output_Params(Input_or_Output
-                                 ,do_not_add
-                                 ,do_not_remove
-                                 ,Params
-                                 ,params_current
-                                 ,params_needed
-                                 ):
+def add_Params(Input_or_Output
+              ,do_not_add
+              ,do_not_remove
+              ,Params
+              ,params_current
+              ,params_needed
+              ):
     #type(str, list, list, type[any], list, list[Param], list[ParamInfo]) -> None   
 
 
@@ -172,9 +174,6 @@ def update_Input_or_Output_Params(Input_or_Output
         else:
             logger.debug('Leaving param alone.  User added output? == ' 
                 + str(param.NickName))
-
-        # else:  Leave alone.  The user added the param, 
-        # or the component was supplied that way by ourselves.
             do_not_add += [param.NickName]
 
     for param in params_needed:
@@ -182,45 +181,7 @@ def update_Input_or_Output_Params(Input_or_Output
         if param_name not in do_not_add: 
             logger.debug('Adding param == ' + param_name)
 
-
-            # #var = Grasshopper.Kernel.Parameters.Param_String(NickName = param_name)
-            # if param_name in geom_params:
-            #     new_param_type = Grasshopper.Kernel.Parameters.Param_Geometry
-            # #elif param_name in ['leg_cols']:
-            # else:
-            #     #new_param_type = Grasshopper.Kernel.Parameters.Param_GenericObject
-            #     new_param_type = Grasshopper.Kernel.Parameters.Param_ScriptVariable
-            # #else:
-            # #    new_param_type = Grasshopper.Kernel.Parameters.Param_String
-
-            # if param_name == 'Data':
-            #     Access = Grasshopper.Kernel.GH_ParamAccess.tree
-            # else: 
-            #     Access = Grasshopper.Kernel.GH_ParamAccess.list
-
-            # var = new_param_type(NickName = param_name
-            #                     ,Name = param_name
-            #                     ,Description = param_name
-            #                     ,Access = Access
-            #                     ,Optional = True
-            #                     )
-
-            #var.NickName = param_name
-            #var.Name = param_name
-            #var.Description = param_name
-            #if param_name == 'Data':
-            #    var.Access = Grasshopper.Kernel.GH_ParamAccess.tree
-            #else: 
-            #    var.Access = Grasshopper.Kernel.GH_ParamAccess.list
-
-            #var.Optional = True
-
-            #index = getattr(Params, Input_or_Output).Count
-
-
-            #getattr(Params, registers[Input_or_Output])(var) #, index)
-            getattr(Params, registers[Input_or_Output])(param.make()) #, index)
-            #Params.Output.Count +=1
+            getattr(Params, registers[Input_or_Output])(param.make()) 
             Params.OnParametersChanged()
             do_not_add += [param_name]
 
@@ -252,14 +213,14 @@ def add_tool_params(Params
         needed_input_params = wrapper.input_params + needed_input_params
 
     
-    update_Input_or_Output_Params('Output'
+    add_Params('Output'
                                  ,do_not_add
                                  ,do_not_remove
                                  ,Params
                                  ,current_output_params
                                  ,needed_output_params
                                  )
-    update_Input_or_Output_Params('Input'
+    add_Params('Input'
                                  ,do_not_add
                                  ,do_not_remove
                                  ,Params

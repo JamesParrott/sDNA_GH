@@ -16,7 +16,7 @@ logger.addHandler(logging.NullHandler())
 
 
 
-class ReturnToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
+class GetToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
 
     def __init__(self):
         self.component_inputs = ()
@@ -43,7 +43,7 @@ class ReturnToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
 
 class sDNA_GH_Builder(sDNA_GH_Tool):
     builder = BuildComponents()
-    get_names = ReturnToolNames()
+    get_names = GetToolNames()
     component_inputs = 'launcher_code', 'plug_in_name'
 
     def __call__(self, launcher_code, plug_in_name, opts):

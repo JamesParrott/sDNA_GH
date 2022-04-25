@@ -13,36 +13,36 @@ from .custom.options_manager import (load_toml_file
                                     ,make_nested_namedtuple     
                                     ,load_ini_file                             
                                     ,override_namedtuple  
-                                    ,get_namedtuple_etc_from_class      
+                                    ,namedtuple_from_class      
                                     )
 from .custom import logging_wrapper
 from .launcher import Output, load_modules
 from .custom.helpers.funcs import (first_item_if_seq
                                   ,valid_re_normalisers
                                   )
-from .custom.gdm_from_GH_Datatree import (convert_Data_tree_and_Geom_list_to_gdm
-                                         ,override_gdm_with_gdm
-                                         ,convert_dictionary_to_data_tree_or_lists
+from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
+                                         ,override_gdm
+                                         ,dict_from_DataTree_and_lists
                                          )
 from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals
 from .custom.skel.basic.ghdoc import ghdoc                                       
 from .custom.skel.tools.inserter import insert_tool
-from .custom.skel.tools.runner import run_tools, tools_dict
+from .custom.skel.tools.runner import run_tools, tools_dict, RunnableTool
 from .custom.skel.tools.name_mapper import tool_factory
 from .custom.skel.add_params import add_tool_params
 from .custom.tools import (sDNA_GH_Tool
-                          ,GetObjectsFromRhino
-                          ,ReadUsertext
-                          ,WriteShapefile
-                          ,ReadShapefile
-                          ,WriteUsertext
-                          ,BakeUsertext
-                          ,ParseData
-                          ,RecolourObjects
-                          ,sDNAWrapper
-                          ,sDNA_General
+                          ,RhinoObjectsReader
+                          ,UsertextReader
+                          ,ShapefileWriter
+                          ,ShapefileReader
+                          ,UsertextWriter
+                          ,UsertextBaker
+                          ,DataParser
+                          ,ObjectsRecolourer
+                          ,sDNA_ToolWrapper
+                          ,sDNA_GeneralDummyTool
                           )
-from .dev_tools.dev_tools import ReturnToolNames, sDNA_GH_Builder
+from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
 
 
 
@@ -212,13 +212,16 @@ class HardcodedOptions():
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
-    assert re_normaliser in valid_re_normalisers 
+    if re_normaliser not in valid_re_normalisers:
+        raise ValueError(str(re_normaliser) + ' must be in ' + str(valid_re_normalisers))
     class_bounds = [None] #[2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
     leg_extent = None  # [xmin, ymin, xmax, ymax]
     bbox = None  # [xmin, ymin, xmax, ymax]
     number_of_classes = 7
     class_spacing = 'equal number of members' 
-    assert class_spacing in valid_re_normalisers + ['equal number of members']
+    valid_class_spacings = valid_re_normalisers + ['equal number of members']
+    if class_spacing not in valid_class_spacings:
+        raise ValueError(str(class_spacing) + ' must be in ' + str(valid_class_spacings))
     first_leg_tag_str = 'below {upper}'
     gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
     last_leg_tag_str = 'above {lower}'
@@ -250,9 +253,9 @@ class HardcodedLocalMetas():
 
 
 
-default_metas = get_namedtuple_etc_from_class(HardcodedMetas, 'Metas')
-default_options = get_namedtuple_etc_from_class(HardcodedOptions, 'Options')
-default_local_metas = get_namedtuple_etc_from_class(HardcodedLocalMetas, 'LocalMetas')
+default_metas = namedtuple_from_class(HardcodedMetas, 'Metas')
+default_options = namedtuple_from_class(HardcodedOptions, 'Options')
+default_local_metas = namedtuple_from_class(HardcodedLocalMetas, 'LocalMetas')
 
 empty_NT = namedtuple('Empty','')(**{})
 
@@ -291,7 +294,7 @@ def get_path(opts = module_opts, inst = None):
 
 
 
-####################################################################################################################
+#########################################################################
 #
 #
 def override_all_opts( args_dict
@@ -302,13 +305,18 @@ def override_all_opts( args_dict
                       ,name = ''):
     #type(dict, dict, dict, namedtuple, namedtuple, str) -> namedtuple
     #
-    # 1) We assume opts has been built from a previous GHPython launcher component and call to this very function.  This
-    # trusts the user and our components somewhat, in so far as we assume metas and options in opts have not been crafted to have
+    # 1) We assume opts has been built from a previous GHPython launcher 
+    # component and call to this very function.  This trusts the user and 
+    # our components somewhat, in so far as we assume metas and options 
+    # in opts have not been crafted to 
     # be of a class named 'Metas', 'Options', yet contain missing options.  
     #
-    # 2) A primary meta in opts refers to an old primary meta (albeit the most recent one) and will not be used
-    # in the options_manager.override order as we assume that file has already been read into a previous opts in the chain.  If the user wishes 
-    # to apply a new project config.ini file, they need to instead specify it in args (by adding a variable called config to 
+    # 2) A primary meta in opts refers to an old primary meta (albeit the 
+    # most recent one) and will not be used in the options_manager.override
+    #  order as we assume that file has already been read into a previous 
+    # opts in the chain.  If the user wishes 
+    # to apply a new project config.ini file, they need to instead specify 
+    # it in args (by adding a variable called config to 
     # the GHPython sDNA_GH launcher component.
     metas = local_opts['metas']
     options = local_opts['options']
@@ -316,23 +324,26 @@ def override_all_opts( args_dict
         return local_opts['metas'].sDNA
 
 
-        # Unlike in all the other functions, sDNA might change in this one, (in metas in the 
-        # main options update function).  So we store 
-        # tool args ready under this new sDNA version, in advance of the component
-        # importing the new sDNA module, and we just have to then perform an update in
-        # cache_syntax_and_UISpec instead of an overwrite
+    # Unlike in all the other functions, sDNA might change in this one, 
+    # (in metas in the main options update function).  So we store 
+    # tool args ready under this new sDNA version, in advance of the 
+    # component importing the new sDNA module, and we just have to 
+    # then perform an update in
+    # cache_syntax_and_UISpec instead of an overwrite
 
     args_metas = {}
     args_options = {}
     args_tool_options = {}
     args_local_metas = {}
 
-    for (arg_name, arg_val) in args_dict.items():  # local_metass() will be full of all our other variables.
-        if arg_val: # Unconnected input variables in a Grasshopper component are None.  
-                    # No sDNA tool inputspec default, no metas and no options default is None.
-                    #If None values are needed as specifiable inputs, we would 
-                    # need to e.g. test ghenv for an input variable's connectedness
-                    # so we don't support this
+    for (arg_name, arg_val) in args_dict.items():  # local_metas() will be full
+                                                   # of all our other variables
+        if arg_val: # Unconnected input variables in a Grasshopper component 
+                    # are None.  No sDNA tool inputspec default, no metas and 
+                    # no options default is None.
+                    # If None values are needed as specifiable inputs, we would 
+                    # need to e.g. test ghenv for an input variable's 
+                    # connectedness so we don't support this.
             if arg_name in metas._fields:      
                 args_metas[arg_name] = arg_val
             elif arg_name in options._fields:   
@@ -479,7 +490,9 @@ def override_all_opts( args_dict
     return local_metas
 
 
-# First options options_manager.override (3), user's installation specific options over (4), hardcoded defaults above
+# First options options_manager.override (3), 
+# user's installation specific options over (4), 
+# hardcoded defaults above
 #
 # Use the above function to load the user's installation wide defaults by using
 #  the primary meta from the hardcoded defaults.
@@ -490,11 +503,14 @@ if os.path.isfile(default_metas.config):
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
                      ) 
-    output("After override: opts['options'].message == " + module_opts['options'].message, 'DEBUG')
+    output("After override: opts['options'].message == " 
+          + module_opts['options'].message
+          , 'DEBUG'
+          )
 else:
     output('Config file: ' + default_metas.config + ' not found. ','WARNING')    
 #
-####################################################################################################################
+#######################################################################
 
 folders = [r'C:\Program Files\Python27'
           ,r'%appdata%\Python27'
@@ -504,14 +520,17 @@ pythons = ['python.exe'
           ,'py27.exe'
           ]
 
-possible_pythons = (os.path.join(folder, python) for folder in folders for python in pythons)
+possible_pythons = (os.path.join(folder, python) for folder in folders 
+                                                 for python in pythons
+                   )
 
 while not os.path.isfile(module_opts['options'].python_exe):
     module_opts['options']._replace(python_exe = next(possible_pythons))
 
-assert os.path.isfile(module_opts['options'].python_exe)
+if not os.path.isfile(module_opts['options'].python_exe):
+    raise ValueError('python_exe is not a file. ')
 
-if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? 'sDNA_GH.tools'
+if not hasattr(sys.modules['sDNA_GH.setup'], 'logger'):  
     
     logs_directory = os.path.join(os.path.dirname( get_path(module_opts) )
                                  ,module_opts['options'].logs_dir
@@ -524,7 +543,9 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
 
 
     logger = logging_wrapper.new_Logger('sDNA_GH'
-                                       ,os.path.join(logs_directory, module_opts['options'].log_file)
+                                       ,os.path.join(logs_directory
+                                                    ,module_opts['options'].log_file
+                                                    )
                                        ,module_opts['options'].log_file_level
                                        ,module_opts['options'].log_console_level
                                        ,None # custom_file_object 
@@ -538,7 +559,7 @@ if not hasattr(sys.modules['sDNA_GH'], 'logger'):  # TODO.  Right logger name? '
 
 
 
-####################################################################################################################
+############################################################################
 
 
 #
@@ -573,17 +594,17 @@ do_not_remove += default_local_metas._fields
 #########################################################
 
 
-get_Geom = GetObjectsFromRhino()
-read_Usertext = ReadUsertext()
-write_shapefile = WriteShapefile()
-read_shapefile = ReadShapefile()
-write_Usertext = WriteUsertext()
-bake_Usertext = BakeUsertext()
-parse_data = ParseData()
-recolour_objects = RecolourObjects()
-get_tool_names = ReturnToolNames()
+get_Geom = RhinoObjectsReader()
+read_Usertext = UsertextReader()
+write_shapefile = ShapefileWriter()
+read_shapefile = ShapefileReader()
+write_Usertext = UsertextWriter()
+bake_Usertext = UsertextBaker()
+parse_data = DataParser()
+recolour_objects = ObjectsRecolourer()
+get_tool_names = GetToolNames()
 build_components = sDNA_GH_Builder()
-sDNA_General_dummy_tool = sDNA_General()
+sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
 
 
 tools_dict.update(get_Geom = get_Geom
@@ -605,10 +626,11 @@ def cache_sDNA_tool(compnt
                    ,name_map
                    ,tools_dict
                    ):
-    sDNA_tool = sDNAWrapper(mapped_name, nick_name, compnt.opts)
+    sDNA_tool = sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts)
     tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA
-    compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   # TODO Add in to update sDNA
+    compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   
+    # Could also call compnt.update_sDNA
 
             
 
@@ -659,17 +681,12 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('Inserting tools... ')
 
 
-        # if options.auto_write_Shp and (
-        #     options.overwrite_shp 
-        #     or not os.path.isfile(input_file))
-
-
         if options.auto_write_Shp:
             tools = insert_tool('before'
                                ,tools
                                ,Params
                                ,tool_to_insert = write_shapefile
-                               ,is_target = lambda tool : tool.__class__ == sDNAWrapper
+                               ,is_target = lambda tool : tool.__class__ == sDNA_ToolWrapper
                                ,not_a_target = sDNA_GH_tools
                                ,tools_dict = tools_dict
                                ,name_map = name_map
@@ -702,24 +719,15 @@ class sDNA_GH_Component(SmartComponent):
                                ,tools
                                ,Params
                                ,tool_to_insert = read_shapefile
-                               ,is_target = lambda tool : tool.__class__ == sDNAWrapper
+                               ,is_target = lambda tool : tool.__class__ == sDNA_ToolWrapper
                                ,not_a_target = sDNA_GH_tools
                                ,tools_dict = tools_dict
                                ,name_map = name_map
                                )
         
-        # if options.auto_parse_data:
-        #     tools = insert_tool(self
-        #                        ,'after'
-        #                        ,tools
-        #                        ,Params
-        #                        ,parse_data
-        #                        ,lambda tool : tool == read_shapefile
-        #                        ,[]
-        #                        )     
+      
         
-        
-        if options.auto_plot_data: # already parses if no colours
+        if options.auto_plot_data: # already parses if not all colours in Data
             tools = insert_tool('after'                
                                ,tools
                                ,Params
@@ -734,10 +742,10 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-    def update_Params(   self
-                        ,Params = None
-                        ,tools = None
-                        ):
+    def update_Params(self
+                     ,Params = None
+                     ,tools = None
+                     ):
         #type(type[any], type[any, list]) -> type[any]
 
         if Params is None:
@@ -841,9 +849,12 @@ class sDNA_GH_Component(SmartComponent):
             #  to allow different components to run different sDNA versions
             #  these module references are instance variables
 
-            assert self.sDNAUISpec.__name__ == self.opts['metas'].sDNAUISpec
-            assert self.run_sDNA.__name__ == self.opts['metas'].runsdnacommand
-
+            if (self.sDNAUISpec.__name__ != self.opts['metas'].sDNAUISpec
+               or self.run_sDNA.__name__ == self.opts['metas'].runsdnacommand):
+                raise ValueError('sDNAUISpec and run_sDNA imported, but '
+                                +' module names do not match meta options '
+                                +'.sDNAUISpec and .runsdnacommand'
+                                )
 
 
 
@@ -861,8 +872,11 @@ class sDNA_GH_Component(SmartComponent):
                                                                 )  
 
             sDNA_path = os.path.dirname(self.sDNAUISpec.__file__)
-            assert self.opts['metas'].sDNA_path == sDNA_path                                                                  
-
+            if self.opts['metas'].sDNA_path == sDNA_path:                                                              
+                raise ValueError('sDNAUISpec imported, but '
+                                +' module __file__ does not match meta option '
+                                +' .sDNA_path'
+                                )
 
 
 
@@ -975,34 +989,45 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug(go)
 
         if go == True: 
-            assert isinstance(self.tools, list)
+            if not isinstance(self.tools, list):
+                msg = 'self.tools is not a list'
+                logger.error(msg)
+                raise TypeError(msg)
+
+            invalid_tools = [tool for tool in self.tools 
+                                  if not isinstance(tool, RunnableTool)
+                            ]
+            if invalid_tools:
+                msg = ('Tools are not RunnableTool : ' 
+                      +' '.join(map(str, invalid_tools))
+                      )
+                logger.error(msg)
+                raise ValueError(msg)
 
             logger.debug('my_tools == '
                     +str(self.tools)
                     )
 
-            geom_data_map = convert_Data_tree_and_Geom_list_to_gdm(Geom
-                                                                  ,Data
-                                                                  )
+            geom_data_map = gdm_from_DataTree_and_list(Geom, Data)
             
             logger.debug('type(geom_data_map) == '
-                 +str(type(geom_data_map))
-                 )
+                        +str(type(geom_data_map))
+                        )
             
 
-            gdm = override_gdm_with_gdm(gdm
+            gdm = override_gdm(gdm
                                        ,geom_data_map
                                        ,self.opts['options'].merge_data
                                        )
 
             logger.debug('After merge type(gdm) == ' 
-                    +str(type(gdm))
-                    )                
+                        +str(type(gdm))
+                        )                
             
-            logger.debug('After merge gdm == ' 
-                    +str(gdm.items()[:3])
-                    +' ...'
-                    )
+            logger.debug('After merge gdm[:3] == ' 
+                        +str(gdm.items()[:3])
+                        +' ...'
+                        )
             kwargs['gdm'] = gdm
 
             ##################################################################
@@ -1012,9 +1037,8 @@ class sDNA_GH_Component(SmartComponent):
             #print (str(gdm))
             if isinstance(gdm, dict):
                 logger.debug('Converting gdm to Data and Geometry')
-                (NewData, NewGeometry) = (
-                convert_dictionary_to_data_tree_or_lists(gdm)
-                                    )    
+                (NewData, NewGeometry) = dict_from_DataTree_and_lists(gdm)
+                                        
                 #logger.debug(NewData)
                 #logger.debug(NewGeometry)                    
             else:
@@ -1059,16 +1083,4 @@ class sDNA_GH_Component(SmartComponent):
     script.input_params = sDNA_GH_Tool.params_list(['go', 'opts'])
     script.output_params = sDNA_GH_Tool.params_list(['OK', 'opts'])
 
-
-
-
-
-###############################################################################
-#Main script only process
-#
-if      '__file__' in dir(__builtins__)  and  __name__ in __file__ and '__main__' not in __file__ and '<module>' not in __file__:                     
-    # Assert:  We're in a module!
-    pass
-else:
-    pass
 

@@ -3,7 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, logging
+import sys
+import logging
 from collections import OrderedDict
 import itertools
 if sys.version < '3.3':
@@ -19,8 +20,8 @@ from Grasshopper import DataTree
 
 from .skel.tools.helpers.funcs import is_uuid
 from .skel.basic.ghdoc import ghdoc
-from .pyshp_wrapper import (get_all_shp_type_Rhino_objects
-                           ,check_is_specified_obj_type
+from .pyshp_wrapper import (get_Rhino_objs
+                           ,is_shape
                            )
 
 logger = logging.getLogger(__name__)
@@ -40,17 +41,18 @@ def make_gdm(main_iterable):
 
     return gdm
     
-def try_to_make_dict_else_leave_alone(list_of_key_list_and_val_list):
-    if len(list_of_key_list_and_val_list)>=2:
-        if len(list_of_key_list_and_val_list) > 2:
+def dict_from_key_val_lists(key_val_lists):
+    #type(list(list(keys), list(values))) -> dict / list
+    if len(key_val_lists)>=2:
+        if len(key_val_lists) > 2:
             logger.warning('More than 2 items in list of keys and values. '
                            +'  Assuming'
                            +'first two are keys and vals.  '
                            +'Discarding subsequent items in list (this item).  '
                            )
-        return OrderedDict(zip(list_of_key_list_and_val_list[:2]))
+        return OrderedDict(zip(key_val_lists[:2]))
     else:
-        return list_of_key_list_and_val_list
+        return key_val_lists
 
 
 
@@ -58,7 +60,7 @@ def try_to_make_dict_else_leave_alone(list_of_key_list_and_val_list):
 
 
 
-def convert_dictionary_to_data_tree_or_lists(nested_dict):
+def dict_from_DataTree_and_lists(nested_dict):
     # type(dict) -> DataTree
     if all(isinstance(val, dict) for val in nested_dict.values()):    
         User_Text_Keys = [ list(group_dict.keys()) # list() for Python 3
@@ -80,7 +82,7 @@ def convert_dictionary_to_data_tree_or_lists(nested_dict):
     #layerTree = []
 
 
-def override_gdm_with_gdm(lesser, override, merge_subdicts = True):  
+def override_gdm(lesser, override, merge_subdicts = True):  
     #type(dict, dict, dict) -> dict
     # overwrite ?
     # call update on the sub dicts?:
@@ -113,7 +115,7 @@ def override_gdm_with_gdm(lesser, override, merge_subdicts = True):
 
 ##########################################################################################################
 
-def convert_Data_tree_and_Geom_list_to_gdm(Geom, Data):
+def gdm_from_DataTree_and_list(Geom, Data):
     # type (type[any], list, dict)-> dict
     
     if Geom in [None, [None]]:

@@ -4,7 +4,7 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 
-import Rhino, GhPython
+import Rhino
 import GhPython
 import scriptcontext as sc
 
