@@ -11,7 +11,7 @@ from collections import OrderedDict
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
-    class ABC:
+    class ABC(object):
         __metaclass__ = ABCMeta
 else:
     from abc import ABC

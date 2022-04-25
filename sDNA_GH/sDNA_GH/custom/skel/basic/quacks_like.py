@@ -8,7 +8,7 @@ import sys
 from abc import abstractmethod
 if sys.version < '3.4':
     from abc import ABCMeta
-    class ABC:
+    class ABC(object):
         __metaclass__ = ABCMeta
 else:
     from abc import ABC
@@ -19,7 +19,7 @@ class BasicABC(ABC):
     def f(self):
         '''Do nothing'''
 
-class BasicClass():
+class BasicClass(object):
     def f(self):
         '''Do nothing'''
 

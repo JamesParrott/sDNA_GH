@@ -64,13 +64,13 @@ def no_name_clashes(name_map, list_of_names_lists):
                                                    # No trivial cycles
 
 
-def make_nested_namedtuple(d
-                          ,d_namedtuple_class_name
-                          ,strict = True
-                          ,class_prefix = 'NamedTuple_'
-                          ,convert_subdicts = False
-                          ,**kwargs
-                          ):
+def namedtuple_from_dict(d
+                        ,d_namedtuple_class_name
+                        ,strict = True
+                        ,class_prefix = 'NamedTuple_'
+                        ,convert_subdicts = False
+                        ,**kwargs
+                        ):
     #type (dict, str, str) -> namedtuple(d), tree (Class)
     #
     if strict and not isinstance(d, dict):
@@ -78,12 +78,12 @@ def make_nested_namedtuple(d
     d = d.copy() 
     for key, val in d.items():
         if isinstance(val, dict) and convert_subdicts:
-            d[key] = make_nested_namedtuple(val
-                                           ,key
-                                           ,False # strict. already checked 
-                                           ,class_prefix
-                                           ,**kwargs
-                                           )  
+            d[key] = namedtuple_from_dict(val
+                                         ,key
+                                         ,False # strict. already checked 
+                                         ,class_prefix
+                                         ,**kwargs
+                                         )  
 
     return namedtuple(class_prefix + d_namedtuple_class_name
                      ,d.keys()
@@ -168,12 +168,12 @@ def override_namedtuple_with_dict(nt_lesser
                                                 ,delistify
                                                 ,**kwargs
                                                 )
-        return make_nested_namedtuple(newDict
-                                     ,nt_lesser.__class__.__name__
-                                     ,strict
-                                     ,''   # NT Class name prefix
-                                     ,**kwargs
-                                     ) 
+        return namedtuple_from_dict(newDict
+                                   ,nt_lesser.__class__.__name__
+                                   ,strict
+                                   ,''   # NT Class name prefix
+                                   ,**kwargs
+                                   ) 
 
 
 # ftrick = namedtuple('Trick',trick.keys())(**trick)
@@ -228,7 +228,7 @@ def load_ini_file( file_path
         f_gen = readline_generator(f)
 
         if sys.version_info.major < 3 or (sys.version_info.major ==3 and sys.version_info.minor < 2) :  
-            class G():
+            class G(object):
                 pass
             G.readline = f_gen.next
             config.readfp(G)
@@ -438,3 +438,26 @@ def override_namedtuple(nt_lesser
 
     return nt_lesser
 
+class Sentinel(object):
+    pass
+
+def sentinel_factory(message
+                    ,extra_dunders = ('call','getitem','setitem', 'hash','len'
+                             ,'setattr','delattr','get','set','delete')
+                    ,leave_alone = ('weakref','module','class','dict', 'init','new','metaclass'
+                                    ,'subclasshook','mro','bases','getattr'
+                                    ,'getattribute')
+                    ):
+    #type(str, tuple, tuple) -> type[any]
+    def raise_error(*args):
+        raise ValueError(message) 
+    class NewSentinel(Sentinel):
+        def __getattribute__(self, name):
+            if name.strip('_') not in leave_alone:
+                return raise_error()
+            return object.__getattribute__(self, name)
+    for attr in list(extra_dunders):
+        if attr not in leave_alone:
+            setattr(NewSentinel, '__'+attr+'__', raise_error)
+        
+    return NewSentinel()

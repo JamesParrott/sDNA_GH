@@ -63,7 +63,7 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
 
 
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
-        categories.update(metas.categories._asdict())
+        categories.update(metas.categories)
 
         name_map = metas.name_map
 

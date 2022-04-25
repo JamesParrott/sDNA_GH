@@ -57,8 +57,8 @@ from .skel.tools.helpers.checkers import (get_OrderedDict
                                          )
 from .skel.tools.runner import RunnableTool                                         
 from .skel.add_params import ToolWithParams, ParamInfo
-from .options_manager import (make_nested_namedtuple
-                             ,
+from .options_manager import (namedtuple_from_dict
+                             ,Sentinel
                              )
 from .pyshp_wrapper import (get_filename
                            ,get_points_from_obj
@@ -176,10 +176,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 +os.path.basename(sDNAUISpec.__file__).rpartition('.')[0]
                                 )
         self.logger.debug(namedtuple_class_name)
-        tool_opts[sDNA] = make_nested_namedtuple(tool_opts_dict
-                                                ,namedtuple_class_name
-                                                ,strict = True
-                                                ) 
+        tool_opts[sDNA] = namedtuple_from_dict(tool_opts_dict
+                                              ,namedtuple_class_name
+                                              ,strict = True
+                                              ) 
         self.tool_opts = tool_opts
 
 
@@ -774,8 +774,8 @@ class DataParser(sDNA_GH_Tool):
 
         data = [ val[field] for val in gdm.values()]
         self.logger.debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
-        x_max = max(data) if options.plot_max is None else options.plot_max
-        x_min = min(data) if options.plot_min is None else options.plot_min
+        x_max = max(data) if isinstance(options.plot_max, Sentinel) else options.plot_max
+        x_min = min(data) if isinstance(options.plot_min, Sentinel) else options.plot_min
         # bool(0) == False so in case x_min==0 we can't use 
         # if options.plot_min if options.plot_min else min(data) 
 

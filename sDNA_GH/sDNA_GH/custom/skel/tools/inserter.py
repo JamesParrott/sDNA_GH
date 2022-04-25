@@ -160,7 +160,7 @@ def already_inserted(up_or_downstream
                                  )
 
 def insert_tool(before_or_after
-               ,tools
+               ,tools # mutated, by the inserted tool
                ,Params
                ,tool_to_insert
                ,is_target
@@ -206,7 +206,6 @@ def insert_tool(before_or_after
                          # in tools after specials
                     logger.info('Inserting tool : ' + str(tool_to_insert))
                     tools.insert(i + offset, tool_to_insert)
-    return tools
 
     
 def remove_component_output(self, name):

@@ -1,0 +1,191 @@
+[local_metas]
+    sync = true    
+    read_only = true
+    nick_name = ''
+
+[metas]
+add_new_opts = false
+cmpnts_change = false
+strict_namedtuples = true
+strict_opts = true
+sDNAUISpec = 'sDNAUISpec'
+runsdnacommand = 'runsdnacommand' # only used for .map_to_string. 
+                        # Kept in case we use work out how
+                        # to run runsdnacommand.runsdnacommand in future 
+                        # with an env, while being able to get the 
+                        # sDNA stderr and stdout to the sDNA_GH logging
+sDNA = (sDNAUISpec, runsdnacommand)  # Read only.  Auto updates from above.
+sDNA_path = ''  
+# Read only.  Determined after loading sDNAUISpec to which ever below
+# it is found in.
+# after loading, 
+# assert 
+#   opts['metas'].sDNA_path 
+#      == os.path.dirname(opts['options'].sDNAUISpec.__file__)
+#sDNA_UISpec_path = 'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
+#sDNA_search_paths = [sDNA_UISpec_path, 
+sDNA_search_paths  = ['C:\Program Files (x86)\sDNA']
+
+update_path = true
+                        #Abbreviation = Tool Name
+###############################################################################
+[metas.name_map]
+Read_Geom = 'get_Geom'
+Read_Usertext = 'read_Usertext'
+Write_Shp = 'write_shapefile'
+Read_Shp = 'read_shapefile'
+Write_Usertext = 'write_Usertext'
+Bake_UserText = 'bake_Usertext'
+Parse_Data = 'parse_data'
+Recolour_Objects = 'recolour_objects'
+Recolor_Objects = 'recolour_objects'
+sDNA_Integral = 'sDNAIntegral'
+sDNA_Skim = 'sDNASkim'
+sDNA_Int_From_OD = 'sDNAIntegralFromOD'
+sDNA_Geodesics = 'sDNAGeodesics'
+sDNA_Hulls = 'sDNAHulls'
+sDNA_Net_Radii = 'sDNANetRadii'
+sDNA_Access_Map = 'sDNAAccessibilityMap'
+sDNA_Prepare = 'sDNAPrepare'
+sDNA_Line_Measures = 'sDNALineMeasures'
+sDNA_Learn = 'sDNALearn'
+sDNA_Predict = 'sDNAPredict'
+
+                        
+[metas.categories]
+get_Geom         = 'Support'
+read_Usertext    = 'Usertext'
+write_shapefile  = 'Support'
+read_shapefile   = 'Support'
+write_Usertext   = 'Usertext'
+bake_Usertext    = 'Usertext'
+parse_data       = 'Support'
+recolour_objects = 'Support'
+sDNAIntegral     = 'Analysis'
+sDNASkim         = 'Analysis'
+sDNAIntFromOD    = 'Analysis'
+sDNAGeodesics    = 'Geometric analysis'
+sDNAHulls        = 'Geometric analysis'
+sDNANetRadii     = 'Geometric analysis'
+sDNAAccessMap    = 'Analysis'
+sDNAPrepare      = 'Preparation'
+sDNALineMeasures = 'Preparation'
+sDNALearn        = 'Calibration'
+sDNAPredict      = 'Calibration'
+sDNA_General     = 'Dev tools'
+Python           = 'Dev tools'
+Self_test        = 'Dev tools'
+Build_components = 'Dev tools' 
+                
+
+#######################################################################################################################
+
+
+
+[options]           
+###########################################################################
+#System
+platform = 'NT' # in {'NT','win32','win64'} only supported for now
+encoding = 'utf-8'
+Rhino_doc_path = ''  # tbc by auto update
+sDNA_prepare = 'C:\Program Files (x86)\sDNA\bin\sdnaprepare.py'
+sDNA_integral = 'C:\Program Files (x86)\sDNA\bin\sdnaintegral.py'
+python_exe = 'C:\Python27\python.exe' 
+# Default installation path of Python 2.7.3 release (32 bit ?) 
+# http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
+
+# copied from sDNA manual 
+# https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html    
+###########################################################################    #Logging    
+#os.getenv('APPDATA'),'Grasshoppe','Libraries','sDNA_GH','sDNA_GH.log')
+logs_dir = 'logs'
+log_file = 'sDNA_GH.log'
+
+log_file_level = 'DEBUG'
+log_console_level = 'INFO'
+log_custom_level = 'INFO'
+
+###########################################################################
+#     #GDM
+merge_data = true
+###########################################################################
+#     #Shapefiles
+shape_type = 'POLYLINEZ'
+include_groups = false
+cache_iterable= false
+dot_shp = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
+#supply_sDNA_file_names = true
+output_shp = 'C:\Users\James\Documents\Rhino\Grasshopper\tmp.shp' # None means Rhino .3dm filename is used.
+overwrite_shp = true
+overwrite_UserText = true
+dupe_key_suffix = '_{}'
+prepped_shp_suffix = '_prepped'
+output_shp_suffix = '_output'
+dupe_file_suffix = '_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+max_new_files = 20
+suppress_warning = true     
+uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
+uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
+min_sizes = true
+del_shp = false
+field_size = 30
+num_dp = 10 # decimal places
+extra_chars = 2
+yyyy_mm_dd = false
+decimal = true
+keep_floats = true
+precision = 12
+max_dp = 4 # decimal places
+###########################################################################
+#Writing and Reading Usertext to/from Rhino
+new_geom = false
+max_new_keys = 20
+#
+#
+input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'  
+#30,000 characters tested!
+output_key_str = 'sDNA output={name} run time={datetime}'  
+#30,000 characters tested!
+###########################################################################
+#sDNA
+overwrite_shp = false
+auto_get_Geom = true
+auto_read_Usertext = true
+auto_write_Shp = true
+auto_read_Shp = true
+#auto_parse_data = false  # not used.  Recolour_data parses if req anyway
+auto_plot_data = true
+#Plotting results
+field = 'BtEn'
+#plot_max = 0
+#plot_min = 14000000
+sort_data = false
+base = 10 # base of log and exp spline, not of number representations
+re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
+class_bounds = [None] 
+# e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+leg_extent = None  # [xmin, ymin, xmax, ymax]
+bbox = None  # [xmin, ymin, xmax, ymax]
+number_of_classes = 7
+class_spacing = 'equal number of members' 
+valid_class_spacings = valid_re_normalisers + ['equal number of members']
+first_leg_tag_str = 'below {upper}'
+gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
+last_leg_tag_str = 'above {lower}'
+num_format = '{:.5n}'
+leg_frame = ''  # uuid of GH object
+locale = '' # ''=> auto. 
+            # Used for locale.setlocale(locale.LC_ALL,  options.locale)
+colour_as_class = false
+Col_Grad = false
+Col_Grad_num = 5
+rgb_max = (155, 0, 0) #990000
+rgb_min = (0, 0, 125) #3333cc
+rgb_mid = (0, 155, 0) # guessed
+line_width = 4 # milimetres? 
+###########################################################################
+#Test
+message = 'Options from config.toml'
+
+
+

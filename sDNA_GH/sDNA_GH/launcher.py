@@ -43,7 +43,7 @@ reload_config_and_other_modules_if_already_loaded = False
 # The behaviours can be different of course if changes are made to one and not
 # the other, e.g. if the code is forgotten to be copied into the component.
 
-class Output: 
+class Output(object): 
 
     def set_logger(self, logger, flush = True):
         self.logger = logger
@@ -215,7 +215,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     print(sDNA_GH_search_paths)
 
-    class sDNA_GH:
+    class sDNA_GH(object):
         pass
     sDNA_GH.setup, _ = load_modules(sDNA_GH_package + '.setup'
                              ,sDNA_GH_search_paths

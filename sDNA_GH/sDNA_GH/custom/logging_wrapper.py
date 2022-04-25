@@ -93,7 +93,7 @@ def class_logger_factory(logger = None, module_name = None):
     """ Factory for ClassLogger Classes.  Otherwise __name__ will 
         be 'wrapper.logging' now matter which module they were instantiated
         in.  """
-    class ClassLogger:
+    class ClassLogger(object):
         """ Class to inherit a class logger from, e.g. via co-operative 
             multiple inheritance (CMI).  After instantiation, .SubClassName is
             appended to module_name in its logs, e.g. to aid debugging.  
@@ -107,7 +107,7 @@ def class_logger_factory(logger = None, module_name = None):
 
 
 
-class Output: 
+class Output(object): 
     """   Wrapper class for logger, logging, print, with a cache.  Example setup:
     import logging
     logger = logging.getLogger(__name__)
@@ -170,7 +170,7 @@ class Output:
 # Python 3 only
 #
 #
-class Debugger:
+class Debugger(object):
     """ Wrapper class for quick debugging messages that prepends a variable's 
     name (if it can be found) to its value, then calls an output callable.  
     Example setup:
