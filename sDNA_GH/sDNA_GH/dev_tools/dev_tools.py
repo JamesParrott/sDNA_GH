@@ -53,13 +53,12 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
         metas = opts['metas']
         sDNAUISpec = opts['options'].sDNAUISpec
 
-        opts['options'] = opts['options']._replace(
-                                                 auto_get_Geom = False
-                                                ,auto_read_Usertext = False
-                                                ,auto_write_new_Shp_file = False
-                                                ,auto_read_Shp = False
-                                                ,auto_plot_data = False
-                                                )
+        opts['options'] = opts['options']._replace(auto_get_Geom = False
+                                                  ,auto_read_Usertext = False
+                                                  ,auto_write_Shp = False
+                                                  ,auto_read_Shp = False
+                                                  ,auto_plot_data = False
+                                                  )
 
 
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}

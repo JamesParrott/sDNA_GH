@@ -17,6 +17,8 @@ import GhPython
 import Grasshopper.Kernel 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable
 
+from . import update_params
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -68,18 +70,20 @@ class ParamInfo(dict, ParamInfoABC):
                                         ,**kwargs
                                         )
     def make(self):
-        Param = self.factory(**self)
+        Param = self.factory() #**self)
         if self.TypeHint:
             Param.TypeHint = self.TypeHint
+        for attr in self: # class inherits from dict
+            setattr(Param, attr, self[attr])
         return Param
 
 
 class ToolwithParamsABC(ABC):
-    @property
+
     @abstractmethod
     def input_params(self):
         """ List of input ParamInfo instances """
-    @property
+
     @abstractmethod
     def output_params(self):
         """ List of output ParamInfo instances """
@@ -122,11 +126,9 @@ class ToolWithParams(ToolwithParamsABC):
 
     component_outputs = ()
 
-    @property
     def input_params(self):
         return self.params_list(self.component_inputs)
     
-    @property
     def output_params(self):
         return self.params_list(self.component_outputs)
 
@@ -135,25 +137,29 @@ def add_Params(Input_or_Output
               ,do_not_add
               ,do_not_remove
               ,Params
-              ,params_current
               ,params_needed
               ):
     #type(str, list, list, type[any], list, list[Param], list[ParamInfo]) -> None   
 
 
-    assert Input_or_Output in ['Input', 'Output']
+    if Input_or_Output not in ['Input', 'Output']:
+        raise ValueError("Input_or_Output must be in ['Input', 'Output'], "
+                        +"instead of: " + str(Input_or_Output)
+                        )
 
     do_not_add = do_not_add[:]
     do_not_remove = do_not_remove[:]
 
-    logger.debug(   'params_current NickNames == '
-                    + ' '.join(str(param.NickName) for param in params_current)
+    params_current = getattr(Params, Input_or_Output)[:]
+
+    logger.debug('params_current NickNames == '
+                +' '.join(str(param.NickName) for param in params_current)
                 )
 
     needed_NickNames = [str(param['NickName']) for param in params_needed]
 
-    logger.debug(   'params_needed NickNames == '
-                    + ' '.join(needed_NickNames)
+    logger.debug('params_needed NickNames == '
+                +' '.join(needed_NickNames)
                 )
 
     registers = dict(Input  = 'RegisterInputParam'
@@ -162,15 +168,17 @@ def add_Params(Input_or_Output
 
     for param in params_current:  
         if param.NickName in needed_NickNames:
-            logger.debug('Param already there, adding to self.do_not_add == '
-                + str(param.NickName))
+            logger.debug('Param already there, appending to do_not_add == '
+                        +str(param.NickName)
+                        )
             do_not_add += [param.NickName]
         elif (param.NickName not in do_not_remove and
             len(getattr(param, 'Recipients', [])) == 0 and  
             len(getattr(param, 'Sources',    [])) == 0     ):
             logger.debug(    'Param ' 
-                    + str(param.NickName) 
-                    + ' not needed, and can be removed.  ')
+                        + str(param.NickName) 
+                        + ' not needed, and can be removed.  '
+                        )
         else:
             logger.debug('Leaving param alone.  User added output? == ' 
                 + str(param.NickName))
@@ -180,10 +188,18 @@ def add_Params(Input_or_Output
         param_name = param['NickName']
         if param_name not in do_not_add: 
             logger.debug('Adding param == ' + param_name)
+            
+            # update_params.add_param(Params
+            #                        ,update_params.make_new_param(param_name)
+            #                        ,Input_or_Output
+            #                        )
 
             getattr(Params, registers[Input_or_Output])(param.make()) 
             Params.OnParametersChanged()
-            do_not_add += [param_name]
+
+
+            do_not_add += [param_name] # Not used again but just in case we
+                                       # decide not to take a copy of it
 
         else:
             logger.debug('Param in self.do_not_add == ' + param_name)
@@ -199,34 +215,42 @@ def add_tool_params(Params
     
     ParamsSyncObj = Params.EmitSyncObject()
 
-    current_output_params = getattr(Params, 'Output')[:]
-    current_input_params = getattr(Params, 'Input')[:]
-
     needed_output_params = [ output for tool in reversed(tools)
-                             for output in tool.output_params
-                           ]
+                             for output in tool.output_params() ]
+                           
     needed_input_params = [ input for tool in tools 
-                            for input in tool.input_params 
-                          ]
+                            for input in tool.input_params() ]
+                          
     if wrapper:
-        needed_output_params = wrapper.output_params + needed_output_params
-        needed_input_params = wrapper.input_params + needed_input_params
+        needed_output_params = wrapper.output_params() + needed_output_params
+        needed_input_params = wrapper.input_params() + needed_input_params
 
-    
-    add_Params('Output'
-                                 ,do_not_add
-                                 ,do_not_remove
-                                 ,Params
-                                 ,current_output_params
-                                 ,needed_output_params
-                                 )
-    add_Params('Input'
-                                 ,do_not_add
-                                 ,do_not_remove
-                                 ,Params
-                                 ,current_input_params
-                                 ,needed_input_params
-                                 )
+    update_params.add_params(Params
+                            ,'Output'
+                            ,[param['NickName'] 
+                              for param in needed_output_params]
+                            ,do_not_remove
+                            )
+
+    update_params.add_params(Params
+                            ,'Input'
+                            ,[param['NickName'] 
+                              for param in needed_input_params]
+                            ,do_not_remove
+                            )
+
+    # add_Params('Output'
+    #           ,do_not_add
+    #           ,do_not_remove
+    #           ,Params
+    #           ,needed_output_params
+    #           )
+    # add_Params('Input'
+    #           ,do_not_add
+    #           ,do_not_remove
+    #           ,Params
+    #           ,needed_input_params
+    #           )
 
     Params.Sync(ParamsSyncObj)
     Params.RepairParamAssociations()

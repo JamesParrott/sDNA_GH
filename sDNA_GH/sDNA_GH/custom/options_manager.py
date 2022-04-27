@@ -439,25 +439,38 @@ def override_namedtuple(nt_lesser
     return nt_lesser
 
 class Sentinel(object):
-    pass
+    def __init__(self, message):
+        self.message = message
+    def __repr__(self):
+        return 'Sentinel("' + self.message + '")'
 
-def sentinel_factory(message
-                    ,extra_dunders = ('call','getitem','setitem', 'hash','len'
-                             ,'setattr','delattr','get','set','delete')
-                    ,leave_alone = ('weakref','module','class','dict', 'init','new','metaclass'
-                                    ,'subclasshook','mro','bases','getattr'
-                                    ,'getattribute')
-                    ):
-    #type(str, tuple, tuple) -> type[any]
+#TODO:  Make bool(Sentinel)== False optionally, and fail louder on iteration.
+
+def error_raising_sentinel_factory(warning
+                                  ,message
+                                  ,extra_dunders = ('call','getitem','setitem'
+                                                   , 'hash','len','iter'
+                                                   ,'delattr','delete'
+                                                   #,'get', 'set', 'setattr'
+                                                   )
+                                  ,leave_alone = ('init','repr','message'
+                                                 ,'weakref','module','class'
+                                                 ,'dict' ,'new','metaclass'
+                                                 ,'subclasshook','mro','bases'
+                                                 ,'getattr','getattribute'
+                                                 ,'dir'
+                                                 )
+                                  ):
+    #type(str, str, tuple, tuple) -> type[any]
     def raise_error(*args):
-        raise ValueError(message) 
+        raise ValueError(warning) 
     class NewSentinel(Sentinel):
         def __getattribute__(self, name):
             if name.strip('_') not in leave_alone:
                 return raise_error()
             return object.__getattribute__(self, name)
-    for attr in list(extra_dunders):
-        if attr not in leave_alone:
-            setattr(NewSentinel, '__'+attr+'__', raise_error)
+    for name in list(extra_dunders):
+        if name not in leave_alone:
+            setattr(NewSentinel, '__' + name + '__', raise_error)
         
-    return NewSentinel()
+    return NewSentinel(message)

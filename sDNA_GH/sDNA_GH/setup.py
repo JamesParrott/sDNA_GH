@@ -13,7 +13,7 @@ from .custom.options_manager import (load_toml_file
                                     ,load_ini_file                             
                                     ,override_namedtuple  
                                     ,namedtuple_from_class
-                                    ,sentinel_factory    
+                                    ,error_raising_sentinel_factory    
                                     ,Sentinel  
                                     )
 from .custom import logging_wrapper
@@ -42,6 +42,7 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ObjectsRecolourer
                           ,sDNA_ToolWrapper
                           ,sDNA_GeneralDummyTool
+                          ,Load_Config_File
                           )
 from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
 
@@ -92,6 +93,8 @@ class HardcodedMetas(object):
                    ,Parse_Data = 'parse_data'
                    ,Recolour_Objects = 'recolour_objects'
                    ,Recolor_Objects = 'recolour_objects'
+                   ,Load_Config = 'load_config'
+                   #
                    ,sDNA_Integral = 'sDNAIntegral'
                    ,sDNA_Skim = 'sDNASkim'
                    ,sDNA_Int_From_OD = 'sDNAIntegralFromOD'
@@ -110,12 +113,12 @@ class HardcodedMetas(object):
     categories = {
                          'get_Geom'         : 'Support'
                         ,'read_Usertext'    : 'Usertext'
-                        ,'write_shapefile'  : 'Support'
-                        ,'read_shapefile'   : 'Support'
+                        ,'write_shapefile'  : 'Shp'
+                        ,'read_shapefile'   : 'Shp'
                         ,'write_Usertext'   : 'Usertext'
                         ,'bake_Usertext'    : 'Usertext'
-                        ,'parse_data'       : 'Support'
-                        ,'recolour_objects' : 'Support'
+                        ,'parse_data'       : 'Plot'
+                        ,'recolour_objects' : 'Plot'
                         ,'sDNAIntegral'     : 'Analysis'
                         ,'sDNASkim'         : 'Analysis'
                         ,'sDNAIntFromOD'    : 'Analysis'
@@ -131,6 +134,7 @@ class HardcodedMetas(object):
                         ,'Python'           : 'Dev tools'
                         ,'Self_test'        : 'Dev tools'
                         ,'Build_components' : 'Dev tools' 
+                        ,'Load_Config'      : 'Support'
                     }
 
 
@@ -143,8 +147,24 @@ class HardcodedOptions(object):
     #System
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8'
-    sDNAUISpec = sentinel_factory('No sDNA module: sDNAUISpec loaded yet')
-    run_sDNA = sentinel_factory('No sDNA module: runsdnacommand loaded yet')
+    sDNAUISpec = error_raising_sentinel_factory('No sDNA module: sDNAUISpec '
+                                               +'loaded yet. '
+                                               ,'Module is loaded from the '
+                                               +'first files named in '
+                                               +'metas.sDNAUISpec and '
+                                               +'metas.runsdnacommand both '
+                                               +'found in a path in '
+                                               +'metas.sDNA_search_paths. '
+                                               )
+    run_sDNA = error_raising_sentinel_factory('No sDNA module: '
+                                             +'runsdnacommand loaded yet. '
+                                             ,'Module is loaded from the '
+                                             +'first files named in '
+                                             +'metas.sDNAUISpec and '
+                                             +'metas.runsdnacommand both '
+                                             +'found in a path in '
+                                             +'metas.sDNA_search_paths. '
+                                             )
     Rhino_doc_path = ''  # tbc by auto update
     sDNA_prepare = r'C:\Program Files (x86)\sDNA\bin\sdnaprepare.py'
     sDNA_integral = r'C:\Program Files (x86)\sDNA\bin\sdnaintegral.py'
@@ -207,7 +227,6 @@ class HardcodedOptions(object):
     ###########################################################################
     #sDNA
     default_path = __file__
-    overwrite_shp = False
     auto_get_Geom = True
     auto_read_Usertext = True
     auto_write_Shp = True
@@ -216,8 +235,8 @@ class HardcodedOptions(object):
     auto_plot_data = True
     #Plotting results
     field = 'BtEn'
-    plot_max = sentinel_factory('plot_max not overridden yet')
-    plot_min = sentinel_factory('plot_min not overridden yet')
+    plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
+    plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
@@ -226,10 +245,10 @@ class HardcodedOptions(object):
                         +' must be in '
                         + str(valid_re_normalisers)
                         )
-    class_bounds = [sentinel_factory('class_bounds is not initialised yet. ')] 
+    class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-    leg_extent = sentinel_factory('leg_extent is not initialised yet. ')  # [xmin, ymin, xmax, ymax]
-    bbox = sentinel_factory('bbox is not initialised yet. ')  # [xmin, ymin, xmax, ymax]
+    leg_extent = Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
+    bbox = Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
     number_of_classes = 7
     class_spacing = 'equal number of members' 
     valid_class_spacings = valid_re_normalisers + ['equal number of members']
@@ -575,7 +594,11 @@ while not os.path.isfile(module_opts['options'].python_exe):
 if not os.path.isfile(module_opts['options'].python_exe):
     raise ValueError('python_exe is not a file. ')
 
-if not hasattr(sys.modules['sDNA_GH.setup'], 'logger'):  
+package_name = os.path.basename(os.path.dirname(__file__))
+module_name = os.path.basename(__file__).rpartition('.')[0]
+
+if (package_name + '.' + module_name in sys.modules
+    and not hasattr(sys.modules[package_name + '.' + module_name], 'logger') ):  
     
     logs_directory = os.path.join(os.path.dirname( get_path(module_opts) )
                                  ,module_opts['options'].logs_dir
@@ -588,7 +611,7 @@ if not hasattr(sys.modules['sDNA_GH.setup'], 'logger'):
 
 
     logger = logging_wrapper.new_Logger(
-                                 'sDNA_GH'
+                                 package_name
                                 ,os.path.join(logs_directory
                                              ,module_opts['options'].log_file
                                              )
@@ -651,7 +674,7 @@ recolour_objects = ObjectsRecolourer()
 get_tool_names = GetToolNames()
 build_components = sDNA_GH_Builder()
 sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
-
+load_config_file = Load_Config_File()
 
 tools_dict.update(get_Geom = get_Geom
                  ,read_Usertext = read_Usertext
@@ -664,6 +687,7 @@ tools_dict.update(get_Geom = get_Geom
                  ,Python = get_tool_names
                  ,Build_components = build_components
                  ,sDNA_General = sDNA_General_dummy_tool
+                 ,load_config = load_config_file
                  )
 
 def cache_sDNA_tool(compnt
@@ -779,7 +803,7 @@ class sDNA_GH_Component(SmartComponent):
         
       
         
-        if options.auto_plot_data: # already parses if not all colours in Data
+        if options.auto_plot_data: # already parses if Data not all colours
             insert_tool('after'                
                        ,tools
                        ,Params
@@ -929,11 +953,17 @@ class sDNA_GH_Component(SmartComponent):
                                                                 )  
 
             sDNA_path = os.path.dirname(self.sDNAUISpec.__file__)
-            if self.opts['metas'].sDNA_path == sDNA_path:                                                              
-                raise ValueError('sDNAUISpec imported, but '
-                                +' module __file__ does not match meta option '
-                                +' .sDNA_path'
-                                )
+            if self.opts['metas'].sDNA_path != sDNA_path:                                                              
+                logger.debug('sDNAUISpec.__file__ == ' + sDNA_path)
+                logger.debug('self.opts["metas"].sDNA_path== ' 
+                            + self.opts['metas'].sDNA_path
+                            )
+
+                msg = ('sDNAUISpec imported, but '
+                      +' module __file__ does not match meta option '
+                      +' .sDNA_path'
+                      )
+                raise ValueError(output(msg,'ERROR'))
 
 
 
@@ -1001,14 +1031,16 @@ class sDNA_GH_Component(SmartComponent):
                 nick_name = kwargs['tool']
             self.my_tools = self.update_tools(nick_name)
         
-        self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
-                # Other components may mean self.tools needs extra tools adding
-                # or /removing but this could - annoy many users.  
-                # TODO!  Get feedback!
-                # TODO:  Move this to after the opts override?!  But params 
-                # need to feed into the opts?
+            self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
 
-        self.update_Params()#self.Params, self.tools)
+                    # If this happens every runScript, not just after name updates,
+                    # Other components may mean self.tools needs extra tools adding
+                    # or /removing but this could - annoy many users.  
+                    # TODO!  Get feedback!
+                    # TODO:  Move this to after the opts override?!  But params 
+                    # need to feed into the opts?
+
+            self.update_Params()#self.Params, self.tools)
 
         
         synced = self.local_metas.sync
@@ -1116,8 +1148,7 @@ class sDNA_GH_Component(SmartComponent):
             ret_vals_dict['Geom'] = NewGeometry
             if 'f_name' in ret_vals_dict:
                 ret_vals_dict['file'] = ret_vals_dict['f_name']
-            ret_vals_dict['opts'] = [self.opts.copy()]
-            ret_vals_dict['l_metas'] = self.local_metas #immutable
+
             ret_vals_dict['OK'] = ret_vals_dict.get('retcode', 0) == 0
 
 
@@ -1129,18 +1160,25 @@ class sDNA_GH_Component(SmartComponent):
                 if isinstance(tool_opts, dict):
                     tmp = {}
                     for tool_name in tool_opts:
-                        tmp.update(tool_opts[tool_name]._asdict())
+                        sub_tools_dict = tool_opts[tool_name]
+                        if sDNA in sub_tools_dict:
+                            sub_tools_dict = sub_tools_dict[sDNA]
+                        if hasattr(sub_tools_dict, '_asdict'):
+                            sub_tools_dict = sub_tools_dict._asdict()
+                        tmp.update(sub_tools_dict)
                     tool_opts = tmp
         else:
-            logger.debug('go was not == True')
+            logger.debug('go != True')
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}
+        ret_vals_dict['opts'] = [self.opts.copy()]
+        ret_vals_dict['l_metas'] = self.local_metas #immutable
         retval_names = [Param.Name for Param in self.Params.Output]
         logger.debug('Returning from self.script ')
         locs = locals().copy()
-        return custom_retvals(retval_names
-                             ,[  ret_vals_dict
+        ret_args = self.component_Outputs( #custom_retvals(retval_names
+                              [  ret_vals_dict
                               ,  self.opts['metas']
                               ,  self.opts['options']
                               ,  self.local_metas
@@ -1148,7 +1186,13 @@ class sDNA_GH_Component(SmartComponent):
                               ,  locs
                               ]
                              )
-    script.input_params = sDNA_GH_Tool.params_list(['go', 'opts'])
-    script.output_params = sDNA_GH_Tool.params_list(['OK', 'opts'])
+        #print(ret_args)
+        print(retval_names)
+        print('len(reg_args) == '+str(len(ret_args)))
+        print('len(retval_names) == '+str(len(retval_names)))
+        print(gdm)
+        return ret_args
+    script.input_params = lambda : sDNA_GH_Tool.params_list(['go', 'opts'])
+    script.output_params = lambda : sDNA_GH_Tool.params_list(['OK', 'opts'])
 
 

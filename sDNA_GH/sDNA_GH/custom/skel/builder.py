@@ -11,9 +11,8 @@ else:
     from collections.abc import Iterable
 
 import GhPython
-from System.Drawing import SizeF, PointF   
-                            # .Net / C# Classes.
-                            # System is in Iron Python, but not System.Drawing.
+import System.Drawing  # .Net / C# Classes.
+                       # System is in Iron Python.  But System.Drawing is not.
 
 from .basic.ghdoc import ghdoc
 from .tools.runner import RunnableTool
@@ -27,24 +26,28 @@ def make_component(name
                   ,subcategory
                   ,launcher_code
                   ,position
+                  ,SDK_not_script = True
+                  ,locked = True
                   ):
     # type(str, str, str, str, list) -> None
     new_comp = GhPython.Component.ZuiPythonComponent()
 
     #new_comp.CopyFrom(this_comp)
-    sizeF = SizeF(*position)
+    sizeF = System.Drawing.SizeF(*position)
 
-    new_comp.Attributes.Pivot = PointF.Add(new_comp.Attributes.Pivot, sizeF)
+    new_comp.Attributes.Pivot = System.Drawing.PointF.Add(new_comp.Attributes.Pivot, sizeF)
     
 
     new_comp.Code = launcher_code
     new_comp.NickName = name
     new_comp.Name = name
     new_comp.Params.Clear()
-    new_comp.IsAdvancedMode = True
+    new_comp.IsAdvancedMode = SDK_not_script
     new_comp.Category = category 
  
     new_comp.SubCategory = subcategory 
+    new_comp.Locked = locked
+
 
     GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
     success = GH_doc.AddObject(docObject = new_comp, update = False)
@@ -86,11 +89,11 @@ class BuildComponents(ToolWithParams, RunnableTool):
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 subcategory = categories.get(name_map.get(name, name), '')
                 success = make_component(name
-                                            ,category = plug_in_name
-                                            ,subcategory = subcategory
-                                            ,launcher_code = code
-                                            ,position = position
-                                            )
+                                        ,category = plug_in_name
+                                        ,subcategory = subcategory
+                                        ,launcher_code = code
+                                        ,position = position
+                                        )
                 if success:
                     names_built += [name]
 

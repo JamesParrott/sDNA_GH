@@ -55,14 +55,23 @@ def get_args_spec(callable):
 def get_val(key, sources):
     #type(str, list) -> type[any]
     for source in sources:
+        #print('Fetching : '+ str(key))
         if isinstance(source, dict) and key in source:
+            #print('Fetching : '+ str(source[key]))
+
             return source[key]
         elif hasattr(source, key):
+            #print('Fetching : '+ str(getattr(source, key)))
+
             return getattr(source, key)
+    #print('No variable or field: ' + key + ' found. ')
+
     return 'No variable or field: ' + key + ' found. '
 
 def custom_retvals(retval_names
-                  ,sources 
+                  ,sources
+                  ,return_locals = True
+                  ,frames_back = 2 
                   ):
     #type(list[str], list) -> tuple(type[any])
     return tuple(get_val(retval_name, sources) for retval_name in retval_names)

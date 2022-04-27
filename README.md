@@ -109,6 +109,8 @@ sDNA Predict wrapper
 ##### Dev tools
 ###### sDNA_general
 Run any other component by feeding the name of it into the "tool" input param. A "Swiss army knife" component.
+###### Unload_sDNA_GH
+Unload the sDNA_GH Python package, by removing all its keys from sys.modules.  sDNA_GH components will then reload the package and installation-wide options file (config.toml) without having to restart Rhino.
 ###### Python
 Output the names of all the sDNA tool classes for the sDNA installation provided in opts, as well as all the sDNA_GH support tool names.  
 ###### Self_test
@@ -190,9 +192,11 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 4. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays comoponent names instead).
 5. Change the Boolean toggle to True, and connect it to the _go_ input param of Build_components.
 6. A slight delay may occur as sDNA_GH/setup.py is imported, and the 23 or so components are created.
-7. Turn the Boolean toggle to False (connected to the go input param of Build_components).  This both ensures no further components are created (unnecessary duplicates), and causes an update that makes each component ask Grasshopper what its name is, connect to setup.py, and update its own Input and Output params.
-8. Click through all the warnings (as we cleared all Params from each component).  
-9. The red error on read shp and write shp can be toggling _Show output "out"_ parameter (or building them from components that already have an 'OK' param and a 'go' input param (set to list acess) )
+7. Turn the Boolean toggle to False (connected to the go input param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The components are disabled, otherwise the next update will makes each one ask Grasshopper what its name is, connect to sDNA_GH.setup.py, and update its own Input and Output params.
+8. Click the pull down menu *Solution* and select *Disable Solver*.  
+9. Right click each new component (on its name not its Params) and select Enable. 
+<!-- Click through all the warnings (as we cleared all Params from each component).  
+9. The red error on read shp and write shp can be toggling _Show output "out"_ parameter (or building them from components that already have an 'OK' param and a 'go' input param (set to list acess) ) -->
 10. Select each component one at a time, and go to the main Grasshopper File pull down menu, and select _Create User Object ..._
 11. Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the setup.py meta option categories.  Description text
 can be used from the tool's description in this readme file itself (above).

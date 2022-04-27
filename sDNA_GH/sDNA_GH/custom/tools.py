@@ -88,22 +88,25 @@ ClassLogger = class_logger_factory(logger = logger, module_name = __name__)
 class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
 
     factories_dict = dict(go = Param_Boolean
-                         ,OK = Param_ScriptVariable
+                        #  ,OK = Param_ScriptVariable
                          ,file = Param_FilePath
-                         ,Geom = Param_ScriptVariable
-                         ,Data = Param_ScriptVariable
-                         ,leg_frame = Param_ScriptVariable
-                         ,gdm = Param_ScriptVariable
-                         ,opts = Param_ScriptVariable
+                        #  ,Geom = Param_ScriptVariable
+                        #  ,Data = Param_ScriptVariable
+                        #  ,leg_cols = Param_ScriptVariable
+                        #  ,leg_tags = Param_ScriptVariable
+                        #  ,leg_frame = Param_ScriptVariable
+                        #  ,gdm = Param_ScriptVariable
+                        #  ,opts = Param_ScriptVariable
                          ,config = Param_FilePath
-                         ,l_metas = Param_ScriptVariable
+                        #  ,l_metas = Param_ScriptVariable
                          ,field = Param_String
-                         ,plot_min = Param_Number
-                         ,plot_max = Param_Number
-                         ,class_bounds = Param_Number
-                         ,abbrevs = Param_ScriptVariable
-                         ,sDNA_fields = Param_ScriptVariable
-                         ,bbox = Param_ScriptVariable
+                        #  ,fields = Param_ScriptVariable
+                        #  ,plot_min = Param_ScriptVariable
+                        #  ,plot_max = Param_ScriptVariable
+                        #  ,class_bounds = Param_ScriptVariable
+                        #  ,abbrevs = Param_ScriptVariable
+                        #  ,sDNA_fields = Param_ScriptVariable
+                        #  ,bbox = Param_ScriptVariable
                          #,Param_GenericObject
                          #,Param_Guid
                          )
@@ -200,7 +203,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __call__(self # the callable instance / func, not the GH component.
                 ,f_name
                 ,opts
-                ,l_metas
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
 
@@ -270,7 +272,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     
-    retvals = 'retcode', 'f_name', 'opts'
+    retvals = 'retcode', 'f_name'
     component_outputs = ('file',) # retvals[-1])
 
 
@@ -326,9 +328,7 @@ def get_objs_and_OrderedDicts(all_objs_getter = get_Rhino_objs
 
 class RhinoObjectsReader(sDNA_GH_Tool):
 
-    @property
-    def component_inputs(self):
-        return () 
+    component_inputs = ('config',) 
     
     def __call__(self, opts, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -426,7 +426,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         self.debug('Creating Class Logger.  ')
 
 
-        shp_type = options.shp_file_shape_type            
+        shp_type = options.shape_type            
 
 
         format_string = options.input_key_str
@@ -520,7 +520,7 @@ class ShapefileReader(sDNA_GH_Tool):
         options = opts['options']
         self.debug('Creating Class Logger.  Reading shapefile... ')
 
-        ( shp_fields
+        (shp_fields
         ,recs
         ,shapes
         ,bbox ) = get_fields_recs_and_shapes( f_name )
@@ -595,11 +595,11 @@ class ShapefileReader(sDNA_GH_Tool):
         
         dot_shp = options.dot_shp
         csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
-        sDNA_fields = {}
+        #sDNA_fields = {}
         if os.path.isfile(csv_f_name):
             f = open(csv_f_name, 'rb')
             f_csv = csv.reader(f)
-            sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
+            #sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
             abbrevs = [line[0] for line in f_csv ]
 
 
@@ -614,7 +614,7 @@ class ShapefileReader(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
 
-    retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox', 'opts'
+    retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox'
     component_outputs = ('Geom', 'Data') + retvals[1:]
                
 
@@ -925,8 +925,8 @@ class DataParser(sDNA_GH_Tool):
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
-    retvals = 'plot_min', 'plot_max', 'gdm', 'opts'
-    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[3:]
+    retvals = 'plot_min', 'plot_max', 'gdm'
+    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[2:]
                
 
 
@@ -1089,8 +1089,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
 
-        if options.leg_extent or bbox or options.bbox:
-            if options.leg_extent:
+        if (bbox or not isinstance(options.leg_extent, (Sentinel, type(None)))
+                 or not isinstance(options.bbox, (Sentinel, type(None)))):
+            if not isinstance(options.leg_extent, Sentinel) and options.leg_extent:
                 [legend_xmin
                 ,legend_ymin
                 ,legend_xmax
@@ -1100,7 +1101,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 if bbox:
                     self.logger.debug('Using bbox from args')
                     [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = bbox
-                elif options.bbox:
+                elif not isinstance(options.bbox, Sentinel):
                     self.logger.debug('Using options.bbox override. ')
                     bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
 
@@ -1160,4 +1161,14 @@ class sDNA_GeneralDummyTool(sDNA_GH_Tool):
         raise NotImplementedError('this function should never run '
                                  +' (there may be a problem with sDNA_General). '
                                  )
+    component_outputs = ()
+
+class Load_Config_File(sDNA_GH_Tool):
+    component_inputs = ('config',)
+
+    def __call__(self, *args, **kwargs):
+        retcode = 0
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
+    retvals = ('retcode',)
     component_outputs = ()
