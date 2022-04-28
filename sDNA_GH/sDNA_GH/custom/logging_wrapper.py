@@ -1,10 +1,27 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
+import logging
+import sys
+import os
+import inspect
+
+
+class LoggingOptions(object):
+    default_path = __file__
+    working_folder = os.path.dirname(default_path)
+    logger_name = 'root'
+    log_file = __name__ + '.log'
+    logs_dir = 'logs'
+    log_file_level = 'DEBUG'
+    log_console_level = 'INFO'
+    #
+    log_custom_level = 'INFO'
+    log_fmt_str = '%(name)-12s: %(levelname)-8s %(message)s'
+    log_date_fmt = '%d-%m-%y %H:%M'
 
 
 
-import sys, os, logging, inspect
 
 
 # set a format which is simpler for console use
@@ -12,55 +29,72 @@ formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 
 
 def add_custom_file_to_logger(logger
-                             ,custom_file_object = None
-                             ,custom_logging_level = 'INFO'
+                             ,custom = None
+                             ,options = LoggingOptions
                              ):
     try:
-        custom_stream=logging.StreamHandler(custom_file_object)
-        custom_stream.setLevel(getattr(logging,custom_logging_level))
-        custom_stream.setFormatter(formatter)
+        custom_stream=logging.StreamHandler(custom)
+        custom_stream.setLevel(getattr(logging, options.log_custom_level))
+        custom_stream.setFormatter(logging.Formatter(options.log_fmt_str))
         logger.addHandler(custom_stream)
     except: 
         pass
 
-def new_Logger(  logger_name = 'main'
-                ,file_name = os.path.join(sys.path[0]
-                                         ,sys.argv[0].rsplit('.')[0] + '.log'
-                                         )
-                ,file_logging_level = 'DEBUG'
-                ,console_logging_level = 'WARNING'
-                ,custom_file_object = None
-                ,custom_logging_level = 'INFO'):
-    # type : (str,str,str,str,stream,str) -> Logger
+
+
+####################################################################################
+#
+# Core functionality from the python.org logging cookbook
+#
+def new_Logger(  options = LoggingOptions
+                ,custom = None):
+    # type : (type[any]/namedtuple, stream, str) -> Logger
     # stream is any'file-like object' supporting write() and flush() methods
-    """ Convenience wrapper for Vinay Sajip's logger recipe with customisable
-        console output 
+    """ Wrapper for Vinay Sajip's logger recipe with customisable
+        console output, configured via options in a class/namedtuple 
         https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook """
 
 
-    file_logging_level = file_logging_level.upper()
-    console_logging_level = console_logging_level.upper()
-    custom_logging_level = custom_logging_level.upper()
+    file_name =  os.path.join(options.working_folder
+                             ,options.logs_dir
+                             ,options.log_file
+                             )
+
+    # ensure logging levels are in all capital letters.
+    file_logging_level = options.log_file_level.upper()
+    console_logging_level = options.log_console_level.upper()
 
     logging.basicConfig( level = getattr(logging, file_logging_level)
-                        ,format = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-                        ,datefmt = '%d-%m-%y %H:%M'
-                        ,filename = file_name
-                        ,filemode = 'w')
-    # define a Handler which writes INFO messages or higher to the sys.stderr
+                       ,format = options.log_fmt_str
+                       ,datefmt = options.log_date_fmt
+                       ,filename = file_name
+                       ,filemode = 'w'
+                       )
+
+    # define a Handler which writes to the sys.stderr
     console = logging.StreamHandler(sys.stdout)
-    console.setLevel(getattr(logging,console_logging_level))
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logger=logging.getLogger(logger_name)
-    logger.addHandler(console)
-    if custom_file_object:            
-        add_custom_file_to_logger(logger, custom_file_object, custom_logging_level)
-    return logger 
-    #
+    console.setLevel(getattr(logging, console_logging_level))
+    
+    # specify handler format
+    console.setFormatter(logging.Formatter(options.log_fmt_str))
+    
+    # add the handler to the new_logger
+    new_logger = logging.getLogger(options.logger_name)
+    new_logger.addHandler(console)
+
+    if custom:            
+        add_custom_file_to_logger(new_logger, custom, options)
+    return new_logger 
+#
 ####################################################################################
 
+
+
+####################################################################################
+#
+# A factory for a class with logger attributes, that add in the class of the instance's
+# name (the subclass name) into the logging messages.  Uses multiple inheritance.
+#
 def make_self_logger(self, logger = None, module_name = '', name = None):
     if name is None:
         name = self.__class__.__name__
@@ -104,9 +138,20 @@ def class_logger_factory(logger = None, module_name = None):
         pass
     add_methods_decorator(ClassLogger, logger = logger, module_name = module_name)
     return ClassLogger
+#
+#
+####################################################################################
 
 
 
+####################################################################################
+#
+# A single callable wrapper with a cache.  Saves logging messages from before the
+# logger system is setup until they can be flushed into the logger, and provides
+# a central point to redirect all log messaging calls through, (e.g. if the logger
+# itself needs debugging, providing the perfect place to temporarily use print)
+#
+#
 class Output(object): 
     """   Wrapper class for logger, logging, print, with a cache.  Example setup:
     import logging
@@ -161,13 +206,18 @@ class Output(object):
         self.tmp_logs[:] = [] # Mutate list initialised with
         for tmp_log_message, tmp_log_level in tmp_logs:
             self.__call__(tmp_log_message, tmp_log_level)
-
-
-
+#
+#
+#
 ##############################################################################
 #
+# Supplements an instance of the above Class by adding in the names found
+# for a variable
+# to a debug message (as well as its value) just by calling:.
 #
-# Python 3 only
+#  debug(variable)
+#
+# Python 3 only, to get in inspect.currentframe() to work as intended
 #
 #
 class Debugger(object):

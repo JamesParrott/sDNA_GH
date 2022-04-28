@@ -9,7 +9,8 @@ from collections import namedtuple, OrderedDict
 import Rhino
 import scriptcontext as sc
 
-from .custom.options_manager import (load_toml_file
+from .custom.options_manager import (any_clashes
+                                    ,load_toml_file
                                     ,load_ini_file                             
                                     ,override_namedtuple  
                                     ,namedtuple_from_class
@@ -49,6 +50,8 @@ from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
 
 
 output = Output()
+
+
 
 
 class HardcodedMetas(object): 
@@ -140,13 +143,49 @@ class HardcodedMetas(object):
 
 #######################################################################################################################
 
+def get_working_file(inst = None):
+    #type(dict, type[any]) -> str
+    #refers to `magic' global ghdoc so needs to 
+    # be in module scope (imported above)
+    
+    path_getters = [lambda : Rhino.RhinoDoc.ActiveDoc.Path
+                   ,lambda : ghdoc.Path
+                   ,lambda : inst.ghdoc.Path  #e.g. via old Component decorator
+                   ,lambda : sc.doc.Path
+                   ,lambda : __file__
+                   ]
+    working_file = None
+    for path_getter in path_getters:
+        try:
+            working_file = path_getter()
+        except:
+            pass
+        if isinstance(working_file, str) and os.path.isfile(working_file):
+            break
+    return working_file 
 
+file_to_work_from = get_working_file()
 
-class HardcodedOptions(object):            
+class HardcodedOptions(logging_wrapper.LoggingOptions):            
     ###########################################################################
     #System
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8'
+    package_name = os.path.basename(os.path.dirname(__file__))
+    sub_module_name = os.path.basename(__file__).rpartition('.')[0]
+    #
+    ###########################################################################
+    #
+    # Application specific overrides for .custom.logging_wrapper
+    #
+    default_path = file_to_work_from if file_to_work_from else __file__
+    working_folder = os.path.dirname(default_path)
+    logger_name = package_name
+    log_file = logger_name + '.log'
+    logs_dir = 'logs'
+    log_file_level = 'DEBUG'
+    log_console_level = 'INFO'
+
     sDNAUISpec = error_raising_sentinel_factory('No sDNA module: sDNAUISpec '
                                                +'loaded yet. '
                                                ,'Module is loaded from the '
@@ -176,12 +215,7 @@ class HardcodedOptions(object):
     # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html    
     ###########################################################################    #Logging    
     #os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH','sDNA_GH.log')
-    logs_dir = 'logs'
-    log_file = 'sDNA_GH.log'
 
-    log_file_level = 'DEBUG'
-    log_console_level = 'INFO'
-    log_custom_level = 'INFO'
 
     ###########################################################################
     #     #GDM
@@ -304,29 +338,7 @@ output(module_opts['options'].message,'DEBUG')
 
 
 
-def get_path(opts = module_opts, inst = None):
-    #type(dict, type[any]) -> str
-    #refers to `magic' global ghdoc so needs to 
-    # be in module scope (imported above)
-    
-    path = Rhino.RhinoDoc.ActiveDoc.Path
-                    
-    if not isinstance(path, str) or not os.path.isfile(path):
-        try:
-            path = ghdoc.Path
-        except:
-            try:
-                path = inst.ghdoc.Path 
-            except:
-                try:
-                    path = sc.doc.Path
-                except:
-                    path = None
-        finally:
-            if not path:
-                path = opts['options'].default_path
-    
-    return path
+
 
 
 
@@ -594,32 +606,21 @@ while not os.path.isfile(module_opts['options'].python_exe):
 if not os.path.isfile(module_opts['options'].python_exe):
     raise ValueError('python_exe is not a file. ')
 
-package_name = os.path.basename(os.path.dirname(__file__))
-module_name = os.path.basename(__file__).rpartition('.')[0]
+module_name = '.'.join(module_opts['options'].package_name 
+             ,module_opts['options'].sub_module_name)
 
-if (package_name + '.' + module_name in sys.modules
-    and not hasattr(sys.modules[package_name + '.' + module_name], 'logger') ):  
-    
-    logs_directory = os.path.join(os.path.dirname( get_path(module_opts) )
-                                 ,module_opts['options'].logs_dir
-                                 )
-
-    if not os.path.isdir(logs_directory):
-        os.mkdir(logs_directory)
+if ( module_name in sys.modules
+    and not hasattr(sys.modules[module_name], 'logger') ):  
 
     # wrapper_logging.logging.shutdown() # Ineffective in GH :(
 
-
-    logger = logging_wrapper.new_Logger(
-                                 package_name
-                                ,os.path.join(logs_directory
-                                             ,module_opts['options'].log_file
-                                             )
-                                ,module_opts['options'].log_file_level
-                                ,module_opts['options'].log_console_level
-                                ,None # custom_file_object 
-                                ,module_opts['options'].log_custom_level
-                                       )
+    # Create root logger.  All component launchers import this module, 
+    # (or access it via Grasshopper's cache in sys.modules) but
+    # all their loggers are childs of this module's logger:
+    logger = logging_wrapper.new_Logger(module_opts['options']
+                                       ,custom = None
+                                       ) 
+                                       
 
 
     output.set_logger(logger) # Flushes cached log messages to above handlers
@@ -1064,7 +1065,7 @@ class sDNA_GH_Component(SmartComponent):
         if (self.opts['metas'].update_path 
             or not os.path.isfile(self.opts['options'].Rhino_doc_path) ):
 
-            path = get_path(self.opts, self)
+            path = get_working_file(self.opts, self)
 
             self.opts['options'] = self.opts['options']._replace(Rhino_doc_path = path)
 

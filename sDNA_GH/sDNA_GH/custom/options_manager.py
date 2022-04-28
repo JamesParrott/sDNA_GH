@@ -24,6 +24,12 @@ else:   # e.g.  Python 2
 from ..third_party.toml import decoder
 
 
+def attrs(X):
+    return [attr for attr in dir(X) if not attr.startswith('_')]
+
+def any_clashes(X,Y):
+    return any(attr in attrs(X) for attr in attrs(Y))
+
 
 
 
