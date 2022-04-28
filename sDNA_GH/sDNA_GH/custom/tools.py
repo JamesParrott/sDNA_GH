@@ -3,6 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+from email.mime import base
 import os
 import logging
 import subprocess
@@ -58,7 +59,9 @@ from .skel.tools.helpers.checkers import (get_OrderedDict
 from .skel.tools.runner import RunnableTool                                         
 from .skel.add_params import ToolWithParams, ParamInfo
 from .options_manager import (namedtuple_from_dict
+                             ,error_raising_sentinel_factory
                              ,Sentinel
+                             ,get_opts_dict
                              )
 from .pyshp_wrapper import (get_filename
                            ,get_points_from_obj
@@ -132,7 +135,26 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # self.tool_name.  When the instance is called, the version of sDNA
     # is looked up in opts['metas'], from its args.
     # 
-    def update_tool_opts_and_syntax(self, opts):
+    opts = get_opts_dict(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand'))
+                        ,options = dict(
+                            sDNAUISpec = Sentinel('Module not imported yet')
+                           ,run_sDNA = Sentinel('Module not imported yet')
+                           ,prepped_shp_suffix = "_prepped"
+                           ,output_shp_suffix = "_output" 
+                           ,dot_shp = '.shp'
+                           # file extensions are actually optional in PyShp, 
+                           # but just to be safe and future proof
+                           ,python_exe = r'C:\Python27\python.exe' 
+# Default installation path of Python 2.7.3 release (32 bit ?) 
+# http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
+# https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
+                           )
+                        )
+
+
+    def update_tool_opts_and_syntax(self, opts = None):
+        if opts is None:
+            opts = self.opts
         metas = opts['metas']
         nick_name = self.nick_name
 
@@ -184,10 +206,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                               ,strict = True
                                               ) 
         self.tool_opts = tool_opts
+        self.opts = opts
 
 
-    def __init__(self, tool_name, nick_name, opts):
+    def __init__(self, tool_name, nick_name, opts = None):
 
+        if opts is None:
+            opts = self.opts  # the class property
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name
@@ -205,6 +230,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,opts
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
+        if opts is None:
+            opts = self.opts  # the class property
 
         sDNA = opts['metas'].sDNA
         sDNAUISpec = opts['options'].sDNAUISpec
@@ -237,7 +264,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if output_file == '':
             output_suffix = options.output_shp_suffix
             if self.tool_name == 'sDNAPrepare':
-                output_suffix = options.prepped_shp_suffix   
+                output_suffix = options.prepped_shp_suffix
             output_file = input_file.rpartition('.')[0] + output_suffix + dot_shp
 
         output_file = get_filename(output_file, options)
@@ -328,10 +355,19 @@ def get_objs_and_OrderedDicts(all_objs_getter = get_Rhino_objs
 
 class RhinoObjectsReader(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(shape_type = 'POLYLINEZ'
+                                       ,merge_subdicts = True
+                                       ,include_groups = False
+                                       )
+                        )
+
     component_inputs = ('config',) 
     
-    def __call__(self, opts, gdm = None):
+    def __call__(self, opts = None, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
+        if opts is None:
+            opts = self.opts
         self.debug('Creating Class Logger.  ')
 
         options = opts['options']
@@ -366,7 +402,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         if tmp_gdm:
             gdm = override_gdm(gdm
                               ,tmp_gdm
-                              ,options.merge_data
+                              ,options.merge_subdicts
                               )
         self.logger.debug('after override ....Last objects read: \n'
                          +'\n'.join( str(x) 
@@ -385,7 +421,9 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
 
 class UsertextReader(sDNA_GH_Tool):
-    
+    opts = get_opts_dict(metas = {}
+                        ,options = {}
+                        )
     component_inputs = ('Geom',) 
 
     def __call__(self, gdm):
@@ -418,10 +456,23 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(shape_type = 'POLYLINEZ'
+                                       ,input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
+                                       ,dot_shp = '.shp'
+                                       ,path = __file__
+                                       ,output_shp = os.path.join( os.path.dirname(__file__)
+                                                                 ,'tmp.shp'
+                                                                 )
+                                       )
+                        )
+
     component_inputs = ('file', 'Geom', 'Data', 'config') 
 
-    def __call__(self, f_name, gdm, opts):
+    def __call__(self, f_name, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
+        if opts is None:
+            opts = self.opts
         options = opts['options']
         self.debug('Creating Class Logger.  ')
 
@@ -475,7 +526,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                 
                 f_name = options.output_shp
             else:
-                f_name = options.Rhino_doc_path.rpartition('.')[0]
+                f_name = options.path.rpartition('.')[0]
                 f_name += options.dot_shp
                             # file extensions are actually optional in PyShp, 
                             # but just to be safe and future proof we remove
@@ -512,11 +563,20 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(new_geom = True
+                                       ,dot_shp = '.shp'
+                                       ,uuid_field = 'Rhino3D_'
+                                       ,del_shp = False)
+                        )
+                        
     component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
                                         # objects need to be created
 
-    def __call__(self, f_name, gdm, opts):
+    def __call__(self, f_name, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
+        if opts is None:
+            opts = self.opts
         options = opts['options']
         self.debug('Creating Class Logger.  Reading shapefile... ')
 
@@ -553,7 +613,7 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug('options.uuid_field in fields == ' 
                          +str(options.uuid_field in fields)
                          )
-        self.logger.debug(fields)
+        self.logger.debug(fields) 
 
 
 
@@ -565,7 +625,7 @@ class ShapefileReader(sDNA_GH_Tool):
             self.logger.debug('Geom data map matches shapefile.  ')
 
             shapes_to_output = list(gdm.keys()) # Dict view in Python 3
-        elif options.new_geom:   
+        elif options.new_geom:
                     #shapes_to_output = ([shp.points] for shp in shapes )
             
             objs_maker = objs_maker_factory() 
@@ -605,7 +665,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('bbox == ' + str(bbox))
 
-        if options.del_shp and os.path.isfile(f_name): 
+        if options.del_shp and os.path.isfile(f_name):
             os.remove(f_name)  # TODO: Fix, currently Win32 error
 
         retcode = 0
@@ -623,12 +683,24 @@ class ShapefileReader(sDNA_GH_Tool):
 
 class UsertextWriter(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(uuid_field = 'Rhino3D_'
+                                       ,output_key_str = 'sDNA output={name} run time={datetime}'
+                                       ,overwrite_UserText = True
+                                       ,max_new_keys = 10
+                                       ,dupe_key_suffix = ''
+                                       ,suppress_overwrite_warning = False
+                                       )
+                        )
+                        
 
     component_inputs = ('Geom', 'Data')
 
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
+        if opts is None:
+            opts = self.opts        
         options = opts['options']
 
         date_time_of_run = asctime()
@@ -714,6 +786,10 @@ class UsertextWriter(sDNA_GH_Tool):
 
 class UsertextBaker(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict()
+                        )
+                        
     def __init__(self, *args, **kwargs):
         self.debug('Initialising Class.  Creating Class Logger. ')
         self.write_Usertext = UsertextWriter(*args, **kwargs)
@@ -755,6 +831,30 @@ class UsertextBaker(sDNA_GH_Tool):
 
 
 class DataParser(sDNA_GH_Tool):
+
+
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(field = 'BtEn'
+                                       ,plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
+                                       ,plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
+                                       ,re_normaliser = 'linear'
+                                       ,sort_data = False
+                                       ,number_of_classes = 8
+                                       ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
+                                       # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+                                       ,class_spacing = 'equal number of members'
+                                       ,base = 10 # for Log and exp
+                                       ,colour_as_class = False
+                                       ,locale = '' # '' => User's own settings.  Also in DataParser
+                                       # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+                                       ,num_format = '{:.5n}'
+                                       ,first_leg_tag_str = 'below {upper}'
+                                       ,gen_leg_tag_str = '{lower} - {upper}'
+                                       ,last_leg_tag_str = 'above {lower}'
+                                       )
+                        )
+                        
+
     def __init__(self):
         self.debug('Initialising Class.  Creating Class Logger. ')
         self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
@@ -767,6 +867,8 @@ class DataParser(sDNA_GH_Tool):
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
+        if opts is None:
+            opts = self.opts
         self.debug('Starting ParseData tool.  ')
         options = opts['options']
 
@@ -873,7 +975,7 @@ class DataParser(sDNA_GH_Tool):
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
-        x_min_s = options.num_format.format(x_min)
+        x_min_s = options.num_format.format(x_min) 
         upper_s = options.num_format.format(min( class_bounds ))
         mid_pt_s = options.num_format.format( mid_points[0] )
 
@@ -932,6 +1034,25 @@ class DataParser(sDNA_GH_Tool):
 
 class ObjectsRecolourer(sDNA_GH_Tool):
 
+    opts = get_opts_dict(metas = {}
+                        ,options = dict(field = 'BtEn'
+                                       ,Col_Grad = False
+                                       ,Col_Grad_num = 5
+                                       ,rgb_max = (155, 0, 0) #990000
+                                       ,rgb_min = (0, 0, 125) #3333cc
+                                       ,rgb_mid = (0, 155, 0) # guessed
+                                       ,line_width = 4 # milimetres? 
+                                       ,first_leg_tag_str = 'below {upper}'
+                                       ,gen_leg_tag_str = '{lower} - {upper}'
+                                       ,last_leg_tag_str = 'above {lower}'
+                                       ,leg_extent = Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')
+                                       # [xmin, ymin, xmax, ymax]
+                                       ,bbox = Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ') 
+                                       # [xmin, ymin, xmax, ymax]
+
+                                       )
+                        )
+                        
     def __init__(self, *args, **kwargs):
         self.debug('Initialising Class.  Creating Class Logger. ')
         self.parse_data = DataParser(*args, **kwargs)
@@ -951,7 +1072,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
     def __call__(self, gdm, opts, plot_min, plot_max, bbox):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
-
+        if opts is None:
+            opts = self.opts
         options = opts['options']
         
         field = options.field

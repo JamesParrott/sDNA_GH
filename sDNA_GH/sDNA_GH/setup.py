@@ -14,10 +14,11 @@ from .custom.options_manager import (any_clashes
                                     ,load_ini_file                             
                                     ,override_namedtuple  
                                     ,namedtuple_from_class
-                                    ,error_raising_sentinel_factory    
                                     ,Sentinel  
+                                    ,error_raising_sentinel_factory
                                     )
 from .custom import logging_wrapper
+from .custom import pyshp_wrapper
 from .launcher import Output, load_modules
 from .custom.helpers.funcs import (first_item_if_seq
                                   ,valid_re_normalisers
@@ -54,7 +55,7 @@ output = Output()
 
 
 
-class HardcodedMetas(object): 
+class HardcodedMetas(sDNA_GH_Tool.opts['metas']): 
     config = os.path.join(os.path.dirname(  os.path.dirname(__file__)  )
                          ,r'config.toml'  
                          )
@@ -143,7 +144,7 @@ class HardcodedMetas(object):
 
 #######################################################################################################################
 
-def get_working_file(inst = None):
+def get_the_working_file(inst = None):
     #type(dict, type[any]) -> str
     #refers to `magic' global ghdoc so needs to 
     # be in module scope (imported above)
@@ -164,11 +165,23 @@ def get_working_file(inst = None):
             break
     return working_file 
 
-file_to_work_from = get_working_file()
+file_to_work_from = get_the_working_file()
 
-class HardcodedOptions(logging_wrapper.LoggingOptions):            
+class HardcodedOptions(logging_wrapper.LoggingOptions
+                      ,pyshp_wrapper.ShpOptions
+                      ,sDNA_GH_Tool.opts['options']
+                      ,RhinoObjectsReader.opts['options']
+                      ,ShapefileWriter.opts['options']
+                      ,ShapefileReader.opts['options']
+                      ,UsertextWriter.opts['options']
+                      ,UsertextBaker.opts['options']
+                      ,DataParser.opts['options']
+                      ,ObjectsRecolourer.opts['options']
+                      ,sDNA_ToolWrapper.opts['options']
+                      ):            
     ###########################################################################
     #System
+    #
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8'
     package_name = os.path.basename(os.path.dirname(__file__))
@@ -176,16 +189,31 @@ class HardcodedOptions(logging_wrapper.LoggingOptions):
     #
     ###########################################################################
     #
-    # Application specific overrides for .custom.logging_wrapper
+    # Automatic tool insertion rules ('smart' tools)
     #
-    default_path = file_to_work_from if file_to_work_from else __file__
-    working_folder = os.path.dirname(default_path)
+    auto_get_Geom = True
+    auto_read_Usertext = True
+    auto_write_Shp = True
+    auto_read_Shp = True
+    #auto_parse_data = False  # not used.  ObjectsRecolourer parses if req anyway
+    auto_plot_data = True
+    ###########################################################################
+    #
+    # Overrides for .custom.logging_wrapper
+    #
+    path = file_to_work_from if file_to_work_from else __file__ 
+    # Also used by ShapefileWriter, ShapefileReader
+    working_folder = os.path.dirname(path)
     logger_name = package_name
     log_file = logger_name + '.log'
     logs_dir = 'logs'
     log_file_level = 'DEBUG'
     log_console_level = 'INFO'
-
+    #
+    ##########################################################################
+    #
+    # Overrides for sDNA_ToolWrapper
+    #
     sDNAUISpec = error_raising_sentinel_factory('No sDNA module: sDNAUISpec '
                                                +'loaded yet. '
                                                ,'Module is loaded from the '
@@ -204,70 +232,95 @@ class HardcodedOptions(logging_wrapper.LoggingOptions):
                                              +'found in a path in '
                                              +'metas.sDNA_search_paths. '
                                              )
-    Rhino_doc_path = ''  # tbc by auto update
-    sDNA_prepare = r'C:\Program Files (x86)\sDNA\bin\sdnaprepare.py'
-    sDNA_integral = r'C:\Program Files (x86)\sDNA\bin\sdnaintegral.py'
     python_exe = r'C:\Python27\python.exe' 
-    # Default installation path of Python 2.7.3 release (32 bit ?) 
-    # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
-
-    # copied from sDNA manual 
-    # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html    
-    ###########################################################################    #Logging    
-    #os.getenv('APPDATA'),'Grasshopper','Libraries','sDNA_GH','sDNA_GH.log')
-
-
-    ###########################################################################
-    #     #GDM
-    merge_data = True
-    ###########################################################################
-    #     #Shapefiles
-    shape_type = 'POLYLINEZ'
-    include_groups = False
-    cache_iterable= False
-    dot_shp = '.shp' # file extensions are actually optional in PyShp, but just to be safe and future proof
-    #supply_sDNA_file_names = True
-    output_shp = r'C:\Users\James\Documents\Rhino\Grasshopper\tmp.shp' # None means Rhino .3dm filename is used.
-    overwrite_shp = True
-    overwrite_UserText = True
-    dupe_key_suffix = r'_{}'
+    dot_shp = '.shp' # also in ShapefileWriter, ShapefileReader
     prepped_shp_suffix = "_prepped"
-    output_shp_suffix = "_output"
-    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
-    max_new_files = 20
-    suppress_warning = True     
-    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
-    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
-    min_sizes = True
-    del_shp = False
-    field_size = 30
-    num_dp = 10 # decimal places
-    extra_chars = 2
-    yyyy_mm_dd = False
+    output_shp_suffix = "_output"   
+    ###########################################################################    
+    #
+    # Overrides for RhinoObjectsReader
+    #
+    merge_subdicts = True
+    include_groups = False
+    #
+    #
+    ###########################################################################
+    #     Shapefiles
+    #     Application specific overrides for .custom.pyshp_wrapper
+    #
+    shape_type = 'POLYLINEZ' # Also in RhinoObjectsReader, ShapefileWriter
+    locale = ''  # '' => User's own settings.  Also in DataParser
+                 # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+    #
+    # coerce_and_get_code
     decimal = True
-    keep_floats = True
     precision = 12
     max_dp = 4 # decimal places
+    yyyy_mm_dd = False
+    keep_floats = True
+    use_memo = False # Use the 'M' field code in Shapefiles for uncoerced data
+    #
+    # get_filename
+    overwrite_shp = True
+    max_new_files = 20
+    suppress_warning = True     
+    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    #
+    # ensure_correct & write_iterable_to_shp
+    extra_chars = 2
+    #
+    # write_iterable_to_shp
+    field_size = 30
+    cache_iterable= False
+    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'  
+    # also in ShapefileReader, UsertextWriter  
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
+    num_dp = 10 # decimal places
+    min_sizes = True
+    #
+    ###########################################################################
+    #
+    # Overrides for ShapefileWriter
+    #
+    input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
+    output_shp = os.path.join( os.path.dirname(__file__)
+                                ,'tmp.shp'
+                                )
+    ###########################################################################
+    #
+    # Overrides for ShapefileReader
+    #
+    new_geom = True
+    del_shp = False                   
+    ###########################################################################   
+    #         
+    # Overrides for UsertextWriter
+    #   
+    output_key_str = 'sDNA output={name} run time={datetime}'  
+    overwrite_UserText = True
+    max_new_keys = 6
+    suppress_overwrite_warning = False
+    dupe_key_suffix = r'_{}'
+
+
+    ###########################################################################
+    #supply_sDNA_file_names = True
+    #
+    output_shp = os.path.join( os.path.dirname(path, 'tmp.shp')) # None means Rhino .3dm filename is used.
+
+
     ###########################################################################
     #Writing and Reading Usertext to/from Rhino
-    new_geom = False
-    max_new_keys = 20
     #
     #
     input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'  
     #30,000 characters tested!
     output_key_str = 'sDNA output={name} run time={datetime}'  
     #30,000 characters tested!
-    ###########################################################################
-    #sDNA
-    default_path = __file__
-    auto_get_Geom = True
-    auto_read_Usertext = True
-    auto_write_Shp = True
-    auto_read_Shp = True
-    #auto_parse_data = False  # not used.  Recolour_data parses if req anyway
-    auto_plot_data = True
-    #Plotting results
+    ###########################################################################   
+    #         
+    # Overrides for DataParser
+    #   
     field = 'BtEn'
     plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
     plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
@@ -281,8 +334,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions):
                         )
     class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-    leg_extent = Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
-    bbox = Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
+
     number_of_classes = 7
     class_spacing = 'equal number of members' 
     valid_class_spacings = valid_re_normalisers + ['equal number of members']
@@ -299,6 +351,14 @@ class HardcodedOptions(logging_wrapper.LoggingOptions):
     locale = '' # ''=> auto. 
                 # Used for locale.setlocale(locale.LC_ALL,  options.locale)
     colour_as_class = False
+    #
+    #
+    ###########################################################################   
+    #         
+    # Overrides for ObjectsRecolourer
+    #   
+    leg_extent = Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
+    bbox = Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
     Col_Grad = False
     Col_Grad_num = 5
     rgb_max = (155, 0, 0) #990000
@@ -306,7 +366,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions):
     rgb_mid = (0, 155, 0) # guessed
     line_width = 4 # milimetres? 
     ###########################################################################
-    #Test
+    #
+    # Options override system test field
+    #
     message = 'Hardcoded default options from tools.py'
 
 
@@ -617,8 +679,8 @@ if ( module_name in sys.modules
     # Create root logger.  All component launchers import this module, 
     # (or access it via Grasshopper's cache in sys.modules) but
     # all their loggers are childs of this module's logger:
-    logger = logging_wrapper.new_Logger(module_opts['options']
-                                       ,custom = None
+    logger = logging_wrapper.new_Logger(custom = None
+                                       ,options = module_opts['options']
                                        ) 
                                        
 
@@ -835,6 +897,9 @@ class sDNA_GH_Component(SmartComponent):
 
 
         logger.debug("Updating Params: " + str(tools))
+
+        self.params_just_updated = True
+
         return add_tool_params(Params
                               ,tools
                               ,do_not_add
@@ -1063,11 +1128,11 @@ class sDNA_GH_Component(SmartComponent):
         #logger.debug('options after override in script == ' + str(self.opts['options']))
         
         if (self.opts['metas'].update_path 
-            or not os.path.isfile(self.opts['options'].Rhino_doc_path) ):
+            or not os.path.isfile(self.opts['options'].path) ):
 
-            path = get_working_file(self.opts, self)
+            path = get_the_working_file(self.opts, self)
 
-            self.opts['options'] = self.opts['options']._replace(Rhino_doc_path = path)
+            self.opts['options'] = self.opts['options']._replace(path = path)
 
         if self.opts['metas'].cmpnts_change: 
             
@@ -1089,7 +1154,7 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug(go)
 
-        if go == True: 
+        if go == True and not self.params_just_updated: 
             if not isinstance(self.tools, list):
                 msg = 'self.tools is not a list'
                 logger.error(msg)
@@ -1118,7 +1183,7 @@ class sDNA_GH_Component(SmartComponent):
 
             gdm = override_gdm(gdm
                                        ,geom_data_map
-                                       ,self.opts['options'].merge_data
+                                       ,self.opts['options'].merge_subdicts
                                        )
 
             logger.debug('After merge type(gdm) == ' 
@@ -1192,6 +1257,15 @@ class sDNA_GH_Component(SmartComponent):
         print('len(reg_args) == '+str(len(ret_args)))
         print('len(retval_names) == '+str(len(retval_names)))
         print(gdm)
+        if self.params_just_updated:
+            self.params_just_updated = False
+            ret_args = (None,) * len(self.Params.Output)
+            # Grasshopper components can have a glitchy one off error if
+            # not-None outputs are given to params that 
+            # have just been added, in the same RunScript call.  In our 
+            # design the user probably doesn't want the new tool and 
+            # updated component params to run before they've had chance to
+            # look at them, even if 'go' still is connected to True.
         return ret_args
     script.input_params = lambda : sDNA_GH_Tool.params_list(['go', 'opts'])
     script.output_params = lambda : sDNA_GH_Tool.params_list(['OK', 'opts'])

@@ -46,8 +46,9 @@ def add_custom_file_to_logger(logger
 #
 # Core functionality from the python.org logging cookbook
 #
-def new_Logger(  options = LoggingOptions
-                ,custom = None):
+def new_Logger(custom = None
+              ,options = LoggingOptions
+              ):
     # type : (type[any]/namedtuple, stream, str) -> Logger
     # stream is any'file-like object' supporting write() and flush() methods
     """ Wrapper for Vinay Sajip's logger recipe with customisable

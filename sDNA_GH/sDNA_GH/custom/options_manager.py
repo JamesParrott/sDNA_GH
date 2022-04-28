@@ -31,7 +31,19 @@ def any_clashes(X,Y):
     return any(attr in attrs(X) for attr in attrs(Y))
 
 
+def get_BaseOptsClass(**kwargs):
+    #type(dict) -> type[any]
+    class BaseOptsClass(object):
+        pass
+    for k, v in kwargs.items():
+        setattr(BaseOptsClass, k, v)
+    return BaseOptsClass
 
+def get_opts_dict(**kwargs):
+    #type( dict(str: dict) ) -> dict
+    return OrderedDict( (key, get_BaseOptsClass(val)) 
+                        for key, val in kwargs.items() 
+                      )
 
 def namedtuple_from_class(Class, name = None):
     # type: ( type[any], str) -> namedtuple

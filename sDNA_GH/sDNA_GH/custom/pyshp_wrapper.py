@@ -8,10 +8,13 @@ __version__ = '0.02'
 
 import sys
 import os
+import re
 import logging
+import locale
 from collections import OrderedDict
 from datetime import date
 import re
+from unicodedata import decimal
 if sys.version < '3.3':
     from collections import Iterable
 else:
@@ -20,6 +23,8 @@ else:
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
+
+from ..third_party.PyShp import shapefile as shp  
 
 from .skel.tools.helpers.funcs import is_uuid
 from .skel.tools.helpers.checkers import get_sc_doc_of_obj
@@ -31,8 +36,35 @@ logger.addHandler(logging.NullHandler())
 
 file_name_no_ext = os.path.split(__file__)[-1].split('.')[0]   
 
-from ..third_party.PyShp import shapefile as shp  
-
+class ShpOptions(object):
+    shape_type = 'POLYLINEZ'
+    locale = ''  # '' => User's own settings.  
+                 # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+    #
+    # coerce_and_get_code
+    decimal = True
+    precision = 12
+    max_dp = 4 # decimal places
+    yyyy_mm_dd = False
+    keep_floats = True
+    use_memo = False # Use the 'M' field code in Shapefiles for uncoerced data
+    #
+    # get_filename
+    overwrite_shp = True
+    max_new_files = 20
+    suppress_warning = True     
+    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    #
+    # ensure_correct & write_iterable_to_shp
+    extra_chars = 2
+    #
+    # write_iterable_to_shp
+    field_size = 30
+    cache_iterable= False
+    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
+    num_dp = 10 # decimal places
+    min_sizes = True
 
 
 ###################################################################
@@ -166,20 +198,20 @@ def get_field_code(x):
     return shp_field_codes[  type_dict[ type(x) ]  ]   
 
 pyshp_writer_method = dict(NULL = 'null'
-                        ,POINT = 'point'
-                        ,MULTIPATCH = 'multipatch'
-                        ,POLYLINE = 'line'
-                        ,POLYGON = 'poly'
-                        ,MULTIPOINT = 'multipoint'
-                        ,POINTZ = 'pointz'
-                        ,POLYLINEZ = 'linez'
-                        ,POLYGONZ = 'polyz'
-                        ,MULTIPOINTZ = 'multipointz'
-                        ,POINTM = 'pointm'
-                        ,POLYLINEM = 'linem'
-                        ,POLYGONM = 'polym'
-                        ,MULTIPOINTM = 'multipointm'
-                        )    # should be the same as val names in shp.shapefile.SHAPETYPE_LOOKUP.values()
+                          ,POINT = 'point'
+                          ,MULTIPATCH = 'multipatch'
+                          ,POLYLINE = 'line'
+                          ,POLYGON = 'poly'
+                          ,MULTIPOINT = 'multipoint'
+                          ,POINTZ = 'pointz'
+                          ,POLYLINEZ = 'linez'
+                          ,POLYGONZ = 'polyz'
+                          ,MULTIPOINTZ = 'multipointz'
+                          ,POINTM = 'pointm'
+                          ,POLYLINEM = 'linem'
+                          ,POLYGONM = 'polym'
+                          ,MULTIPOINTM = 'multipointm'
+                          )    # should be the same as val names in shp.shapefile.SHAPETYPE_LOOKUP.values()
 
 
 if hasattr(shp, 'SHAPETYPE_LOOKUP'): 
@@ -200,7 +232,7 @@ if hasattr(shp, 'SHAPETYPE_LOOKUP'):
 
 
 
-def coerce_and_get_code(x, options):
+def coerce_and_get_code(x, options = ShpOptions):
     #typecoercer function
 
     if options.decimal:
@@ -251,29 +283,36 @@ def coerce_and_get_code(x, options):
                 else:
                     return x, shp_field_codes['str']  # i.e. 'C'  
             else:
-                logger.error("Failed to coerce UserText to PyShp record data type.  ")
+                msg = 'Failed to coerce UserText to PyShp record data type.  '
                 if options.use_memo:
-                    logger.info("Using Memo.  ")
+                    logger.warning(msg + 'Using Memo.  ')
                     return str(x), 'M'
+                else:
+                    logger.error(msg)
+                    raise TypeError(msg)
 
-def dec_places_req(x):
-    return len(str(x).lstrip('0123456789').rstrip('0')) - 1
+def dec_places_req(x, options = ShpOptions):
+    #type(Number, type[any]) -> int
+    locale.setlocale(locale.LC_ALL,  options.locale)
+    radix_char = locale.localeconv()['decimal_point']
+    fractional_part = str(x).rpartition(radix_char)[2]
+    return len(fractional_part)
 
-def get_filename(f, opts):
+def get_filename(f, options = ShpOptions):
     #type: (str,dict) -> str
 
-    if not opts.overwrite_shp:
+    if not options.overwrite_shp:
         i = 1
         file_dir, full_file_name = os.path.split(f)   
         [file_name, _, file_extension] = full_file_name.rpartition('.') 
-        while os.path.isfile(f) and i <= opts['options'].max_new_files:
+        while os.path.isfile(f) and i <= options.max_new_files:
             f = os.path.join(file_dir
                             ,  file_name 
-                               +opts.dupe_file_suffix.format(i) 
+                               +options.dupe_file_suffix.format(i) 
                                +'.' + file_extension
                             ) 
             i += 1
-    elif not opts.suppress_warning:
+    elif not options.suppress_warning:
         logger.warning('Overwriting file ' + f + ' !')
     return f
 
@@ -282,7 +321,7 @@ def ensure_correct(fields
                   ,value
                   ,val_type
                   ,attribute_tables
-                  ,options
+                  ,options = ShpOptions
                   ): 
     # type(dict, str, type[any], str, dict namedtuple) -> None
     if nice_key in fields:
@@ -349,7 +388,7 @@ def write_iterable_to_shp(my_iterable
                          ,key_matcher
                          ,value_demangler
                          ,shape_code # e.g. 'POLYLINEZ'
-                         ,options
+                         ,options = ShpOptions
                          ,field_names = None
                          ):
     #type(type[Iterable]
@@ -395,7 +434,7 @@ def write_iterable_to_shp(my_iterable
         
 
 
-    max_size = (options.field_size 
+    max_size = (options.field_size
             + options.extra_chars)
 
     fields = OrderedDict( {options.uuid_field 
@@ -435,7 +474,7 @@ def write_iterable_to_shp(my_iterable
                                                ,fieldType = val_type
                                                ) 
                         if val_type == shp_field_codes['float']:
-                            fields[nice_key]['decimal'] = options.num_dp 
+                            fields[nice_key]['decimal'] = options.num_dp
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
     else:
         for name in field_names:
