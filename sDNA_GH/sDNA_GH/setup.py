@@ -54,8 +54,11 @@ output = Output()
 
 
 
+# Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
+# arguments in its constructor so we build our options and metas namedtuples
+# from a class, to avoid re-stating the order of the keys.
 
-class HardcodedMetas(sDNA_GH_Tool.opts['metas']): 
+class HardcodedMetas(sDNA_ToolWrapper.opts['metas']): 
     config = os.path.join(os.path.dirname(  os.path.dirname(__file__)  )
                          ,r'config.toml'  
                          )
@@ -144,7 +147,7 @@ class HardcodedMetas(sDNA_GH_Tool.opts['metas']):
 
 #######################################################################################################################
 
-def get_the_working_file(inst = None):
+def get_path_to_users_working_file(inst = None):
     #type(dict, type[any]) -> str
     #refers to `magic' global ghdoc so needs to 
     # be in module scope (imported above)
@@ -165,11 +168,10 @@ def get_the_working_file(inst = None):
             break
     return working_file 
 
-file_to_work_from = get_the_working_file()
+file_to_work_from = get_path_to_users_working_file()
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,pyshp_wrapper.ShpOptions
-                      ,sDNA_GH_Tool.opts['options']
                       ,RhinoObjectsReader.opts['options']
                       ,ShapefileWriter.opts['options']
                       ,ShapefileReader.opts['options']
@@ -245,6 +247,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     #
     ###########################################################################
+    #
     #     Shapefiles
     #     Application specific overrides for .custom.pyshp_wrapper
     #
@@ -283,6 +286,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for ShapefileWriter
     #
     input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
+    #30,000 characters tested.
     output_shp = os.path.join( os.path.dirname(__file__)
                                 ,'tmp.shp'
                                 )
@@ -297,26 +301,11 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for UsertextWriter
     #   
     output_key_str = 'sDNA output={name} run time={datetime}'  
+    #30,000 characters tested.
     overwrite_UserText = True
     max_new_keys = 6
     suppress_overwrite_warning = False
     dupe_key_suffix = r'_{}'
-
-
-    ###########################################################################
-    #supply_sDNA_file_names = True
-    #
-    output_shp = os.path.join( os.path.dirname(path, 'tmp.shp')) # None means Rhino .3dm filename is used.
-
-
-    ###########################################################################
-    #Writing and Reading Usertext to/from Rhino
-    #
-    #
-    input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'  
-    #30,000 characters tested!
-    output_key_str = 'sDNA output={name} run time={datetime}'  
-    #30,000 characters tested!
     ###########################################################################   
     #         
     # Overrides for DataParser
@@ -376,12 +365,14 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 class HardcodedLocalMetas(object):
     sync = True    
     read_only = True
-    nick_name = ''
+    nick_name = error_raising_sentinel_factory('Nick name has not been read '
+                                              +'from component yet! '
+                                              ,'nick_name will automatically '
+                                              +'be updated on each component.'
+                                              )
 
 
-# Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
-# arguments in its constructor so we build our options and metas namedtuples
-# from a class, to avoid re-stating the order of the keys.
+
 
 
 
@@ -407,12 +398,13 @@ output(module_opts['options'].message,'DEBUG')
 #########################################################################
 #
 #
-def override_all_opts( args_dict
-                      ,local_opts # mutated
-                      ,external_opts
-                      ,local_metas = default_local_metas
-                      ,external_local_metas = empty_NT
-                      ,name = ''):
+def override_all_opts(args_dict
+                     ,local_opts # mutated
+                     ,external_opts
+                     ,local_metas = default_local_metas
+                     ,external_local_metas = empty_NT
+                     ,name = ''
+                     ):
     #type(dict, dict, dict, namedtuple, namedtuple, str) -> namedtuple
     #
     # 1) We assume opts has been built from a previous GHPython launcher 
@@ -668,8 +660,10 @@ while not os.path.isfile(module_opts['options'].python_exe):
 if not os.path.isfile(module_opts['options'].python_exe):
     raise ValueError('python_exe is not a file. ')
 
-module_name = '.'.join(module_opts['options'].package_name 
-             ,module_opts['options'].sub_module_name)
+module_name = '.'.join([module_opts['options'].package_name 
+                       ,module_opts['options'].sub_module_name
+                       ]
+                      )
 
 if ( module_name in sys.modules
     and not hasattr(sys.modules[module_name], 'logger') ):  
@@ -772,11 +766,6 @@ def cache_sDNA_tool(compnt
 sDNA_GH_tools = list(tools_dict.values())
 
 
-# def component_decorator( BaseClass
-#                         ,ghenv
-#                         ,nick_name = 'Self_test'
-#                         ):
-#     #type:(type[type], str, object) -> type[type]
 class sDNA_GH_Component(SmartComponent):
 
     # Options from module, from defaults and installation config.toml
@@ -787,7 +776,7 @@ class sDNA_GH_Component(SmartComponent):
                                         # Although local, it can be set on 
                                         # groups of components using the 
                                         # default section of a project 
-                                        # config.ini, or passed as a
+                                        # config.toml, or passed as a
                                         # Grasshopper parameter between
                                         # components.
 
@@ -898,8 +887,6 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug("Updating Params: " + str(tools))
 
-        self.params_just_updated = True
-
         return add_tool_params(Params
                               ,tools
                               ,do_not_add
@@ -925,10 +912,10 @@ class sDNA_GH_Component(SmartComponent):
 
         #logger.debug(self.opts)
         logger.debug('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
-                                            for k,v in self.opts.items()
-                                            if k not in ('options','metas')
-                                            ) 
-                )
+                                                for k, v in self.opts.items()
+                                                if k not in ('options','metas')
+                                                ) 
+                    )
 
         return tools
 
@@ -942,19 +929,22 @@ class sDNA_GH_Component(SmartComponent):
             new_name = self.Attributes.Owner.NickName 
             # If this is run before __init__ has run, there is no 
             # Attributes attribute yet (ghenv.Component can be used instead).
+            logger.debug('new_name == ' + new_name)
 
-
-        if not hasattr(self, 'nick_name') or (
-            self.opts['metas'].cmpnts_change
-            and self.local_metas.nick_name != new_name    ):  
+        if (isinstance(self.local_metas.nick_name, Sentinel)) or (
+           self.opts['metas'].cmpnts_change and 
+           self.local_metas.nick_name != new_name ):  
             #
             self.local_metas = self.local_metas._replace(nick_name = new_name)
             self.logger = logger.getChild(self.local_metas.nick_name)
 
-            output( ' Component nick name changed to : ' 
-                            + self.local_metas.nick_name, 'INFO' )
+            logger.info(' Component nick name changed to : ' 
+                       +self.local_metas.nick_name
+                       )
             return 'Name updated'
-        return 'Name not updated'
+        logger.debug('Old name kept == ' + self.local_metas.nick_name)
+
+        return 'Old name kept'
 
 
 
@@ -972,64 +962,33 @@ class sDNA_GH_Component(SmartComponent):
                 +str(self.opts['metas'].runsdnacommand )
                 )
 
+        logger.debug('before update, self.opts[options].sDNAUISpec == ' 
+                +str(self.opts['options'].sDNAUISpec)
+                +', self.opts[options].run_sDNA == '
+                +str(self.opts['options'].run_sDNA )
+                )
+
         if hasattr(self,'sDNA'):
-            logger.debug('Self has attr sDNA == ' + str(hasattr(self,'sDNA')))
-        
-        sDNA = ( self.opts['metas'].sDNAUISpec  # Needs to be hashable to be
-                ,self.opts['metas'].runsdnacommand )   # a dict key => tuple not list
-                    # these are both just module names.  
-                    # Python can't import two files with the same name
-                    # so changing these triggers the change to input the new one
+            logger.debug('Self has old attr sDNA == ' + str(hasattr(self,'sDNA')))
 
-        if not hasattr(self,'sDNA') or self.sDNA != sDNA:
-            self.sDNAUISpec, self.run_sDNA, path = self.load_modules(sDNA
-                                                                    ,self.opts['metas'].sDNA_search_paths
-                                                                    )
-            #  self.sDNAUISpec, self.run_sDNA are the two Python modules
-            #  to allow different components to run different sDNA versions
-            #  these module references are instance variables
+        self.sDNA = (self.opts['metas'].sDNAUISpec
+                    ,self.opts['metas'].runsdnacommand
+                    ) 
 
-            if (self.sDNAUISpec.__name__ != self.opts['metas'].sDNAUISpec
-               or self.run_sDNA.__name__ != self.opts['metas'].runsdnacommand):
-                msg = ('sDNAUISpec and run_sDNA imported, but '
-                      +' module names do not match meta options '
-                      +'.sDNAUISpec and .runsdnacommand'
-                      )          
-                logger.error(msg)
-                raise ValueError(msg)
-
-
-
-            logger.debug('Self has attr sDNAUISpec == ' 
-                        +str(hasattr(self,'sDNAUISpec'))
-                        )
-            logger.debug('Self has attr run_sDNA == ' 
-                        +str(hasattr(self,'run_sDNA'))
-                        )
-
-            self.sDNA = sDNA
-            self.sDNA_path = path
-            logger.debug('Path sDNAUISpec imported from == ' + path)
-            self.opts['metas'] = self.opts['metas']._replace(sDNA = self.sDNA
-                                                            ,sDNA_path = path 
-                                                            )
-            self.opts['options'] = self.opts['options']._replace(
-                                                 sDNAUISpec = self.sDNAUISpec
-                                                ,run_sDNA = self.run_sDNA 
+        if ( isinstance(self.opts['options'].sDNAUISpec, Sentinel) or
+             isinstance(self.opts['options'].run_sDNA, Sentinel) or
+             (self.opts['options'].sDNAUISpec.__name__
+                       ,self.opts['options'].run_sDNA.__name__) != self.sDNA ):
+            #
+            # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_search_paths
+            #
+            sDNAUISpec, run_sDNA, _ = self.load_modules(self.sDNA
+                                                       ,self.opts['metas'].sDNA_search_paths
+                                                       )
+            self.opts['options'] = self.opts['options']._replace(sDNAUISpec = sDNAUISpec
+                                                                ,run_sDNA = run_sDNA 
                                                                 )  
 
-            sDNA_path = os.path.dirname(self.sDNAUISpec.__file__)
-            if self.opts['metas'].sDNA_path != sDNA_path:                                                              
-                logger.debug('sDNAUISpec.__file__ == ' + sDNA_path)
-                logger.debug('self.opts["metas"].sDNA_path== ' 
-                            + self.opts['metas'].sDNA_path
-                            )
-
-                msg = ('sDNAUISpec imported, but '
-                      +' module __file__ does not match meta option '
-                      +' .sDNA_path'
-                      )
-                raise ValueError(output(msg,'ERROR'))
 
 
 
@@ -1049,8 +1008,8 @@ class sDNA_GH_Component(SmartComponent):
         # update_Params is called from inside this method, so the input Params 
         # supplying the args will not updated until after they have been read.
         # If this method is not intended to crash on a missing input param,
-        # it needs to accept anything (or a lack thereof) to run in the meantime
-        # until the params can be updated.  kwargs are perfect for this.
+        # it needs to accept anything (or a lack thereof) to run in the 
+        # meantime until the params can be updated.  kwargs enable this.
         logger.debug('self.script started... \n')
         logger.debug(kwargs)
 
@@ -1087,7 +1046,7 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('gdm from start of RunScript == ' + str(gdm)[:50])
         #print('#1 self.local_metas == ' + str(self.local_metas))
         
-        if self.update_name() == 'Name updated': # True immediately after __init__
+        if self.update_name() == 'Name updated': # True 1st run after __init__
             nick_name = self.local_metas.nick_name
             if (nick_name.lower()
                          .replace('_','')
@@ -1099,38 +1058,36 @@ class sDNA_GH_Component(SmartComponent):
         
             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
 
-                    # If this happens every runScript, not just after name updates,
-                    # Other components may mean self.tools needs extra tools adding
-                    # or /removing but this could - annoy many users.  
-                    # TODO!  Get feedback!
-                    # TODO:  Move this to after the opts override?!  But params 
-                    # need to feed into the opts?
 
             self.update_Params()#self.Params, self.tools)
+            return (None,) * len(self.Params.Output)
+            # Grasshopper components can have a glitchy one off error if
+            # not-None outputs are given to params that 
+            # have just been added, in the same RunScript call.  In our 
+            # design the user probably doesn't want the new tool and 
+            # updated component params to run before they've had chance to
+            # look at them, even if 'go' still is connected to True.
 
         
         synced = self.local_metas.sync
         old_sDNA = self.opts['metas'].sDNA
-        #logger.debug('kwargs["field"] == ' + str(kwargs['field']))
         self.local_metas = override_all_opts(
                                  args_dict = kwargs
                                 ,local_opts = self.opts # mutated
                                 ,external_opts = external_opts 
                                 ,local_metas = self.local_metas 
                                 ,external_local_metas = external_local_metas
-                                            )
-        #logger.debug('self.opts["options"].field == ' + str(self.opts['options'].field))
+                                )
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
 
         logger.debug('Opts overridden....    ')
         logger.debug(self.local_metas)
-        #logger.debug('options after override in script == ' + str(self.opts['options']))
         
         if (self.opts['metas'].update_path 
             or not os.path.isfile(self.opts['options'].path) ):
 
-            path = get_the_working_file(self.opts, self)
+            path = get_path_to_users_working_file(self)
 
             self.opts['options'] = self.opts['options']._replace(path = path)
 
@@ -1142,10 +1099,6 @@ class sDNA_GH_Component(SmartComponent):
                 else:
                     self.opts = self.opts.copy() #desync
                     #
-                    #
-                    # TODO: option so make module_opts = self.opts
-                    # Write but not read?  Wouldn't such a component
-                    # be synced anyway, with all others on read only?
 
             if self.opts['metas'].sDNA != old_sDNA:
                 self.update_sDNA()
@@ -1154,7 +1107,7 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug(go)
 
-        if go == True and not self.params_just_updated: 
+        if go == True: 
             if not isinstance(self.tools, list):
                 msg = 'self.tools is not a list'
                 logger.error(msg)
@@ -1205,8 +1158,6 @@ class sDNA_GH_Component(SmartComponent):
                 logger.debug('Converting gdm to Data and Geometry')
                 (NewData, NewGeometry) = dict_from_DataTree_and_lists(gdm)
                                         
-                #logger.debug(NewData)
-                #logger.debug(NewGeometry)                    
             else:
                 NewData, NewGeometry = None, None
 
@@ -1234,16 +1185,16 @@ class sDNA_GH_Component(SmartComponent):
                         tmp.update(sub_tools_dict)
                     tool_opts = tmp
         else:
-            logger.debug('go != True')
+            logger.debug('go == ' + str(True))
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}
         ret_vals_dict['opts'] = [self.opts.copy()]
         ret_vals_dict['l_metas'] = self.local_metas #immutable
-        retval_names = [Param.Name for Param in self.Params.Output]
+
         logger.debug('Returning from self.script ')
         locs = locals().copy()
-        ret_args = self.component_Outputs( #custom_retvals(retval_names
+        ret_args = self.component_Outputs( 
                               [  ret_vals_dict
                               ,  self.opts['metas']
                               ,  self.opts['options']
@@ -1252,20 +1203,6 @@ class sDNA_GH_Component(SmartComponent):
                               ,  locs
                               ]
                              )
-        #print(ret_args)
-        print(retval_names)
-        print('len(reg_args) == '+str(len(ret_args)))
-        print('len(retval_names) == '+str(len(retval_names)))
-        print(gdm)
-        if self.params_just_updated:
-            self.params_just_updated = False
-            ret_args = (None,) * len(self.Params.Output)
-            # Grasshopper components can have a glitchy one off error if
-            # not-None outputs are given to params that 
-            # have just been added, in the same RunScript call.  In our 
-            # design the user probably doesn't want the new tool and 
-            # updated component params to run before they've had chance to
-            # look at them, even if 'go' still is connected to True.
         return ret_args
     script.input_params = lambda : sDNA_GH_Tool.params_list(['go', 'opts'])
     script.output_params = lambda : sDNA_GH_Tool.params_list(['OK', 'opts'])

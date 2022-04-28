@@ -243,7 +243,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
 
-        if self.sDNA != opts['metas'].sDNA:
+        if self.sDNA != sDNA:
             self.update_tool_opts_and_syntax(opts)
 
         dot_shp = options.dot_shp
@@ -1081,7 +1081,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                     if isinstance(v, dict) and field in v    
                                     )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse or plot_min is None or plot_max is None:
-            x_min, x_max, gdm_in, opts = self.parse_data(objs_to_parse, opts)
+            x_min, x_max, gdm_in = self.parse_data(objs_to_parse, opts)
                                                                             
         else:
             self.debug('Skipping parsing')

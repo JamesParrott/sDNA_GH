@@ -99,12 +99,12 @@ output = Output()
 
 
 # We only know the sDNA version to import as a string.  This is more secure too.
-def strict_import(  module_name = ''
-                   ,folder = ''
-                   ,sub_folder = ''
-                   ,output = output
-                   ,search_folder_only = False
-                   ):
+def strict_import(module_name = ''
+                 ,folder = ''
+                 ,sub_folder = ''
+                 ,output = output
+                 ,search_folder_only = False
+                 ):
 
     # type: (str, str, str, function, bool) -> type[any]
     #
@@ -146,6 +146,7 @@ def strict_import(  module_name = ''
 
 
 def load_modules(m_names, path_lists):
+    #type(str/ tuple, list) -> tuple / None
     m_names = m_names if isinstance(m_names, tuple) else [m_names] 
     output('m_names == ' + str(m_names) + ' of type : ' + type(m_names).__name__,'DEBUG')
     if any((name.startswith('.') or name.startswith('..')) in name for name in m_names):
@@ -218,8 +219,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     class sDNA_GH(object):
         pass
     sDNA_GH.setup, _ = load_modules(sDNA_GH_package + '.setup'
-                             ,sDNA_GH_search_paths
-                             )         
+                                   ,sDNA_GH_search_paths
+                                   )         
 
 
     logger = sDNA_GH.setup.logger.getChild('launcher')

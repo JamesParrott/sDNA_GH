@@ -42,8 +42,8 @@ def multi_context_checker(is_thing):
 def get_sc_doc_of_obj(x):
     #type(str) -> bool
     #return rs.IsObject(x)
-    return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False
-    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
+    return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
+    #return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x))) if x else False 
 
 @multi_context_checker
 def get_sc_doc_of_curve(x):

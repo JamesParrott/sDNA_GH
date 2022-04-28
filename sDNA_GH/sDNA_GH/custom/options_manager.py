@@ -41,8 +41,8 @@ def get_BaseOptsClass(**kwargs):
 
 def get_opts_dict(**kwargs):
     #type( dict(str: dict) ) -> dict
-    return OrderedDict( (key, get_BaseOptsClass(val)) 
-                        for key, val in kwargs.items() 
+    return OrderedDict( (key, get_BaseOptsClass(**val)) 
+                        for (key, val) in kwargs.items() 
                       )
 
 def namedtuple_from_class(Class, name = None):
@@ -472,6 +472,9 @@ def error_raising_sentinel_factory(warning
                                                    #,'get', 'set', 'setattr'
                                                    )
                                   ,leave_alone = ('init','repr','message'
+                                                 # leaving repr the same as 
+                                                 # Sentinel makes it
+                                                 # printable.
                                                  ,'weakref','module','class'
                                                  ,'dict' ,'new','metaclass'
                                                  ,'subclasshook','mro','bases'

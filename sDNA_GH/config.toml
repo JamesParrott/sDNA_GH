@@ -101,7 +101,7 @@ logs_dir = 'logs'
 log_file = 'sDNA_GH.log'
 
 log_file_level = 'DEBUG'
-log_console_level = 'INFO'
+log_console_level = 'DEBUG'
 log_custom_level = 'INFO'
 
 ###########################################################################
@@ -149,10 +149,10 @@ output_key_str = 'sDNA output={name} run time={datetime}'
 #sDNA
 auto_get_Geom = false
 auto_read_Usertext = false
-auto_write_Shp = false
-auto_read_Shp = false
-#auto_parse_data = false  # not used.  Recolour_data parses if req anyway
-auto_plot_data = false
+auto_write_Shp = true
+auto_read_Shp = true
+#auto_parse_data = true  # not used.  Recolour_data parses if req anyway
+auto_plot_data = true
 #Plotting results
 field = 'BtEn'
 #plot_max = 0
