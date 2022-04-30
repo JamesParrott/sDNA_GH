@@ -17,7 +17,7 @@ import GhPython
 import Grasshopper.Kernel 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable
 
-from . import update_params
+# from . import update_params
 
 
 logger = logging.getLogger(__name__)
@@ -225,32 +225,32 @@ def add_tool_params(Params
         needed_output_params = wrapper.output_params() + needed_output_params
         needed_input_params = wrapper.input_params() + needed_input_params
 
-    update_params.add_params(Params
-                            ,'Output'
-                            ,[param['NickName'] 
-                              for param in needed_output_params]
-                            ,do_not_remove
-                            )
+    # update_params.add_params(Params
+    #                         ,'Output'
+    #                         ,[param['NickName'] 
+    #                           for param in needed_output_params]
+    #                         ,do_not_remove
+    #                         )
 
-    update_params.add_params(Params
-                            ,'Input'
-                            ,[param['NickName'] 
-                              for param in needed_input_params]
-                            ,do_not_remove
-                            )
+    # update_params.add_params(Params
+    #                         ,'Input'
+    #                         ,[param['NickName'] 
+    #                           for param in needed_input_params]
+    #                         ,do_not_remove
+    #                         )
 
-    # add_Params('Output'
-    #           ,do_not_add
-    #           ,do_not_remove
-    #           ,Params
-    #           ,needed_output_params
-    #           )
-    # add_Params('Input'
-    #           ,do_not_add
-    #           ,do_not_remove
-    #           ,Params
-    #           ,needed_input_params
-    #           )
+    add_Params('Output'
+              ,do_not_add
+              ,do_not_remove
+              ,Params
+              ,needed_output_params
+              )
+    add_Params('Input'
+              ,do_not_add
+              ,do_not_remove
+              ,Params
+              ,needed_input_params
+              )
 
     Params.Sync(ParamsSyncObj)
     Params.RepairParamAssociations()

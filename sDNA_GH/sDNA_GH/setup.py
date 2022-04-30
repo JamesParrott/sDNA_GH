@@ -878,8 +878,9 @@ class sDNA_GH_Component(SmartComponent):
 
         if Params is None:
             Params = self.Params
-            # If this is tried before __init__ has finished .Params may not be
+            # If this is run before __init__ has finished .Params may not be
             # there yet.  But it is still available at ghenv.Component.Params
+            # if ghenv is available (unlike here in a module).
 
         if tools is None:
             tools = self.tools

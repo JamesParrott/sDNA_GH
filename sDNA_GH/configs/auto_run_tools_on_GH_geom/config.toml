@@ -101,7 +101,7 @@ logs_dir = 'logs'
 log_file = 'sDNA_GH.log'
 
 log_file_level = 'DEBUG'
-log_console_level = 'DEBUG'
+log_console_level = 'INFO'
 log_custom_level = 'INFO'
 
 ###########################################################################
