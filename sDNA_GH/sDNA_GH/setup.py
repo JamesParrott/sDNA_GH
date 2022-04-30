@@ -39,7 +39,7 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ShapefileWriter
                           ,ShapefileReader
                           ,UsertextWriter
-                          ,UsertextBaker
+                        #   ,UsertextBaker
                           ,DataParser
                           ,ObjectsRecolourer
                           ,sDNA_ToolWrapper
@@ -96,11 +96,12 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
                    ,Write_Shp = 'write_shapefile'
                    ,Read_Shp = 'read_shapefile'
                    ,Write_Usertext = 'write_Usertext'
-                   ,Bake_UserText = 'bake_Usertext'
+                   #,Bake_UserText = 'bake_Usertext'
                    ,Parse_Data = 'parse_data'
                    ,Recolour_Objects = 'recolour_objects'
                    ,Recolor_Objects = 'recolour_objects'
                    ,Load_Config = 'load_config'
+                   ,Comp_Names = 'get_comp_names'
                    #
                    ,sDNA_Integral = 'sDNAIntegral'
                    ,sDNA_Skim = 'sDNASkim'
@@ -117,32 +118,31 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
                    #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
                    )
                           
-    categories = {
-                         'get_Geom'         : 'Support'
-                        ,'read_Usertext'    : 'Usertext'
-                        ,'write_shapefile'  : 'Shp'
-                        ,'read_shapefile'   : 'Shp'
-                        ,'write_Usertext'   : 'Usertext'
-                        ,'bake_Usertext'    : 'Usertext'
-                        ,'parse_data'       : 'Plot'
-                        ,'recolour_objects' : 'Plot'
-                        ,'sDNAIntegral'     : 'Analysis'
-                        ,'sDNASkim'         : 'Analysis'
-                        ,'sDNAIntFromOD'    : 'Analysis'
-                        ,'sDNAGeodesics'    : 'Geometric analysis'
-                        ,'sDNAHulls'        : 'Geometric analysis'
-                        ,'sDNANetRadii'     : 'Geometric analysis'
-                        ,'sDNAAccessMap'    : 'Analysis'
-                        ,'sDNAPrepare'      : 'Preparation'
-                        ,'sDNALineMeasures' : 'Preparation'
-                        ,'sDNALearn'        : 'Calibration'
-                        ,'sDNAPredict'      : 'Calibration'
-                        ,'sDNA_General'     : 'Dev tools'
-                        ,'Python'           : 'Dev tools'
-                        ,'Self_test'        : 'Dev tools'
-                        ,'Build_components' : 'Dev tools' 
-                        ,'Load_Config'      : 'Support'
-                    }
+    categories = {'get_Geom'         : 'Support'
+                 ,'read_Usertext'    : 'Data'
+                 ,'write_shapefile'  : '.shp'
+                 ,'read_shapefile'   : '.shp'
+                 ,'write_Usertext'   : 'Data'
+                 # ,'bake_Usertext'    : 'Usertext'
+                 ,'parse_data'       : 'Plot'
+                 ,'recolour_objects' : 'Plot'
+                 ,'sDNAIntegral'     : 'Analysis'
+                 ,'sDNASkim'         : 'Analysis'
+                 ,'sDNAIntFromOD'    : 'Analysis'
+                 ,'sDNAGeodesics'    : 'Geometric analysis'
+                 ,'sDNAHulls'        : 'Geometric analysis'
+                 ,'sDNANetRadii'     : 'Geometric analysis'
+                 ,'sDNAAccessMap'    : 'Analysis'
+                 ,'sDNAPrepare'      : 'Prep'
+                 ,'sDNALineMeasures' : 'Prep'
+                 ,'sDNALearn'        : 'Calibration'
+                 ,'sDNAPredict'      : 'Calibration'
+                 ,'sDNA_General'     : 'Dev'
+                 ,'get_comp_names'   : 'Dev'
+                 ,'Self_test'        : 'Dev'
+                 ,'Build_components' : 'Dev' 
+                 ,'Load_Config'      : 'Support'
+                 }
 
 
 #######################################################################################################################
@@ -176,7 +176,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,ShapefileWriter.opts['options']
                       ,ShapefileReader.opts['options']
                       ,UsertextWriter.opts['options']
-                      ,UsertextBaker.opts['options']
+                    #   ,UsertextBaker.opts['options']
                       ,DataParser.opts['options']
                       ,ObjectsRecolourer.opts['options']
                       ,sDNA_ToolWrapper.opts['options']
@@ -725,7 +725,7 @@ read_Usertext = UsertextReader()
 write_shapefile = ShapefileWriter()
 read_shapefile = ShapefileReader()
 write_Usertext = UsertextWriter()
-bake_Usertext = UsertextBaker()
+# bake_Usertext = UsertextBaker()
 parse_data = DataParser()
 recolour_objects = ObjectsRecolourer()
 get_tool_names = GetToolNames()
@@ -738,10 +738,10 @@ tools_dict.update(get_Geom = get_Geom
                  ,write_shapefile = write_shapefile
                  ,read_shapefile = read_shapefile
                  ,write_Usertext = write_Usertext
-                 ,bake_Usertext = bake_Usertext
+                #  ,bake_Usertext = bake_Usertext
                  ,parse_data = parse_data
                  ,recolour_objects = recolour_objects 
-                 ,Python = get_tool_names
+                 ,get_comp_names = get_tool_names
                  ,Build_components = build_components
                  ,sDNA_General = sDNA_General_dummy_tool
                  ,load_config = load_config_file
@@ -1127,12 +1127,25 @@ class sDNA_GH_Component(SmartComponent):
                     +str(self.tools)
                     )
 
+
+
             geom_data_map = gdm_from_DataTree_and_list(Geom, Data)
-            
+
+
+
             logger.debug('type(geom_data_map) == '
                         +str(type(geom_data_map))
                         )
             
+            logger.debug('Before merge gdm[:3] == ' 
+                        +str(gdm.items()[:3])
+                        +' ...'
+                        )
+
+            logger.debug('Before merge geom_data_map[:3] == ' 
+                        +str(geom_data_map.items()[:3])
+                        +' ...'
+                        )
 
             gdm = override_gdm(gdm
                                        ,geom_data_map

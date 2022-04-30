@@ -218,7 +218,7 @@ def prepare_args(function
                      + unnamed_pos_args)
 
     #logger.debug('pos_args == ' + str(pos_args_tupl))
-    logger.debug('args_dict == ' + str(args_dict))
+    #logger.debug('args_dict == ' + str(args_dict))
 
     return pos_args_tupl, args_dict
 
@@ -246,8 +246,18 @@ def custom_inputs_class_deco(BaseComponent
                                        for (param, param_val) 
                                         in zip(self.Params.Input, param_vals)
                                      )
-            logger.debug('Params_dict == ' + str(params_dict))
+            #logger.debug('Params_dict == ' + str(params_dict))
 
+
+            # if 'Geom' in params_dict:
+            #     Geom = params_dict['Geom']
+            #     from ..tools.helpers.checkers import get_sc_doc_of_obj
+            #     print('Main: ')
+            #     print(Geom[0])
+            #     import rhinoscriptsyntax as rs
+            #     print('PolylineVertices: ' + str([list(y) for y in rs.PolylineVertices(Geom[0])] ))
+            #     print(get_sc_doc_of_obj(Geom[0]))
+            #     raise Exception('Break point')
 
             pos_args, args_dict = prepare_args(self.script
                                               ,params_dict = params_dict

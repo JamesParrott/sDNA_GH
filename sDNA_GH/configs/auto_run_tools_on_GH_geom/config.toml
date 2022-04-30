@@ -148,7 +148,7 @@ output_key_str = 'sDNA output={name} run time={datetime}'
 ###########################################################################
 #sDNA
 auto_get_Geom = true
-auto_read_Usertext = true
+auto_read_Usertext = false
 auto_write_Shp = true
 auto_read_Shp = true
 #auto_parse_data = true  # not used.  Recolour_data parses if req anyway

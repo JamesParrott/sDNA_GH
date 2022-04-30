@@ -41,9 +41,21 @@ def multi_context_checker(is_thing):
 @multi_context_checker
 def get_sc_doc_of_obj(x):
     #type(str) -> bool
-    #return rs.IsObject(x)
-    return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
-    #return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x))) if x else False 
+    return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False 
+
+    #return rs.IsObject(x) if x else False
+    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
+    #return bool(sc.doc.Objects.FindGeometry(System.Guid(x))) if x else False 
+    #print(str(x))
+    # print('str(x): ' + str(x))
+    # print('System.Guid(x): ')
+    # print(System.Guid(x))
+    # print('x.ToString(): ')
+    # print(x.ToString())
+    # print('To Guid')
+    # print(System.Guid(x.ToString()))
+    # print('Check: ')
+    # return bool(sc.doc.Objects.FindGeometry(System.Guid(x.ToString()))) if x else False 
 
 @multi_context_checker
 def get_sc_doc_of_curve(x):
@@ -73,6 +85,18 @@ def get_val_list(val_getter = get_obj_val):
 def get_OrderedDict( keys_getter = get_obj_keys
                     ,val_getter = get_obj_val):
     # type(function) -> function
+    def g(z):
+        if hasattr(Rhino.Geometry, type(z).__name__):
+            z_geom = z
+        else:
+            z = System.Guid(str(z))
+            z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
+            if not z_geom:
+                z_geom = ghdoc.Objects.FindGeometry(z)
+        # if hasattr(z_geom,'TryGetPolyline'):
+        #     z_geom = z_geom.TryGetPolyline()[1]
+        return z_geom.GetUserStrings()
+    return g
     def f(obj):
         # type(str, list) -> list
         #if is_a_curve_in_GH_or_Rhino(obj):

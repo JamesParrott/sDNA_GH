@@ -59,59 +59,113 @@ These options may also be specified in a project specific config.toml file, or i
 ### Usage.  
 #### Tools.
 ##### Support tools
-###### Read_From_Rhino (get_Geom)
+###### Load_Config (load_config)
+Loads an sDNA_GH project configuration file (.toml or .ini, e.g. *config.toml*) along with the sDNA_GH Python package and any specified options.
+###### Read_Geom (get_Geom)
 Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the reference to them.
+##### Shapefile tools
 ###### Write_Shp (write_shapefile)
 Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = False`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless auto_read_Usertext = False).
 ###### Read_Shp (read_shapefile)
-Read in the polylines and data from the specified shapefile.  Output the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to create a legend frame with in Recolour_Objects.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Parse_Data Component is detected connected to the component's outputs downstream (unless auto_parse_data = False), Parse_Data is called afterwards.  
+Read in the polylines and data from the specified shapefile.  Output the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to create a legend frame with in Recolour_Objects.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless auto_plot_data = false, Recolour_Objects is called afterwards.  
+##### Plotting tools
 ###### Parse_Data (parse_data)
 Parse the data in a data tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshoper Colour Gradient component.  
-Max and Min bounds can be overridden, else they are calculated on the whole data range.  If no separate Recolour_Objects Component is detected connected to its outputs downstream (unless auto_plot_data = False), Recolour_Objects is called afterwards.     WARNING!  The inputted Data is not changed, but the Data outputted may be changed, and in fact probably is false.  After parsing the data, the legend tags are the definitive reference for what each colour means, not the outputted data values.  The user can rescale, renormalise, and both exponentially and logarithmically re map the data to the (`plot_min`, `plot_max`) domain however they wish, e.g. in order to produce the desired result in Recolour_Objects.  If objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  
+Max and Min bounds can be overridden, else they are calculated on the whole data range.  WARNING!  Parsing is for the purpose of colourisation.  Therefore, the inputted Data is not changed, but the Data outputted may be changed, and should be assumed to be false.  After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values.  The data can be rescaled, renormalised, and both exponentially and logarithmically remapped to the (`plot_min`, `plot_max`) domain, e.g. in order to produce the desired result in Recolour_Objects.  If objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  
 ###### Recolour_Objects
-Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (RGB).  Custom colour calculation is possible, as is the Grasshopper Colour Gradient internally via Node In Code.  Create a legend by connecting leg_cols, leg_tags and leg_frame to a Grasshopper Legend component.  Custom legend tag templates and class boundaries are supported via three format strings.  Recolouring unbaked Grasshopper geometry instead of Rhino Geometry requires Data and Geometry outputs to be connected to a Grasshopper Custom Preview component.  If unparsed data is input, Parse_Data is first called.
+Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (RGB).  Custom colour calculation is possible, as is the Grasshopper Colour Gradient internally via Node In Code.  Create a legend by connecting leg_cols, leg_tags and leg_frame to a Grasshopper Legend component.  Custom legend tag templates and class boundaries are supported via three format strings.  Recolouring unbaked Grasshopper geometry instead of Rhino Geometry requires the Data and Geometry outputs to be connected to a Grasshopper Custom Preview component.  If unparsed data is inputted, Parse_Data is first called.
 ##### Usertext tools    
-
+##### Data tools
 ###### Read_Usertext
-Reads Usertext from Rhino and Grasshopper Geometry whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = False)
+Reads Usertext from Rhino objects whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = False).
 ###### Write_Usertext
-Write_Usertext to Rhino and Grasshopper geometric objects using a customisable pattern for the keys.
-###### Bake_Usertext
-Transfers Usertext stored on Grasshopper objects to Usertext on the Baked Rhino objects (under the same keys).  A normal `custom' bake is carried out, but reading the Usertext too into a dictionary.  Afterwards, Write_Usertext is called on the resulting Rhino objects with the Usertext data.
+Write user text to Rhino objects using a customisable pattern for the keys.
 
 ##### Analysis tools
+sDNA tool descriptions copied almost verbatim from the [sDNA manual](https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/guide_to_individual_tools.html#skim-matrix):
 ###### sDNA_Integral
-sDNA Integral wrapper.  This, and all sDNA wrapper components below, will automatically call other support commponents (unless     `auto_write_new_Shp_file` = False, ,  and )
-If no input shape file is specified, Write_Shp is first called (this itself may call Read_Usertext, which in turn may first call Read_From_Rhino).  The component attempts to check if any Read_Usertext components are already connected to its outputs (downstream).  Otherwise after running sDNA (unless `auto_read_Shp` = False) Read_Usertext will be added to the end of the tools list, to be run afterwards.  Similarly this also may trigger Parse_Data or Recolour_Objects to be added to the list and run afterwards.   Therefore any sDNA component on its own can handle an entire typical process, from reading in Rhino Geometry, reading Usertext (e.g. for user weights), writing a shapefile, right through to reading in the sDNA output shapefiles, parsing it and recolouring it back in Rhino. Writing data back to user text and baking still need to be done additionally.
+sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_new_Shp_file` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding
+*auto_* option to false in config.ini.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
 ###### sDNA_Skim
-sDNA Skim wrapper
+Skim Matrix.  Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
 ###### sDNA_Int_From_OD
-sDNA Integral from Origin Destination matrix wrapper
+A simplified version of sDNA Integral geared towards use of an external Origin Destination matrix. Note that several other tools (including Integral) allow Origin Destination matrix input as well.
+The file must be formatted correctly, see Creating a zone table or matrix file. All geodesic and destination weights are replaced by values read from the matrix. The matrix is defined between sets of zones; polylines must contain text fields to indicate their zone.
 ###### sDNA_Access_Map
-sDNA Accessibility Map wrapper
+Outputs accessibility maps for specific origins.
+The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.
+If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
 ##### Preparation tools
 ###### sDNA_Prepare
-sDNA Prepare wrapper
+Prepares spatial networks for analysis by checking and optionally repairing various kinds of error.
+
+Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare.
+
+The errors fixed by sDNA Prepare are:
+
+-endpoint near misses (XY and Z tolerance specify how close a near miss)
+-duplicate lines
+-traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed.
+-split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default
+-isolated systems
+
 ###### sDNA_Line_Measures
-sDNA line measures wrapper
+Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines.
+
+This tool can be useful for checking and debugging spatial networks. In particular, connectivity output can reveal geometry errors.
 ##### Geometric analysis tools
 ###### sDNA_Geodesics
-sDNA Geodesics tool wrapper
+Outputs the geodesics (shortest paths) used by Integral Analysis.
+The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
 ###### sDNA_Hulls
-sDNA Convex Hulls tool wrapper
+Outputs the convex hulls of network radii used in Integral Analysis.
+The convex hulls tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output hulls for all origins.
 ###### sDNA_Net_Radii
-sDNA Network Radii wrapper
+Outputs the network radii used in Integral Analysis.
+The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
 ##### Calibration tools
 ###### sDNA_Learn
-sDNA Learn wrapper
+sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated R2
+
+. If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict.
+
+Available methods for finding models are:
+
+    Single best variable - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
+    Multiple variables - regularized multivariate lasso regression
+    All variables - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression)
+
+Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a regular expression. The latter follows Python regex syntax. A wildcard is expressed as .*, thus, Bt.* would test all Betweenness variables (which in abbreviated form begin with Bt) for correlation with the target.
+
+Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed.
+
+Weighting lambda weights data points by yλy
+, where y
+
+is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.
+
+Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The r2
+
+values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.
+
+Regularization Lambda allows manual input of the minimum and maximum values for regularization parameter λ
+in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated r2 against λ to see what is going on. The data to do this is saved with the output model file (if specified), with extension .regcurve.csv.
 ###### sDNA_Predict
-sDNA Predict wrapper
-##### Dev tools
+Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network.
+
+-First run a Betweenness analysis at a number of radii using Integral Analysis.
+-Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows.
+-Run Learn on the joined data to select the best variable for predicting flows (where measured).
+-Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines.
+
+##### Dev tool(s)
+###### Unload_sDNA_GH
+Unload the sDNA_GH Python package and all sDNA modules, by removing their keys from sys.modules.  
+The next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified options including a project options config.toml, without otherwise having to restart Rhino to clear its cache.
+##### User buildable dev tools.
 ###### sDNA_general
 Run any other component by feeding the name of it into the "tool" input param. A "Swiss army knife" component.
-###### Unload_sDNA_GH
-Unload the sDNA_GH Python package, by removing all its keys from sys.modules.  sDNA_GH components will then reload the package and installation-wide options file (config.toml) without having to restart Rhino.
-###### Python
+###### Comp_Names
 Output the names of all the sDNA tool classes for the sDNA installation provided in opts, as well as all the sDNA_GH support tool names.  
 ###### Self_test
 Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will

@@ -20,6 +20,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
 import GhPython
+import System
 from System.Drawing import Color as Colour #.Net / C# Class
                 #System is also available in IronPython, but not System.Drawing
 from Grasshopper.GUI.Gradient import GH_Gradient
@@ -433,10 +434,15 @@ class UsertextReader(sDNA_GH_Tool):
         self.debug('type(gdm) == ' + str(type(gdm)))
         self.debug('gdm == ' + str(gdm))
 
+        sc.doc = Rhino.RhinoDoc.ActiveDoc
 
-        read_Usertext_as_tuples = get_OrderedDict()
         for obj in gdm:
-            gdm[obj].update(read_Usertext_as_tuples(obj))
+            keys = rs.GetUserText(obj)
+            gdm[obj].update( (key, rs.GetUserText(obj, key)) for key in keys )
+
+        # read_Usertext_as_tuples = get_OrderedDict()
+        # for obj in gdm:
+        #     gdm[obj].update(read_Usertext_as_tuples(obj))
 
         # get_OrderedDict() will get Usertext from both the GH and Rhino docs
         # switching the target to RhinoDoc if needed, hence the following line 
@@ -488,9 +494,20 @@ class ShapefileWriter(sDNA_GH_Tool):
 
             return re.match(pattern, x) 
 
+        def f(z):
+            if hasattr(Rhino.Geometry, type(z).__name__):
+                z_geom = z
+            else:
+                z = System.Guid(str(z))
+                z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
+                if not z_geom:
+                    z_geom = ghdoc.Objects.FindGeometry(z)
+            if hasattr(z_geom,'TryGetPolyline'):
+                z_geom = z_geom.TryGetPolyline()[1]
+            return [list(z_geom[i]) for i in range(len(z_geom))]
 
         def get_list_of_lists_from_tuple(obj):
-
+            return [f(obj)]
             target_doc = get_sc_doc_of_obj(obj)    
             if target_doc:
                 sc.doc = target_doc
@@ -707,71 +724,56 @@ class UsertextWriter(sDNA_GH_Tool):
         self.debug('Creating Class logger at: ' + str(date_time_of_run))
 
 
-        def write_dict_to_UserText_on_obj(d, rhino_obj):
+        def write_dict_to_UserText_on_Rhino_obj(d, rhino_obj):
             #type(dict, str) -> None
             if not isinstance(d, dict):
-                return
+                msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
+                self.logger.error(msg)
+                raise TypeError(msg)
             
             #if is_an_obj_in_GH_or_Rhino(rhino_obj):
                 # Checker switches GH/ Rhino context
+                 
+            existing_keys = get_obj_keys(rhino_obj)
+            if options.uuid_field in d:
+                obj = d.pop( options.uuid_field )
             
-            target_doc = get_sc_doc_of_obj(rhino_obj)    
-            if target_doc:
-                sc.doc = target_doc        
-                existing_keys = get_obj_keys(rhino_obj)
-                if options.uuid_field in d:
-                    obj = d.pop( options.uuid_field )
+            for key in d:
+
+                s = options.output_key_str
+                UserText_key_name = s.format(name = key
+                                            ,datetime = date_time_of_run
+                                            )
                 
-                for key in d:
+                if not options.overwrite_UserText:
 
-                    s = options.output_key_str
-                    UserText_key_name = s.format(name = key
-                                                ,datetime = date_time_of_run
-                                                )
-                    
-                    if not options.overwrite_UserText:
-
-                        for i in range(0, options.max_new_keys):
-                            tmp = UserText_key_name 
-                            tmp += options.dupe_key_suffix.format(i)
-                            if tmp not in existing_keys:
-                                break
-                        UserText_key_name = tmp
-                    else:
-                        if not options.suppress_overwrite_warning:
-                            self.logger.warning( "UserText key == " 
-                                        + UserText_key_name 
-                                        +" overwritten on object with guid " 
-                                        + str(rhino_obj)
-                                        )
-                    write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
-            else:
-                self.logger.info('Object: ' 
-                         + key[:10] 
-                         + ' is neither a curve nor a group. '
-                         )
-
-        for key, val in gdm.items():
-            #if is_a_curve_in_GH_or_Rhino(key):
-            target_doc = get_sc_doc_of_obj(key)    
-            if target_doc:
-                sc.doc = target_doc          
-                group_members = [key]
-            else:
-                target_doc = get_sc_doc_of_group(key)    
-                if target_doc:
-                    sc.doc = target_doc              
-                    #elif is_a_group_in_GH_or_Rhino(key):
-                    # Switches context, but will be switched again
-                    # when members checked
-                    group_members = get_members_of_a_group(key)
-                    # Can't use rs.SetUserText on a group name.  Must be a uuid.
+                    for i in range(0, options.max_new_keys):
+                        tmp = UserText_key_name 
+                        tmp += options.dupe_key_suffix.format(i)
+                        if tmp not in existing_keys:
+                            break
+                    UserText_key_name = tmp
                 else:
-                    group_members = [key]
+                    if not options.suppress_overwrite_warning:
+                        self.logger.warning( "UserText key == " 
+                                    + UserText_key_name 
+                                    +" overwritten on object with guid " 
+                                    + str(rhino_obj)
+                                    )
 
-                
-            for member in group_members:
-                write_dict_to_UserText_on_obj(val, member)
+                rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)                    
+
+
+                #write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
+            # else:
+            #     self.logger.info('Object: ' 
+            #              + key[:10] 
+            #              + ' is neither a curve nor a group. '
+            #              )
+        sc.doc = Rhino.RhinoDoc.ActiveDoc
+        
+        for key, val in gdm.items():
+            write_dict_to_UserText_on_Rhino_obj(val, key)
 
         sc.doc = ghdoc  
         
@@ -784,48 +786,7 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
-class UsertextBaker(sDNA_GH_Tool):
-
-    opts = get_opts_dict(metas = {}
-                        ,options = dict()
-                        )
-                        
-    def __init__(self, *args, **kwargs):
-        self.debug('Initialising Class.  Creating Class Logger. ')
-        self.write_Usertext = UsertextWriter(*args, **kwargs)
-    
-    component_inputs = ('Geom', 'Data')
-
-    def __call__(self, gdm, opts):
-        #type(str, dict, dict) -> int, str, dict, list  
-
-        tmp_gdm = OrderedDict()
-
-        add_to_Rhino = Rhino.RhinoDoc.ActiveDoc.Objects.Add 
-
-
-        for obj in gdm:
-            doc_obj = ghdoc.Objects.Find(obj)
-            if doc_obj:
-                geometry = doc_obj.Geometry
-                attributes = doc_obj.Attributes
-                if geometry:
-                    # trying to avoid constantly switching sc.doc
-
-                    # The actual bake
-                    tmp_gdm[add_to_Rhino(geometry, attributes)] = gdm[obj] 
-
-        
-        self.write_Usertext(tmp_gdm, opts)
-        gdm = tmp_gdm
-        # write_data_to_USertext context switched when checking so will move
-        #sc.doc = Rhino.RhinoDoc.ActiveDoc on finding Rhino objects.
-        locs = locals().copy()
-        return tuple(locs[retval] for retval in self.retvals)
-
-    retvals = ('gdm',) #'f_name', 'gdm'
-    component_outputs =  ('Geom',) 
-               
+            
 
 
 
@@ -1156,46 +1117,80 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
         GH_objs_to_recolour = OrderedDict()
-        objects_to_widen_lines = []
+        recoloured_Rhino_objs = []
 
+        # if hasattr(Rhino.Geometry, type(z).__name__):
+        #     z_geom = z
+        # else:
+        #     z = System.Guid(str(z))
+        #     z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
+        #     if not z_geom:
+        #         z_geom = ghdoc.Objects.FindGeometry(z)
+
+        sc.doc = Rhino.RhinoDoc.ActiveDoc
 
         for obj, new_colour in objs_to_recolour.items():
-            #self.logger.debug(obj)
-            if is_uuid(obj): 
-                target_doc = get_sc_doc_of_obj(obj)    
+            self.logger.debug('is_uuid == ' + str(is_uuid(obj)) + ' ' + str(obj))
+            
+            # try:
+            #     obj_guid = System.Guid(str(obj))
+            #     obj_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj_guid)
+            # except:
+            #     obj_geom = None
 
-                if target_doc:
-                    sc.doc = target_doc
-                    if target_doc == ghdoc:
-                        GH_objs_to_recolour[obj] = new_colour 
-                    #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
-                    else:
-                        rs.ObjectColor(obj, new_colour)
-                        objects_to_widen_lines.append(obj)
-
-                else:
-
-                    msg =   ('sc.doc == ' + str(sc.doc) 
-                            +' i.e. neither Rhinodoc.ActiveDoc '
-                            +'nor ghdoc'
-                            )
-                    self.logger.error(msg)
-                    raise ValueError(msg)
-
-            elif any(  bool(re.match(pattern, obj))
-                        for pattern in legend_tag_patterns ):
-                sc.doc = ghdoc
-                legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
+            # if obj_geom:
+            if isinstance(obj, str) and any(bool(re.match(pattern, obj)) 
+                                            for pattern in legend_tag_patterns 
+                                           ):
+                #sc.doc = ghdoc it's now never changed, 
+                #assert sc.doc == ghdoc #anyway
+                legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe  
             else:
-                msg = 'Valid colour in Data but no geom obj or legend tag.'
-                self.logger.error(msg)
-                raise NotImplementedError(msg)
+                try:
+                    rs.ObjectColor(obj, new_colour)
+                    recoloured_Rhino_objs.append(obj)
+                except:
+                    GH_objs_to_recolour[obj] = new_colour 
+                    
+        sc.doc = ghdoc
+            
+            # if is_uuid(obj): 
+            #     target_doc = get_sc_doc_of_obj(obj)    
+
+            #     if target_doc:
+            #         sc.doc = target_doc
+            #         if target_doc == ghdoc:
+            #             GH_objs_to_recolour[obj] = new_colour 
+            #         #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
+            #         else:
+            #             rs.ObjectColor(obj, new_colour)
+            #             Rhino_objs_to_recolour.append(obj)
+
+            #     else:
+
+            #         msg =   ('sc.doc == ' + str(sc.doc) 
+            #                 +' i.e. neither Rhinodoc.ActiveDoc '
+            #                 +'nor ghdoc'
+            #                 )
+            #         self.logger.error(msg)
+            #         raise ValueError(msg)
+
+            # elif any(  bool(re.match(pattern, str(obj)))
+            #             for pattern in legend_tag_patterns ):
+            #     sc.doc = ghdoc
+            #     legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
+            # else:
+            #     self.logger.debug(obj)
+            #     self.logger.debug('is_uuid(obj) == ' + str(is_uuid(obj)))
+            #     msg = 'Valid colour in Data but no geom obj or legend tag.'
+            #     self.logger.error(msg)
+            #     raise NotImplementedError(msg)
 
         sc.doc = ghdoc
 
 
 
-        keys = objects_to_widen_lines
+        keys = recoloured_Rhino_objs
         if keys:
             sc.doc = Rhino.RhinoDoc.ActiveDoc                             
             rs.ObjectColorSource(keys, 1)  # 1 => colour from object
