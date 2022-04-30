@@ -211,7 +211,7 @@ def prepare_args(function
             unnamed_pos_args += tuple(params_dict.values())
             logger.debug('Adding all remaining Input Params to unnamed_pos_args')
         else:
-            logger.warning('Inconsistent vargs / kwargs with priority bool')
+            logger.debug('Unallocated params: ' + str(params_dict))
 
 
     pos_args_tupl = (tuple(pos_args[arg] for arg in argspec.args if arg in pos_args) 

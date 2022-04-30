@@ -12,17 +12,11 @@ if sys.version < '3.3':
 else:
     from collections.abc import Iterable
 
-import Rhino
 import rhinoscriptsyntax as rs
-import scriptcontext as sc
 from ghpythonlib import treehelpers as th
 from Grasshopper import DataTree
 
-from .skel.tools.helpers.funcs import is_uuid
-from .skel.basic.ghdoc import ghdoc
-from .pyshp_wrapper import (get_Rhino_objs
-                           ,is_shape
-                           )
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -218,3 +212,9 @@ def gdm_from_DataTree_and_list(Geom, Data):
 
 
     return geom_data_map
+
+def is_selected(obj):
+    return rs.IsObjectSelected(obj)
+
+def obj_layer(obj):
+    return rs.ObjectLayer(obj)

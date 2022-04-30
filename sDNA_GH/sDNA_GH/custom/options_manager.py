@@ -141,7 +141,7 @@ def override_OrderedDict_with_dict( d_lesser
 
     if check_types:
         for key in d_lesser.viewkeys() & new_od:  #.keys():
-            if (         d_lesser[key]  != None       
+            if (         d_lesser[key]  is not None       
                 and type(d_lesser[key]) != type(new_od[key])   ):
                 del new_od[key]
     
@@ -315,9 +315,10 @@ def override_namedtuple_with_config(nt_lesser
                 raise TypeError(message)
 
         else:
-            new_dict[key] = value    # Let override_namedtuple_with_dict decide whether to exclude new keys or not
-        #if key=='message':
-        #    print(message+'  '+'DEBUG')
+            new_dict[key] = value    
+            # Let override_namedtuple_with_dict decide 
+            # whether to exclude new keys or not
+
 
 
     return override_namedtuple_with_dict(nt_lesser
@@ -348,7 +349,7 @@ def override_namedtuple_with_ini_file(nt_lesser
                                           ,**kwargs 
                                           )
 
-def load_toml_file(config_path = os.path.join(sys.path[0],'config.toml')
+def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
                   ,**kwargs
                   ):
     #type (namedtuple, str) -> namedtuple
@@ -363,7 +364,6 @@ def load_toml_file(config_path = os.path.join(sys.path[0],'config.toml')
     heirarchy of functions in this options_manager module, finally having 
     make_nested_namedtuple called on it, turning the .toml table
     into a namedtuple."""
-    
     return decoder.load(config_path, _dict = OrderedDict)
 
 

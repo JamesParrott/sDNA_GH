@@ -95,7 +95,10 @@ def get_OrderedDict( keys_getter = get_obj_keys
                 z_geom = ghdoc.Objects.FindGeometry(z)
         # if hasattr(z_geom,'TryGetPolyline'):
         #     z_geom = z_geom.TryGetPolyline()[1]
-        return z_geom.GetUserStrings()
+        name_val_map = z_geom.GetUserStrings() #.Net str only dict
+        # assert isinstance(name_val_map, System.Collections.Specialized.NameValueCollection)
+        return OrderedDict( [  (key, name_val_map.Get(key)) 
+                                    for key in name_val_map.AllKeys  ] )
     return g
     def f(obj):
         # type(str, list) -> list

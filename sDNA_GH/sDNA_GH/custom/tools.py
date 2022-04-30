@@ -3,7 +3,6 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-from email.mime import base
 import os
 import logging
 import subprocess
@@ -51,30 +50,28 @@ from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
 from .skel.tools.helpers.checkers import (get_OrderedDict
                                          ,get_obj_keys
-                                         ,write_obj_val
-                                         ,get_sc_doc_of_obj
-                                         ,get_sc_doc_of_group
+
                                          ,get_all_groups
                                          ,get_members_of_a_group
                                          )
 from .skel.tools.runner import RunnableTool                                         
 from .skel.add_params import ToolWithParams, ParamInfo
 from .options_manager import (namedtuple_from_dict
-                             ,error_raising_sentinel_factory
                              ,Sentinel
                              ,get_opts_dict
                              )
 from .pyshp_wrapper import (get_filename
-                           ,get_points_from_obj
                            ,write_iterable_to_shp
                            ,get_fields_recs_and_shapes
                            ,objs_maker_factory
                            ,get_Rhino_objs
+                           ,is_shape
                            )
 from .logging_wrapper import class_logger_factory
 from .gdm_from_GH_Datatree import (make_gdm
-                                  ,is_shape
                                   ,override_gdm
+                                  ,is_selected
+                                  ,obj_layer
                                   )
 
 
@@ -129,6 +126,35 @@ class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
                          ) for name in names                            
                ]
 
+def delete_file(path
+               ,logger = logger
+               ):
+    #type(str, type[any]) -> None
+    if os.path.isfile(path):
+        logger.info('Deleting file ' + path)
+        os.remove(path)
+
+def name_matches(file_name, regexes = ()):
+    if isinstance(regexes, str):
+        regexes = (regexes,)
+    return any(bool(re.match(regex, file_name)) for regex in regexes)
+
+def delete_shp_files_if_req(f_name
+                           ,logger = logger
+                           ,delete = True
+                           ,strict_no_del = False
+                           ,regexes = () # no file extension in regexes
+                           ):
+    #type(str, type[any], bool, str/tuple) -> None
+    if not strict_no_del:
+        file_name = f_name.rpartition('.')[0]
+        print('Delete == ' + str(delete))
+        if (delete or name_matches(file_name, regexes)):
+            for ending in ('.shp', '.dbf', '.shx'):
+                path = file_name + ending
+                delete_file(path, logger)
+
+
 class sDNA_ToolWrapper(sDNA_GH_Tool):
     # In addition to the 
     # other necessary attributes of sDNA_GH_Tool, instances know their own name
@@ -137,19 +163,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # is looked up in opts['metas'], from its args.
     # 
     opts = get_opts_dict(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand'))
-                        ,options = dict(
-                            sDNAUISpec = Sentinel('Module not imported yet')
-                           ,run_sDNA = Sentinel('Module not imported yet')
-                           ,prepped_shp_suffix = "_prepped"
-                           ,output_shp_suffix = "_output" 
-                           ,dot_shp = '.shp'
-                           # file extensions are actually optional in PyShp, 
-                           # but just to be safe and future proof
-                           ,python_exe = r'C:\Python27\python.exe' 
+                        ,options = dict(sDNAUISpec = Sentinel('Module not imported yet')
+                                       ,run_sDNA = Sentinel('Module not imported yet')
+                                       ,prepped_fmt = "{name}_prepped"
+                                       ,output_fmt = "{name}_output"   
+                                       # file extensions are actually optional in PyShp, 
+                                       # but just to be safe and future proof
+                                       ,python_exe = r'C:\Python27\python.exe'
+                                       ,del_after_sDNA = True
+                                       ,strict_no_del = False # for debugging
 # Default installation path of Python 2.7.3 release (32 bit ?) 
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
-                           )
+                                       )
                         )
 
 
@@ -247,14 +273,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if self.sDNA != sDNA:
             self.update_tool_opts_and_syntax(opts)
 
-        dot_shp = options.dot_shp
 
         input_file = self.tool_opts[sDNA].input
         
 
         #if (not isinstance(input_file, str)) or not isfile(input_file): 
         if (isinstance(f_name, str) and os.path.isfile(f_name)
-            and f_name.rpartition('.')[2] in [dot_shp[1:],'dbf','shx']):  
+            and f_name.rpartition('.')[2] in ['shp','dbf','shx']):  
             input_file = f_name
 
         self.logger.debug(input_file)
@@ -263,10 +288,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         output_file = self.tool_opts[sDNA].output
         if output_file == '':
-            output_suffix = options.output_shp_suffix
             if self.tool_name == 'sDNAPrepare':
-                output_suffix = options.prepped_shp_suffix
-            output_file = input_file.rpartition('.')[0] + output_suffix + dot_shp
+                output_file = options.prepped_fmt.format(name = input_file.rpartition('.')[0])
+            else:
+                output_file = options.output_fmt.format(name = input_file.rpartition('.')[0])
+            output_file += '.shp'
 
         output_file = get_filename(output_file, options)
 
@@ -291,9 +317,18 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.logger.info('sDNA command run = ' + command)
 
         output_lines = subprocess.check_output(command)
-        retcode = 0
+        retcode = 0 # An error in subprocess.check_output will cease execution
+                    # of this code.  Can proceed safely to delete files.
 
         self.logger.info(output_lines)
+
+
+
+        delete_shp_files_if_req(input_file
+                               ,logger = self.logger
+                               ,delete = options.del_after_sDNA
+                               ,strict_no_del = options.strict_no_del
+                               )
 
 
         locs = locals().copy()
@@ -305,15 +340,22 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
 
-def get_objs_and_OrderedDicts(all_objs_getter = get_Rhino_objs
+def get_objs_and_OrderedDicts(only_selected = False
+                             ,layers = ()
+                             ,shp_type = 'POLYLINEZ'
+                             ,include_groups = False
+                             ,all_objs_getter = get_Rhino_objs
                              ,group_getter = get_all_groups
                              ,group_objs_getter = get_members_of_a_group
                              ,OrderedDict_getter = get_OrderedDict()
-                             ,obj_type_checker = is_shape
-                             ,shp_type = 'POLYLINEZ'
-                             ,include_groups = False
+                             ,is_shape = is_shape
+                             ,is_selected = is_selected
+                             ,obj_layer = obj_layer
                              ):
-    #type(function, function, function) -> function
+    #type(bool, tuple, str, bool, function, function, function, function, 
+    #                             function, function, function) -> function
+    if layers and isinstance(layers, str):
+        layers = (layers,)
     def generator():
         #type( type[any]) -> list, list
         #
@@ -321,34 +363,54 @@ def get_objs_and_OrderedDicts(all_objs_getter = get_Rhino_objs
         # is used to indicate groups, then an objects first search 
         # is necessary instead, to test every object for membership
         # and track the groups yielded to date, in place of group_getter
-        objs_in_any_group = []
+        objs_already_yielded = []
 
         if include_groups:
             groups = group_getter()
             for group in groups:
                 objs = group_objs_getter(group)
-                if ( objs and
-                    any(obj_type_checker(x, shp_type) 
-                                                for x in objs) ):                                                 
-                    objs_in_any_group += objs
-                    d = {}
-                    for obj in objs:
-                        d.update(OrderedDict_getter(obj))
-                    yield group, d
+                if not objs:
+                    continue
+                if any(not is_shape(obj, shp_type) for obj in objs):                                                 
+                    continue 
+                if layers and any(obj_layer(obj) not in layers for obj in objs):
+                    continue 
+                if only_selected and any(not is_selected(obj) for obj in objs):
+                    continue # Skip this group is any of the 4 conditions not met.  
+                             # Correct Polylines 
+                             # will be picked up individually
+                             # in the next code block, from the trawl from
+                             # rs.ObjectsByType
 
-        objs = all_objs_getter(shp_type)
+                #Collate data and Yield group objs as group name.  
+                objs_already_yielded += objs
+                d = {}
+                for obj in objs:
+                    d.update(OrderedDict_getter(obj))
+                yield group, d
+
+        objs = all_objs_getter(shp_type) # e.g. rs.ObjectsByType(geometry_type = 4
+                                         #                      ,select = False
+                                         #                      ,state = 0
+                                         #                      )
         for obj in objs:
-            if ((not include_groups) or 
-                 obj not in objs_in_any_group):
-                d = OrderedDict_getter(obj)
-                yield str(obj), d
-                # We take the str of Rhino geom obj reference (its uuid).
-                # This is because Grasshopper changes uuids between 
-                # connected components, even of 
-                # more static Rhino objects, reducing hte usefulness of
-                # the original uuid.  
-                # Previously was:
-                # yield obj, d
+            if obj in objs_already_yielded:
+                continue 
+            print(' layers == ' + str(layers))
+
+            if layers and obj_layer(obj) not in layers:
+                continue 
+            if only_selected and not is_selected(obj):
+                continue
+            d = OrderedDict_getter(obj)
+            yield str(obj), d
+            # We take the str of Rhino geom obj reference (its uuid).
+            # This is because Grasshopper changes uuids between 
+            # connected components, even of 
+            # more static Rhino objects, reducing the usefulness of
+            # the original uuid.  
+            # Previously was:
+            # yield obj, d
         return 
 
     return generator()
@@ -357,7 +419,9 @@ def get_objs_and_OrderedDicts(all_objs_getter = get_Rhino_objs
 class RhinoObjectsReader(sDNA_GH_Tool):
 
     opts = get_opts_dict(metas = {}
-                        ,options = dict(shape_type = 'POLYLINEZ'
+                        ,options = dict(selected = False
+                                       ,layers = ''
+                                       ,shape_type = 'POLYLINEZ'
                                        ,merge_subdicts = True
                                        ,include_groups = False
                                        )
@@ -380,13 +444,10 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         tmp_gdm = gdm if gdm else OrderedDict()
 
             
-        gdm = make_gdm(get_objs_and_OrderedDicts(get_Rhino_objs
-                                                ,get_all_groups
-                                                ,get_members_of_a_group
-                                                ,lambda *args, **kwargs : {} 
-                                                ,is_shape
-                                                ,options.shape_type
-                                                ,options.include_groups
+        gdm = make_gdm(get_objs_and_OrderedDicts(only_selected = options.selected
+                                                ,layers = options.layers
+                                                ,shp_type = options.shape_type
+                                                ,include_groups = options.include_groups 
                                                 ) 
                        )
         # lambda : {}, as Usertext is read elsewhere, in read_Usertext
@@ -465,7 +526,6 @@ class ShapefileWriter(sDNA_GH_Tool):
     opts = get_opts_dict(metas = {}
                         ,options = dict(shape_type = 'POLYLINEZ'
                                        ,input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
-                                       ,dot_shp = '.shp'
                                        ,path = __file__
                                        ,output_shp = os.path.join( os.path.dirname(__file__)
                                                                  ,'tmp.shp'
@@ -508,23 +568,23 @@ class ShapefileWriter(sDNA_GH_Tool):
 
         def get_list_of_lists_from_tuple(obj):
             return [f(obj)]
-            target_doc = get_sc_doc_of_obj(obj)    
-            if target_doc:
-                sc.doc = target_doc
-                if is_shape(obj, shp_type):
-                    return [get_points_from_obj(obj, shp_type)]
-                else:
-                    return []      
-                #elif is_a_group_in_GH_or_Rhino(obj):
-            else:
-                target_doc = get_sc_doc_of_group(obj)    
-                if target_doc:
-                    sc.doc = target_doc                  
-                    return [get_points_from_obj(y, shp_type) 
-                            for y in get_members_of_a_group(obj)
-                            if is_shape(y, shp_type)]
-                else:
-                    return []
+            # target_doc = get_sc_doc_of_obj(obj)    
+            # if target_doc:
+            #     sc.doc = target_doc
+            #     if is_shape(obj, shp_type):
+            #         return [get_points_from_obj(obj, shp_type)]
+            #     else:
+            #         return []      
+            #     #elif is_a_group_in_GH_or_Rhino(obj):
+            # else:
+            #     target_doc = get_sc_doc_of_group(obj)    
+            #     if target_doc:
+            #         sc.doc = target_doc                  
+            #         return [get_points_from_obj(y, shp_type) 
+            #                 for y in get_members_of_a_group(obj)
+            #                 if is_shape(y, shp_type)]
+            #     else:
+            #         return []
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -536,18 +596,16 @@ class ShapefileWriter(sDNA_GH_Tool):
             return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
-            if (options.output_shp and 
-                os.path.isdir( os.path.dirname( options.output_shp )
-                             ) 
-               ):   
-                
+            if (options.output_shp and isinstance(options.output_shp, str) and
+                os.path.isfile( options.output_shp )  ):   
+                #
                 f_name = options.output_shp
             else:
-                f_name = options.path.rpartition('.')[0]
-                f_name += options.dot_shp
-                            # file extensions are actually optional in PyShp, 
-                            # but just to be safe and future proof we remove
-                            # '.3dm'                                        
+                f_name = options.path.rpartition('.')[0] + '.shp'
+                # Copy RhinoDoc or GH definition name without .3dm or .gh
+                # file extensions are actually optional in PyShp, 
+                # but just to be safe and future proof we remove
+                # '.3dm'                                        
         self.logger.debug(f_name)
 
         (retcode
@@ -582,9 +640,13 @@ class ShapefileReader(sDNA_GH_Tool):
 
     opts = get_opts_dict(metas = {}
                         ,options = dict(new_geom = True
-                                       ,dot_shp = '.shp'
                                        ,uuid_field = 'Rhino3D_'
-                                       ,del_shp = False)
+                                       ,sDNA_names_fmt = '{name}.shp.names.csv'
+                                       ,prepped_fmt = '{name}_prepped'
+                                       ,output_fmt = '{name}_output'
+                                       ,del_after_read = False
+                                       ,strict_no_del = False
+                                       )
                         )
                         
     component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
@@ -670,20 +732,29 @@ class ShapefileReader(sDNA_GH_Tool):
         gdm = make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
         
-        dot_shp = options.dot_shp
-        csv_f_name = f_name.rpartition('.')[0] + dot_shp + '.names.csv'
+        file_name = f_name.rpartition('.')[0]
+        csv_f_name = options.sDNA_names_fmt.format(name = file_name)
         #sDNA_fields = {}
         if os.path.isfile(csv_f_name):
-            f = open(csv_f_name, 'rb')
-            f_csv = csv.reader(f)
-            #sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
-            abbrevs = [line[0] for line in f_csv ]
+            with open(csv_f_name, 'rb') as f:
+                f_csv = csv.reader(f)
+                #sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
+                abbrevs = [line[0] for line in f_csv ]
+            if not options.strict_no_del:
+                delete_file(csv_f_name, self.logger)
 
 
         self.logger.debug('bbox == ' + str(bbox))
 
-        if options.del_shp and os.path.isfile(f_name):
-            os.remove(f_name)  # TODO: Fix, currently Win32 error
+        delete_shp_files_if_req(f_name
+                               ,logger = self.logger
+                               ,delete = options.del_after_read
+                               ,strict_no_del = options.strict_no_del
+                               ,regexes = (make_regex(options.output_fmt)
+                                          ,make_regex(options.prepped_fmt)
+                                          )
+                               )
+
 
         retcode = 0
 

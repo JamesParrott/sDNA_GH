@@ -53,7 +53,7 @@ class ShpOptions(object):
     overwrite_shp = True
     max_new_files = 20
     suppress_warning = True     
-    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    dupe_file_key_str ='{name}_({number})'
     #
     # ensure_correct & write_iterable_to_shp
     extra_chars = 2
@@ -307,9 +307,10 @@ def get_filename(f, options = ShpOptions):
         [file_name, _, file_extension] = full_file_name.rpartition('.') 
         while os.path.isfile(f) and i <= options.max_new_files:
             f = os.path.join(file_dir
-                            ,  file_name 
-                               +options.dupe_file_suffix.format(i) 
-                               +'.' + file_extension
+                            ,options.dupe_file_key_str.format(name = file_name 
+                                                             ,number = str(i)
+                                                             )
+                             + '.' + file_extension
                             ) 
             i += 1
     elif not options.suppress_warning:

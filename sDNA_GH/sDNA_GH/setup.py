@@ -235,15 +235,17 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                              +'metas.sDNA_search_paths. '
                                              )
     python_exe = r'C:\Python27\python.exe' 
-    dot_shp = '.shp' # also in ShapefileWriter, ShapefileReader
-    prepped_shp_suffix = "_prepped"
-    output_shp_suffix = "_output"   
+    prepped_fmt = '{name}_prepped'
+    output_fmt = '{name}_output'   
+    del_after_sDNA = False
+    strict_no_del = False # Also in ShapefileReader
     ###########################################################################    
     #
     # Overrides for RhinoObjectsReader
     #
+    selected = False
+    layers = None
     merge_subdicts = True
-    include_groups = False
     #
     #
     ###########################################################################
@@ -254,6 +256,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     shape_type = 'POLYLINEZ' # Also in RhinoObjectsReader, ShapefileWriter
     locale = ''  # '' => User's own settings.  Also in DataParser
                  # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+                 # Used for locale.setlocale(locale.LC_ALL,  options.locale)
     #
     # coerce_and_get_code
     decimal = True
@@ -267,7 +270,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     overwrite_shp = True
     max_new_files = 20
     suppress_warning = True     
-    dupe_file_suffix = r'_({})' # Needs to contain a replacement field {} that .format can target.  No f strings in Python 2.7 :(
+    dupe_file_key_str = '{name}_({number})'
     #
     # ensure_correct & write_iterable_to_shp
     extra_chars = 2
@@ -287,15 +290,14 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
     #30,000 characters tested.
-    output_shp = os.path.join( os.path.dirname(__file__)
-                                ,'tmp.shp'
-                                )
+    output_shp = ''
     ###########################################################################
     #
     # Overrides for ShapefileReader
     #
     new_geom = True
-    del_shp = False                   
+    del_after_read = False                 
+    sDNA_names_fmt = '{name}.shp.names.csv'  
     ###########################################################################   
     #         
     # Overrides for UsertextWriter
@@ -337,8 +339,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     last_leg_tag_str = 'above {lower}'
     num_format = '{:.5n}'
     leg_frame = ''  # uuid of GH object
-    locale = '' # ''=> auto. 
-                # Used for locale.setlocale(locale.LC_ALL,  options.locale)
     colour_as_class = False
     #
     #

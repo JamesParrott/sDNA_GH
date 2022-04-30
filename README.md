@@ -62,10 +62,10 @@ These options may also be specified in a project specific config.toml file, or i
 ###### Load_Config (load_config)
 Loads an sDNA_GH project configuration file (.toml or .ini, e.g. *config.toml*) along with the sDNA_GH Python package and any specified options.
 ###### Read_Geom (get_Geom)
-Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the reference to them.
+Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Add in the option selected = True to only read selected Rhino objects of the specified type.  Similarly, specify layer = 'your_layer_name' to only read Rhino objects from a specific named layer.
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
-Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = False`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless auto_read_Usertext = False).
+Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless auto_read_Usertext = False).
 ###### Read_Shp (read_shapefile)
 Read in the polylines and data from the specified shapefile.  Output the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to create a legend frame with in Recolour_Objects.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless auto_plot_data = false, Recolour_Objects is called afterwards.  
 ##### Plotting tools
