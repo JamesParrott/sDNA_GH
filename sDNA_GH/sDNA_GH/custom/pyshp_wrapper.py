@@ -65,6 +65,7 @@ class ShpOptions(object):
     uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
     num_dp = 10 # decimal places
     min_sizes = True
+    encoding = 'utf8' # also used by get_fields_recs_and_shapes
 
 
 ###################################################################
@@ -509,6 +510,7 @@ def write_iterable_to_shp(my_iterable
     
     with shp.Writer(os.path.normpath( shapefile_path )
                    ,getattr(shp, shape_code)
+                   ,encoding = options.encoding
                    ) as w:
 
         for key, val in fields.items():
@@ -530,8 +532,8 @@ def write_iterable_to_shp(my_iterable
 
     return 0, shapefile_path, fields, attribute_tables
 
-def get_fields_recs_and_shapes(shapefile_path):
-    with shp.Reader(shapefile_path) as r:
+def get_fields_recs_and_shapes(shapefile_path, options = ShpOptions):
+    with shp.Reader(shapefile_path, encoding = options.encoding) as r:
         fields = r.fields[1:] # skip first field (deletion flag)
         recs = r.records()
         shapes = r.shapes()

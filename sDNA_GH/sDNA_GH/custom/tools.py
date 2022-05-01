@@ -11,7 +11,6 @@ import re
 from collections import OrderedDict
 
 from time import asctime
-import csv
 from numbers import Number
 import locale
 
@@ -736,10 +735,12 @@ class ShapefileReader(sDNA_GH_Tool):
         csv_f_name = options.sDNA_names_fmt.format(name = file_name)
         #sDNA_fields = {}
         if os.path.isfile(csv_f_name):
-            with open(csv_f_name, 'rb') as f:
-                f_csv = csv.reader(f)
-                #sDNA_fields = [OrderedDict( (line[0], line[1]) for line in f_csv )]
-                abbrevs = [line[0] for line in f_csv ]
+# sDNA writes this file in simple 'w' mode, 
+# Line 469
+# https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/arcscripts/sdna_environment.py
+            with open(csv_f_name, 'r') as f:  
+                #sDNA_fields = [OrderedDict( line.split(',') for line in f )]
+                abbrevs = [line.split(',')[0] for line in f ]
             if not options.strict_no_del:
                 delete_file(csv_f_name, self.logger)
 

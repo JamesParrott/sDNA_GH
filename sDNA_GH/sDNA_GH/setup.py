@@ -185,7 +185,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #System
     #
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
-    encoding = 'utf-8'
+    encoding = 'utf-8' # used by .custom.pyshp_wrapper
+                       # get_fields_recs_and_shapes and write_iterable_to_shp
     package_name = os.path.basename(os.path.dirname(__file__))
     sub_module_name = os.path.basename(__file__).rpartition('.')[0]
     #
