@@ -16,10 +16,10 @@ import os
 import logging
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
-if sys.version_info.major >= 3 : # version > '3':   # if Python 3
-    import configparser as ConfigParser
-else:   # e.g.  Python 2
-    import ConfigParser    
+if sys.version_info.major >= 3: 
+    import configparser as ConfigParser # Python 3
+else:   
+    import ConfigParser # Python 2
 
 from ..third_party.toml import decoder
 
@@ -172,8 +172,6 @@ def override_namedtuple_with_dict(nt_lesser
                                  ):  
     #type (namedtuple, dict, Boolean, Boolean, Boolean) -> namedtuple
     #
-    print({key : val for (key, val) in d_greater.items() 
-        if key.startswith('auto')})
 
     if strict and not isinstance(d_greater, dict):
         return nt_lesser
@@ -447,11 +445,9 @@ def override_namedtuple(nt_lesser
         logging.error(msg)
         raise NotImplementedError(msg)
 
-    print('overrides_list == ' + str(overrides_list))
 
     for override in overrides_list:
         if override: # != None:
-            print(get_nt_overrider_func(override, nt_lesser))
             overrider_func = get_nt_overrider_func(override, nt_lesser)
             nt_lesser = overrider_func( nt_lesser, override, **kwargs ) 
 

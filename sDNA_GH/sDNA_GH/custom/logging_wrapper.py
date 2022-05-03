@@ -184,8 +184,6 @@ class Output(object):
     def __call__(self, message, logging_level = "INFO", logging_dict = {}):
         #type: (str, str, dict, list) -> str
         
-        #print(message)
-
         if logging_dict == {} and hasattr(self, 'logger'): 
             logging_dict = dict( DEBUG = self.logger.debug
                                 ,INFO = self.logger.info

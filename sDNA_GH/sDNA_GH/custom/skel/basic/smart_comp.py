@@ -9,13 +9,15 @@ import inspect
 import sys
 from collections import OrderedDict
 from abc import abstractmethod
-if sys.version < '3.4':
+if sys.version_info.major <= 2 or (
+   sys.version_info.major == 3 and sys.version_info.minor <= 4):
     from abc import ABCMeta
     class ABC(object):
         __metaclass__ = ABCMeta
 else:
     from abc import ABC
-if sys.version < '3.3':
+if sys.version_info.major <= 2 or (
+   sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Callable
 else:
     from collections.abc import Callable

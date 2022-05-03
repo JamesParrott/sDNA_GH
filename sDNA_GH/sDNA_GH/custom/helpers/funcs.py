@@ -6,7 +6,8 @@ __version__ = '0.02'
 import sys
 import os
 from math import log
-if sys.version < '3.3':
+if sys.version_info.major <= 2 or (
+   sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Sequence
 else:
     from collections.abc import Sequence

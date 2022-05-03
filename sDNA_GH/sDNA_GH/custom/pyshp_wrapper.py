@@ -15,7 +15,8 @@ from collections import OrderedDict
 from datetime import date
 import re
 from unicodedata import decimal
-if sys.version < '3.3':
+if sys.version_info.major <= 2 or (
+   sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Iterable
 else:
     from collections.abc import Iterable

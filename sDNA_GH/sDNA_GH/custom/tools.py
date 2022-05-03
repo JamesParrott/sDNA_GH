@@ -147,7 +147,7 @@ def delete_shp_files_if_req(f_name
     #type(str, type[any], bool, str/tuple) -> None
     if not strict_no_del:
         file_name = f_name.rpartition('.')[0]
-        print('Delete == ' + str(delete))
+        logger.debug('Delete == ' + str(delete))
         if (delete or name_matches(file_name, regexes)):
             for ending in ('.shp', '.dbf', '.shx'):
                 path = file_name + ending
@@ -921,8 +921,6 @@ class DataParser(sDNA_GH_Tool):
                                             for x in options.class_bounds
                                         )
                             )
-
-        print('no_manual_classes == '+ str(no_manual_classes))
 
         if options.sort_data or (no_manual_classes 
            and options.class_spacing == 'equal number of members'  ):
