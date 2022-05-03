@@ -88,7 +88,8 @@ class Output(object):
 
     def flush(self):
         tmp_logs = self.tmp_logs[:] # __call__ might cache back to tmp_logs
-        self.tmp_logs[:] = [] # Mutate list initialised with
+        self.tmp_logs[:] = [] # Mutate list initialised with.  Avoid double 
+                              # logging in case re - stored in tmp_logs
         for tmp_log_message, tmp_log_level in tmp_logs:
             self.__call__(tmp_log_message, tmp_log_level)
 

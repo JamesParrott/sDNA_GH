@@ -54,6 +54,11 @@ def get_args_spec(callable):
 
 def get_val(key, sources):
     #type(str, list) -> type[any]
+    if key.lower() == 'out':
+        return None
+        # Standard output parameter of a GhPython component that takes sys.err etc.
+        # https://developer.rhino3d.com/guides/rhinopython/ghpython-component/#out-parameter
+
     for source in sources:
         #print('Fetching : '+ str(key))
         if isinstance(source, dict) and key in source:

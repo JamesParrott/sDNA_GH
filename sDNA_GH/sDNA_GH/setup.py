@@ -44,7 +44,7 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ObjectsRecolourer
                           ,sDNA_ToolWrapper
                           ,sDNA_GeneralDummyTool
-                          ,Load_Config_File
+                          ,Load_Config
                           )
 from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
 
@@ -245,7 +245,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for RhinoObjectsReader
     #
     selected = False
-    layers = None
+    layer = None
     merge_subdicts = True
     #
     #
@@ -441,12 +441,15 @@ def override_all_opts(args_dict
 
     for (arg_name, arg_val) in args_dict.items():  # local_metas() will be full
                                                    # of all our other variables
-        if arg_val: # Unconnected input variables in a Grasshopper component 
-                    # are None.  No sDNA tool inputspec default, no metas and 
-                    # no options default is None.
+        if arg_val is not None: 
+                    # Unconnected input variables in a Grasshopper component 
+                    # are None.  
                     # If None values are needed as specifiable inputs, we would 
                     # need to e.g. test ghenv for an input variable's 
                     # connectedness so we don't support this.
+                    # None is used in the hardcoded options to allow
+                    # strict typechecking to be avoided (once only), but None 
+                    # is not supported in .toml files either.   
             if arg_name in metas._fields:      
                 args_metas[arg_name] = arg_val
             elif arg_name in options._fields:   
@@ -596,6 +599,7 @@ def override_all_opts(args_dict
           #                           ] + overrides(key)
 
     for key in dict_to_update:
+        output('Overriding : ' + key, 'DEBUG')
         if key in ('options','metas'):
             dict_to_update[key] = override_namedtuple(dict_to_update[key]
                                                      ,overrides_list(key)
@@ -630,10 +634,13 @@ def override_all_opts(args_dict
 
 if os.path.isfile(default_metas.config):
     #print('Before override: message == '+opts['options'].message)
-    override_all_opts(args_dict = default_metas._asdict() # to get installation config.toml
+    override_all_opts(args_dict = default_metas._asdict() 
+                     # to get installation config.toml only once, for this call
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
                      ) 
+
+
     output("After override: opts['options'].message == " 
           + module_opts['options'].message
           , 'DEBUG'
@@ -656,7 +663,7 @@ possible_pythons = (os.path.join(folder, python) for folder in folders
                    )
 
 while not os.path.isfile(module_opts['options'].python_exe):
-    module_opts['options']._replace(python_exe = next(possible_pythons))
+    module_opts['options'] = module_opts['options']._replace(python_exe = next(possible_pythons))
 
 if not os.path.isfile(module_opts['options'].python_exe):
     raise ValueError('python_exe is not a file. ')
@@ -732,7 +739,7 @@ recolour_objects = ObjectsRecolourer()
 get_tool_names = GetToolNames()
 build_components = sDNA_GH_Builder()
 sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
-load_config_file = Load_Config_File()
+load_config = Load_Config()
 
 tools_dict.update(get_Geom = get_Geom
                  ,read_Usertext = read_Usertext
@@ -745,7 +752,7 @@ tools_dict.update(get_Geom = get_Geom
                  ,get_comp_names = get_tool_names
                  ,Build_components = build_components
                  ,sDNA_General = sDNA_General_dummy_tool
-                 ,load_config = load_config_file
+                 ,load_config = load_config
                  )
 
 def cache_sDNA_tool(compnt
@@ -889,12 +896,14 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug("Updating Params: " + str(tools))
 
-        return add_tool_params(Params
-                              ,tools
-                              ,do_not_add
-                              ,do_not_remove
-                              ,wrapper = self.script
-                              )
+        result = add_tool_params(Params
+                                ,tools
+                                ,do_not_add
+                                ,do_not_remove
+                                ,wrapper = self.script
+                                )
+
+        return result
 
 
     def update_tools(self, nick_name = None):
@@ -926,7 +935,7 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-    def update_name(self, new_name = None):
+    def try_to_update_nick_name(self, new_name = None):
         if new_name is None:
             new_name = self.Attributes.Owner.NickName 
             # If this is run before __init__ has run, there is no 
@@ -1048,7 +1057,8 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('gdm from start of RunScript == ' + str(gdm)[:50])
         #print('#1 self.local_metas == ' + str(self.local_metas))
         
-        if self.update_name() == 'Name updated': # True 1st run after __init__
+        result = self.try_to_update_nick_name()
+        if result == 'Name updated': # True 1st run after __init__
             nick_name = self.local_metas.nick_name
             if (nick_name.lower()
                          .replace('_','')
@@ -1060,19 +1070,29 @@ class sDNA_GH_Component(SmartComponent):
         
             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
 
+            logger.debug('self.tools == ' + str(self.tools))
 
-            self.update_Params()#self.Params, self.tools)
-            return (None,) * len(self.Params.Output)
-            # Grasshopper components can have a glitchy one off error if
-            # not-None outputs are given to params that 
-            # have just been added, in the same RunScript call.  In our 
-            # design the user probably doesn't want the new tool and 
-            # updated component params to run before they've had chance to
-            # look at them, even if 'go' still is connected to True.
+            extra_params_added = self.update_Params() #self.Params, self.tools)
+
+            if extra_params_added != 'No extra Params required. ':
+                # Extra Input Params are actually OK as RunScript has already 
+                # been called already by this point.
+                logger.debug('Output Params updated.  Returning None.  ')
+                return (None,) * len(self.Params.Output)
+                # Grasshopper components can have a glitchy one off error if
+                # not-None outputs are given to params that 
+                # have just been added, in the same RunScript call.  In our 
+                # design the user probably doesn't want the new tool and 
+                # updated component params to run before they've had chance to
+                # look at them, even if 'go' still is connected to True.  But 
+                # e.g. config, and anything there that they already configured
+                # and saved should still run when the canvas loads. 
 
         
         synced = self.local_metas.sync
         old_sDNA = self.opts['metas'].sDNA
+        #######################################################################
+        logger.debug('kwargs == ' + str(kwargs))
         self.local_metas = override_all_opts(
                                  args_dict = kwargs
                                 ,local_opts = self.opts # mutated
@@ -1080,6 +1100,7 @@ class sDNA_GH_Component(SmartComponent):
                                 ,local_metas = self.local_metas 
                                 ,external_local_metas = external_local_metas
                                 )
+        #######################################################################
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
 

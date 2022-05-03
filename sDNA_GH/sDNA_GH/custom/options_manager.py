@@ -144,19 +144,20 @@ def override_OrderedDict_with_dict( d_lesser
             if (         d_lesser[key]  is not None       
                 and type(d_lesser[key]) != type(new_od[key])   ):
                 del new_od[key]
-    
+
     if sys.version_info.major > 3 or (    sys.version_info.major == 3 
                                   and sys.version_info.minor >= 9 ):
         return d_lesser | new_od    # I like this! :)  There's otherwise no 
                                     # need to check >= Python 3.9
-                                    # n.b. dict key insertion order guaranteed 
+                                    # n.b. dict key insertion order guaranteed
                                     # to be preserved >= Python 3.7
     else:
-        return OrderedDict(d_lesser, **new_od)      # Arguments must be string-keyed PEP 0584
-                                                    # The values of od_greater take priority if the keys clash
-                                                    # But the order of the keys is as for d_lesser (Iron Python 2.7.11)
-                                                    #
-                                                    # Extra keys in new_od are added to d_lesser
+        return OrderedDict(d_lesser, **new_od)      
+            # Arguments must be string-keyed PEP 0584
+            # The values of od_greater take priority if the keys clash
+            # But the order of the keys is as for d_lesser (Iron Python 2.7.11)
+            #
+            # Extra keys in new_od are added to d_lesser
 
     # PEP 0584
     # PEP 468
@@ -171,12 +172,15 @@ def override_namedtuple_with_dict(nt_lesser
                                  ):  
     #type (namedtuple, dict, Boolean, Boolean, Boolean) -> namedtuple
     #
+    print({key : val for (key, val) in d_greater.items() 
+        if key.startswith('auto')})
+
     if strict and not isinstance(d_greater, dict):
         return nt_lesser
-    elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:  #.viewkeys doesn't have .issubset method ipy 2.7
+    elif set(d_greater.keys()).issubset(nt_lesser._fields) and not check_types:  
+        #.viewkeys doesn't have .issubset method ipy 2.7
         if delistify:
             delistify_vals_if_not_list_in(nt_lesser._asdict(), d_greater)
-        
         return nt_lesser._replace(**d_greater)
     else:
         newDict = override_OrderedDict_with_dict(nt_lesser._asdict()
@@ -186,6 +190,7 @@ def override_namedtuple_with_dict(nt_lesser
                                                 ,delistify
                                                 ,**kwargs
                                                 )
+
         return namedtuple_from_dict(newDict
                                    ,nt_lesser.__class__.__name__
                                    ,strict
@@ -193,9 +198,6 @@ def override_namedtuple_with_dict(nt_lesser
                                    ,**kwargs
                                    ) 
 
-
-# ftrick = namedtuple('Trick',trick.keys())(**trick)
-# newtrick=ftrick._replace(**{k : asd[k] for k in asd.keys() if k in ftrick._fields})
 
 def override_namedtuple_with_namedtuple(nt_lesser
                                        ,nt_greater
@@ -445,11 +447,11 @@ def override_namedtuple(nt_lesser
         logging.error(msg)
         raise NotImplementedError(msg)
 
-
-
+    print('overrides_list == ' + str(overrides_list))
 
     for override in overrides_list:
         if override: # != None:
+            print(get_nt_overrider_func(override, nt_lesser))
             overrider_func = get_nt_overrider_func(override, nt_lesser)
             nt_lesser = overrider_func( nt_lesser, override, **kwargs ) 
 

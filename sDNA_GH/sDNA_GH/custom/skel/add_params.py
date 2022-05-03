@@ -132,8 +132,19 @@ class ToolWithParams(ToolwithParamsABC):
     def output_params(self):
         return self.params_list(self.component_outputs)
 
+def check_IO(IO):
+    if IO not in ['Input', 'Output']:
+        raise ValueError("IO must be in ['Input', 'Output'], "
+                        +"instead of: " + str(IO)
+                        )
 
-def add_Params(Input_or_Output
+def current_param_names(params, IO):
+    check_IO(IO)
+    return [param.NickName for param in getattr(params, IO)]
+#            for param in getattr(ghenv.Component.Params,IO)]
+
+
+def add_Params(IO
               ,do_not_add
               ,do_not_remove
               ,Params
@@ -141,16 +152,14 @@ def add_Params(Input_or_Output
               ):
     #type(str, list, list, type[any], list, list[Param], list[ParamInfo]) -> None   
 
+    check_IO(IO)
 
-    if Input_or_Output not in ['Input', 'Output']:
-        raise ValueError("Input_or_Output must be in ['Input', 'Output'], "
-                        +"instead of: " + str(Input_or_Output)
-                        )
+
 
     do_not_add = do_not_add[:]
     do_not_remove = do_not_remove[:]
 
-    params_current = getattr(Params, Input_or_Output)[:]
+    params_current = getattr(Params, IO)[:]
 
     logger.debug('params_current NickNames == '
                 +' '.join(str(param.NickName) for param in params_current)
@@ -194,7 +203,7 @@ def add_Params(Input_or_Output
             #                        ,Input_or_Output
             #                        )
 
-            getattr(Params, registers[Input_or_Output])(param.make()) 
+            getattr(Params, registers[IO])(param.make()) 
             Params.OnParametersChanged()
 
 
@@ -213,46 +222,60 @@ def add_tool_params(Params
                    ):
     #type(type[any], list[ToolwithParamsABC], list, list, function) -> type[any]
     
-    ParamsSyncObj = Params.EmitSyncObject()
+    current_output_names = current_param_names(Params, 'Output')
+    logger.debug('current_output_names == ' + str(current_output_names))
+    
+    current_input_names = current_param_names(Params, 'Input')
+    logger.debug('current_input_names == ' + str(current_input_names))
+
+
 
     needed_output_params = [ output for tool in reversed(tools)
-                             for output in tool.output_params() ]
-                           
+                             for output in tool.output_params() 
+                             if output['NickName'] not in current_output_names]
+
     needed_input_params = [ input for tool in tools 
-                            for input in tool.input_params() ]
+                            for input in tool.input_params() 
+                            if input['NickName'] not in current_input_names ]
                           
     if wrapper:
-        needed_output_params = wrapper.output_params() + needed_output_params
-        needed_input_params = wrapper.input_params() + needed_input_params
+        for output in reversed(wrapper.output_params()):
+            if output['NickName'] not in current_output_names:
+                needed_output_params = [output] + needed_output_params
+        for input in reversed(wrapper.input_params()):
+            if input['NickName'] not in current_input_names:
+                needed_input_params = [input] + needed_input_params
 
-    # update_params.add_params(Params
-    #                         ,'Output'
-    #                         ,[param['NickName'] 
-    #                           for param in needed_output_params]
-    #                         ,do_not_remove
-    #                         )
 
-    # update_params.add_params(Params
-    #                         ,'Input'
-    #                         ,[param['NickName'] 
-    #                           for param in needed_input_params]
-    #                         ,do_not_remove
-    #                         )
 
-    add_Params('Output'
-              ,do_not_add
-              ,do_not_remove
-              ,Params
-              ,needed_output_params
-              )
-    add_Params('Input'
-              ,do_not_add
-              ,do_not_remove
-              ,Params
-              ,needed_input_params
-              )
+    if not needed_output_params and not needed_input_params:
+        msg = 'No extra Params required. '
+        logger.debug(msg)
+        return msg
+    else:
+        logger.debug('needed_output_params == ' + str(needed_output_params))
+        logger.debug('needed_input_params == ' + str(needed_input_params))
+
+
+    ParamsSyncObj = Params.EmitSyncObject()
+
+    if needed_output_params:
+        add_Params('Output'
+                ,do_not_add
+                ,do_not_remove
+                ,Params
+                ,needed_output_params
+                )
+
+    if needed_input_params:
+        add_Params('Input'
+                ,do_not_add
+                ,do_not_remove
+                ,Params
+                ,needed_input_params
+                )
 
     Params.Sync(ParamsSyncObj)
     Params.RepairParamAssociations()
-    return Params
+    return 'Tried to add extra Params. '
 

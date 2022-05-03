@@ -317,7 +317,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         output_lines = subprocess.check_output(command)
         retcode = 0 # An error in subprocess.check_output will cease execution
-                    # of this code.  Can proceed safely to delete files.
+                    # in the previous line.  Can set retcode =0 and proceed 
+                    # safely to delete files.
 
         self.logger.info(output_lines)
 
@@ -376,8 +377,7 @@ def get_objs_and_OrderedDicts(only_selected = False
                     continue 
                 if only_selected and any(not is_selected(obj) for obj in objs):
                     continue # Skip this group is any of the 4 conditions not met.  
-                             # Correct Polylines 
-                             # will be picked up individually
+                             # Correct Polylines will be picked up individually
                              # in the next code block, from the trawl from
                              # rs.ObjectsByType
 
@@ -395,7 +395,6 @@ def get_objs_and_OrderedDicts(only_selected = False
         for obj in objs:
             if obj in objs_already_yielded:
                 continue 
-            print(' layers == ' + str(layers))
 
             if layers and obj_layer(obj) not in layers:
                 continue 
@@ -419,7 +418,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
     opts = get_opts_dict(metas = {}
                         ,options = dict(selected = False
-                                       ,layers = ''
+                                       ,layer = ''
                                        ,shape_type = 'POLYLINEZ'
                                        ,merge_subdicts = True
                                        ,include_groups = False
@@ -444,7 +443,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
             
         gdm = make_gdm(get_objs_and_OrderedDicts(only_selected = options.selected
-                                                ,layers = options.layers
+                                                ,layers = options.layer
                                                 ,shp_type = options.shape_type
                                                 ,include_groups = options.include_groups 
                                                 ) 
@@ -460,6 +459,8 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                          )
         if len(gdm) > 0:
             self.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
+
+
         if tmp_gdm:
             gdm = override_gdm(gdm
                               ,tmp_gdm
@@ -492,7 +493,7 @@ class UsertextReader(sDNA_GH_Tool):
 
         self.debug('Starting read_Usertext..  Creating Class logger. ')
         self.debug('type(gdm) == ' + str(type(gdm)))
-        self.debug('gdm == ' + str(gdm))
+        self.debug('gdm[:3] == ' + str({key : gdm[key] for key in gdm.keys()[:3]} ))
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
@@ -504,9 +505,7 @@ class UsertextReader(sDNA_GH_Tool):
         # for obj in gdm:
         #     gdm[obj].update(read_Usertext_as_tuples(obj))
 
-        # get_OrderedDict() will get Usertext from both the GH and Rhino docs
-        # switching the target to RhinoDoc if needed, hence the following line 
-        # is important:
+
         sc.doc = ghdoc  
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
@@ -584,6 +583,8 @@ class ShapefileWriter(sDNA_GH_Tool):
             #                 if is_shape(y, shp_type)]
             #     else:
             #         return []
+
+        self.debug('Test points obj 0: ' + str(get_list_of_lists_from_tuple(gdm.keys()[0]) ))
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -1352,10 +1353,13 @@ class sDNA_GeneralDummyTool(sDNA_GH_Tool):
                                  )
     component_outputs = ()
 
-class Load_Config_File(sDNA_GH_Tool):
+class Load_Config(sDNA_GH_Tool):
     component_inputs = ('config',)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, opts):
+        self.debug('Starting class logger')
+        options = opts['options']
+        self.debug('options == ' + str(options))
         retcode = 0
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)

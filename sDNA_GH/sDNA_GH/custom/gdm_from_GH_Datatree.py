@@ -87,9 +87,9 @@ def override_gdm(lesser, override, merge_subdicts = True):
     if merge_subdicts:# :
         logger.debug('Merging gdms.  ')
         for key in override:
-            if   key in lesser and all(
-                 isinstance(override[key], dict)
-                ,isinstance(lesser[key], dict)   ):
+            if (key in lesser
+                and isinstance(override[key], dict)
+                and isinstance(lesser[key], dict)   ):
                 lesser[key].update(override[key])
             else:
                 lesser[key] = override[key]

@@ -63,7 +63,7 @@ strict_no_del = false # Also in ShapefileReader
 # Overrides for RhinoObjectsReader
 #
 selected = false
-layers = ''
+#layer = ''
 merge_subdicts = true
 #
 #
