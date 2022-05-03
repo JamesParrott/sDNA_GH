@@ -1,0 +1,8 @@
+
+https://github.com/PyCQA/pylint/
+https://pylint.pycqa.org/en/latest/additional_commands/index.html?highlight=pyreverse#pyreverse
+
+choco install graphviz
+https://stackoverflow.com/questions/35205430/pyreverse-complaining-even-after-having-graphviz
+
+pyreverse -o png sDNA_GH
