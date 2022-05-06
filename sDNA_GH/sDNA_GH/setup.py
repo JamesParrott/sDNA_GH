@@ -408,19 +408,22 @@ def override_all_opts(args_dict
                      ):
     #type(dict, dict, dict, namedtuple, namedtuple, str) -> namedtuple
     #
-    # 1) We assume opts has been built from a previous GHPython launcher 
-    # component and call to this very function.  This trusts the user and 
+    # 1) We assume external_opts has been built from another GHPython launcher 
+    # component, importing this module and also calling this very function.  
+    # This trusts the user and 
     # our components somewhat, in so far as we assume metas and options 
     # in opts have not been crafted to 
-    # be of a class named 'Metas', 'Options', yet contain missing options.  
+    # be of a class named 'Metas', 'Options', yet contain missing options.  But 
+    # generally, while this has been tested a lot, when it fails, it fails noisily.
     #
-    # 2) A primary meta in opts refers to an old primary meta (albeit the 
+    # 2) A primary meta in module_opts refers to an old primary meta (albeit the 
     # most recent one) and will not be used in the options_manager.override
     #  order as we assume that file has already been read into a previous 
-    # opts in the chain.  If the user wishes 
+    # module_opts in the override chain.  If the user wishes 
     # to apply a new project config.ini file, they need to instead specify 
-    # it in args (by adding a variable called config to 
-    # the GHPython sDNA_GH launcher component.
+    # the primary meta in the component args which will be read in as args_dict
+    #  (by adding a variable called config to the GHPython sDNA_GH launcher component).
+    #
     metas = local_opts['metas']
     options = local_opts['options']
     def sDNA():
@@ -674,7 +677,16 @@ module_name = '.'.join([module_opts['options'].package_name
                       )
 
 if ( module_name in sys.modules
-    and not hasattr(sys.modules[module_name], 'logger') ):  
+    and hasattr(sys.modules[module_name], 'logger') ):  
+    #
+    # Unlikely?
+    #
+    logger = sys.modules[module_name].logger
+    #
+    logger.warning('Using sys.modules[' + module_name + '].logger. '
+                  +'Previous import failed?'
+                  )
+else:
 
     # wrapper_logging.logging.shutdown() # Ineffective in GH :(
 

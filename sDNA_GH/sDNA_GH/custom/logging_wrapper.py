@@ -55,11 +55,12 @@ def new_Logger(custom = None
         console output, configured via options in a class/namedtuple 
         https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook """
 
+    dir_name = os.path.join(options.working_folder, options.logs_dir)
 
-    file_name =  os.path.join(options.working_folder
-                             ,options.logs_dir
-                             ,options.log_file
-                             )
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
+
+    file_name = os.path.join(dir_name, options.log_file)
 
     # ensure logging levels are in all capital letters.
     file_logging_level = options.log_file_level.upper()
