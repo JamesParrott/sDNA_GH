@@ -9,23 +9,21 @@ from time import asctime
 from itertools import repeat, izip
 from collections import OrderedDict
 
-try:
-    from ghpythonlib.componentbase import executingcomponent as component
-    import Grasshopper, GhPython
-    import System
-    import Rhino
-    import rhinoscriptsyntax as rs
-    import scriptcontext as sc
-    import ghpythonlib.treehelpers as th
-    GH_env_exists = True # Todo:  Can now just import ghdoc from ...custom.skel.basic.ghdoc
-except:
-    GH_env_exists = False
-    component = object
+
+from ghpythonlib.componentbase import executingcomponent as component
+import Grasshopper, GhPython
+import System
+import Rhino
+import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import ghpythonlib.treehelpers as th
+from ...custom.skel.basic.ghdoc import ghdoc 
 
 
-from ...custom.tools import (  opts
-                        ,convert_Data_tree_and_Geom_list_to_gdm
-                        )
+
+from ...custom.tools import (opts
+                            ,convert_Data_tree_and_Geom_list_to_gdm
+                            )
 
 
 class FileAndStream():
@@ -160,8 +158,8 @@ def test_empty_DataTree(self):
                                                 )
                     )
 
-if GH_env_exists:
-    TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
+#if GH_env_exists:
+TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
 #class sDNA_GH_Test_Runner_Component(component):
 def run_launcher_tests(self,*args):

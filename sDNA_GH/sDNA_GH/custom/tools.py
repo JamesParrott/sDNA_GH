@@ -88,25 +88,25 @@ ClassLogger = class_logger_factory(logger = logger, module_name = __name__)
 class sDNA_GH_Tool(RunnableTool, ToolWithParams, ClassLogger):
 
     factories_dict = dict(go = Param_Boolean
-                        #  ,OK = Param_ScriptVariable
+                         #,OK = Param_ScriptVariable
                          ,file = Param_FilePath
-                        #  ,Geom = Param_ScriptVariable
-                        #  ,Data = Param_ScriptVariable
-                        #  ,leg_cols = Param_ScriptVariable
-                        #  ,leg_tags = Param_ScriptVariable
-                        #  ,leg_frame = Param_ScriptVariable
-                        #  ,gdm = Param_ScriptVariable
-                        #  ,opts = Param_ScriptVariable
+                         #,Geom = Param_ScriptVariable
+                         #,Data = Param_ScriptVariable
+                         #,leg_cols = Param_ScriptVariable
+                         #,leg_tags = Param_ScriptVariable
+                         #,leg_frame = Param_ScriptVariable
+                         #,gdm = Param_ScriptVariable
+                         #,opts = Param_ScriptVariable
                          ,config = Param_FilePath
-                        #  ,l_metas = Param_ScriptVariable
+                         #,l_metas = Param_ScriptVariable
                          ,field = Param_String
-                        #  ,fields = Param_ScriptVariable
-                        #  ,plot_min = Param_ScriptVariable
-                        #  ,plot_max = Param_ScriptVariable
-                        #  ,class_bounds = Param_ScriptVariable
-                        #  ,abbrevs = Param_ScriptVariable
-                        #  ,sDNA_fields = Param_ScriptVariable
-                        #  ,bbox = Param_ScriptVariable
+                         #,fields = Param_ScriptVariable
+                         #,plot_min = Param_ScriptVariable
+                         #,plot_max = Param_ScriptVariable
+                         #,class_bounds = Param_ScriptVariable
+                         #,abbrevs = Param_ScriptVariable
+                         #,sDNA_fields = Param_ScriptVariable
+                         #,bbox = Param_ScriptVariable
                          #,Param_GenericObject
                          #,Param_Guid
                          )
@@ -209,14 +209,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.input_spec = sDNA_Tool.getInputSpec()
         self.get_syntax = sDNA_Tool.getSyntax     
 
-        defaults_dict = { varname : default for (varname
-                                                ,displayname
-                                                ,datatype
-                                                ,filtr
-                                                ,default
-                                                ,required
-                                                ) in self.input_spec  
-                        }            
+        defaults_dict = OrderedDict((varname, default) for (varname
+                                                           ,displayname
+                                                           ,datatype
+                                                           ,filtr
+                                                           ,default
+                                                           ,required
+                                                           ) in self.input_spec  
+                                   )         
         if sDNA in tool_opts:
             tool_opts_dict = defaults_dict.update( tool_opts[sDNA]._asdict() ) 
         else:
@@ -234,11 +234,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.tool_opts = tool_opts
         self.opts = opts
 
+        self.component_inputs += list(defaults_dict.keys())
+
 
     def __init__(self, tool_name, nick_name, opts = None):
 
         if opts is None:
-            opts = self.opts  # the class property
+            opts = self.opts  # the class property, tool default opts
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name
@@ -257,7 +259,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
         if opts is None:
-            opts = self.opts  # the class property
+            opts = self.opts  # the class property, tool default opts
 
         sDNA = opts['metas'].sDNA
         sDNAUISpec = opts['options'].sDNAUISpec
@@ -281,7 +283,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             and f_name.rpartition('.')[2] in ['shp','dbf','shx']):  
             input_file = f_name
 
-        self.logger.debug(input_file)
+        self.logger.debug('input file == ' + str(input_file))
          
 
 
@@ -425,7 +427,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                        )
                         )
 
-    component_inputs = ('config',) 
+    component_inputs = ('config', 'selected', 'layer') 
     
     def __call__(self, opts = None, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -876,7 +878,7 @@ class DataParser(sDNA_GH_Tool):
                                        ,number_of_classes = 8
                                        ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                        # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-                                       ,class_spacing = 'equal number of members'
+                                       ,class_spacing = 'quantile'
                                        ,base = 10 # for Log and exp
                                        ,colour_as_class = False
                                        ,locale = '' # '' => User's own settings.  Also in DataParser
@@ -923,7 +925,7 @@ class DataParser(sDNA_GH_Tool):
                             )
 
         if options.sort_data or (no_manual_classes 
-           and options.class_spacing == 'equal number of members'  ):
+           and options.class_spacing == 'quantile'  ):
             # 
             gdm = OrderedDict( sorted(gdm.items()
                                      ,key = lambda tupl : tupl[1][field]
@@ -936,7 +938,7 @@ class DataParser(sDNA_GH_Tool):
 
         if no_manual_classes:
             m = options.number_of_classes
-            if options.class_spacing == 'equal number of members':
+            if options.class_spacing == 'quantile':
                 n = len(gdm)
                 objs_per_class = n // m
                 # assert gdm is already sorted

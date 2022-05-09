@@ -62,7 +62,7 @@ These options may also be specified in a project specific config.toml file, or i
 ###### Load_Config (load_config)
 Loads an sDNA_GH project configuration file (.toml or .ini, e.g. *config.toml*) along with the sDNA_GH Python package and any specified options.
 ###### Read_Geom (get_Geom)
-Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Add in the option selected = True to only read selected Rhino objects of the specified type.  Similarly, specify layer = 'your_layer_name' to only read Rhino objects from a specific named layer.
+Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option *selected* to True, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify *layer* = your_layer_name to only read Rhino objects from the layer named your_layer_name.
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
 Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless auto_read_Usertext = False).

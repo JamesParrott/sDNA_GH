@@ -328,8 +328,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
 
     number_of_classes = 7
-    class_spacing = 'equal number of members' 
-    valid_class_spacings = valid_re_normalisers + ['equal number of members']
+    class_spacing = 'quantile' 
+    valid_class_spacings = valid_re_normalisers + ['quantile']
     if class_spacing not in valid_class_spacings:
         raise ValueError(str(class_spacing)
                         +' must be in ' 
