@@ -3,7 +3,6 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-from importlib.abc import ExecutionLoader
 import os
 import logging
 import subprocess
@@ -60,7 +59,7 @@ from .skel.tools.runner import RunnableTool
 from .skel.add_params import ToolWithParams, ParamInfo
 from .options_manager import (namedtuple_from_dict
                              ,Sentinel
-                             ,get_opts_dict
+                             ,get_dict_of_Classes
                              )
 from .pyshp_wrapper import (get_filename
                            ,write_iterable_to_shp
@@ -164,7 +163,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # self.tool_name.  When the instance is called, the version of sDNA
     # is looked up in opts['metas'], from its args.
     # 
-    opts = get_opts_dict(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand')
+    opts = get_dict_of_Classes(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand')
                                      ,show_all = True
                                      )
                         ,options = dict(sDNAUISpec = Sentinel('Module not imported yet')
@@ -239,7 +238,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.tool_opts = tool_opts
         self.opts = opts
         if metas.show_all:
-            self.component_inputs += list(defaults_dict.keys())
+            self.component_inputs += tuple(defaults_dict.keys())
 
 
     def __init__(self, tool_name, nick_name, opts = None):
@@ -423,7 +422,7 @@ def get_objs_and_OrderedDicts(only_selected = False
 
 class RhinoObjectsReader(sDNA_GH_Tool):
 
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = dict(selected = False
                                        ,layer = ''
                                        ,shape_type = 'POLYLINEZ'
@@ -490,7 +489,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
 
 class UsertextReader(sDNA_GH_Tool):
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = {}
                         )
     component_inputs = ('Geom',) 
@@ -528,7 +527,7 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = dict(shape_type = 'POLYLINEZ'
                                        ,input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
                                        ,path = __file__
@@ -645,7 +644,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = dict(new_geom = True
                                        ,uuid_field = 'Rhino3D_'
                                        ,sDNA_names_fmt = '{name}.shp.names.csv'
@@ -780,7 +779,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
 class UsertextWriter(sDNA_GH_Tool):
 
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = dict(uuid_field = 'Rhino3D_'
                                        ,output_key_str = 'sDNA output={name} run time={datetime}'
                                        ,overwrite_UserText = True
@@ -874,29 +873,30 @@ class UsertextWriter(sDNA_GH_Tool):
 class DataParser(sDNA_GH_Tool):
 
 
-    opts = get_opts_dict(metas = {}
-                        ,options = dict(field = 'BtEn'
-                                       ,plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
-                                       ,plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
-                                       ,re_normaliser = 'linear'
-                                       ,sort_data = False
-                                       ,number_of_classes = 8
-                                       ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
-                                       # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-                                       ,class_spacing = 'quantile'
-                                       ,base = 10 # for Log and exp
-                                       ,colour_as_class = False
-                                       ,locale = '' # '' => User's own settings.  Also in DataParser
-                                       # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-                                       ,num_format = '{:.5n}'
-                                       ,first_leg_tag_str = 'below {upper}'
-                                       ,gen_leg_tag_str = '{lower} - {upper}'
-                                       ,last_leg_tag_str = 'above {lower}'
-                                       ,exclude = False
-                                       ,bound = True
-                                       )
-                        )
-    assert opts['options']['re_normaliser'] in _valid_re_normalisers
+    opts = get_dict_of_Classes(metas = {}
+                              ,options = dict(
+                                     field = 'BtEn'
+                                    ,plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
+                                    ,plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
+                                    ,re_normaliser = 'linear'
+                                    ,sort_data = False
+                                    ,number_of_classes = 8
+                                    ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
+                                    # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+                                    ,class_spacing = 'quantile'
+                                    ,base = 10 # for Log and exp
+                                    ,colour_as_class = False
+                                    ,locale = '' # '' => User's own settings.  Also in DataParser
+                                    # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+                                    ,num_format = '{:.5n}'
+                                    ,first_leg_tag_str = 'below {upper}'
+                                    ,gen_leg_tag_str = '{lower} - {upper}'
+                                    ,last_leg_tag_str = 'above {lower}'
+                                    ,exclude = False
+                                    ,bound = True
+                                    )
+                              )
+    assert opts['options'].re_normaliser in _valid_re_normalisers
                         
 
     def __init__(self):
@@ -1107,7 +1107,7 @@ class DataParser(sDNA_GH_Tool):
 
 class ObjectsRecolourer(sDNA_GH_Tool):
 
-    opts = get_opts_dict(metas = {}
+    opts = get_dict_of_Classes(metas = {}
                         ,options = dict(field = 'BtEn'
                                        ,Col_Grad = False
                                        ,Col_Grad_num = 5
