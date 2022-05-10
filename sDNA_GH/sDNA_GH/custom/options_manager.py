@@ -39,8 +39,8 @@ def get_BaseOptsClass(**kwargs):
         setattr(BaseOptsClass, k, v)
     return BaseOptsClass
 
-def get_opts_dict(**kwargs):
-    #type( dict(str: dict) ) -> dict
+def get_dict_of_opts_Classes(**kwargs):
+    #type( dict(str: dict) ) -> dict(str : type[any])
     return OrderedDict( (key, get_BaseOptsClass(**val)) 
                         for (key, val) in kwargs.items() 
                       )

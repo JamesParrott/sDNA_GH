@@ -21,7 +21,7 @@ from .custom import logging_wrapper
 from .custom import pyshp_wrapper
 from .launcher import Output, load_modules
 from .custom.helpers.funcs import (first_item_if_seq
-                                  ,valid_re_normalisers
+                                  ,_valid_re_normalisers
                                   )
 from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
                                          ,override_gdm
@@ -89,8 +89,15 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
     sDNA_search_paths += [path for path in os.getenv('PATH').split(';')
                                if 'sDNA' in path ]
     update_path = True
-                        #Abbreviation = Tool Name
-###############################################################################
+    ##########################################################################
+    #
+    # Override for sDNA_ToolWrapper
+    #
+    show_all = True
+    ###########################################################################
+    #
+    #               Abbreviation = Tool Name
+    #
     name_map = dict(Read_Geom = 'get_Geom'
                    ,Read_Usertext = 'read_Usertext'
                    ,Write_Shp = 'write_shapefile'
@@ -319,21 +326,21 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
-    if re_normaliser not in valid_re_normalisers:
+    if re_normaliser not in _valid_re_normalisers:
         raise ValueError(str(re_normaliser) 
                         +' must be in '
-                        + str(valid_re_normalisers)
+                        + str(_valid_re_normalisers)
                         )
     class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
 
     number_of_classes = 7
     class_spacing = 'quantile' 
-    valid_class_spacings = valid_re_normalisers + ['quantile']
-    if class_spacing not in valid_class_spacings:
+    _valid_class_spacings = _valid_re_normalisers + ['quantile']
+    if class_spacing not in _valid_class_spacings:
         raise ValueError(str(class_spacing)
                         +' must be in ' 
-                        +str(valid_class_spacings)
+                        +str(_valid_class_spacings)
                         )
     first_leg_tag_str = 'below {upper}'
     gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
@@ -341,6 +348,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     num_format = '{:.5n}'
     leg_frame = ''  # uuid of GH object
     colour_as_class = False
+    exclude = False
+    bound = True
     #
     #
     ###########################################################################   

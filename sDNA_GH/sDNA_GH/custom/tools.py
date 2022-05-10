@@ -3,6 +3,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+from importlib.abc import ExecutionLoader
 import os
 import logging
 import subprocess
@@ -20,7 +21,7 @@ import Rhino
 import GhPython
 import System
 from System.Drawing import Color as Colour #.Net / C# Class
-                #System is also available in IronPython, but not System.Drawing
+            #System is also available in IronPython, but System.Drawing isn't
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Curve
@@ -44,6 +45,8 @@ from .helpers.funcs import (make_regex
                            ,linearly_interpolate
                            ,map_f_to_three_tuples
                            ,three_point_quad_spline
+                           ,_valid_re_normalisers
+                           ,enforce_bounds
                            )
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
@@ -161,7 +164,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # self.tool_name.  When the instance is called, the version of sDNA
     # is looked up in opts['metas'], from its args.
     # 
-    opts = get_opts_dict(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand'))
+    opts = get_opts_dict(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand')
+                                     ,show_all = True
+                                     )
                         ,options = dict(sDNAUISpec = Sentinel('Module not imported yet')
                                        ,run_sDNA = Sentinel('Module not imported yet')
                                        ,prepped_fmt = "{name}_prepped"
@@ -233,8 +238,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                               ) 
         self.tool_opts = tool_opts
         self.opts = opts
-
-        self.component_inputs += list(defaults_dict.keys())
+        if metas.show_all:
+            self.component_inputs += list(defaults_dict.keys())
 
 
     def __init__(self, tool_name, nick_name, opts = None):
@@ -887,8 +892,11 @@ class DataParser(sDNA_GH_Tool):
                                        ,first_leg_tag_str = 'below {upper}'
                                        ,gen_leg_tag_str = '{lower} - {upper}'
                                        ,last_leg_tag_str = 'above {lower}'
+                                       ,exclude = False
+                                       ,bound = True
                                        )
                         )
+    assert opts['options']['re_normaliser'] in _valid_re_normalisers
                         
 
     def __init__(self):
@@ -912,15 +920,26 @@ class DataParser(sDNA_GH_Tool):
 
         data = [ val[field] for val in gdm.values()]
         self.logger.debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
-        x_max = max(data) if isinstance(options.plot_max, Sentinel) else options.plot_max
-        x_min = min(data) if isinstance(options.plot_min, Sentinel) else options.plot_min
-        # bool(0) == False so in case x_min==0 we can't use 
-        # if options.plot_min if options.plot_min else min(data) 
+        plot_min, plot_max = options.plot_min, options.plot_max
+        if (isinstance(plot_min, Number)  
+           and isinstance(plot_max, Number) 
+           and plot_min < plot_max ):
+            #
+            x_min, x_max = plot_min, plot_max 
+        else:
+            x_min, x_max = min(data), max(data)
+        # bool(0) == False so in case x_min==0 we can't use if options.plot_min
+        # so test isinstance of Number ABC. 
+        #
+        # x_min & x_max are not stored in options, so sDNA_GH will carry on 
+        # auto calculating min and max on future runs.  Once they are
+        # overridden, set them to an illegal override (max <= min) to go back
+        # to auto-calculation
 
 
         no_manual_classes = (not isinstance(options.class_bounds, list)
                             or not all( isinstance(x, Number) 
-                                            for x in options.class_bounds
+                                               for x in options.class_bounds
                                         )
                             )
 
@@ -930,7 +949,7 @@ class DataParser(sDNA_GH_Tool):
             gdm = OrderedDict( sorted(gdm.items()
                                      ,key = lambda tupl : tupl[1][field]
                                      ) 
-                            )
+                             )
 
 
         param={}
@@ -943,9 +962,11 @@ class DataParser(sDNA_GH_Tool):
                 objs_per_class = n // m
                 # assert gdm is already sorted
                 class_bounds = [ val[field] for val in 
-                                  gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
-                                ]  # classes include their lower bound
-                self.logger.debug('num class boundaries == ' + str(len(class_bounds)))
+                                 gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
+                               ]  # classes include their lower bound
+                self.logger.debug('num class boundaries == ' 
+                                 + str(len(class_bounds))
+                                 )
                 self.logger.debug(options.number_of_classes)
                 self.logger.debug(n)
                 assert len(class_bounds) + 1 == options.number_of_classes
@@ -956,45 +977,61 @@ class DataParser(sDNA_GH_Tool):
                 logger.debug(msg)
 
             else: 
-                class_bounds = [
-                    splines[options.class_spacing](i
-                                                  ,0
-                                                  ,param.get(options.class_spacing
-                                                            ,'Not used'
-                                                            )
-                                                  ,m + 1
-                                                  ,x_min
-                                                  ,x_max
-                                                  )     
-                    for i in range(1, m + 1) 
+                class_bounds = [splines[options.class_spacing](i
+                                                              ,0
+                                                              ,param.get(options.class_spacing
+                                                                        ,'Not used'
+                                                                        )
+                                                              ,m + 1
+                                                              ,x_min
+                                                              ,x_max
+                                                              )     
+                                for i in range(1, m + 1) 
                                ]
         else:
             class_bounds = options.class_bounds
 
+        if options.re_normaliser not in _valid_re_normalisers:
+            # e.g.  'linear', exponential, logarithmic
+            msg = 'Invalid re_normaliser : ' + str(options.re_normaliser)
+            self.error(msg)
+            raise ValueError(msg)
 
-        def re_normaliser(x, p = param.get(options.re_normaliser, 'Not used')):
-            return splines[options.re_normaliser](x
-                                                 ,x_min
-                                                 ,p
-                                                 ,x_max
-                                                 ,x_min
-                                                 ,x_max
-                                                 )
+        def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
+            spline = splines[options.re_normaliser]
+            if options.bound:
+                spline = enforce_bounds(spline)
+            return spline(x
+                         ,x_min
+                         ,p   # base or x_mid.  Can't be kwarg.
+                         ,x_max
+                         ,y_min = x_min
+                         ,y_max = x_max
+                         )
         
-        if not options.colour_as_class:
-            classifier = re_normaliser
-        elif options.re_normaliser:
-            #'linear' # exponential, logarithmic
-            def classifier(x): 
+        def class_mid_point(x): 
+            highest_lower_bound = x_min if x < class_bounds[0] else max(
+                                            y 
+                                            for y in [x_min] + class_bounds
+                                            if y <= x                  
+                                            )
+            #Classes include their lower bound
+            least_upper_bound = x_max if x >= class_bounds[-1] else min(
+                                            y 
+                                            for y in class_bounds + [x_max] 
+                                            if y > x
+                                            )
 
-                highest_lower_bound = x_min if x < class_bounds[0] else max(y 
-                                                for y in class_bounds + [x_min] 
-                                                if y <= x                       )
-                #Classes include their lower bound
-                least_upper_bound = x_max if x >= class_bounds[-1] else min(y for y in class_bounds + [x_max] 
-                                        if y > x)
+            return re_normalise(0.5*(least_upper_bound + highest_lower_bound))
 
-                return re_normaliser (0.5*(least_upper_bound + highest_lower_bound))
+
+
+        if options.colour_as_class:
+            classifier = class_mid_point
+        else:
+            classifier = re_normalise
+
+
 
 
 
@@ -1009,53 +1046,55 @@ class DataParser(sDNA_GH_Tool):
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
-        x_min_s = options.num_format.format(x_min) 
-        upper_s = options.num_format.format(min( class_bounds ))
-        mid_pt_s = options.num_format.format( mid_points[0] )
+        x_min_str = options.num_format.format(x_min) 
+        upper_str = options.num_format.format(min( class_bounds ))
+        mid_pt_str = options.num_format.format( mid_points[0] )
 
         #e.g. first_leg_tag_str = 'below {upper}'
 
-        legend_tags = [options.first_leg_tag_str.format(lower = x_min_s
-                                                       ,upper = upper_s
-                                                       ,mid_pt = mid_pt_s
+        legend_tags = [options.first_leg_tag_str.format(lower = x_min_str
+                                                       ,upper = upper_str
+                                                       ,mid_pt = mid_pt_str
                                                        )
                       ]
-        for lower_bound, mid_point, upper_bound in zip(class_bounds[0:-1]
+        for lower_bound, class_mid_point, upper_bound in zip(class_bounds[0:-1]
                                                       ,mid_points[1:-1]
                                                       ,class_bounds[1:]  
                                                       ):
             
-            lower_s = options.num_format.format(lower_bound)
-            upper_s = options.num_format.format(upper_bound)
-            mid_pt_s = options.num_format.format(mid_point)
+            lower_str = options.num_format.format(lower_bound)
+            upper_str = options.num_format.format(upper_bound)
+            mid_pt_str = options.num_format.format(class_mid_point)
             # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
-            legend_tags += [options.gen_leg_tag_str.format(lower = lower_s
-                                                          ,upper = upper_s
-                                                          ,mid_pt = mid_pt_s 
+            legend_tags += [options.gen_leg_tag_str.format(lower = lower_str
+                                                          ,upper = upper_str
+                                                          ,mid_pt = mid_pt_str 
                                                           )
                             ]
 
-        lower_s = options.num_format.format(max( class_bounds ))
-        x_max_s = options.num_format.format(x_max)
-        mid_pt_s = options.num_format.format(mid_points[-1])
+        lower_str = options.num_format.format(max( class_bounds ))
+        x_max_str = options.num_format.format(x_max)
+        mid_pt_str = options.num_format.format(mid_points[-1])
 
         # e.g. last_leg_tag_str = 'above {lower}'
-        legend_tags += [options.last_leg_tag_str.format(lower = lower_s
-                                                       ,upper = x_max_s 
-                                                       ,mid_pt = mid_pt_s 
+        legend_tags += [options.last_leg_tag_str.format(lower = lower_str
+                                                       ,upper = x_max_str 
+                                                       ,mid_pt = mid_pt_str 
                                                        )        
-                        ]                                                       
+                       ]                                                       
 
         assert len(legend_tags) == options.number_of_classes == len(mid_points)
 
         self.logger.debug(legend_tags)
 
+        def exclude_out_of_bounds_generator():
+            for obj, x in zip(gdm.keys() + legend_tags 
+                             ,data + mid_points
+                             ):
+                if not options.exclude or (x_min <= x <= x_max):
+                    yield obj, classifier(x)
 
-
-        gdm = OrderedDict(zip( gdm.keys() + legend_tags 
-                            ,(classifier(x) for x in data + mid_points)
-                            )
-                        )
+        gdm = OrderedDict(exclude_out_of_bounds_generator())
         plot_min, plot_max = x_min, x_max
         
         locs = locals().copy()
@@ -1111,9 +1150,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         options = opts['options']
         
         field = options.field
-        objs_to_parse = OrderedDict(  (k, v) for k, v in gdm.items()
-                                    if isinstance(v, dict) and field in v    
-                                    )  # any geom with a normal gdm dict of keys / vals
+        objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
+                                   if isinstance(v, dict) and field in v    
+                                   )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse or plot_min is None or plot_max is None:
             x_min, x_max, gdm_in = self.parse_data(objs_to_parse, opts)
                                                                             
@@ -1140,6 +1179,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
+                linearly_interpolate = enforce_bounds(linearly_interpolate)
                 return grad().ColourAt(linearly_interpolate( x
                                                             ,x_min
                                                             ,None
@@ -1147,7 +1187,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                             ,0 #0.18
                                                             ,1 #0.82
                                                             )
-                                        )
+                                      )
         else:
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)
@@ -1155,7 +1195,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
-                rgb_col =  map_f_to_three_tuples( three_point_quad_spline
+                rgb_col =  map_f_to_three_tuples(three_point_quad_spline
                                                 ,x
                                                 ,x_min
                                                 ,0.5*(x_min + x_max)

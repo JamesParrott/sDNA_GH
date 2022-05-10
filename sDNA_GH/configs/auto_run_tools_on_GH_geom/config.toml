@@ -12,7 +12,11 @@ sDNAUISpec = 'sDNAUISpec'
 runsdnacommand = 'runsdnacommand' 
 sDNA_search_paths  = ['C:\Program Files (x86)\sDNA']
 update_path = true
-                        
+##########################################################################
+#
+# Override for sDNA_ToolWrapper
+#                        
+show_all = true   
 ###############################################################################
 #Abbreviation = Tool Name
 #[metas.name_map]
@@ -151,6 +155,8 @@ last_leg_tag_str = 'above {lower}'
 num_format = '{:.5n}'
 leg_frame = ''  # uuid of GH object
 colour_as_class = false
+exclude = false
+bound = true
 #
 #
 ###########################################################################   

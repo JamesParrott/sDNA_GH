@@ -5,7 +5,9 @@ __version__ = '0.02'
 
 import sys
 import os
+import logging
 from math import log
+from tabnanny import check
 if sys.version_info.major <= 2 or (
    sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Sequence
@@ -19,6 +21,8 @@ import scriptcontext as sc
 from ..skel.basic.ghdoc import ghdoc
 
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def get_path(inst = None):
@@ -69,59 +73,85 @@ def make_regex(pattern):
     pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
     return r'\A' + pattern + r'\Z'
 
+def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
+    #type(Number, Number, str, str) -> None
+    if a >= b:
+        msg = str(a) + ' == ' + a_name + ' >= ' + b_name + ' == ' + str(b)
+        logger.error(msg)
+        raise ValueError(msg)
+
+def enforce_bounds(spline):
+    def wrapper(x, x_min, x_mid, x_max, y_min, y_max):
+        x = min(x_max, max(x_min, x))
+        return spline(x, x_min, x_mid, x_max, y_min, y_max)
+    return wrapper
+
 
 def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> Number
-    assert x_min != x_max
+    check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     return y_min + ( (y_max - y_min) * (x - x_min) / (x_max - x_min) )
 
+def check_not_eq(a, b, a_name = 'a', b_name = 'b'):
+    #type(Number, Number, str, str) -> None
+    if a == b:
+        msg = str(a) + ' == ' + a_name + ' == ' + b_name + ' == ' + str(b)
+        logger.error(msg)
+        raise ValueError(msg)
 
 def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> Number
-    assert x_min != x_mid != x_max    
+    check_not_eq(x_min, x_mid, 'x_min', 'x_mid')
+    check_not_eq(x_mid, x_max, 'x_mid', 'x_max')
     retval = y_max*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
-    #retval == 0 at x == x_min and x == x_max 
-    #retval == y_max at x == x_mid
     retval += y_min
     return retval
 
 
 def log_spline(x, x_min, base, x_max, y_min, y_max):        
     # type(Number, Number, Number, Number, Number, Number) -> Number
-    assert x_min != x_max
+    check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     log_2 = log(2, base)
 
-    return y_min + (y_max / log_2) * log(  1 + ( (x-x_min)/(x_max-x_min) )
-                                          ,base  )
+    return y_min + (y_max / log_2) * log(1 + ( (x-x_min)/(x_max-x_min) )
+                                        ,base
+                                        )
 
 
 def exp_spline(x, x_min, base, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> Number
-    assert y_min != 0 != x_max - x_min
-    return y_min * pow(base, ((x - x_min)/(x_max - x_min))*log(y_max/ y_min
-                                                              ,base 
-                                                              )
-                       )
+    check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
 
 
-valid_re_normalisers = ['linear', 'exponential', 'logarithmic']
-
-
-splines = dict(zip(  valid_re_normalisers 
-                    ,[   linearly_interpolate
-                        ,exp_spline
-                        ,log_spline
-                        ]
+    return y_min + ( -1 + pow(base
+                             ,((x - x_min)/(x_max - x_min))*log(1 + y_max - y_min
+                                                               ,base 
+                                                               )
+                             )
                    )
-               )
+
+
+_valid_re_normalisers = ['linear', 'exponential', 'logarithmic']
+
+
+splines = dict(zip(_valid_re_normalisers 
+                  ,[linearly_interpolate
+                   ,exp_spline
+                   ,log_spline
+                   ]
+                  )
+              )
 
 
 def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
     #z = 2
+    check_strictly_less_than(x_min, x_mid, 'x_min', 'x_mid')
+    check_strictly_less_than(x_mid, x_max, 'x_mid', 'x_max')
+
     z =  quadratic_mid_spline(x, x_mid, x_min, x_max, 0, y_min) #y_min*((x - x_max)*(x - x_mid)/((x_min - x_max)*(x_min - x_mid)))
     z += quadratic_mid_spline(x, x_min, x_mid, x_max, 0, y_mid) #y_mid*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
     z += quadratic_mid_spline(x, x_min, x_max, x_mid, 0, y_max) #y_max*((x - x_mid)*(x - x_min)/((x_max - x_mid)*(x_max - x_min)))
-    return max(0, min( z, 255))        
+    return z   
 
 
 def map_f_to_tuples(f, x, x_min, x_max, tuples_min, tuples_max): 
