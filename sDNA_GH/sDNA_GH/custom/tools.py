@@ -1070,7 +1070,7 @@ class DataParser(sDNA_GH_Tool):
                                                           ,upper = upper_str
                                                           ,mid_pt = mid_pt_str 
                                                           )
-                            ]
+                           ]
 
         lower_str = options.num_format.format(max( class_bounds ))
         x_max_str = options.num_format.format(x_max)
