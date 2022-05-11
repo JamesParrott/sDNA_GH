@@ -214,10 +214,14 @@ Ridge and Lasso regression can cope with multicollinear predictor variables, as 
 *Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 
 ###### sDNA_Predict
-Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network. 
+Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network: 
+
  -First run a Betweenness analysis at a number of radii using Integral Analysis. 
+
  -Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows. 
+
  -Run Learn on the joined data to select the best variable for predicting flows (where measured). 
+
  -Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines. 
 
 ##### Dev tool(s)
