@@ -349,6 +349,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     leg_frame = ''  # uuid of GH object
     colour_as_class = False
     exclude = False
+    suppress_small_classes_error = False
+    suppress_class_overlap_error = False
+
     #
     #
     ###########################################################################   

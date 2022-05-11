@@ -886,7 +886,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
                                     ,class_spacing = 'quantile'
-                                    ,_valid_class_spacings = valid_re_normalisers + ('quantile', 'nice', 'cluster')
+                                    ,_valid_class_spacings = valid_re_normalisers + ('quantile', 'combo', 'cluster')
                                     ,base = 10 # for Log and exp
                                     ,colour_as_class = False
                                     ,locale = '' # '' => User's own settings.  Also in DataParser
@@ -897,6 +897,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,last_leg_tag_str = 'above {lower}'
                                     ,exclude = False
                                     ,suppress_small_classes_error = False
+                                    ,suppress_class_overlap_error = False
                                     )
                               )
     assert opts['options'].re_normaliser in valid_re_normalisers
@@ -965,7 +966,7 @@ class DataParser(sDNA_GH_Tool):
 
         if options.sort_data or (
            not use_manual_classes 
-           and options.class_spacing in ('quantile', 'cluster', 'nice')  ):
+           and options.class_spacing in ('quantile', 'cluster', 'combo')  ):
             # 
             data = OrderedDict( sorted(data.items()
                                       ,key = lambda tupl : tupl[1]
@@ -1020,13 +1021,13 @@ class DataParser(sDNA_GH_Tool):
 
             if class_overlaps:
                 msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
-                if options.class_spacing == 'nice':
-                    msg += ' but in nice mode. Setting classes around clusters'
+                if options.class_spacing == 'combo':
+                    msg += ' but in combo mode. Setting classes around clusters'
                     self.logger.warning(msg)
                     class_bounds = classes_around_clusters()
                 else:
                     msg += (' Maybe try fewer classes, '
-                           +' class_spacing == nice, or'
+                           +' class_spacing == combo, or'
                            +' class_spacing == cluster'
                            )
                     if options.suppress_class_overlap_error:
@@ -1062,19 +1063,19 @@ class DataParser(sDNA_GH_Tool):
             #
         elif options.class_spacing == 'cluster':
             class_bounds = classes_around_clusters()
-        elif options.class_spacing in ('quantile', 'nice'):
+        elif options.class_spacing in ('quantile', 'combo'):
             class_bounds = quantile_classes()
         else: 
             class_bounds = [splines[options.class_spacing](i
-                                                            ,0
-                                                            ,param.get(options.class_spacing
+                                                          ,1
+                                                          ,param.get(options.class_spacing
                                                                     ,'Not used'
                                                                     )
-                                                            ,options.number_of_classes + 1
-                                                            ,x_min
-                                                            ,x_max
-                                                            )     
-                            for i in range(1, options.number_of_classes + 1) 
+                                                          ,options.number_of_classes
+                                                          ,y_min = x_min
+                                                          ,y_max = x_max
+                                                          )     
+                            for i in range(1, options.number_of_classes) 
                             ]
 
 
