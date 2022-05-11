@@ -8,6 +8,7 @@ import logging
 import subprocess
 import itertools
 import re
+import warnings
 from collections import OrderedDict
 
 from time import asctime
@@ -44,8 +45,9 @@ from .helpers.funcs import (make_regex
                            ,linearly_interpolate
                            ,map_f_to_three_tuples
                            ,three_point_quad_spline
-                           ,_valid_re_normalisers
+                           ,valid_re_normalisers
                            ,enforce_bounds
+                           ,pairwise
                            )
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
@@ -884,6 +886,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
                                     ,class_spacing = 'quantile'
+                                    ,_valid_class_spacings = valid_re_normalisers + ('quantile', 'nice', 'cluster')
                                     ,base = 10 # for Log and exp
                                     ,colour_as_class = False
                                     ,locale = '' # '' => User's own settings.  Also in DataParser
@@ -893,10 +896,10 @@ class DataParser(sDNA_GH_Tool):
                                     ,gen_leg_tag_str = '{lower} - {upper}'
                                     ,last_leg_tag_str = 'above {lower}'
                                     ,exclude = False
-                                    ,bound = True
+                                    ,suppress_small_classes_error = False
                                     )
                               )
-    assert opts['options'].re_normaliser in _valid_re_normalisers
+    assert opts['options'].re_normaliser in valid_re_normalisers
                         
 
     def __init__(self):
@@ -918,16 +921,33 @@ class DataParser(sDNA_GH_Tool):
 
         field = options.field
 
-        data = [ val[field] for val in gdm.values()]
         self.logger.debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
         plot_min, plot_max = options.plot_min, options.plot_max
         if (isinstance(plot_min, Number)  
            and isinstance(plot_max, Number) 
            and plot_min < plot_max ):
             #
+            self.info('Valid max and min override will be used. ')
+            #
             x_min, x_max = plot_min, plot_max 
+            if options.exclude:
+                data = OrderedDict( (obj, val[field]) 
+                                    for obj, val in gdm.items()
+                                    if x_min <= val[field] <= x_max
+                                  )
+            else:
+                data = OrderedDict( (obj, min(x_max, max(x_min, val[field]))) 
+                                    for obj, val in gdm.items()
+                                  )
+
         else:
-            x_min, x_max = min(data), max(data)
+            self.debug('Manually calculating max and min. '
+                      +'No valid override found. '
+                      )
+            data = OrderedDict( (obj, val[field]) 
+                                for obj, val in gdm.items() 
+                              )
+            x_min, x_max = min(data.values()), max(data.values())
         # bool(0) == False so in case x_min==0 we can't use if options.plot_min
         # so test isinstance of Number ABC. 
         #
@@ -937,61 +957,128 @@ class DataParser(sDNA_GH_Tool):
         # to auto-calculation
 
 
-        no_manual_classes = (not isinstance(options.class_bounds, list)
-                            or not all( isinstance(x, Number) 
+        use_manual_classes = (isinstance(options.class_bounds, list)
+                             and all( isinstance(x, Number) 
                                                for x in options.class_bounds
-                                        )
-                            )
-
-        if options.sort_data or (no_manual_classes 
-           and options.class_spacing == 'quantile'  ):
-            # 
-            gdm = OrderedDict( sorted(gdm.items()
-                                     ,key = lambda tupl : tupl[1][field]
-                                     ) 
+                                    )
                              )
 
+        if options.sort_data or (
+           not use_manual_classes 
+           and options.class_spacing in ('quantile', 'cluster', 'nice')  ):
+            # 
+            data = OrderedDict( sorted(data.items()
+                                      ,key = lambda tupl : tupl[1]
+                                      ) 
+                              )
 
         param={}
         param['exponential'] = param['logarithmic'] = options.base
 
-        if no_manual_classes:
+        def classes_around_clusters():
+            deltas = (b - a for (b,a) in pairwise(data.values()))
+            ranked_indexed_deltas = sorted(enumerate(deltas)
+                                          ,key = lambda tpl : tpl[1]
+                                          ,reverse = True
+                                          )
+            num_classes = options.number_of_classes
+            class_bound_indices = [i for (i, delta) in ranked_indexed_deltas[:(num_classes-1)]]
+            return [data.values()[index] for index in class_bound_indices]
+            
+        def quantile_classes():
             m = options.number_of_classes
-            if options.class_spacing == 'quantile':
-                n = len(gdm)
-                objs_per_class = n // m
-                # assert gdm is already sorted
-                class_bounds = [ val[field] for val in 
-                                 gdm.values()[objs_per_class:m*objs_per_class:objs_per_class] 
-                               ]  # classes include their lower bound
-                self.logger.debug('num class boundaries == ' 
-                                 + str(len(class_bounds))
-                                 )
-                self.logger.debug(options.number_of_classes)
-                self.logger.debug(n)
-                assert len(class_bounds) + 1 == options.number_of_classes
+            n = len(data)
+            class_size = n // m
+            if class_size < 2:
+                msg = 'Class size == ' + str(class_size) + ' is less than 2 '
+                if options.suppress_small_classes_error:
+                    self.logger.warning(msg)
+                    warnings.showwarning(message = msg
+                                        ,category = UserWarning
+                                        ,filename = 'DataParser.tools.py'
+                                        ,lineno = 983
+                                        )
+                else:
+                    self.logger.error(msg)
+                    raise ValueError(msg)
 
-                msg = 'x_min == ' + str(x_min) + '\n'
-                msg += 'class bounds == ' + str(class_bounds) + '\n'
-                msg += 'x_max == ' + str(x_max)
-                logger.debug(msg)
+            # assert gdm is already sorted
+            class_bound_indices = list(range(class_size, m*class_size, class_size))
+            data_vals = data.values()
+            #
+            class_bounds = [data_vals[index] for index in class_bound_indices] 
+            # class_bounds = [ val for val in 
+            #                  data.values()[class_size:m*class_size:class_size] 
+            #                ]  
+                           # classes include their lower bound
+            #
+            class_overlaps = ['index == ' + str(i) + ' val == '  + str(data_vals[i])
+                              for i in class_bound_indices
+                              if (data_vals[i-1] == data_vals[i] 
+                                  or data_vals[i] == data_vals[i+1])
+                             ]
 
-            else: 
-                class_bounds = [splines[options.class_spacing](i
-                                                              ,0
-                                                              ,param.get(options.class_spacing
-                                                                        ,'Not used'
-                                                                        )
-                                                              ,m + 1
-                                                              ,x_min
-                                                              ,x_max
-                                                              )     
-                                for i in range(1, m + 1) 
-                               ]
-        else:
+            if class_overlaps:
+                msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
+                if options.class_spacing == 'nice':
+                    msg += ' but in nice mode. Setting classes around clusters'
+                    self.logger.warning(msg)
+                    class_bounds = classes_around_clusters()
+                else:
+                    msg += (' Maybe try fewer classes, '
+                           +' class_spacing == nice, or'
+                           +' class_spacing == cluster'
+                           )
+                    if options.suppress_class_overlap_error:
+                        self.logger.warning(msg)
+                        warnings.showwarning(message = msg
+                                            ,category = UserWarning
+                                            ,filename = 'DataParser.tools.py'
+                                            ,lineno = 1001
+                                            )
+                    else:
+                        self.logger.error(msg)
+                        raise ValueError(msg)                    
+            #
+            self.logger.debug('num class boundaries == ' 
+                             + str(len(class_bounds))
+                             )
+            self.logger.debug(options.number_of_classes)
+            self.logger.debug(n)
+            assert len(class_bounds) + 1 == options.number_of_classes
+
+            msg = 'x_min == ' + str(x_min) + '\n'
+            msg += 'class bounds == ' + str(class_bounds) + '\n'
+            msg += 'x_max == ' + str(x_max)
+            self.logger.debug(msg)
+
+            return class_bounds
+
+        if use_manual_classes:
             class_bounds = options.class_bounds
+            self.logger.info('Using manually specified'
+                            +' inter-class boundaries. '
+                            )
+            #
+        elif options.class_spacing == 'cluster':
+            class_bounds = classes_around_clusters()
+        elif options.class_spacing in ('quantile', 'nice'):
+            class_bounds = quantile_classes()
+        else: 
+            class_bounds = [splines[options.class_spacing](i
+                                                            ,0
+                                                            ,param.get(options.class_spacing
+                                                                    ,'Not used'
+                                                                    )
+                                                            ,options.number_of_classes + 1
+                                                            ,x_min
+                                                            ,x_max
+                                                            )     
+                            for i in range(1, options.number_of_classes + 1) 
+                            ]
 
-        if options.re_normaliser not in _valid_re_normalisers:
+
+        if options.re_normaliser not in valid_re_normalisers:
             # e.g.  'linear', exponential, logarithmic
             msg = 'Invalid re_normaliser : ' + str(options.re_normaliser)
             self.error(msg)
@@ -999,8 +1086,6 @@ class DataParser(sDNA_GH_Tool):
 
         def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
             spline = splines[options.re_normaliser]
-            if options.bound:
-                spline = enforce_bounds(spline)
             return spline(x
                          ,x_min
                          ,p   # base or x_mid.  Can't be kwarg.
@@ -1027,9 +1112,9 @@ class DataParser(sDNA_GH_Tool):
 
 
         if options.colour_as_class:
-            classifier = class_mid_point
+            renormaliser = class_mid_point
         else:
-            classifier = re_normalise
+            renormaliser = re_normalise
 
 
 
@@ -1087,14 +1172,13 @@ class DataParser(sDNA_GH_Tool):
 
         self.logger.debug(legend_tags)
 
-        def exclude_out_of_bounds_generator():
-            for obj, x in zip(gdm.keys() + legend_tags 
-                             ,data + mid_points
-                             ):
-                if not options.exclude or (x_min <= x <= x_max):
-                    yield obj, classifier(x)
+        objs = list( gdm.keys() )[:]
+        data_vals = [val[field] for val in gdm.values()]
 
-        gdm = OrderedDict(exclude_out_of_bounds_generator())
+        gdm = OrderedDict(   zip(objs + legend_tags 
+                                ,[renormaliser(x) for x in data_vals + mid_points]
+                                )
+                         )
         plot_min, plot_max = x_min, x_max
         
         locs = locals().copy()

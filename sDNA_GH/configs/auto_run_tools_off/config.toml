@@ -156,7 +156,6 @@ num_format = '{:.5n}'
 leg_frame = ''  # uuid of GH object
 colour_as_class = false
 exclude = false
-bound = true
 #
 #
 ###########################################################################   

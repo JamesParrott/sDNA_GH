@@ -131,14 +131,19 @@ Read in the polylines and data from the specified shapefile.  Output the shapes 
 Parse data in a Data Tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden, else they are calculated on the whole data range.  
 **WARNING!  Parsing is for the purpose of colourisation, e.g. in order to produce the desired result from Recolour_Objects.  Therefore, although the inputted Data is not changed, the Data outputted almost certainly will be changed, so should be assumed to be false.**  
 After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  
+
 **Data Tree**
 A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from Usertext or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.  
+
 **Field to plot**
 Specify the actual numeric data values to be parsed from all the provided 'Usertext values' by setting `field` to the name of the corresponding 'Usertext key'.  
+
 **Bounds**
-The domain this data is parsed against can be customised by setting the options `plot_min`, `plot_max`, shifting it, widening it or narrowing it, e.g. to exclude erroneous outliers.  If `plot_min`, `plot_max` are both numbers and `plot_min` < `plot_max`, their values will be used; otherwise the max and min are automatically calculated from the list of values in the 'Usertext values' of Data corresponding to the 'Usertext key' named in `field`.  To go back to automatic calculation after an override, choose invalid values that satisfy `plot_min` >= `plot_max`.  To bound the parsed values of data points lower than `plot_min` or higher than `plot_max`, set `bound` to True, or set `exclude` to True to exclude them from the Data output altogether (and their corresponding objects from Geom).  
+The domain this data is parsed against can be customised by setting the options `plot_min`, `plot_max`, shifting it, widening it or narrowing it, e.g. to exclude erroneous outliers.  If `plot_min`, `plot_max` are both numbers and `plot_min` < `plot_max`, their values will be used; otherwise the max and min are automatically calculated from the list of values in the 'Usertext values' of Data corresponding to the 'Usertext key' named in `field`.  To go back to automatic calculation after an override, choose invalid values that satisfy `plot_min` >= `plot_max`.  Set `exclude` to True to exclude data points lower than `plot_min` or higher than `plot_max` from the output altogether (and their corresponding objects from Geom).  
+
 **Classes (bins / categories for the legend)**
 Either, specify the number of classes desired in the legend in `number_of_classes` (the default is 7), or specify a list of the actual class boundaries desired in `class_bounds` manually.  Note these are the inter-class bounds.  Use plot_min for the lower bound of the bottom class and plot_max for the upper bound of the top class.  There should be n-1 inter-class bounds, n classes and n+1 class bounds including the max and min.  
+
 **Legend class names** Three customisable fields are provided in the options for the first, general and last legend tag names, and a numeric formatting string: `first_leg_tag_str = 'below {upper}'`, `gen_leg_tag_str = '{lower} - {upper}'`, `last_leg_tag_str = 'above {lower}'` and `num_format = '{:.5n}'` respectively.  The numeric format string supports a single unnamed field.  This is applied to the Classbounds and min and max above, before being substituted into the named fields in the format string for their corresponding legend tag (the general one may be used to produce more than one tag).  All must be set to valid Python format strings, with the supported named fields `lower`, `mid_pt` and `upper`.
 
 ###### Recolour_Objects
@@ -152,7 +157,9 @@ Reads Usertext from Rhino objects whose keys fit a customisable pattern.  If no 
 ###### Write_Usertext
 Write user text to Rhino objects using a customisable pattern for the keys.
 
+#### sDNA Tools
 ##### Analysis tools
+By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set the *meta* `show_all` = false.  
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/guide_to_individual_tools.html#skim-matrix):
 
 ###### sDNA_Integral
@@ -202,15 +209,20 @@ The network radii tool also allows a list of origin polyline IDs to be supplied 
 ###### sDNA_Learn
 sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated *R²*. 
 If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict. 
+
 Available methods for finding models are (valid options for `algorithm`): 
 - `Single best variable` - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
 - `Multiple variables` - regularized multivariate lasso regression
 - `All variables` - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression) 
 
 Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a *regular expression*. The latter follows Python regex syntax. A wildcard is expressed as `.*`, thus, `Bt.*` would test all Betweenness variables (which in abbreviated form begin with `Bt`) for correlation with the target.  
+
 Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed.  
-*Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.   
+
+*Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.  
+
 Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The *r²* values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.  
+
 *Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 
 ###### sDNA_Predict

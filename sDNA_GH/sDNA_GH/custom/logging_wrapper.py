@@ -6,7 +6,6 @@ import sys
 import os
 import inspect
 
-
 class LoggingOptions(object):
     default_path = __file__
     working_folder = os.path.dirname(default_path)
@@ -109,7 +108,11 @@ def make_self_logger(self, logger = None, module_name = '', name = None):
     logger.addHandler(logging.NullHandler())
     return logger
 
-def make_log_message_maker(method, logger = None, module_name = None):
+def make_log_message_maker(method
+                          ,logger = None
+                          ,module_name = None
+                          ,warn = True
+                          ,raise_error = True):
     if module_name is None:
         module_name = __name__
     def f(self, message, *args):
