@@ -156,8 +156,7 @@ Write user text to Rhino objects using a customisable pattern for the keys.
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/guide_to_individual_tools.html#skim-matrix):
 
 ###### sDNA_Integral
-sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding
-`auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
+sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding `auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
 
 ###### sDNA_Skim
 Skim Matrix.  Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
@@ -176,11 +175,11 @@ If outputting “maps” for multiple origins, these will be output in the same 
 Prepares spatial networks for analysis by checking and optionally repairing various kinds of error. 
 Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare. 
 The errors fixed by sDNA Prepare are: 
- -endpoint near misses (XY and Z tolerance specify how close a near miss) 
- -duplicate lines 
- -traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed. 
- -split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
- -isolated systems. 
+- endpoint near misses (XY and Z tolerance specify how close a near miss) 
+- duplicate lines 
+- traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed. 
+- split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
+- isolated systems. 
 
 ###### sDNA_Line_Measures
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
@@ -204,9 +203,9 @@ The network radii tool also allows a list of origin polyline IDs to be supplied 
 sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated *R²*. 
 If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict. 
 Available methods for finding models are (valid options for `algorithm`): 
- -`Single best variable` - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
- -`Multiple variables` - regularized multivariate lasso regression
- -`All variables` - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression) 
+- `Single best variable` - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
+- `Multiple variables` - regularized multivariate lasso regression
+- `All variables` - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression) 
 Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a *regular expression*. The latter follows Python regex syntax. A wildcard is expressed as `.*`, thus, `Bt.*` would test all Betweenness variables (which in abbreviated form begin with `Bt`) for correlation with the target. 
 Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed. 
 *Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.  
@@ -215,14 +214,10 @@ Ridge and Lasso regression can cope with multicollinear predictor variables, as 
 
 ###### sDNA_Predict
 Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network: 
-
- -First run a Betweenness analysis at a number of radii using Integral Analysis. 
-
- -Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows. 
-
- -Run Learn on the joined data to select the best variable for predicting flows (where measured). 
-
- -Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines. 
+- First run a Betweenness analysis at a number of radii using Integral Analysis. 
+- Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows. 
+- Run Learn on the joined data to select the best variable for predicting flows (where measured). 
+- Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines. 
 
 ##### Dev tool(s)
 ###### Unload_sDNA_GH
