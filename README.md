@@ -206,6 +206,7 @@ Available methods for finding models are (valid options for `algorithm`):
 - `Single best variable` - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
 - `Multiple variables` - regularized multivariate lasso regression
 - `All variables` - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression) 
+
 Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a *regular expression*. The latter follows Python regex syntax. A wildcard is expressed as `.*`, thus, `Bt.*` would test all Betweenness variables (which in abbreviated form begin with `Bt`) for correlation with the target. 
 Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed. 
 *Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.  
