@@ -18,11 +18,11 @@ sDNA_GH:
 2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0]  Iron Python is only supported by sDNA_GH within Grasshopper. 
 3. Ensure you have an installation of [sDNA](https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html).  sDNA itself may require the 64 bit Visual Studio 2008 redistributable, available [here] (https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ) ). 
 4. Download `sDNA_GH.zip` from [food4Rhino](https://www.food4rhino.com) or the [sDNA_GH releases page on Github](https://www.example.com).
-5. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select _Properties_ from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click _OK_ or _Apply_.  The check box and _Security_ section should disappear.  This should unblock all the files the zip archive.  If any files still need to be unblocked,  a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2))  Please note, you should not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
+5. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files the zip archive.  If any files still need to be unblocked,  a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2))  Please note, you should not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
 6. Open Rhino and Grasshopper.
-7. In Grasshopper's pull down menus (above the tabs ribbon at the top) click _File_ -> _Special folders_ -> _User Objects Folder_.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
+7. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
 8. Copy in sDNA_GH.zip to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
-9. Unzip `sDNA_GH.zip` to this location (e.g. in Windows 10 right click `sDNA_GH.zip` and select _Extract All ..._, then click _Extract_ to use the suggested location).
+9. Unzip `sDNA_GH.zip` to this location (e.g. in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).
 10. Ensure sDNA_GH can find sDNA and Python 2.7.  Open the folder `sDNA_GH` (just created by the unzip in the previous step), and inside it, using any text-file editor (e.g. Notepad), open the sDNA_GH user installation options configuration file, `config.toml`.  In the `[metas]` section, look for the option: 
 ```
 sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
@@ -30,18 +30,18 @@ sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
                      '%appdata%\sDNA',
                      ]
 ```
-Select and _Copy_ the first file path (e.g. `C:\Program Files (x86)\sDNA`).  This is the default sDNA installation directory (if this option is not within `config.toml`, copy and paste it from here into there).  
-Open a new _File Explorer_ window. _Paste_ the default sDNA installation directory into the browser bar, and press Enter.  Scroll down and check the folder contains two files, called `sDNAUISpec.py`  (i.e. `C:\Program Files (x86)\sDNA\sDNAUISpec.py`) and `runsdnacommand.py`.
+Select and `Copy` the first file path (e.g. `C:\Program Files (x86)\sDNA`).  This is the default sDNA installation directory (if this option is not within `config.toml`, select it with the mouse, then copy (`Ctrl` + `C`) and paste (`Ctrl` + `V`) it from here into there).  
+Open a new `File Explorer` window. `Paste`  the default sDNA installation directory into the browser bar, and press Enter.  Scroll down and check the folder contains two files, called `sDNAUISpec.py`  (i.e. `C:\Program Files (x86)\sDNA\sDNAUISpec.py`) and `runsdnacommand.py`.
 
-Similarly, scroll down to the `[options]` section of `config.toml`, and find the `python_exe = 'C:\Python27\python.exe'` option (or paste it in there).  Select and copy the file path `C:\Python27\python.exe` and paste this into the browser bar of Windows File Explorer.   Press Enter, and Python 2.7 should start (you may close this - press _Ctrl + Z_ and hit _Enter_)[^3].  
+Similarly, scroll down to the `[options]` section of `config.toml`, and find the `python_exe = 'C:\Python27\python.exe'` option (or paste it in there).  Select and copy the file path `C:\Python27\python.exe` and paste this into the browser bar of Windows File Explorer.   Press `Enter`, and Python 2.7 should start (you may close this - press `Ctrl` + `Z` and hit `Enter`)[^3].  
 
 OPTIONAL: If you want to run sDNA from a different version of Python, or if you have installed Python 2.7 somewhere other than its default folder, or if you are using sDNA Open from elsewhere than its default directory, you must alter the values of the above options in `config.toml` to equal the correct sDNA installation folder and Python executable's location respectively, in order for sDNA_GH to find the programs you want.[^4] 
 
 These options may also be specified in a project specific config.toml file, or in an input Parameter to an sDNA_GH component.  But then they need to be entered in each Grasshopper definition (.gh file) using sDNA_GH.  Setting the installation wide options is a one off procedure (unless the Python or sDNA folders are subsequently moved!).  
 
 11. Restart Rhino and Grasshopper.
-12. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of _Mesh_, _Intersect_, _Transform_ and _Display_ etc.)
-13. For a first test of sDNA_GH, open  `\sDNA_GH\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the folder from the unzip, in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its _go_.  
+12. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc.)
+13. For a first test of sDNA_GH, open  `\sDNA_GH\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the folder from the unzip, in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
 
 ### System Requirements. 
 #### Software
@@ -59,11 +59,13 @@ These options may also be specified in a project specific config.toml file, or i
 ### Usage.  
 #### Components.
 ##### Automatic multi-tools.
-Each sDNA tool has its own a Grasshopper component.  To run a tool (all but the Config one which always runs anyway), a True value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param.  To group together common workflows, unless an option is set not to, some tools by default also automatically run other tools before or after they run themselves.  For example, this allows an entire sDNA process to be run on Rhino Geometry, with the results from the sDNA calculation being used to recolour the Rhino geometry, from one single sDNA tool component.  When placed on the canvas, each component adds in Params for all its required Input and Output arguments (if the Params are not already present), including those of any automatically added tools.  Extra customisation can be carried out by adding in extra Params too.  Such extra user added Params are not removed.
+Each sDNA tool has its own a Grasshopper component.  To run a tool a True value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, unless an option is set not to, some tools by default also automatically run other tools before or after they run themselves.  For example, this allows an entire sDNA process to be run on Rhino Geometry, with the results from the sDNA calculation being used to recolour the Rhino geometry, from one single sDNA tool component.  When placed on the canvas, each component adds in Params for all its required Input and Output arguments (if the Params are not already present), including those of any automatically added tools.  Extra customisation can be carried out by adding in extra Params too.  Such extra user added Params are not removed.
+
+[note] All except the Load_Config tool which runs when placed or its Inputs are updated, and Unload_sDNA_GH on which `unload` does the same thing as `go`.
 
 ##### Running individual tools.  
 Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.
-To work with a Grasshopper Colour Gradient tool, to show fewer Input and Output Params on each component, or to customise sDNA_GH behaviour, e.g. to conect in different inputs and outputs between individual tools running, advanced users may prefer to run only one tool at  atime turn off  any of the "auto_" options: `auto_get_Geom`, `auto_read_Usertext`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data` by setting to `false`.  How to do this is described below.  
+To work with a Grasshopper Colour Gradient tool, to show fewer Input and Output Params on each component, or to customise sDNA_GH behaviour, e.g. to conect in different inputs and outputs between individual tools running, advanced users may prefer to run only one tool at  atime turn off  any of the `auto_` options: `auto_get_Geom`, `auto_read_Usertext`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data` by setting to `false`.  How to do this is described below.  
 
 #### Options.  
 sDNA_GH is highly customisable.  This customisation is controlled by setting options.  Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Similarly, any option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other components as well, via Grasshopper connections. 
@@ -195,7 +197,7 @@ The network radii tool also allows a list of origin polyline IDs to be supplied 
 
 ##### Calibration tools
 ###### sDNA_Learn
-sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated $R^2$
+sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated _R²_
 
 . If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict.
 
@@ -209,17 +211,17 @@ Candidate predictor variables can either be entered as field names separated by 
 
 Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed.
 
-Weighting lambda weights data points by $y \lambda y$
-, where $y$
+Weighting lambda weights data points by _yλy_
+, where _y_
 
 is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.
 
-Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The $r^2$
+Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The _r²_
 
 values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.
 
-Regularization Lambda allows manual input of the minimum and maximum values for regularization parameter $\lambda$
-in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated $r^2$ against $\lambda$ to see what is going on. The data to do this is saved with the output model file (if specified), with extension .regcurve.csv.
+Regularization Lambda allows manual input of the minimum and maximum values for regularization parameter _λ_
+in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated _r²_ against _λ_ to see what is going on. The data to do this is saved with the output model file (if specified), with extension .regcurve.csv.
 
 ###### sDNA_Predict
 Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network.
@@ -291,7 +293,7 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 2. Right click the Path Component and ensure it points to `\sDNA_GH\sDNA_GH\sDNA_GH_launcher.py`
 3. Ensure the File Reader Component (that the Path Component is connected to) is set to read the whole file, and also is connected to the _launcher code_ input param on the Build_components GhPython component.  Set the plug-in name on _plug in name_.
 4. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays comoponent names instead).
-5. Change the Boolean toggle to True, and connect it to the _go_ input param of Build_components.
+5. Change the Boolean toggle to True, and connect it to the `go` input param of Build_components.
 6. A slight delay may occur as sDNA_GH/setup.py is imported, and the 23 or so components are created.
 7. Turn the Boolean toggle to False (connected to the go input param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The components are disabled, otherwise the next update will makes each one ask Grasshopper what its name is, connect to sDNA_GH.setup.py, and update its own Input and Output params.
 8. Click the pull down menu *Solution* and select *Disable Solver*.  
