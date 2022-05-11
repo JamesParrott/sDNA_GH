@@ -6,7 +6,7 @@ __version__ = '0.02'
 import os
 import logging
 import subprocess
-import itertools
+from .helpers.funcs import itertools #pairwise from recipe if we're in Python 2
 import re
 import warnings
 from collections import OrderedDict
@@ -47,7 +47,6 @@ from .helpers.funcs import (make_regex
                            ,three_point_quad_spline
                            ,valid_re_normalisers
                            ,enforce_bounds
-                           ,pairwise
                            )
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
@@ -922,7 +921,6 @@ class DataParser(sDNA_GH_Tool):
 
         field = options.field
 
-        self.logger.debug('data == ' + str(data[:3]) + ' ... ' + str(data[-3:]))
         plot_min, plot_max = options.plot_min, options.plot_max
         if (isinstance(plot_min, Number)  
            and isinstance(plot_max, Number) 
@@ -954,8 +952,15 @@ class DataParser(sDNA_GH_Tool):
         #
         # x_min & x_max are not stored in options, so sDNA_GH will carry on 
         # auto calculating min and max on future runs.  Once they are
-        # overridden, set them to an illegal override (max <= min) to go back
-        # to auto-calculation
+        # overridden, the user must set them to an invalid override 
+        # (e.g. max <= min) to go back to auto-calculation.
+
+        self.logger.debug('data.values() == ' 
+                         +str(data.values()[:3]) 
+                         +' ... ' 
+                         +str(data.values()[-3:])
+                         )
+
 
 
         use_manual_classes = (isinstance(options.class_bounds, list)
@@ -977,7 +982,7 @@ class DataParser(sDNA_GH_Tool):
         param['exponential'] = param['logarithmic'] = options.base
 
         def classes_around_clusters():
-            deltas = (b - a for (b,a) in pairwise(data.values()))
+            deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
             ranked_indexed_deltas = sorted(enumerate(deltas)
                                           ,key = lambda tpl : tpl[1]
                                           ,reverse = True

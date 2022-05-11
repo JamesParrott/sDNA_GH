@@ -6,8 +6,8 @@ __version__ = '0.02'
 import sys
 import os
 import logging
+import itertools
 from math import log
-from tabnanny import check
 if sys.version_info.major <= 2 or (
    sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Sequence
@@ -24,6 +24,14 @@ from ..skel.basic.ghdoc import ghdoc
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+if not hasattr(itertools, 'pairwise'):
+    #https://docs.python.org/2.7/library/itertools.html
+    def pairwise(iterable):
+        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+        a, b = itertools.tee(iterable)
+        next(b, None)
+        return itertools.izip(a, b)
+    itertools.pairwise = pairwise
 
 def get_path(inst = None):
     #type(dict, type[any]) -> str
@@ -131,11 +139,12 @@ def exp_spline(x, x_min, base, x_max, y_min, y_max):
                    )
 
 
-valid_re_normalisers = ('linear', 'exponential', 'logarithmic')
+valid_re_normalisers = ('uniform', 'linear', 'exponential', 'logarithmic')
 
 
 splines = dict(zip(valid_re_normalisers 
                   ,[linearly_interpolate
+                   ,linearly_interpolate
                    ,exp_spline
                    ,log_spline
                    ]

@@ -36,12 +36,4 @@ def is_uuid(val):
         return False
 #https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
 
-if hasattr(itertools, 'pairwise'):
-    pairwise = itertools.pairwise
-else:
-    #https://docs.python.org/2.7/library/itertools.html
-    def pairwise(iterable):
-        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-        a, b = itertools.tee(iterable)
-        next(b, None)
-        return itertools.izip(a, b)
+

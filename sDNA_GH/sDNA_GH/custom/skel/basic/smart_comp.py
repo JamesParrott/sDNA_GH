@@ -29,6 +29,9 @@ from ghpythonlib.componentbase import executingcomponent as component
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+def strip_whitespace(strng):
+    #type(str) -> str
+    return ''.join([char for char in strng if not char.isspace()])
 
 def get_args_spec(callable):
     if not isinstance(callable, Callable):
@@ -54,7 +57,7 @@ def get_args_spec(callable):
     #     return inspect.getargspec(callable)
     # elif hasattr(callable, '__call__'):
 
-def get_val(key, sources):
+def get_val(key, sources, case_sensitive = False, support_whitespace = False):
     #type(str, list) -> type[any]
     if key.lower() == 'out':
         return None
@@ -72,8 +75,16 @@ def get_val(key, sources):
 
             return getattr(source, key)
     #print('No variable or field: ' + key + ' found. ')
+    if case_sensitive or key.islower():
+        return 'No variable or field: ' + key + ' found. '
+    else:
+        key = key.lower()
+        if support_whitespace:
+            key = strip_whitespace(key)
+        return get_val(key.lower(), sources, True)
 
-    return 'No variable or field: ' + key + ' found. '
+    # Whitespace is not stripped as valid python names, namedtuple fields
+    # and class attributes cannot contain whitespace.  So thisf you are using dict keys with whitespace
 
 def custom_retvals(retval_names
                   ,sources
@@ -241,6 +252,8 @@ def custom_inputs_class_deco(BaseComponent
                             ,anon_pos_args = []
                             ,anon_kwargs = []
                             ,prioritise_kwargs = True
+                            ,case_sensitive = False
+                            ,leave_whitespace = False
                             ):
     #type(type[any], list, list, bool) -> type[any]
 
@@ -253,7 +266,15 @@ def custom_inputs_class_deco(BaseComponent
                                        for (param, param_val) 
                                         in zip(self.Params.Input, param_vals)
                                      )
-            #logger.debug('Params_dict == ' + str(params_dict))
+            if not case_sensitive or not leave_whitespace: # Add in extra keys to make case insensitive
+                for key, val in params_dict.copy().items():   
+                    if not case_sensitive and not key.islower():
+                        key = key.lower() 
+                    if strip_whitespace and any(char.isspace() for char in key):
+                        key = strip_whitespace(key)
+                    params_dict.setdefault(key, val)
+        # If tools accept **kwargs or *args
+        # duped kwargs or args could be a problem here. ymmv.
 
 
             # if 'Geom' in params_dict:

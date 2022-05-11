@@ -12,11 +12,13 @@ rem     set fileset[!count!]=%%x
 rem )
 rem dir %fileset%
 copy README.md sDNA_GH
+copy README.pdf sDNA_GH
 copy license.md sDNA_GH
 cd sDNA_GH
 rem set fileset= * ..\README.md ..\license.md
 tar -caf ..\sDNA_GH.zip *
 del README.md
+del README.pdf
 del license.md
 REM sDNA_GH\* dev_tools\batch_files\unblock_all_files_powershell.bat
 REM cd ..

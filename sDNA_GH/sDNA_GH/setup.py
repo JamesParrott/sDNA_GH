@@ -3,7 +3,9 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys, os
+import sys
+import os
+import string
 from collections import namedtuple, OrderedDict
 
 import Rhino
@@ -27,7 +29,7 @@ from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
                                          ,override_gdm
                                          ,dict_from_DataTree_and_lists
                                          )
-from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals
+from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, strip_whitespace
 from .custom.skel.basic.ghdoc import ghdoc                                       
 from .custom.skel.tools.inserter import insert_tool
 from .custom.skel.tools.runner import run_tools, tools_dict, RunnableTool
@@ -325,7 +327,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
-    re_normaliser = 'linear' #['linear', 'exponential', 'logarithmic']
+    re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
     if re_normaliser not in valid_re_normalisers:
         raise ValueError(str(re_normaliser) 
                         +' must be in '
@@ -337,10 +339,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     number_of_classes = 7
     class_spacing = 'quantile' 
     #_valid_class_spacings = valid_re_normalisers + ('quantile', 'cluster', 'nice')
-    if class_spacing not in super(DataParser.opts['options'])._valid_class_spacings:
+    if class_spacing not in DataParser.opts['options']._valid_class_spacings:
         raise ValueError(str(class_spacing)
                         +' must be in ' 
-                        +str(super(DataParser.opts['options'])._valid_class_spacings)
+                        +str(DataParser.opts['options']._valid_class_spacings)
                         )
     first_leg_tag_str = 'below {upper}'
     gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
@@ -1045,15 +1047,15 @@ class sDNA_GH_Component(SmartComponent):
         # it needs to accept anything (or a lack thereof) to run in the 
         # meantime until the params can be updated.  kwargs enable this.
         logger.debug('self.script started... \n')
-        logger.debug(kwargs)
+        #logger.debug(kwargs)
 
         go = first_item_if_seq(kwargs.get('go', False), False) 
              # Input Params set 
              # to list acess so
              # strip away outer 
              # list container
-        Data = kwargs.get('Data', None)
-        Geom = kwargs.get('Geom', None)
+        Data = kwargs.get('data', None)
+        Geom = kwargs.get('geom', None)
 
         if 'file' in kwargs:
             kwargs['f_name'] = first_item_if_seq(kwargs['file'], '')
