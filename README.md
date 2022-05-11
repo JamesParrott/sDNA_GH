@@ -23,7 +23,7 @@ sDNA_GH:
 7. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
 8. Copy in sDNA_GH.zip to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
 9. Unzip `sDNA_GH.zip` to this location (e.g. in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).
-10. Ensure sDNA_GH can find sDNA and Python 2.7.  Open the folder `sDNA_GH` (just created by the unzip in the previous step), and inside it, using any text-file editor (e.g. Notepad), open the sDNA_GH user installation options configuration file, `config.toml`.  In the `[metas]` section, look for the option: 
+10. Ensure sDNA_GH can find sDNA and Python 2.7.  Open the folder `sDNA_GH` (just created by the unzip in the previous step), and inside it, using any text-file editor (e.g. Notepad), open the sDNA_GH user installation-wide options configuration file, `config.toml`.  In the `[metas]` section, look for the option: 
 ```
 sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
                      'C:\Program Files\sDNA',
@@ -37,7 +37,7 @@ Similarly, scroll down to the `[options]` section of `config.toml`, and find the
 
 OPTIONAL: If you want to run sDNA from a different version of Python, or if you have installed Python 2.7 somewhere other than its default folder, or if you are using sDNA Open from elsewhere than its default directory, you must alter the values of the above options in `config.toml` to equal the correct sDNA installation folder and Python executable's location respectively, in order for sDNA_GH to find the programs you want.[^4] 
 
-These options may also be specified in a project specific config.toml file, or in an input Parameter to an sDNA_GH component.  But then they need to be entered in each Grasshopper definition (.gh file) using sDNA_GH.  Setting the installation wide options is a one off procedure (unless the Python or sDNA folders are subsequently moved!).  
+These options may also be specified in a project specific config.toml file, or in an input Parameter to an sDNA_GH component.  But then they need to be entered in each Grasshopper definition (.gh file) using sDNA_GH.  Setting the installation-wide options is a one off procedure (unless the Python or sDNA folders are subsequently moved!).  
 
 11. Restart Rhino and Grasshopper.
 12. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc.)
@@ -46,7 +46,7 @@ These options may also be specified in a project specific config.toml file, or i
 ### System Requirements. 
 #### Software
 1. Windows 10 or 8.1 (not tested in Windows 11) 
-2. A Python installation that can launch sDNA correctly (e.g. Python 2.7)
+2. A Python interpreter that can launch sDNA correctly (e.g. Python 2.7)
 3. sDNA. 
 4. Rhino and Grasshopper (tested in Rhino 7)
 #### Hardware
@@ -75,39 +75,46 @@ To add a new Input or Output Param, zoom in on the component until symbols can b
 
 ##### Meta options.
 ###### Primary meta (options file)
-Some options are particularly important as they may change other options, change how they are read, or add new parts to the whole options data structure (`opts`).  These are called _meta options_. All options can be set on the Input Params of a GH_sDNA component (zoom in, add a new Input Param, and rename it to the desired option name.  This is case sensitive).  The most important of all the  _meta options_, is the `config` (the "primary meta").  This may be 
-set to a file path of a project specific options file.  To create one, copy and paste `config.toml` and edit its values (to the right of the equals signs) in a text editor (the keys (to the left of the equals signs) must be left unchanged else their values will be ignored, or cause a name clash).  The file can be renamed, but should still end in `.toml`.  It may contain other meta options, tool options and local metas, but not another primary meta.  Tool options in the file may refer to any named tool or nick named component, not necessarily the tools of the component that reads the file.  This is intended to enable cleaner Grasshopper definitions, with fewer required connections, by storing the values of options that do not need to be changed away in a separate file.  Options that are used only when a component is first placed, e.g. to set a logging file or logging levels, before any input params may have even been set up, must be configured in the installation wide `config.toml`.
+Some options are particularly important as they may change other options, change how they are read, or add new parts to the whole options data structure (`opts`).  These are called _meta options_. All options can be set on the Input Params of a GH_sDNA component (zoom in, add a new Input Param, and rename it to the desired option name.  This is case sensitive).  The most important of all the  _meta options_, is the `config` (the *primary meta*).  This may be 
+set to a file path of a project specific options file.  To create one, copy and paste `config.toml` and edit its values (to the right of the equals signs) in a text editor (the keys (to the left of the equals signs) must be left unchanged else their values will be ignored, or cause a name clash).  The file can be renamed, but should still end in `.toml`.  It may contain other meta options, tool options and local metas, but not another *primary meta*.  Tool options in the file may refer to any named tool or NickNamed component, not necessarily the tools of the component that reads the file.  This is intended to enable cleaner Grasshopper definitions, with fewer required connections, by storing the values of options that do not need to be changed away in a separate file.  Options that are used only when a component is first placed, e.g. to set a logging file or logging levels, before any input params may have even been set up, must be configured in the installation-wide `config.toml`.
 
 ##### Module wide options.
-It is tempting to conclude that Input parameter options are the most important, followed by the project specific options file (primary meta), and in turn by an external component's options.  This is largely true, but not necessarily the case on startup.  For efficiency, the sDNA_GH design forces all of its components in the same Grasshopper instance to share the same Python package, which is only imported once by the first component to run (subsequent ones refer to it directly in sys.modules).  This import occurs, before the main method of the Grasshopper Python component class runs.  This method (RunScript) is responsible for reading in the component's input Params.  Therefore any setup code that runs before this method cannot possibly know about the values of the Input Params, the primary meta, nor any other component's options.  At this early stage, the component can only refer to the installation wide options (plus a few necessary hard coded settings in the launcher).  
+It is tempting to conclude that Input parameter options are the most important, followed by the project specific options file (*primary meta*), and in turn by an external component's options.  This is largely true, but not necessarily the case on startup.  For efficiency, the sDNA_GH design forces all of its components in the same Grasshopper instance to share the same Python package, which is only imported once by the first component to run (subsequent ones refer to it directly in sys.modules).  This import occurs, before the main method of the Grasshopper Python component class runs.  This method (RunScript) is responsible for reading in the component's input Params.  Therefore any setup code that runs before this method cannot possibly know about the values of the Input Params, the *primary meta*, nor any other component's options.  At this early stage, the component can only refer to the installation-wide options (plus a few necessary hard coded settings in the launcher).  
 
 ##### Logging options
-Not only is the sDNA_GH component class definition defined in the shared package, the root logger is set up there too when the module is first imported, for all components to subsequently refer to.  So in particular, the advance loading of the default options and installation wide options, mean logging options (e.g. custom logging levels for verbose or quiet output, and the name of the actual log file) have to be set up there, i.e. in the installation wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  The same goes for any other options that control code that runs on component setup and module import, before Grasshopper calls RunScript and reads in the component's inputs.  Ordinarily, the higher priority options would override the lower priority ones.  But for code that must run before this override process happens at all, (especially on setup) it is simply too late for some options defined there to have any affect. 
+Not only is the sDNA_GH component class definition defined in the shared package, the root logger is set up there too when the package is first imported.  All components subsequently refer to it there.  So in particular, the advance loading of the default options and installation-wide options, mean logging options (e.g. custom logging levels for more verbose or quieter output, and the name of the actual log file) have to be set up there, i.e. in the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  The same goes for any other options that control code that runs on component setup and module import, before Grasshopper calls RunScript and reads in the component's inputs.  Ordinarily, the higher priority options would override the lower priority ones.  But for code that must run before this override process happens at all, (especially on setup) it is simply too late for some options defined there to have any affect. 
 
 <!-- TODO.  Put such options into their own section of "setup options" -->
 
  
 ###### Options override priority order
-The component input param options override options in the primary meta.  The primary meta overrides options from another Grasshopper component.  Other component's options override the installation wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  Finally this file overrides the hard coded default options in setup.py
+1. The component input param options override options in the *primary meta*.  
+2. The *primary meta* overrides options from another sDNA_GH component.  
+3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
+4. The installation-wide options file overrides the sDNA_GH hard-coded default options in `setup.py` [^note]
+[note] Dev note: the options in `setup.py` themselves override every individual tool's default options in `tools.py`.
 
-###### Name map (abbreviations, nick names and work flows)
-After `config`, the next most important meta option is `name_map`, in which custom nick names for user-created sDNA_components (and entire work sequences of tools) may be defined. 
+
+###### Name map (abbreviations, NickNames and work flows)
+After `config`, the next most important meta option is `name_map`, in which custom NickNames for user-created sDNA_GH components (and entire work sequences of tools) may be defined. 
 
 ##### Component NickName.
 The particular tool or tools a module runs is controlled by its NickName (accessible in the local meta option NickName), but which can be changed by simply renaming the component.  The component then looks up in the meta option name_map to see which (if any)
-tool or tools (including other NickNames) its NickName corresponds to, then retrieves these tools from the cache (building them if they do not exist already).  sDNA tools automatically add their own default options and syntax in their initialiser (and add new ones if their nick name or the version of sDNA subsequently changes).  
+tool or tools (including other NickNames) its NickName corresponds to, then retrieves these tools from the cache (building them if they do not exist already).  sDNA tools automatically add their own default options and syntax in their initialiser (and add new ones if their NickName or the version of sDNA subsequently changes).  
 
 ##### Tool options.
-Each nick name in name map creates a new set of options.  These contain options for each tool (real name) in the list of tools used under that nick name.  Each of these has a set of options for each version of sDNA encountered by the component so far.  Primarily this is where the settings for sDNA wrapper tools are stored (apart from a couple of helper overrides, like `file`).  Support tools and sDNA_GH tools use options and meta options in the common name root space (which is the same for all sDNA versions sDNA_GH has found).  
+Each NickName in name map creates a new set of options.  These contain options for each tool (real name) in the list of tools used under that NickName.  Each of these has a set of options for each version of sDNA encountered by the component so far.  Primarily this is where the settings for sDNA wrapper tools are stored (apart from a couple of helper overrides, like `file`).  Support tools and sDNA_GH tools use options and meta options in the common name root space (which is the same for all sDNA versions sDNA_GH has found).  
 
 ##### Local meta options.
-By default all sDNA_GH components share (and may change) the same global dictionary of options (module options, tool options, and meta options, together in opts) in the setup.py module.  If only one of each tool is needed (and there is only one version of sDNA) that will suffice for most users.  Each component with a given nickname in name_map also has its own set of tool options (one for each version of sDNA).  However for one support component to have a different set of options to another, one of them must no longer update the global options dictionary - it must desynchronise from them.  This syncing and desyncing is controlled by each component's individual local meta-options, (in local_metas) sync_to_module_opts, read_from_shared_global_opts.  By default these booleans are both equal to True.  More than one "primary meta" is then possible - just create a new project specific options file (`config.toml`) for each, and specify it's name on the `config` input of the desired components.  just like other optionsm local metas can be set in Input Params, shared between components via Grasshopper connections in the same way as opts, can be set by project config files(`config.toml`) and set in the installation wide config file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  But uniquely, they are not updated automatically by syncing to the main module options (as this would defeat their entire purpose, of stopping other options from doing this).
+By default all sDNA_GH components share (and may change) the same global dictionary of options (module options, tool options, and *meta* options, together in *opts*) in the `setup.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users.  
+
+For advanced users, each component with a given NickName in name_map also has its own set of tool options (one for each version of sDNA).  However, for one support component to have a different set of options to another, one of them must no longer update the global options dictionary - it must desynchronise from them.  This syncing and desyncing is controlled by each component's individual *local meta options*, (in `local_metas`) `sync_to_module_opts`, `read_from_shared_global_opts`.  By default these booleans are both equal to True.  More than one *primary meta* is then possible - just create a new project specific options file (`config.toml`) for each, and specify its name on the `config` input of the desired components.  Just like other options, *local metas* can be set in Input Params, read from Output Params, shared between components via Grasshopper connections in the same way as opts, can be set by project config files(`config.toml`) and set in the installation-wide config file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  But unlike *meta options*, *local metas* are not updated automatically by syncing to the main module options (as this would defeat their entire purpose).
 
 
 #### Tools.
 ##### Support tools
 ###### Load_Config (load_config)
-Loads an sDNA_GH project configuration file (.toml or .ini, e.g. *config.toml*) along with the sDNA_GH Python package and any specified options.
+Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and any specified options.
 
 ###### Read_Geom (get_Geom)
 Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option *selected* to True, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify *layer* = your_layer_name to only read Rhino objects from the layer named your_layer_name.
@@ -121,16 +128,17 @@ Read in the polylines and data from the specified shapefile.  Output the shapes 
 
 ##### Plotting tools
 ###### Parse_Data (parse_data)
-Parse data in a Data Tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  
-Max and Min bounds can be overridden, else they are calculated on the whole data range.  **WARNING!  Parsing is for the purpose of colourisation, e.g. in order to produce the desired result from Recolour_Objects.  Therefore, although the inputted Data is not changed, the Data outputted almost certainly will be changed, so should be assumed to be false.**  After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  
+Parse data in a Data Tree or GDM (Geometry and Data Mapping), from a specified field, for subsequent colouring and plotting.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden, else they are calculated on the whole data range.  
+**WARNING!  Parsing is for the purpose of colourisation, e.g. in order to produce the desired result from Recolour_Objects.  Therefore, although the inputted Data is not changed, the Data outputted almost certainly will be changed, so should be assumed to be false.**  
+After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  
 **Data Tree**
-A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from Usertext or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.
+A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from Usertext or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.  
 **Field to plot**
 Specify the actual numeric data values to be parsed from all the provided 'Usertext values' by setting `field` to the name of the corresponding 'Usertext key'.  
 **Bounds**
 The domain this data is parsed against can be customised by setting the options `plot_min`, `plot_max`, shifting it, widening it or narrowing it, e.g. to exclude erroneous outliers.  If `plot_min`, `plot_max` are both numbers and `plot_min` < `plot_max`, their values will be used; otherwise the max and min are automatically calculated from the list of values in the 'Usertext values' of Data corresponding to the 'Usertext key' named in `field`.  To go back to automatic calculation after an override, choose invalid values that satisfy `plot_min` >= `plot_max`.  To bound the parsed values of data points lower than `plot_min` or higher than `plot_max`, set `bound` to True, or set `exclude` to True to exclude them from the Data output altogether (and their corresponding objects from Geom).  
 **Classes (bins / categories for the legend)**
-Either, specify the number of classes desired in the legend in `number_of_classes` (the default is 7), or specify a list of the actual class boundaries desired in `class_bounds` manually.  Note these are the inter-class bounds.  Use plot_min for the lower bound of the bottom class and plot_max for the upper bound of the top class.  There should be n-1 inter-class bounds, n classes and n+1 class bounds including the max and min.
+Either, specify the number of classes desired in the legend in `number_of_classes` (the default is 7), or specify a list of the actual class boundaries desired in `class_bounds` manually.  Note these are the inter-class bounds.  Use plot_min for the lower bound of the bottom class and plot_max for the upper bound of the top class.  There should be n-1 inter-class bounds, n classes and n+1 class bounds including the max and min.  
 **Legend class names** Three customisable fields are provided in the options for the first, general and last legend tag names, and a numeric formatting string: `first_leg_tag_str = 'below {upper}'`, `gen_leg_tag_str = '{lower} - {upper}'`, `last_leg_tag_str = 'above {lower}'` and `num_format = '{:.5n}'` respectively.  The numeric format string supports a single unnamed field.  This is applied to the Classbounds and min and max above, before being substituted into the named fields in the format string for their corresponding legend tag (the general one may be used to produce more than one tag).  All must be set to valid Python format strings, with the supported named fields `lower`, `mid_pt` and `upper`.
 
 ###### Recolour_Objects
@@ -149,7 +157,7 @@ The sDNA tool descriptions below are copied almost verbatim from the [sDNA manua
 
 ###### sDNA_Integral
 sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding
-*auto_* option to false in config.ini.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
+`auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
 
 ###### sDNA_Skim
 Skim Matrix.  Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
@@ -165,12 +173,9 @@ If outputting “maps” for multiple origins, these will be output in the same 
 
 ##### Preparation tools
 ###### sDNA_Prepare
-Prepares spatial networks for analysis by checking and optionally repairing various kinds of error.
-
-Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare.
-
-The errors fixed by sDNA Prepare are:
-
+Prepares spatial networks for analysis by checking and optionally repairing various kinds of error. 
+Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare. 
+The errors fixed by sDNA Prepare are: 
 -endpoint near misses (XY and Z tolerance specify how close a near miss)
 -duplicate lines
 -traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed.
@@ -178,58 +183,42 @@ The errors fixed by sDNA Prepare are:
 -isolated systems
 
 ###### sDNA_Line_Measures
-Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines.
-
+Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
 This tool can be useful for checking and debugging spatial networks. In particular, connectivity output can reveal geometry errors.
 
 ##### Geometric analysis tools
 ###### sDNA_Geodesics
-Outputs the geodesics (shortest paths) used by Integral Analysis.
+Outputs the geodesics (shortest paths) used by Integral Analysis. 
 The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
 
 ###### sDNA_Hulls
-Outputs the convex hulls of network radii used in Integral Analysis.
+Outputs the convex hulls of network radii used in Integral Analysis. 
 The convex hulls tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output hulls for all origins.
 
 ###### sDNA_Net_Radii
-Outputs the network radii used in Integral Analysis.
+Outputs the network radii used in Integral Analysis. 
 The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
 
 ##### Calibration tools
 ###### sDNA_Learn
-sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated _R²_
-
-. If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict.
-
-Available methods for finding models are:
-
-    Single best variable - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
-    Multiple variables - regularized multivariate lasso regression
-    All variables - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression)
-
-Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a regular expression. The latter follows Python regex syntax. A wildcard is expressed as `.*`, thus, `Bt.*` would test all Betweenness variables (which in abbreviated form begin with Bt) for correlation with the target.
-
-Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed.
-
-Weighting lambda weights data points by _yλy_
-, where _y_
-
-is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.
-
-Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The _r²_
-
-values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.
-
-Regularization Lambda allows manual input of the minimum and maximum values for regularization parameter _λ_
-in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated _r²_ against _λ_ to see what is going on. The data to do this is saved with the output model file (if specified), with extension .regcurve.csv.
+sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated *R²*. 
+If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict. 
+Available methods for finding models are (valid options for `algorithm`): 
+-`Single best variable` - performs bivariate regression of target against all variables and picks single predictor with best cross-validated fit
+-`Multiple variables` - regularized multivariate lasso regression
+-`All variables` - regularized multivariate ridge regression (may not use all variables, but will usually use more than lasso regression) 
+Candidate predictor variables can either be entered as field names separated by commas, or alternatively as a *regular expression*. The latter follows Python regex syntax. A wildcard is expressed as `.*`, thus, `Bt.*` would test all Betweenness variables (which in abbreviated form begin with `Bt`) for correlation with the target. 
+Box-Cox transformations can be disabled, and the parameters for cross-validation can be changed. 
+*Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analagous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.  
+Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The *r²* values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions. 
+*Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 
 ###### sDNA_Predict
-Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network.
-
--First run a Betweenness analysis at a number of radii using Integral Analysis.
--Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows.
--Run Learn on the joined data to select the best variable for predicting flows (where measured).
--Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines.
+Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network. 
+-First run a Betweenness analysis at a number of radii using Integral Analysis. 
+-Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows. 
+-Run Learn on the joined data to select the best variable for predicting flows (where measured). 
+-Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines. 
 
 ##### Dev tool(s)
 ###### Unload_sDNA_GH
