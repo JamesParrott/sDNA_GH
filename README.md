@@ -6,11 +6,11 @@ sDNA is able to calculate Betweenness, Closeness, Angular distance, and many oth
 
 ## sDNA_GH functionality
 sDNA_GH: 
-  - Reads a network's polyline Geometry from Rhino or Grashopper, and Data from any Usertext on it. 
-  - Writes the network polylines (formed by one or more polylines) and user Data to a Shapefile.  
-  - Initiates an sDNA tool that processes that shapefile, and e.g. carries out a network preparation or an analysis.
-  - Reads the shapefile produced by the sDNA tool.
-  - Displays the results from sDNA by colouring a new layer of new polylines or the original ones
+ - Reads a network's polyline Geometry from Rhino or Grashopper, and Data from any Usertext on it. 
+ - Writes the network polylines (formed by one or more polylines) and user Data to a Shapefile.  
+ - Initiates an sDNA tool that processes that shapefile, and e.g. carries out a network preparation or an analysis.
+ - Reads the shapefile produced by the sDNA tool.
+ - Displays the results from sDNA by colouring a new layer of new polylines or the original ones
 
 ## User manual.  
 ### Installation.
@@ -117,7 +117,7 @@ For advanced users, each component with a given NickName in name_map also has it
 Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and any specified options.
 
 ###### Read_Geom (get_Geom)
-Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option *selected* to True, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify *layer* = your_layer_name to only read Rhino objects from the layer named your_layer_name.
+Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option `selected` to true, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify `layer` = your_layer_name to only read Rhino objects from the layer named your_layer_name.
 
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
@@ -147,7 +147,7 @@ Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, 
 ##### Usertext tools    
 ##### Data tools
 ###### Read_Usertext
-Reads Usertext from Rhino objects whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = False).
+Reads Usertext from Rhino objects whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
 ###### Write_Usertext
 Write user text to Rhino objects using a customisable pattern for the keys.
@@ -176,11 +176,11 @@ If outputting “maps” for multiple origins, these will be output in the same 
 Prepares spatial networks for analysis by checking and optionally repairing various kinds of error. 
 Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare. 
 The errors fixed by sDNA Prepare are: 
--endpoint near misses (XY and Z tolerance specify how close a near miss)
--duplicate lines
--traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed.
--split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default
--isolated systems
+-endpoint near misses (XY and Z tolerance specify how close a near miss) 
+-duplicate lines 
+-traffic islands (requires traffic island field set to 0 for no island and 1 for island). Traffic island lines are straightened; if doing so creates duplicate lines then these are removed. 
+-split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
+-isolated systems. 
 
 ###### sDNA_Line_Measures
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
