@@ -26,9 +26,6 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 from ..third_party.PyShp import shapefile as shp  
-
-from .skel.tools.helpers.funcs import is_uuid
-from .skel.tools.helpers.checkers import get_sc_doc_of_obj
                                   
 
 logger = logging.getLogger(__name__)

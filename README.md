@@ -114,17 +114,18 @@ For advanced users, each component with a given NickName in name_map also has it
 #### Tools.
 ##### Support tools
 ###### Load_Config (load_config)
-Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and any specified options.
+Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and any specified options the user wishes to add in.  It does not require `go` to be set to true as the options override occurs in a wrapper before any of the the actual tools below run.
 
 ###### Read_Geom (get_Geom)
 Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option `selected` to true, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify `layer` = your_layer_name to only read Rhino objects from the layer named your_layer_name.
 
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
-Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless `auto_read_Usertext = false`).
+Writes the provided data and geometry (polylines) to a shapefile.  If not specified, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Can overwrite existing files, or create new unique files.  If no Data is supplied it will first call read_Usertext (unless `auto_read_Usertext = false`).  To work with sDNA,
+a data point is only written to the Shapefile (in the record asociated with the shape correspnding to its Rhino / GH polyline) if its field (key name if it originated as Usertext) matches the template string specified in `input_key_str`.  To write all data with any key name to the Shapefile, set it to `{all}`.
 
 ###### Read_Shp (read_shapefile)
-Read in the polylines and data from the specified shapefile.  Output the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to create a legend frame with in Recolour_Objects.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`, Recolour_Objects is called afterwards.  
+Read in the polylines and data from the specified shapefile.  **WARNING!  Read_Shp automatically deletes the shapefile after reading it in the file names match the pattern of the automatically created sDNA output files or if `del_after_read` = true, as long as `strict_no_del` = false, as they are by default.**  Outputs the shapes as new Grasshopper Geometry (uness a list of existing corresponding geometry is provided).  The bounding box is provided to create a legend frame with in Recolour_Objects.  The abbreviations and field names from an sDNA results field are also read in, and supplied so that a dropdown list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`, Recolour_Objects is called afterwards.  
 
 ##### Plotting tools
 ###### Parse_Data (parse_data)
@@ -162,14 +163,14 @@ Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, 
 ##### Usertext tools    
 ##### Data tools
 ###### Read_Usertext
-Reads Usertext from Rhino objects whose keys fit a customisable pattern.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
+Reads all Usertext from the provided Rhino objects.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
 ###### Write_Usertext
 Write user text to Rhino objects using a customisable pattern for the keys.
 
 #### sDNA Tools
 ##### Analysis tools
-By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set the *meta* `show_all` = false.  
+By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set the *meta* `show_all` = false.  **WARNING!  All sDNA tools will delete the shapefile after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/guide_to_individual_tools.html#skim-matrix):
 
 ###### sDNA_Integral
@@ -315,8 +316,9 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 11. Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the setup.py meta option categories.  Description text
 can be used from the tool's description in this readme file itself (above).
 12. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH` in the main repo, next to config.toml
-13. Run create_release_sDNA_GH_zip.bat to create the zip file for release.
-14. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
+13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (Print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory.  
+14. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
+15. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
   
 
 ### Misc

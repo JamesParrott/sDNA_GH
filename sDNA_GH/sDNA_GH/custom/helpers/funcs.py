@@ -75,10 +75,17 @@ def make_regex(pattern):
     # Turns format string fields: {name} 
     # into regex named capturing groups: (?P<name>.*)
     #
+    
     the_specials = '.^$*+?[]|():!#<='
+    #escape special characters
     for c in the_specials:
         pattern = pattern.replace(c,'\\' + c)
+
+    # turn all named fields '{name}' in the format string 
+    # into named capturing groups r'(?P<name>.*)' in a regex
     pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
+
+    # Anchor to beginning and end.
     return r'\A' + pattern + r'\Z'
 
 def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
