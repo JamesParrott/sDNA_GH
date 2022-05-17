@@ -14,6 +14,7 @@ from collections import OrderedDict
 from time import asctime
 from numbers import Number
 import locale
+import math
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
@@ -74,7 +75,9 @@ from .gdm_from_GH_Datatree import (make_gdm
                                   ,override_gdm
                                   ,is_selected
                                   ,obj_layer
+                                  ,doc_layers
                                   )
+from .integral_advanced_config import advanced_options
 
 
 
@@ -156,6 +159,11 @@ def delete_shp_files_if_req(f_name
                 path = file_name + ending
                 delete_file(path, logger)
 
+def has_keywords(nick_name, keywords = ('prepare',)):
+    return any(substr in nick_name.strip().strip('_').lower() 
+              for substr in keywords
+              )
+
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
     # In addition to the 
@@ -165,22 +173,22 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # is looked up in opts['metas'], from its args.
     # 
     opts = get_dict_of_Classes(metas = dict(sDNA = ('sDNAUISpec', 'runsdnacommand')
-                                     ,show_all = True
-                                     )
-                        ,options = dict(sDNAUISpec = Sentinel('Module not imported yet')
-                                       ,run_sDNA = Sentinel('Module not imported yet')
-                                       ,prepped_fmt = "{name}_prepped"
-                                       ,output_fmt = "{name}_output"   
-                                       # file extensions are actually optional in PyShp, 
-                                       # but just to be safe and future proof
-                                       ,python_exe = r'C:\Python27\python.exe'
-                                       ,del_after_sDNA = True
-                                       ,strict_no_del = False # for debugging
+                                           ,show_all = True
+                                           )
+                              ,options = dict(sDNAUISpec = Sentinel('Module not imported yet')
+                                             ,run_sDNA = Sentinel('Module not imported yet')
+                                             ,prepped_fmt = "{name}_prepped"
+                                             ,output_fmt = "{name}_output"   
+                                             # file extensions are actually optional in PyShp, 
+                                             # but just to be safe and future proof
+                                             ,python_exe = r'C:\Python27\python.exe'
+                                             ,del_after_sDNA = True
+                                             ,strict_no_del = False # for debugging
 # Default installation path of Python 2.7.3 release (32 bit ?) 
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
-                                       )
-                        )
+                                             )
+                              )
 
 
     def update_tool_opts_and_syntax(self, opts = None):
@@ -226,12 +234,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             tool_opts_dict = defaults_dict.update( tool_opts[sDNA]._asdict() ) 
         else:
             tool_opts_dict = defaults_dict
+
         namedtuple_class_name = (nick_name + '_'
                                 +(self.tool_name if self.tool_name != nick_name
                                                  else '') + '_'
                                 +os.path.basename(sDNAUISpec.__file__).rpartition('.')[0]
                                 )
-        self.logger.debug(namedtuple_class_name)
+        self.logger.debug('Making tool opts namedtuple called ' + namedtuple_class_name)
         tool_opts[sDNA] = namedtuple_from_dict(tool_opts_dict
                                               ,namedtuple_class_name
                                               ,strict = True
@@ -240,6 +249,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.opts = opts
         if metas.show_all:
             self.component_inputs += tuple(defaults_dict.keys())
+            if 'advanced' not in defaults_dict:
+                msg = "'advanced' not in defaults_dict"
+                self.logger.warning(msg)
+                warnings.showwarning(message = msg
+                    ,category = UserWarning
+                    ,filename = __file__ + self.__class__.__name__
+                    ,lineno = 253
+                    )
+
+
+        if has_keywords(self.nick_name, keywords = ('prepare',)):
+            self.retvals += ('gdm',)
+
 
 
     def __init__(self, tool_name, nick_name, opts = None):
@@ -337,11 +359,34 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                ,strict_no_del = options.strict_no_del
                                )
 
+        if has_keywords(self.nick_name, keywords = ('prepare',)):
+            gdm = None
+            # To overwrite any inputted gdm (already used) in vals_dict
+            # to makesure a subsequent ShapefileReader adds new Geometry
+
 
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
     
+    retvals = 'retcode', 'f_name'
+    component_outputs = ('file',) # retvals[-1])
+
+advanced_options = advanced_options.copy()
+advanced_comp_opts = OrderedDict()
+advanced_comp_opts['lineformula'] = advanced_options.pop('lineformula').default
+advanced_comp_opts['juncformula'] = advanced_options.pop('juncformula').default
+for key, value in advanced_options.items():
+    advanced_comp_opts[key] = value.default
+
+class sDNAAdvancedConfigOptionsPreparer(sDNA_GH_Tool):
+    opts = get_dict_of_Classes(options = advanced_comp_opts)
+
+    component_inputs = tuple(advanced_options.keys())
+    
+    def __call__(self, opts):
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)        
     retvals = 'retcode', 'f_name'
     component_outputs = ('file',) # retvals[-1])
 
@@ -358,11 +403,14 @@ def get_objs_and_OrderedDicts(only_selected = False
                              ,is_shape = is_shape
                              ,is_selected = is_selected
                              ,obj_layer = obj_layer
+                             ,doc_layers = doc_layers
                              ):
     #type(bool, tuple, str, bool, function, function, function, function, 
     #                             function, function, function) -> function
     if layers and isinstance(layers, str):
-        layers = (layers,)
+        layers = (layers,) if layers in doc_layers() else None
+
+
     def generator():
         #type( type[any]) -> list, list
         #
@@ -424,13 +472,13 @@ def get_objs_and_OrderedDicts(only_selected = False
 class RhinoObjectsReader(sDNA_GH_Tool):
 
     opts = get_dict_of_Classes(metas = {}
-                        ,options = dict(selected = False
-                                       ,layer = ''
-                                       ,shape_type = 'POLYLINEZ'
-                                       ,merge_subdicts = True
-                                       ,include_groups = False
-                                       )
-                        )
+                              ,options = dict(selected = False
+                                             ,layer = ''
+                                             ,shape_type = 'POLYLINEZ'
+                                             ,merge_subdicts = True
+                                             ,include_groups = False
+                                             )
+                              )
 
     component_inputs = ('config', 'selected', 'layer') 
     
@@ -704,31 +752,34 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
         self.logger.debug('Testing existing geom data map.... ')
-        if isinstance(gdm, dict) and len(gdm) == len(recs):
+        if (options.new_geom or not gdm or not isinstance(gdm, dict) 
+             or len(gdm) != len(recs) ):
+            #shapes_to_output = ([shp.points] for shp in shapes )
+            
+            objs_maker = objs_maker_factory() 
+            shapes_to_output = (objs_maker(shp.points) for shp in shapes )
+        else:
+            #elif isinstance(gdm, dict) and len(gdm) == len(recs):
             # an override for different number of overrided geom objects
             # to shapes/recs opens a large a can of worms.  Unsupported.
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
             shapes_to_output = list(gdm.keys()) # Dict view in Python 3
-        elif options.new_geom:
-                    #shapes_to_output = ([shp.points] for shp in shapes )
-            
-            objs_maker = objs_maker_factory() 
-            shapes_to_output = (objs_maker(shp.points) for shp in shapes )
-        else:
-            # Unsupported until can round trip uuid through sDNA 
-            # objs_maker = get_shape_file_rec_ID(options.uuid_field) 
-            # # key_val_tuples
-            # i.e. if options.uuid_field in fields but also otherwise
-            msg =   ('Geom data map and shapefile have unequal'
-                    +' lengths len(gdm) == ' + str(len(gdm))
-                    +' len(recs) == ' + str(len(recs))
-                    +' (or invalid gdm), and new_geom'
-                    +' == False'
-                    )
-            self.logger.error(msg)
-            raise ValueError(msg)
+
+        # else:
+        #     # Unsupported until can round trip uuid through sDNA 
+        #     # objs_maker = get_shape_file_rec_ID(options.uuid_field) 
+        #     # # key_val_tuples
+        #     # i.e. if options.uuid_field in fields but also otherwise
+        #     msg =   ('Geom data map and shapefile have unequal'
+        #             +' lengths len(gdm) == ' + str(len(gdm))
+        #             +' len(recs) == ' + str(len(recs))
+        #             +' (or invalid gdm), and bool(new_geom)'
+        #             +' != True'
+        #             )
+        #     self.logger.error(msg)
+        #     raise ValueError(msg)
    
 
         shp_file_gen_exp  = itertools.izip(shapes_to_output
@@ -1001,8 +1052,8 @@ class DataParser(sDNA_GH_Tool):
                     self.logger.warning(msg)
                     warnings.showwarning(message = msg
                                         ,category = UserWarning
-                                        ,filename = 'DataParser.tools.py'
-                                        ,lineno = 983
+                                        ,filename = __file__ + self.__class__.__name__
+                                        ,lineno = 1050
                                         )
                 else:
                     self.logger.error(msg)
@@ -1216,9 +1267,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                        )
                         )
                         
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.debug('Initialising Class.  Creating Class Logger. ')
-        self.parse_data = DataParser(*args, **kwargs)
+        self.parse_data = DataParser()
         self.GH_Gradient_preset_names = {0 : 'EarthlyBrown'
                                         ,1 : 'Forest'
                                         ,2 : 'GreyScale'
@@ -1425,8 +1476,16 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     self.logger.debug('Using options.bbox override. ')
                     bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
 
-                legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
-                legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
+                leg_width = math.sqrt((bbox_xmax - bbox_xmin)**2 
+                                     +(bbox_ymax - bbox_ymin)**2
+                                     )
+                tag_height = max( 10, 0.4 * leg_width / 0.7)
+                leg_height = options.number_of_classes * tag_height * 1.04
+                legend_xmin = bbox_xmax - leg_width
+                legend_ymin = bbox_ymax - leg_height
+
+                # legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
+                # legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
                 legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
                 
                 self.logger.debug('bbox == ' + str(bbox))
@@ -1484,7 +1543,13 @@ class sDNA_GeneralDummyTool(sDNA_GH_Tool):
     component_outputs = ()
 
 class Load_Config(sDNA_GH_Tool):
-    component_inputs = ('config',)
+    component_inputs = ('config' # Primary Meta
+                       ,'auto_get_Geom' 
+                       ,'auto_read_Usertext'
+                       ,'auto_write_Shp'
+                       ,'auto_read_Shp'
+                       ,'auto_plot_data'
+                       )
 
     def __call__(self, opts):
         self.debug('Starting class logger')

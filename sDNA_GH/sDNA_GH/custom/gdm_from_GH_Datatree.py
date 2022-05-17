@@ -219,3 +219,6 @@ def is_selected(obj):
 
 def obj_layer(obj):
     return rs.ObjectLayer(obj)
+
+def doc_layers(sort = False):
+    return rs.LayerNames(sort)
