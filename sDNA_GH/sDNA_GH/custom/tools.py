@@ -9,7 +9,7 @@ import subprocess
 from .helpers.funcs import itertools #pairwise from recipe if we're in Python 2
 import re
 import warnings
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 from time import asctime
 from numbers import Number
@@ -914,7 +914,41 @@ class UsertextWriter(sDNA_GH_Tool):
     retvals = ()
     component_outputs = () 
                
+def quantile(data, num_classes, de_dupe = True, tol = 128 * 2e-17):
+    #type(list, int) -> list
+    #assume data is sorted in ascending order
+    n = len(data) - 1 # number of gaps between data points
+    class_bounds = []
+    data_indices = [0]
+    data_points_per_class = n // num_classes
+    #data_points_per_class = ((len(data) - data_index) // (num_classes - len(class_bounds)))
+    while len(class_bounds) < num_classes:
+        
+            data_indices += [data_indices[-1] + data_points_per_class]
+        data_point = data[data_indices[-1]]
+        candidate = 0.5*(data_point + min(x for x in data if x > data_point))
+        if candidate - data_point < tol:
+            highest_lower_bound = max(x for x in data if x < data_point)
+            indices_to_move_class_bound_R = highest_lower_bound - data_indices[-2]
+            indices_to_move_candidate_L = data_indices[-1] - highest_lower_bound
+            candidate = 0.5*(highest_lower_bound + min(x for x in data if x > highest_lower_bound))
 
+            if indices_to_move_class_bound_R <= indices_to_move_candidate_L:
+                class_bounds[-1] = candidate
+            else:
+                class_bounds += [candidate]
+        else:
+            class_bounds += [candidate]
+        #if de_dupe and candidate in class_bounds:  # candidate == class_bounds[-1]  ?
+        #    if candidate[-1]
+
+
+    # for i in range(1, num_classes):
+    #     index = data_points_per_class * i
+    #     data_point = data[index]
+    #     candidate = 0.5*(data_point + min(x for x in data if x > data_point))
+    #     if candidate not in class_bounds:
+    #         class_bounds += [candidate]
 
 
             
@@ -936,7 +970,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
                                     ,class_spacing = 'quantile'
-                                    ,_valid_class_spacings = valid_re_normalisers + ('quantile', 'combo', 'cluster')
+                                    ,_valid_class_spacings = valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
                                     ,base = 10 # for Log and exp
                                     ,colour_as_class = False
                                     ,locale = '' # '' => User's own settings.  Also in DataParser
@@ -946,6 +980,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,gen_leg_tag_str = '{lower} - {upper}'
                                     ,last_leg_tag_str = 'above {lower}'
                                     ,exclude = False
+                                    ,remove_overlaps = True
                                     ,suppress_small_classes_error = False
                                     ,suppress_class_overlap_error = False
                                     )
@@ -1022,7 +1057,7 @@ class DataParser(sDNA_GH_Tool):
 
         if options.sort_data or (
            not use_manual_classes 
-           and options.class_spacing in ('quantile', 'cluster', 'combo')  ):
+           and options.class_spacing in ('quantile', 'max_deltas', 'combo')  ):
             # 
             data = OrderedDict( sorted(data.items()
                                       ,key = lambda tupl : tupl[1]
@@ -1032,16 +1067,53 @@ class DataParser(sDNA_GH_Tool):
         param={}
         param['exponential'] = param['logarithmic'] = options.base
 
-        def classes_around_clusters():
+        def class_bounds_at_max_deltas():
             deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
             ranked_indexed_deltas = sorted(enumerate(deltas)
                                           ,key = lambda tpl : tpl[1]
                                           ,reverse = True
                                           )
             num_classes = options.number_of_classes
-            class_bound_indices = [i for (i, delta) in ranked_indexed_deltas[:(num_classes-1)]]
-            return [data.values()[index] for index in class_bound_indices]
-            
+            indices_and_deltas = ranked_indexed_deltas[:(num_classes-1)]
+            return [data.values()[index] + 0.5 * delta 
+                    for (index, delta) in indices_and_deltas]
+
+        def min_interval_lt_width_w_containing_most_data_points(ordered_counter
+                                                            ,w = 0
+                                                            ):
+            #type(Number, OrderedCounter) -> dict
+            # Mathematical closed interval [a,b], b >= a
+            Intervals = OrderedDict()
+            interval_width = w
+            keys = tuple(ordered_counter.keys())
+            a_iter = iter(keys)
+            b_iter = iter(keys)
+            a = next(a_iter)
+            b = next(b_iter)
+            last_key = max(keys)
+            interval = dict(a = a
+                        ,b = b
+                        ,num_data_points = ordered_counter[0]
+                        )
+            while b < last_key:
+                b = next(b_iter)
+                while b - a > interval_width:
+                    a = next(a_iter)
+                num_data_points = sum(ordered_counter[key] 
+                                    for key in keys
+                                    if a <= key <= b
+                                    )
+                if num_data_points > interval['num_data_points']: 
+                    # stick with first if equal
+                    interval = dict(a = a
+                                ,b = b
+                                ,num_data_points = num_data_points
+                                ) 
+            return interval
+
+        #def strict_quantile():
+
+
         def quantile_classes():
             m = options.number_of_classes
             n = len(data)
@@ -1069,22 +1141,26 @@ class DataParser(sDNA_GH_Tool):
             #                ]  
                            # classes include their lower bound
             #
-            class_overlaps = ['index == ' + str(i) + ' val == '  + str(data_vals[i])
-                              for i in class_bound_indices
-                              if (data_vals[i-1] == data_vals[i] 
-                                  or data_vals[i] == data_vals[i+1])
+            count_bound_counts = Counter(class_bounds)
+            class_overlaps = [val for val in count_bound_counts
+                              if count_bound_counts[val] > 1
                              ]
 
             if class_overlaps:
                 msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
+                if options.remove_overlaps:
+                    for overlap in class_overlaps:
+                        pass
+                        #remove 
+                        class_bounds.remove(overlap)
                 if options.class_spacing == 'combo':
-                    msg += ' but in combo mode. Setting classes around clusters'
+                    msg += ' but in combo mode. Setting classes around max_deltas'
                     self.logger.warning(msg)
-                    class_bounds = classes_around_clusters()
+                    class_bounds = class_bounds_at_max_deltas()
                 else:
-                    msg += (' Maybe try fewer classes, '
-                           +' class_spacing == combo, or'
-                           +' class_spacing == cluster'
+                    msg += (' Maybe try a) fewer classes,'
+                           +' b) class_spacing == combo, or'
+                           +' c) class_spacing == max_deltas'
                            )
                     if options.suppress_class_overlap_error:
                         self.logger.warning(msg)
@@ -1117,8 +1193,8 @@ class DataParser(sDNA_GH_Tool):
                             +' inter-class boundaries. '
                             )
             #
-        elif options.class_spacing == 'cluster':
-            class_bounds = classes_around_clusters()
+        elif options.class_spacing == 'max_deltas':
+            class_bounds = class_bounds_at_max_deltas()
         elif options.class_spacing in ('quantile', 'combo'):
             class_bounds = quantile_classes()
         else: 
