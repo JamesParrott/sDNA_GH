@@ -1,6 +1,7 @@
 #! Grasshopper Python
 # -*- coding: utf-8 -*-
 
+import os
 import logging
 from collections import OrderedDict
 import System  #.Net from IronPython
@@ -14,6 +15,31 @@ from ...basic.ghdoc import ghdoc
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+
+def get_path(inst = None):
+    #type(dict, type[any]) -> str
+    #refers to `magic' global ghdoc so needs to be in main
+    
+    path = Rhino.RhinoDoc.ActiveDoc.Path
+                    
+    if not isinstance(path, str) or not os.path.isfile(path):
+        try:
+            path = ghdoc.Path
+        except:
+            try:
+                path = inst.ghdoc.Path 
+            except:
+                try:
+                    path = sc.doc.Path
+                except:
+                    path = None
+        finally:
+            if not path:
+                path = None
+    
+    return path
+
+
 def toggle_sc_doc():
     #type() -> None
     if sc.doc not in (Rhino.RhinoDoc.ActiveDoc, ghdoc): 
@@ -22,6 +48,26 @@ def toggle_sc_doc():
         logger.error(msg)
         raise NameError(msg)
     sc.doc = Rhino.RhinoDoc.ActiveDoc if sc.doc == ghdoc else ghdoc # type: ignore
+
+
+def change_line_thickness(obj, width, rel_or_abs = False):  
+    #type(str, Number, bool) -> None
+    #
+    # The default value in Rhino for wireframes is zero so rel_or_abs==True 
+    # will not be effective if the width has not already been increased.
+    #
+    # To make changes resulting from the function visible, it is necessary
+    # to change the view mode into PrintDistplat, e.g. by calling
+    # rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
+    #                +str(options.line_width)
+    #                +' _enter')
+    
+    x = rs.coercerhinoobject(obj, True, True)
+    x.Attributes.PlotWeightSource = Rhino.DocObjects.ObjectPlotWeightSource.PlotWeightFromObject
+    if rel_or_abs:
+        width = width * x.Attributes.PlotWeight
+    x.Attributes.PlotWeight = width
+    x.CommitChanges()
 
 def multi_context_checker(is_thing):
     #type(function, function) -> function

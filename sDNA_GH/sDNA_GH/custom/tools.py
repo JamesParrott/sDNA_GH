@@ -48,6 +48,7 @@ from .helpers.funcs import (make_regex
                            ,three_point_quad_spline
                            ,valid_re_normalisers
                            ,enforce_bounds
+                           ,quantile
                            )
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
@@ -914,66 +915,10 @@ class UsertextWriter(sDNA_GH_Tool):
     retvals = ()
     component_outputs = () 
 
-def lowest_UB(data_point, data, index = None):
-    # type(Number, list, int) -> Number, int
-    # Assume if index is specified, that data is sorted
-    if not isinstance(index, int) or data[index] != data_point:
-        index = data.index(data_point)
-    lub = data_point
-    while lub == data_point and index < len(data):
-        index += 1
-        lub = data[index]
 
-    
-    return lub, index
-
-def highest_UB(data_point, data):
-    return max(x for x in data if x < data_point)
-
-def quantile(data, num_classes, de_dupe = True, tol = 128 * 2e-17):
-    #type(list, int) -> list
-    #assume data is sorted in ascending order
-    n = len(data) - 1 # number of gaps between data points
-    class_bounds = []
-    data_index = 0
-    data_indices = [data_index]
-    data_points_per_class = n // num_classes
-    #data_points_per_class = ((len(data) - data_index) // (num_classes - len(class_bounds)))
-    while len(class_bounds) < num_classes: 
-        # we want class_bounds num_classes -1 inter class bounds
         
-        data_index += data_points_per_class
-        data_point = data[data_index]
-        lowest_upper_bound, lub_index = lowest_UB(data_point, data)
-        candidate = 0.5*(data_point + lowest_upper_bound)
-        highest_lower_bound = max(x for x in data if x < data_point)
+        
 
-        if candidate - data[ data_index + 1 ]  < tol:
-            candidate = lowest_upper_bound
-
-        elif candidate - data_point < tol:
-            hlb_index = data.index(highest_lower_bound)
-            indices_to_move_class_bound_R = hlb_index - data_indices[-1]
-            indices_to_move_candidate_L = data_index - hlb_index
-
-            candidate = 0.5*(highest_lower_bound + lowest_UB(highest_lower_bound, data))
-
-            if (indices_to_move_class_bound_R <= indices_to_move_candidate_L:
-                class_bounds[-1] = candidate
-            else:
-                class_bounds += [candidate]
-        else:
-            class_bounds += [candidate]
-        #if de_dupe and candidate in class_bounds:  # candidate == class_bounds[-1]  ?
-        #    if candidate[-1]
-
-
-    # for i in range(1, num_classes):
-    #     index = data_points_per_class * i
-    #     data_point = data[index]
-    #     candidate = 0.5*(data_point + min(x for x in data if x > data_point))
-    #     if candidate not in class_bounds:
-    #         class_bounds += [candidate]
 
 
             

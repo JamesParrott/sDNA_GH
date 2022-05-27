@@ -7,7 +7,7 @@ import inspect
 import itertools
 from uuid import UUID # Only used for checking str format. 
                       # Haven't tried Iron Python / .Net System.Guid
-           
+    
 
 def tool_name(tool):
     #type(type[any] / function) -> str
@@ -35,5 +35,4 @@ def is_uuid(val):
     except ValueError:
         return False
 #https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
-
 
