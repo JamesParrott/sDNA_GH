@@ -49,6 +49,7 @@ from .helpers.funcs import (make_regex
                            ,valid_re_normalisers
                            ,enforce_bounds
                            ,quantile
+                           ,class_bounds_at_max_deltas
                            )
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers.funcs import is_uuid
@@ -1037,55 +1038,8 @@ class DataParser(sDNA_GH_Tool):
         param={}
         param['exponential'] = param['logarithmic'] = options.base
 
-        def class_bounds_at_max_deltas():
-            deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
-            ranked_indexed_deltas = sorted(enumerate(deltas)
-                                          ,key = lambda tpl : tpl[1]
-                                          ,reverse = True
-                                          )
-            num_classes = options.number_of_classes
-            indices_and_deltas = ranked_indexed_deltas[:(num_classes-1)]
-            return [data.values()[index] + 0.5 * delta 
-                    for (index, delta) in indices_and_deltas]
-
-        def min_interval_lt_width_w_containing_most_data_points(ordered_counter
-                                                            ,w = 0
-                                                            ):
-            #type(Number, OrderedCounter) -> dict
-            # Mathematical closed interval [a,b], b >= a
-            Intervals = OrderedDict()
-            interval_width = w
-            keys = tuple(ordered_counter.keys())
-            a_iter = iter(keys)
-            b_iter = iter(keys)
-            a = next(a_iter)
-            b = next(b_iter)
-            last_key = max(keys)
-            interval = dict(a = a
-                        ,b = b
-                        ,num_data_points = ordered_counter[0]
-                        )
-            while b < last_key:
-                b = next(b_iter)
-                while b - a > interval_width:
-                    a = next(a_iter)
-                num_data_points = sum(ordered_counter[key] 
-                                    for key in keys
-                                    if a <= key <= b
-                                    )
-                if num_data_points > interval['num_data_points']: 
-                    # stick with first if equal
-                    interval = dict(a = a
-                                ,b = b
-                                ,num_data_points = num_data_points
-                                ) 
-            return interval
-
-        #def strict_quantile():
-
-
         def quantile_classes():
-            m = options.number_of_classes
+            m = options.num_classes
             n = len(data)
             class_size = n // m
             if class_size < 2:
@@ -1094,7 +1048,7 @@ class DataParser(sDNA_GH_Tool):
                     self.logger.warning(msg)
                     warnings.showwarning(message = msg
                                         ,category = UserWarning
-                                        ,filename = __file__ + self.__class__.__name__
+                                        ,filename = __file__ + '.' + self.__class__.__name__
                                         ,lineno = 1050
                                         )
                 else:
@@ -1109,12 +1063,12 @@ class DataParser(sDNA_GH_Tool):
             # class_bounds = [ val for val in 
             #                  data.values()[class_size:m*class_size:class_size] 
             #                ]  
-                           # classes include their lower bound
+                            # classes include their lower bound
             #
             count_bound_counts = Counter(class_bounds)
             class_overlaps = [val for val in count_bound_counts
-                              if count_bound_counts[val] > 1
-                             ]
+                                if count_bound_counts[val] > 1
+                                ]
 
             if class_overlaps:
                 msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
@@ -1129,9 +1083,9 @@ class DataParser(sDNA_GH_Tool):
                     class_bounds = class_bounds_at_max_deltas()
                 else:
                     msg += (' Maybe try a) fewer classes,'
-                           +' b) class_spacing == combo, or'
-                           +' c) class_spacing == max_deltas'
-                           )
+                            +' b) class_spacing == combo, or'
+                            +' c) class_spacing == max_deltas'
+                            )
                     if options.suppress_class_overlap_error:
                         self.logger.warning(msg)
                         warnings.showwarning(message = msg
@@ -1144,8 +1098,8 @@ class DataParser(sDNA_GH_Tool):
                         raise ValueError(msg)                    
             #
             self.logger.debug('num class boundaries == ' 
-                             + str(len(class_bounds))
-                             )
+                                + str(len(class_bounds))
+                                )
             self.logger.debug(options.number_of_classes)
             self.logger.debug(n)
             assert len(class_bounds) + 1 == options.number_of_classes
@@ -1289,6 +1243,10 @@ class DataParser(sDNA_GH_Tool):
 
     retvals = 'plot_min', 'plot_max', 'gdm'
     component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[2:]
+
+    
+
+
                
 
 

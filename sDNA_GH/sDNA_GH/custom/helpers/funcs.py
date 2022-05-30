@@ -6,13 +6,14 @@ __version__ = '0.02'
 import sys
 import logging
 import itertools
-from math import log
+import math
+from collections import OrderedDict, Counter
 if sys.version_info.major <= 2 or (
    sys.version_info.major == 3 and sys.version_info.minor <= 3):
     from collections import Sequence
 else:
     from collections.abc import Sequence
-
+import warnings
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -26,12 +27,30 @@ if not hasattr(itertools, 'pairwise'):
         return itertools.izip(a, b)
     itertools.pairwise = pairwise
 
+class OrderedCounter(Counter, OrderedDict):
+     '''Counter that remembers the order elements are first encountered.  
+        https://docs.python.org/2.7/library/collections.html#collections.OrderedDict'''
+
+     def __repr__(self):
+         return '%s(%r)' % (self.__class__.__name__, OrderedDict(self))
+
+     # __reduce__ is only used to defined how OrderedCounter should be pickled
+     # def __reduce__(self):
+         # return self.__class__, (OrderedDict(self),)
+
+TOL = 24 * 2e-17  # eps s.t. 1 + eps == 1 on my machine is ~1.1102e-16
 
 
 
 def first_item_if_seq(l, null_container = {}):
-    #type(type[any])-> dict
-    #hopefully!
+    #type(type[any], type[any])-> dict
+    '''A function to strip out unnecessary wrappping containers, e.g. 
+       first_item_if_seq([[1,2,3,4,5]]) == [1,2,3,4,5] without breaking 
+       up strings.  
+       
+       Returns the second argument if the first argument is null.
+       Returns the first item of a Sequence, otherwise returns the 
+       not-a-Sequence first argument.  '''
     if not l:
         return null_container        
 
@@ -43,10 +62,10 @@ def first_item_if_seq(l, null_container = {}):
 
 def make_regex(pattern):
     # type (str) -> str
-    # Makes a regex from its opposite: a format string.  
-    # Turns format string fields: {name} 
-    # into regex named capturing groups: (?P<name>.*)
-    #
+    ''' Makes a regex from its 'opposite'/'inverse': a format string.  
+        Escapes special characters.
+        Turns format string fields: {name} 
+        into regex named capturing groups: (?P<name>.*) '''
     
     the_specials = '.^$*+?[]|():!#<='
     #escape special characters
@@ -62,12 +81,20 @@ def make_regex(pattern):
 
 def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
     #type(Number, Number, str, str) -> None
+    ''' A simple validation function to both avoid dividing by zero and
+        check arguments are provided in the correct ascending/descending 
+        order.  '''
     if a >= b:
         msg = str(a) + ' == ' + a_name + ' >= ' + b_name + ' == ' + str(b)
         logger.error(msg)
         raise ValueError(msg)
 
 def enforce_bounds(spline):
+    #type(function) -> function
+    ''' A decorator for interpolation functions and splines that stops 
+        extrapolation away from the known data points.
+        It input arguments are bounded by the max and 
+        min already provided to it.  '''
     def wrapper(x, x_min, x_mid, x_max, y_min, y_max):
         x = min(x_max, max(x_min, x))
         return spline(x, x_min, x_mid, x_max, y_min, y_max)
@@ -75,45 +102,56 @@ def enforce_bounds(spline):
 
 
 def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
-    # type(Number, Number, Number, Number, Number, Number) -> Number
+    # type(Number, Number, Number, Number, Number, Number) -> float
+    ''' Linear interpolation to find y.'''
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     return y_min + ( (y_max - y_min) * (x - x_min) / (x_max - x_min) )
 
-def check_not_eq(a, b, a_name = 'a', b_name = 'b'):
+def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = 0):
     #type(Number, Number, str, str) -> None
-    if a == b:
+    ''' A simple validation function, e.g. avoid dividing by zero.  
+        To check for floating point errors, tol can be set slightly 
+        higher than the approx machine espilon ~1.11e-16'''
+    if abs(a - b) < tol:
         msg = str(a) + ' == ' + a_name + ' == ' + b_name + ' == ' + str(b)
         logger.error(msg)
         raise ValueError(msg)
 
-def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_max):
-    # type(Number, Number, Number, Number, Number, Number) -> Number
+def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_mid):
+    # type(Number, Number, Number, Number, Number, Number) -> float
+    '''Second order Lagrange basis polynomial multipled by y_mid to
+       determine the degree of curvature. y_min is not used but is 
+       present to keep the calling signature the same as the
+       other spline functions in this module.  The ascending order
+       of the x is not checked as the arguments are permuted in
+       the three point spline that depends on this.  '''
     check_not_eq(x_min, x_mid, 'x_min', 'x_mid')
     check_not_eq(x_mid, x_max, 'x_mid', 'x_max')
-    retval = y_max*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
-    retval += y_min
+    retval = y_mid*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
     return retval
 
 
 def log_spline(x, x_min, base, x_max, y_min, y_max):        
-    # type(Number, Number, Number, Number, Number, Number) -> Number
+    # type(Number, Number, Number, Number, Number, Number) -> float
+    ''' A logarithmic interpolation function.    Linear interpolation 
+        is first performed inside the logarithm, instead of outside it.  '''
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
-    log_2 = log(2, base)
+    log_2 = math.log(2, base)
 
-    return y_min + (y_max / log_2) * log(1 + ( (x-x_min)/(x_max-x_min) )
-                                        ,base
-                                        )
+    return y_min + (y_max / log_2) * math.log(1 + ((x-x_min)/(x_max-x_min))
+                                             ,base
+                                             )
 
 
 def exp_spline(x, x_min, base, x_max, y_min, y_max):
-    # type(Number, Number, Number, Number, Number, Number) -> Number
+    # type(Number, Number, Number, Number, Number, Number) -> float
+    ''' An expontial interpolation function.  Linear interpolation is performed
+        inside the exponential, instead of outside it.  '''
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
-
-
     return y_min + ( -1 + pow(base
-                             ,((x - x_min)/(x_max - x_min))*log(1 + y_max - y_min
-                                                               ,base 
-                                                               )
+                             ,((x - x_min)/(x_max - x_min)) * math.log(1 + y_max - y_min
+                                                                      ,base 
+                                                                      )
                              )
                    )
 
@@ -132,6 +170,8 @@ splines = dict(zip(valid_re_normalisers
 
 
 def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
+    # type(Number, Number, Number, Number, Number, Number, Number) -> float
+    ''' Lagrange interpolation polynomial through three points.  '''
     #z = 2
     check_strictly_less_than(x_min, x_mid, 'x_min', 'x_mid')
     check_strictly_less_than(x_mid, x_max, 'x_mid', 'x_max')
@@ -143,7 +183,10 @@ def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
 
 
 def map_f_to_tuples(f, x, x_min, x_max, tuples_min, tuples_max): 
-    # (x,x_min,x_max,triple_min = rgb_min, triple_max = rgb_max)
+    # type(function, Number, Number, Number, tuple, tuple) -> list
+    '''A generalisation of map that returns a list of calls to the 
+       specified function using the specified 3 args, with the last two args
+       taking their values from the specified pair of iterable. '''
     return [f(x, x_min, x_max, a, b) for (a, b) in zip(tuples_min, tuples_max)]
 
 
@@ -158,8 +201,97 @@ def map_f_to_three_tuples(f
                          ): 
     #type(function, Number, Number, Number, Number, tuple, tuple, tuple)->list
     # (x,x_min,x_max,triple_min = rgb_min, triple_max = rgb_max)
+    '''A generalisation of map that returns a list of calls to the 
+       specified function using the specified 4 args, with the last 3 args
+       taking their values from the specified 3 iterable. '''
+
     return [f(x, x_min, x_med, x_max, a, b, c) 
             for (a, b, c) in zip(tuple_min, tuple_med, tuple_max)]
+
+   
+
+
+def class_bounds_at_max_deltas(data
+                              ,num_classes
+                              ,tol = TOL
+                              ,options = None):
+    #type(OrderedDict, int, float, NamedTuple) -> list
+    ''' Calculates inter-class boundaries for a legend or histogram,
+        by placing bounds at the highest jumps between consecutive data 
+        points.  Requires the values of data to be Number, and for data
+        to have been sorted based on them.
+        This naive method is prone to over-classify extreme 
+        outlying values, and this basic implementation requires two 
+        sorts, so is costlier than the others. '''
+    deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
+    ranked_indexed_deltas = sorted(enumerate(deltas)
+                                    ,key = lambda tpl : tpl[1]
+                                    ,reverse = True
+                                    )
+    #num_classes = options.number_of_classes
+    indices_and_deltas = ranked_indexed_deltas[:(num_classes-1)]
+    return [data.values()[index] + 0.5 * delta 
+            for (index, delta) in indices_and_deltas]
+
+
+
+def min_interval_lt_width_w_with_most_data_points(ordered_counter
+                                                       ,w = TOL
+                                                       ,minimum_num = None):
+    #type(OrderedCounter, Number) -> dict
+    '''Given a frequency distribution of Numbers in the form of an 
+       OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
+       collections recipe), calculate a minimum closed interval [a, b] of
+       with width b - a <= w that contains the most data points.  In a 
+       histogram this would be the largest bin of width less than w.
+       This implementation calculates a moving sum using a moving interval 
+       between a and b taking values of the sorted data keys.  The attributes of 
+       the returned InclusiveInterval may not satisfy b-a = w (this function 
+       is designed for discrete data sequences with duplicates or tight
+       clusters, so widening the interval will only cause it to contain more 
+       data points, if its bound crosses another data point value).  
+       '''
+    interval_width = w
+    if minimum_num is None:
+        minimum_num = 0.25*sum(ordered_counter.values()) / len(ordered_counter)
+    keys = tuple(ordered_counter.keys())
+    a_iter = iter(enumerate(keys))
+    b_iter = iter(enumerate(keys))
+    i_a, a = next(a_iter)
+    i_b, b = next(b_iter)
+    last_key = max(keys)
+    num_data_points = ordered_counter[b]
+    class InclusiveInterval:
+        def __init__(self):
+            self.a = a
+            self.index_a = i_a
+            self.b = b
+            self.index_b = i_b
+            self.num_data_points = num_data_points
+                        
+    interval = InclusiveInterval()
+    # num_data_points = sum(ordered_counter[key] 
+                      # for key in keys
+                      # if a <= key <= b
+                     # )
+
+    while b < last_key:
+        i_b, b = next(b_iter)
+        num_data_points += ordered_counter[b]
+        while b - a > interval_width:
+            num_data_points -= ordered_counter[a]
+            i_a, a = next(a_iter)
+            
+        if num_data_points > interval.num_data_points: 
+            # stick with first if equal
+            interval = InclusiveInterval() 
+            
+    if interval.num_data_points > minimum_num:
+        return interval
+    return None
+        
+
+#def strict_quantile():
 
 
 
@@ -246,13 +378,21 @@ def indexed_highest_strict_LB(a, b):
 
 def data_point_midpoint_and_next(data, index):
     #type(Sequence, int) -> Number, float, Number
+    ''' A support function defining the logic for calculating the midpoint
+        of a data point in a Sequence with a known index, and the next one.  '''
     data_point = data[index]
     next_data_point = data[index + 1]
     midpoint = 0.5*(data_point + next_data_point)
     return data_point, midpoint, next_data_point
 
-def quantile(data, num_classes, de_dupe = True, tol = 128 * 2e-17):
-    #type(list[Number], int, bool, float) -> list[Number]
+
+
+def quantile_l_to_r(data
+                   ,num_classes
+                   ,tol = TOL
+                   ,options = None
+                   ):
+    #type(OrderedDict, int, float, NamedTuple) -> list
     """ Calculate inter-class boundaries of an ordered data Sequence
         (sorted in ascending order) using a quantile method. 
         This particular quantile method, as near as possible, 
@@ -358,3 +498,94 @@ def quantile(data, num_classes, de_dupe = True, tol = 128 * 2e-17):
         class_bounds += [candidate_bound]
         data_indices += [data_point_below_index]
     return class_bounds
+
+class SpikeIsolatingQuantileOptions(object):
+    max_width = 200 * TOL
+    min_num = None
+
+def discrete_pro_rata(n, N_1, N_2):
+    #type(int, int, int) -> int, int
+    ''' A novel mathematical algorithm using integer division and modular 
+        arithmetic to find a pair of generalised integer divisors n_1 and n_2
+        of N_1 and N_2 respectively, s.t. n = n_1 + n_2 and N_1 // n_1 
+        and N_2 // n_2 are both as close as possible to (N_1 + N_2) // n.    
+        
+        Given a desired number of summands n of a partition of N = N_1 + N_2,
+        this function finds the number of summands of partitions of 
+        N_1 and N_2, n_1 and n_2 respectively, such that the max - min of
+        the superset of the summands of both these sub partitions is minimised.
+        E.g. normally if we wanted to divide 90 into 9 even summands, we could 
+        split it into 9 summands of 10 (==90 // 9).  However if we also 
+        required that the summands be abel to be split into two subpartitions, 
+        both summing to 45, we would have to split 90 into 5 * 9 and 3*11 + 12.
+        This is the most even least distorted pair of partitions of 45 of 
+        with 4 and 5 summands, that generalises the integer division of 90 // 9
+        to satisfy our additional constraints.  
+
+        Note, just using the floating point approximation, and the ceil of the 
+        ratio on the smaller interval, and rounding down on the larger one can
+        produce unneccessary extra distortion, e.g. dividing 100//100 split 
+        between two sub partitions of 21 and 79, would divide 21 by 2.1 rounded up
+    ''' 
+
+    return num_of_classes
+
+def spike_isolating_quantile(data
+                            ,num_classes
+                            ,tol = TOL
+                            ,options = SpikeIsolatingQuantileOptions
+                            ):
+    #type(OrderedDict, int, float, NamedTuple) -> list
+    ''' This function places interclass bounds in data, a Sequence (e.g. 
+        list / tuple) of Numbers that has been sorted (in ascending order).  
+        It first isolates the largest / narrowest spike in the frequency 
+        distribution, then calls itself on both remaining sub-Sequences 
+        either side of the spike, with a smartly determined allocation of 
+        classes.  This allocation is from discrete_pro_rata.  If there are no spikes 
+        narrower than the max width, containing at least the minimum number of 
+        data points, the corresponding number of classes to it are allocated 
+        within each sub-Sequence using quantile_l_to_r.  The lists of 
+        inter-class bounds returned by these recursive calls are appended 
+        together and returned.  '''
+    ordered_counter = OrderedCounter(data)
+    num_inter_class_bounds = num_classes - 1
+    if num_inter_class_bounds <= 0:
+        return []
+    if num_inter_class_bounds < 2: # e.g. num_inter_class_bounds == 1
+        return quantile_l_to_r(data, num_inter_class_bounds + 1, tol, options)
+    inter_class_bounds = []
+    if num_inter_class_bounds >= 2:
+        spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
+                                                                      ,options.max_width
+                                                                      ,options.min_num
+                                                                      )
+        if spike_interval:
+            num_classes_a, num_classes_b = discrete_pro_rata(num_classes
+                                                            ,spike_interval.i_a
+                                                            ,len(data) - spike_interval.i_b
+                                                            )
+            num_classes_b = num_classes - 1 - num_classes_a
+            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.i_a]
+                                                         ,num_classes_a
+                                                         ,tol
+                                                         ,options
+                                                         )
+            _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
+                                                              ,spike_interval.i_a - 1
+                                                              )
+            _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
+                                                              ,spike_interval.i_b
+                                                              )
+                                  
+            inter_class_bounds += [midpoint_i_a, midpoint_i_b]
+            inter_class_bounds += spike_isolating_quantile(data[spike_interval.i_b+1:]
+                                                          ,num_classes_b
+                                                          ,tol
+                                                          ,options
+                                                          )
+        else:
+            inter_class_bounds = quantile_l_to_r(data, num_classes, tol, options)
+    return inter_class_bounds
+    
+            
+
