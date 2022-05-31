@@ -1,5 +1,15 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
+
+""" Python 2 / 3 helper functions and classes, for sDNA_GH.  
+
+    Mainly numerical interpolation and inter_class bound calculation 
+    functions and classes used by DataParser and ObjectsRecolourer, 
+    plus a type coercer and a format string 'inverter'.
+    They rely only on core Python modules, and are independent of Grasshopper
+    and of other sDNA_GH modules.
+"""
+
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
@@ -15,6 +25,9 @@ else:
     from collections.abc import Sequence
 import warnings
 
+
+
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -28,8 +41,9 @@ if not hasattr(itertools, 'pairwise'):
     itertools.pairwise = pairwise
 
 class OrderedCounter(Counter, OrderedDict):
-     '''Counter that remembers the order elements are first encountered.  
-        https://docs.python.org/2.7/library/collections.html#collections.OrderedDict'''
+     """Counter that remembers the order elements are first encountered.  
+        https://docs.python.org/2.7/library/collections.html#collections.OrderedDict
+     """
 
      def __repr__(self):
          return '%s(%r)' % (self.__class__.__name__, OrderedDict(self))
@@ -44,13 +58,14 @@ TOL = 24 * 2e-17  # eps s.t. 1 + eps == 1 on my machine is ~1.1102e-16
 
 def first_item_if_seq(l, null_container = {}):
     #type(type[any], type[any])-> dict
-    '''A function to strip out unnecessary wrappping containers, e.g. 
+    """A function to strip out unnecessary wrappping containers, e.g. 
        first_item_if_seq([[1,2,3,4,5]]) == [1,2,3,4,5] without breaking 
        up strings.  
        
        Returns the second argument if the first argument is null.
        Returns the first item of a Sequence, otherwise returns the 
-       not-a-Sequence first argument.  '''
+       not-a-Sequence first argument.  
+    """
     if not l:
         return null_container        
 
@@ -62,10 +77,11 @@ def first_item_if_seq(l, null_container = {}):
 
 def make_regex(pattern):
     # type (str) -> str
-    ''' Makes a regex from its 'opposite'/'inverse': a format string.  
+    """ Makes a regex from its 'opposite'/'inverse': a format string.  
         Escapes special characters.
         Turns format string fields: {name} 
-        into regex named capturing groups: (?P<name>.*) '''
+        into regex named capturing groups: (?P<name>.*) 
+    """
     
     the_specials = '.^$*+?[]|():!#<='
     #escape special characters
@@ -81,20 +97,23 @@ def make_regex(pattern):
 
 def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
     #type(Number, Number, str, str) -> None
-    ''' A simple validation function to both avoid dividing by zero and
+    """ A simple validation function to both avoid dividing by zero and
         check arguments are provided in the correct ascending/descending 
-        order.  '''
+        order.  
+    """
     if a >= b:
         msg = str(a) + ' == ' + a_name + ' >= ' + b_name + ' == ' + str(b)
         logger.error(msg)
         raise ValueError(msg)
 
+
 def enforce_bounds(spline):
     #type(function) -> function
-    ''' A decorator for interpolation functions and splines that stops 
+    """ A decorator for interpolation functions and splines that stops 
         extrapolation away from the known data points.
         It input arguments are bounded by the max and 
-        min already provided to it.  '''
+        min already provided to it.  
+    """
     def wrapper(x, x_min, x_mid, x_max, y_min, y_max):
         x = min(x_max, max(x_min, x))
         return spline(x, x_min, x_mid, x_max, y_min, y_max)
@@ -103,28 +122,32 @@ def enforce_bounds(spline):
 
 def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> float
-    ''' Linear interpolation to find y.'''
+    """ Linear interpolation to find y.  """
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     return y_min + ( (y_max - y_min) * (x - x_min) / (x_max - x_min) )
 
+
 def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = 0):
     #type(Number, Number, str, str) -> None
-    ''' A simple validation function, e.g. avoid dividing by zero.  
+    """ A simple validation function, e.g. avoid dividing by zero.  
         To check for floating point errors, tol can be set slightly 
-        higher than the approx machine espilon ~1.11e-16'''
+        higher than the approx machine espilon ~1.11e-16
+    """
     if abs(a - b) < tol:
         msg = str(a) + ' == ' + a_name + ' == ' + b_name + ' == ' + str(b)
         logger.error(msg)
         raise ValueError(msg)
 
+
 def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_mid):
     # type(Number, Number, Number, Number, Number, Number) -> float
-    '''Second order Lagrange basis polynomial multipled by y_mid to
+    """Second order Lagrange basis polynomial multipled by y_mid to
        determine the degree of curvature. y_min is not used but is 
        present to keep the calling signature the same as the
        other spline functions in this module.  The ascending order
        of the x is not checked as the arguments are permuted in
-       the three point spline that depends on this.  '''
+       the three point spline that depends on this.  
+    """
     check_not_eq(x_min, x_mid, 'x_min', 'x_mid')
     check_not_eq(x_mid, x_max, 'x_mid', 'x_max')
     retval = y_mid*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
@@ -133,8 +156,9 @@ def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_mid):
 
 def log_spline(x, x_min, base, x_max, y_min, y_max):        
     # type(Number, Number, Number, Number, Number, Number) -> float
-    ''' A logarithmic interpolation function.    Linear interpolation 
-        is first performed inside the logarithm, instead of outside it.  '''
+    """ A logarithmic interpolation function.    Linear interpolation 
+        is first performed inside the logarithm, instead of outside it.  
+    """
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     log_2 = math.log(2, base)
 
@@ -145,8 +169,9 @@ def log_spline(x, x_min, base, x_max, y_min, y_max):
 
 def exp_spline(x, x_min, base, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> float
-    ''' An expontial interpolation function.  Linear interpolation is performed
-        inside the exponential, instead of outside it.  '''
+    """ An expontial interpolation function.  Linear interpolation is performed
+        inside the exponential, instead of outside it.  
+    """
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
     return y_min + ( -1 + pow(base
                              ,((x - x_min)/(x_max - x_min)) * math.log(1 + y_max - y_min
@@ -171,22 +196,23 @@ splines = dict(zip(valid_re_normalisers
 
 def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
     # type(Number, Number, Number, Number, Number, Number, Number) -> float
-    ''' Lagrange interpolation polynomial through three points.  '''
-    #z = 2
+    """ Lagrange interpolation polynomial through three points.  """
+
     check_strictly_less_than(x_min, x_mid, 'x_min', 'x_mid')
     check_strictly_less_than(x_mid, x_max, 'x_mid', 'x_max')
 
-    z =  quadratic_mid_spline(x, x_mid, x_min, x_max, 0, y_min) #y_min*((x - x_max)*(x - x_mid)/((x_min - x_max)*(x_min - x_mid)))
-    z += quadratic_mid_spline(x, x_min, x_mid, x_max, 0, y_mid) #y_mid*((x - x_max)*(x - x_min)/((x_mid - x_max)*(x_mid - x_min)))
-    z += quadratic_mid_spline(x, x_min, x_max, x_mid, 0, y_max) #y_max*((x - x_mid)*(x - x_min)/((x_max - x_mid)*(x_max - x_min)))
+    z =  quadratic_mid_spline(x, x_mid, x_min, x_max, 0, y_min) 
+    z += quadratic_mid_spline(x, x_min, x_mid, x_max, 0, y_mid) 
+    z += quadratic_mid_spline(x, x_min, x_max, x_mid, 0, y_max) 
     return z   
 
 
 def map_f_to_tuples(f, x, x_min, x_max, tuples_min, tuples_max): 
     # type(function, Number, Number, Number, tuple, tuple) -> list
-    '''A generalisation of map that returns a list of calls to the 
+    """A generalisation of map that returns a list of calls to the 
        specified function using the specified 3 args, with the last two args
-       taking their values from the specified pair of iterable. '''
+       taking their values from the specified pair of iterable. 
+    """
     return [f(x, x_min, x_max, a, b) for (a, b) in zip(tuples_min, tuples_max)]
 
 
@@ -201,9 +227,10 @@ def map_f_to_three_tuples(f
                          ): 
     #type(function, Number, Number, Number, Number, tuple, tuple, tuple)->list
     # (x,x_min,x_max,triple_min = rgb_min, triple_max = rgb_max)
-    '''A generalisation of map that returns a list of calls to the 
+    """A generalisation of map that returns a list of calls to the 
        specified function using the specified 4 args, with the last 3 args
-       taking their values from the specified 3 iterable. '''
+       taking their values from the specified 3 iterable. 
+    """
 
     return [f(x, x_min, x_med, x_max, a, b, c) 
             for (a, b, c) in zip(tuple_min, tuple_med, tuple_max)]
@@ -216,13 +243,14 @@ def class_bounds_at_max_deltas(data
                               ,tol = TOL
                               ,options = None):
     #type(OrderedDict, int, float, NamedTuple) -> list
-    ''' Calculates inter-class boundaries for a legend or histogram,
+    """ Calculates inter-class boundaries for a legend or histogram,
         by placing bounds at the highest jumps between consecutive data 
         points.  Requires the values of data to be Number, and for data
         to have been sorted based on them.
         This naive method is prone to over-classify extreme 
         outlying values, and this basic implementation requires two 
-        sorts, so is costlier than the others. '''
+        sorts, so is costlier than the others. 
+    """
     deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
     ranked_indexed_deltas = sorted(enumerate(deltas)
                                     ,key = lambda tpl : tpl[1]
@@ -239,7 +267,7 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
                                                        ,w = TOL
                                                        ,minimum_num = None):
     #type(OrderedCounter, Number) -> dict
-    '''Given a frequency distribution of Numbers in the form of an 
+    """Given a frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
        collections recipe), calculate a minimum closed interval [a, b] of
        with width b - a <= w that contains the most data points.  In a 
@@ -250,7 +278,7 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
        is designed for discrete data sequences with duplicates or tight
        clusters, so widening the interval will only cause it to contain more 
        data points, if its bound crosses another data point value).  
-       '''
+    """
     interval_width = w
     if minimum_num is None:
         minimum_num = 0.25*sum(ordered_counter.values()) / len(ordered_counter)
@@ -304,7 +332,8 @@ def highest_strict_LB(data_point, data):
     need not be a Sequence (i.e. as well as a list/tupl,
     it can be a set or even a dict too, as 
     long as its elements and keys respectively can 
-    be compared with <)"""
+    be compared with <)
+    """
     return max(x for x in data if x < data_point)
 
 def lowest_strict_UB(data_point, data):
@@ -314,12 +343,13 @@ def lowest_strict_UB(data_point, data):
     need not be a Sequence (i.e. as well as a list/tupl,
     it can be a set or even a dict too, as 
     long as its elements and keys respectively can 
-    be compared with >)"""
+    be compared with >)
+    """
     return min(x for x in data if x > data_point)
 
-def search_one_way_only_from_index(condition, search_direction):
+def search_one_way_only_from_index(search_direction):
     #type(function, str) -> function
-    """ Decorator to make partial search functions for the first 
+    """ Factory that makes decorator that makes partial search functions for the first 
         item for which condition == True, in the specified 
         search_direction, e.g. for making efficient functions to 
         find the lowest / highest strict upper / lower bound of an 
@@ -330,12 +360,13 @@ def search_one_way_only_from_index(condition, search_direction):
         If no item
         satisfying condition(element, item) == True is found
         in the specified search direction, the first return value 
-        (the variable success) is False. """
+        (the variable success) is False. 
+    """
     if search_direction.lower() == 'ascending': 
-        def r(data, index):
+        def make_range(data, index):
             return range(index + 1, len(data)) 
     elif search_direction.lower() == 'descending':
-        def r(data, index):
+        def make_range(data, index):
             return reversed(range(0, index))
     else:
         msg = ('Unsupported search direction: ' 
@@ -345,28 +376,31 @@ def search_one_way_only_from_index(condition, search_direction):
         logger.error(msg)
         raise ValueError(msg)
 
-    def searcher(data_point, data, index = None):
-    # type(Number, List[Number], int) -> bool, Number, int
-        if not isinstance(index, int):
-            index = data.index(data_point)
-        if data[index] != data_point:
-            msg = ('Incorrect index of data_point in data: '
-                  'data[' + str(index) + '] == ' 
-                  +str(data[index]) 
-                  +' != ' + str(data_point) 
-                  +' == data_point'
-                  )
-            logger.error(msg)
-            raise ValueError(msg)
 
-        success, lub = False, None
-        for i in r(data, index):   
-            if condition(data[i], data_point):
-                success, lub = True, data[i]
-                break
-        
-        return success, lub, i
-    return searcher
+    def decorator(condition):
+        def searcher(data_point, data, index = None):
+        # type(Number, List[Number], int) -> bool, Number, int
+            if not isinstance(index, int):
+                index = data.index(data_point)
+            if data[index] != data_point:
+                msg = ('Incorrect index of data_point in data: '
+                    'data[' + str(index) + '] == ' 
+                    +str(data[index]) 
+                    +' != ' + str(data_point) 
+                    +' == data_point'
+                    )
+                logger.error(msg)
+                raise ValueError(msg)
+
+            success, lub = False, None
+            for i in make_range(data, index):   
+                if condition(data[i], data_point):
+                    success, lub = True, data[i]
+                    break
+            
+            return success, lub, i
+        return searcher
+    return decorator
 
 @search_one_way_only_from_index('ascending')
 def indexed_lowest_strict_UB(a, b):
@@ -378,8 +412,9 @@ def indexed_highest_strict_LB(a, b):
 
 def data_point_midpoint_and_next(data, index):
     #type(Sequence, int) -> Number, float, Number
-    ''' A support function defining the logic for calculating the midpoint
-        of a data point in a Sequence with a known index, and the next one.  '''
+    """ A support function defining the logic for calculating the midpoint
+        of a data point in a Sequence with a known index, and the next one.  
+    """
     data_point = data[index]
     next_data_point = data[index + 1]
     midpoint = 0.5*(data_point + next_data_point)
@@ -503,11 +538,88 @@ class SpikeIsolatingQuantileOptions(object):
     max_width = 200 * TOL
     min_num = None
 
+class IntegerDivision(object):
+    def __init__(self, val, divisor):
+        #type(int, int) -> None
+        """Type check val and divisor, carry out standard integer division of
+           them, save them and the quotient and remainder as instance 
+           variables.
+        """
+        if not (isinstance(val, int) and isinstance(divisor, int)):
+            msg = ('Integer division attempted with values of type '
+                    +' type(val) == ' + type(val).__name__ + ', '
+                    +' type(divisor) == ' + type(divisor).__name__ 
+                    )
+            logger.error(msg)
+            raise TypeError(msg)
+
+        self.val = val
+        self.div = divisor
+        self.quotient = val // divisor
+        self.remainder = val % divisor       
+        # val = divisor * self.quotient + self.remainder, all integers
+        #       where 0 <= self.remainder < divisor
+
+    def divisor_increase(self):
+        #type() -> int
+        """Return the increase in the highest summand of the partition by reallocation
+           of the remainder across the summands.  The increase every summand, 
+           + 1 if there is still a remainder for the increase resulting in the highest.
+
+           r_2 = self.remainder
+           n_2 = self.quotient
+           N_2 = self.value
+           
+           r_2 = b * n_2 + r_b,   0 <= r_b < n_2,  
+           r_b = B.remainder
+           b = B.quotient
+
+           Reallocate the remainder of N_2 across its partition's summands
+           producing distortion N_2.remainder // N_2.quotient, 
+                                + 1 if N_2.remainder % N_2.quotient  
+        """
+        B = IntegerDivision(val = self.remainder, divisor = self.quotient)
+        b = B.quotient
+        retval = b  + ( 1 if B.remainder > 0 else 0 ) 
+        #    B.remainder < B.divisor == N_2.quotient, so is in {1,0}
+        #    if r_b > 0, it will be reallocated to a summand in the partition, 
+        #    making the highest summand higher, and the distortion higher.
+        
+        return retval
+
+    def divisor_decrease(self):
+        #type() -> int
+        """ Try dividing self.val by a smaller than ideal divisor, self.divisor - a, 
+            to result in a 
+            slightly higher quotient, self.quotient + 1, absorbing the split 
+            class/summand with minimum distortion.  Return the decrease in the divisor
+            a minus any increase of the smallest summand (if any) from reallocating 
+            the remainder across all the summands.
+            
+            m = self.divisor
+            n_1 = self.quotient
+            r_1 = self.remainder
+            
+            a = (m - r_1) // n_1, 
+            so that n_1 * (a+1) >= m - r_1, 
+            i.e. n_1 * a + r_1 = m - a + r_a for r_a > 0 
+            thus N_1 = (n_1 + 1) * (m - a) + r_a
+        """
+        a =  (self.divisor - self.remainder) // self.quotient
+        retval = a - ((self.quotient * a + self.remainder) // (self.quotient + 1))
+        return retval
+
+
+    def distortion(self, reallocator):
+        #type(IntegerDivision) -> int
+        return reallocator.divisor_increase() + self.divisor_decrease()
+
+
 def discrete_pro_rata(n, N_1, N_2):
     #type(int, int, int) -> int, int
-    ''' A novel mathematical algorithm using integer division and modular 
+    """ A mathematical algorithm using integer division and modular 
         arithmetic to find a pair of generalised integer divisors n_1 and n_2
-        of N_1 and N_2 respectively, s.t. n = n_1 + n_2 and N_1 // n_1 
+        of N_1 and N_2 respectively, s.t. n = n_1 + n_2 with N_1 // n_1 
         and N_2 // n_2 are both as close as possible to (N_1 + N_2) // n.    
         
         Given a desired number of summands n of a partition of N = N_1 + N_2,
@@ -526,9 +638,58 @@ def discrete_pro_rata(n, N_1, N_2):
         ratio on the smaller interval, and rounding down on the larger one can
         produce unneccessary extra distortion, e.g. dividing 100//100 split 
         between two sub partitions of 21 and 79, would divide 21 by 2.1 rounded up
-    ''' 
+    """ 
+    N = N_1 + N_2
+    N =   IntegerDivision(val = N_1 + N_2, divisor = n)
+    N_1 = IntegerDivision(val = N_1,       divisor = N.quotient)
+    N_2 = IntegerDivision(val = N_2,       divisor = N.quotient)
 
-    return num_of_classes
+    def error(msg):
+        m, r = N.quotient, N.remainder           #N   = m   * n + r,   0 <= r   < n
+        n_1, r_1 = N_1.quotient, N_1.remainder;  #N_1 = n_1 * m + r_1, 0 <= r_1 < m
+        n_2, r_2 = N_2.quotient, N_2.remainder;  #N_2 = n_2 * m + r_2, 0 <= r_2 < m
+        msg +=  ('n == ' + str(N.divisor) 
+                +'!= n_1 + n_2, '
+                +'N == ' + str(N.val) + ' ?= '
+                +'n*m + r == ' + str(n*m + r) + ', '
+                +'m == ' + str(m) + ', '
+                +'r == ' + str(r) + ', '
+                +'N_1 == ' + str(N_1) + ' ?= '
+                +'m*n_1 + r_1 == ' + str(m*n_1 + r_1) + ', '
+                +'n_1 == ' + str(n_1) + ', '
+                +'r_1 == ' + str(r_1) + ', '
+                +'N_2 == ' + str(N_2) + ' ?= '
+                +'m*n_2 + r_2 == ' + str(m*n_2 + r_2) + ', '
+                +'n_2 == ' + str(n_2) + ', '
+                +'r_2 == ' + str(r_2) 
+                )
+        logger.error(msg)
+        raise NotImplementedError(msg)
+
+    if N_1.remainder + N_2.remainder == N.remainder:
+        if N_1.quotient + N_2.quotient == n:
+            return N_1.quotient, N_2.quotient
+        else:
+            # N_1 + N_2 == N should mean (n_1 + n_2)*m + r_1 + r_2 == m * n + r
+            error('r_1 + r_2 == r but n_1 + n_2 != n.  Possible mistake? ')
+    elif N_1.remainder + N_2.remainder != N.remainder + N.quotient:
+        error('r_1 + r_2 should= r mod m and r_1 + r_2 should< 2 * m. Possible mistake? ')
+    elif N_1.quotient + N_2.quotient != n - 1:
+        error('r_1 + r_2 == r + m but n_1 + n_2 != n - 1.  Possible mistake? ')
+
+
+    #What if we divide N_2 or N_2 by m + b using any factors of n_2 or 
+    # n_1 in r_2 or r_1 respectively?  And what if we also reallocate 
+    # the remainder of N_1 or N_2, r_1 or r_2 to divide N_1 or N_2 by m - a 
+    # instead, to try and increase the quotients n_1 or n_2, respectively?
+    #
+    #We calculate the distortion in both cases and pick the one with the lowest
+
+    if N_1.distortion(N_2) <= N_2.distortion(N_1):
+        return N_1.quotient + 1, N_2.quotient 
+    else:
+        return N_1.quotient, N_2.quotient + 1
+
 
 def spike_isolating_quantile(data
                             ,num_classes
@@ -536,7 +697,7 @@ def spike_isolating_quantile(data
                             ,options = SpikeIsolatingQuantileOptions
                             ):
     #type(OrderedDict, int, float, NamedTuple) -> list
-    ''' This function places interclass bounds in data, a Sequence (e.g. 
+    """ This function places interclass bounds in data, a Sequence (e.g. 
         list / tuple) of Numbers that has been sorted (in ascending order).  
         It first isolates the largest / narrowest spike in the frequency 
         distribution, then calls itself on both remaining sub-Sequences 
@@ -546,12 +707,13 @@ def spike_isolating_quantile(data
         data points, the corresponding number of classes to it are allocated 
         within each sub-Sequence using quantile_l_to_r.  The lists of 
         inter-class bounds returned by these recursive calls are appended 
-        together and returned.  '''
+        together and returned.  
+    """
     ordered_counter = OrderedCounter(data)
     num_inter_class_bounds = num_classes - 1
     if num_inter_class_bounds <= 0:
         return []
-    if num_inter_class_bounds < 2: # e.g. num_inter_class_bounds == 1
+    if num_inter_class_bounds == 1:
         return quantile_l_to_r(data, num_inter_class_bounds + 1, tol, options)
     inter_class_bounds = []
     if num_inter_class_bounds >= 2:
