@@ -247,30 +247,36 @@ def class_bounds_at_max_deltas(data
         by placing bounds at the highest jumps between consecutive data 
         points.  Requires the values of data to be Number, and for data
         to have been sorted based on them.
-        This naive method is prone to over-classify extreme 
-        outlying values, and this basic implementation requires two 
-        sorts, so is costlier than the others. 
+        This method is prone to over-classify extreme 
+        outlying values. 
     """
-    deltas = (b - a for (b,a) in itertools.pairwise(data.values()))
-    ranked_indexed_deltas = sorted(enumerate(deltas)
-                                    ,key = lambda tpl : tpl[1]
-                                    ,reverse = True
-                                    )
-    #num_classes = options.number_of_classes
-    indices_and_deltas = ranked_indexed_deltas[:(num_classes-1)]
-    return [data.values()[index] + 0.5 * delta 
-            for (index, delta) in indices_and_deltas]
+    deltas = [(i, b - a )
+              for i, (b, a) in enumerate(itertools.pairwise(data.values()))
+             ]
+    class_bounds = []
+    for _ in range(num_classes - 1):
+        max_delta = max(deltas)
+        for index, delta in deltas: 
+            if math.abs(max_delta - delta) < tol:
+                max_index = index
+                break
+        deltas.remove(deltas[max_index])
+        
+        class_bounds += [ data.values()[max_index] + 0.5 * max_delta] #midpoint
+    return class_bounds
+
 
 
 
 def min_interval_lt_width_w_with_most_data_points(ordered_counter
-                                                       ,w = TOL
-                                                       ,minimum_num = None):
-    #type(OrderedCounter, Number) -> dict
+                                                 ,minimum_num
+                                                 ,w = TOL
+                                                 ):
+    #type(OrderedCounter, Number) -> dict 
     """Given a frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
        collections recipe), calculate a minimum closed interval [a, b] of
-       with width b - a <= w that contains the most data points.  In a 
+       width b - a <= w that contains the most data points.  In a 
        histogram this would be the largest bin of width less than w.
        This implementation calculates a moving sum using a moving interval 
        between a and b taking values of the sorted data keys.  The attributes of 
@@ -280,8 +286,6 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
        data points, if its bound crosses another data point value).  
     """
     interval_width = w
-    if minimum_num is None:
-        minimum_num = 0.25*sum(ordered_counter.values()) / len(ordered_counter)
     keys = tuple(ordered_counter.keys())
     a_iter = iter(enumerate(keys))
     b_iter = iter(enumerate(keys))
@@ -709,6 +713,7 @@ def spike_isolating_quantile(data
         inter-class bounds returned by these recursive calls are appended 
         together and returned.  
     """
+
     ordered_counter = OrderedCounter(data)
     num_inter_class_bounds = num_classes - 1
     if num_inter_class_bounds <= 0:
@@ -717,28 +722,31 @@ def spike_isolating_quantile(data
         return quantile_l_to_r(data, num_inter_class_bounds + 1, tol, options)
     inter_class_bounds = []
     if num_inter_class_bounds >= 2:
+        if options.min_num is None:
+            min_num = len(data) // num_classes
+        else:
+            min_num = options.min_num
         spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,options.max_width
-                                                                      ,options.min_num
+                                                                      ,min_num
                                                                       )
         if spike_interval:
-            num_classes_a, num_classes_b = discrete_pro_rata(num_classes
+            num_classes_a, num_classes_b = discrete_pro_rata(num_classes - 1
                                                             ,spike_interval.i_a
                                                             ,len(data) - spike_interval.i_b
                                                             )
-            num_classes_b = num_classes - 1 - num_classes_a
-            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.i_a]
-                                                         ,num_classes_a
-                                                         ,tol
-                                                         ,options
-                                                         )
             _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
                                                               ,spike_interval.i_a - 1
                                                               )
             _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
                                                               ,spike_interval.i_b
                                                               )
-                                  
+
+            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.i_a]
+                                                         ,num_classes_a
+                                                         ,tol
+                                                         ,options
+                                                         )                                  
             inter_class_bounds += [midpoint_i_a, midpoint_i_b]
             inter_class_bounds += spike_isolating_quantile(data[spike_interval.i_b+1:]
                                                           ,num_classes_b
