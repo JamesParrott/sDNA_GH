@@ -10,7 +10,7 @@ strict_namedtuples = true
 strict_opts = true
 sDNAUISpec = 'sDNAUISpec'
 runsdnacommand = 'runsdnacommand' 
-sDNA_search_paths  = ['C:\Program Files (x86)\sDNA']
+sDNA_paths  = ['C:\Program Files (x86)\sDNA']
 update_path = true
 ##########################################################################
 #

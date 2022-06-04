@@ -13,9 +13,21 @@ sDNA_GH:
  - Displays the results from sDNA by colouring a new layer of new polylines or the original ones.
 
 ## User manual.  
+### System Requirements. 
+#### Software
+1. Windows 10 or 8.1 (not tested in Windows 11) 
+2. A Python interpreter that can launch sDNA correctly from the command line (e.g. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly).
+3. sDNA. 
+4. Rhino and Grasshopper (tested in Rhino 7)
+#### Hardware
+1. 64-bit Intel or AMD processor (Not ARM) 
+2. No more than 63 CPU Cores. 
+3. 8 GB memory (RAM) or more is recommended. 
+4. 1.2 GB disk space. 
+
 ### Installation.
 1. Ensure you have an installation of [Rhino 3D](https://www.rhino3d.com/download/) including Grasshopper (versions 6 and 7 are supported).
-2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0]  Iron Python is only supported by sDNA_GH within Grasshopper. 
+2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0]  that can run sDNA correctly from the command line.  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced.  There is no guarantee the Python implementation provided with other applications, e.g. Python 3 QGIS can run sDNA from the command line correctly, and even if it were possible to access the Iron Python shipped with Rhino from the command line, this would produce erroneous results.
 3. Ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA itself may require the 64 bit Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ) ). 
 4. Download `sDNA_GH.zip` from [food4Rhino](https://www.food4rhino.com) or the [sDNA_GH releases page on Github](https://www.example.com).
 5. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files the zip archive.  If any files still need to be unblocked,  a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2))  Please note, you should not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
@@ -42,18 +54,6 @@ These options may also be specified in a project specific config.toml file, or i
 11. Restart Rhino and Grasshopper.
 12. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc.)
 13. For a first test of sDNA_GH, open  `\sDNA_GH\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the folder from the unzip, in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
-
-### System Requirements. 
-#### Software
-1. Windows 10 or 8.1 (not tested in Windows 11) 
-2. A Python interpreter that can launch sDNA correctly (e.g. Python 2.7)
-3. sDNA. 
-4. Rhino and Grasshopper (tested in Rhino 7)
-#### Hardware
-1. 64-bit Intel or AMD processor (Not ARM) 
-2. No more than 63 CPU Cores. 
-3. 8 GB memory (RAM) or more is recommended. 
-4. 1.2 GB disk space. 
 
 
 ### Usage.  

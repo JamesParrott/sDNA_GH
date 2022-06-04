@@ -77,7 +77,7 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
                             # with an env, while being able to get the 
                             # sDNA stderr and stdout to the sDNA_GH logging
     sDNA = (sDNAUISpec, runsdnacommand)  # Read only.  Auto updates from above.
-    sDNA_path = ''  
+    #sDNA_path = ''  
     # Read only.  Determined after loading sDNAUISpec to which ever below
     # it is found in.
     # after loading, 
@@ -85,10 +85,10 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
     #   opts['metas'].sDNA_path 
     #      == os.path.dirname(opts['options'].sDNAUISpec.__file__)
     #sDNA_UISpec_path = r'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
-    #sDNA_search_paths = [sDNA_UISpec_path, 
-    sDNA_search_paths  = [r'C:\Program Files (x86)\sDNA']
-    sDNA_search_paths += [os.path.join(os.getenv('APPDATA'),'sDNA')]
-    sDNA_search_paths += [path for path in os.getenv('PATH').split(';')
+    #sDNA_paths = [sDNA_UISpec_path, 
+    sDNA_paths  = [r'C:\Program Files (x86)\sDNA']
+    sDNA_paths += [os.path.join(os.getenv('APPDATA'),'sDNA')]
+    sDNA_paths += [path for path in os.getenv('PATH').split(';')
                                if 'sDNA' in path ]
     update_path = True
     ##########################################################################
@@ -233,7 +233,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                +'metas.sDNAUISpec and '
                                                +'metas.runsdnacommand both '
                                                +'found in a path in '
-                                               +'metas.sDNA_search_paths. '
+                                               +'metas.sDNA_paths. '
                                                )
     run_sDNA = error_raising_sentinel_factory('No sDNA module: '
                                              +'runsdnacommand loaded yet. '
@@ -242,7 +242,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                              +'metas.sDNAUISpec and '
                                              +'metas.runsdnacommand both '
                                              +'found in a path in '
-                                             +'metas.sDNA_search_paths. '
+                                             +'metas.sDNA_paths. '
                                              )
     python_exe = r'C:\Python27\python.exe' 
     prepped_fmt = '{name}_prepped'
@@ -570,9 +570,9 @@ def override_all_opts(args_dict
     ###########################################################################
 
 
-    sub_args_dict = {     'metas' : args_metas
-                          ,'options' : args_options
-                          ,name : args_tool_options
+    sub_args_dict = {'metas' : args_metas
+                    ,'options' : args_options
+                    ,name : args_tool_options
                     }
 
     def overrides_list(key):
@@ -1016,10 +1016,10 @@ class sDNA_GH_Component(SmartComponent):
              (self.opts['options'].sDNAUISpec.__name__
                        ,self.opts['options'].run_sDNA.__name__) != self.sDNA ):
             #
-            # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_search_paths
+            # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
             #
             sDNAUISpec, run_sDNA, _ = self.load_modules(self.sDNA
-                                                       ,self.opts['metas'].sDNA_search_paths
+                                                       ,self.opts['metas'].sDNA_paths
                                                        )
             self.opts['options'] = self.opts['options']._replace(sDNAUISpec = sDNAUISpec
                                                                 ,run_sDNA = run_sDNA 

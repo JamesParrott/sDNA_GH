@@ -1553,6 +1553,8 @@ class Load_Config(sDNA_GH_Tool):
                        ,'auto_write_Shp'
                        ,'auto_read_Shp'
                        ,'auto_plot_data'
+                       ,'python_exe'
+                       ,'sDNA_paths'
                        )
 
     def __call__(self, opts):

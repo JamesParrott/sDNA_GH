@@ -21,7 +21,7 @@ reload_config_and_other_modules_if_already_loaded = False
 
 # There may be multiple components, all running this same launcher code.
 # Therefore we want the root logger to live in the sDNA_GH.setup module
-# that they each import.  Te logging system is configurable by the user,
+# that they each import.  The logging system is configurable by the user,
 # but only through the options that are read in during the main package
 # import, and we want to create logs before this too.  So before a 
 # component has imported sDNA_GH.setup, logging is routed through output, 
@@ -41,7 +41,7 @@ reload_config_and_other_modules_if_already_loaded = False
 # Therefore there really are two functions in Python, with two separate caches.
 #
 # The behaviours can be different of course if changes are made to one and not
-# the other, e.g. if the code is forgotten to be copied into the component.
+# the other, e.g. if updated code is forgotten to be copied into the component.
 
 class Output(object): 
 
@@ -147,10 +147,11 @@ def strict_import(module_name = ''
 
 
 def load_modules(m_names, path_lists):
-    #type(str/ tuple, list) -> tuple / None
-    m_names = m_names if isinstance(m_names, tuple) else [m_names] 
+    #type(str/ Iterable, list) -> tuple / None
+    if isinstance(m_names, str):
+        m_names = [m_names] 
     output('m_names == ' + str(m_names) + ' of type : ' + type(m_names).__name__,'DEBUG')
-    if any((name.startswith('.') or name.startswith('..')) in name for name in m_names):
+    if any((name.startswith('.') or name.startswith('..')) for name in m_names):
         output(m_names,'DEBUG')
         raise ImportError( output('Relative import attempted, but not supported','CRITICAL') )
 
@@ -159,12 +160,8 @@ def load_modules(m_names, path_lists):
 
 
     for path_list in path_lists:
-        test_paths = path_list if isinstance(path_list, list) else [path_list]
-        test_paths = test_paths[:]
         output('Type(path_list) : ' + type(path_list).__name__,'DEBUG')
-        output('Type(test_paths) : ' + type(test_paths).__name__,'DEBUG')
-
-        for path in test_paths:
+        for path in path_list:
             output('Type(path) : ' + type(path).__name__ + ' path == ' + path,'DEBUG')
             if os.path.isfile(path):
                 path = os.path.dirname(path)
@@ -176,7 +173,8 @@ def load_modules(m_names, path_lists):
                 output('Importing ' + str(m_names) +' ','DEBUG')
                 return tuple(strict_import(name, path, '') for name in m_names) + (path,)
                 # tuple of modules, followed by the path to them
-    return None
+    raise ImportError(output('Could not import ' + ' '.join(m_names) 
+                            +' from ' + ' '.join(path_lists),'ERROR'))
 
 
 if __name__ == '__main__': # False in a compiled component.  But then the user

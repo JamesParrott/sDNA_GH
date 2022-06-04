@@ -242,7 +242,7 @@ def class_bounds_at_max_deltas(data
                               ,num_classes
                               ,tol = TOL
                               ,options = None):
-    #type(OrderedDict, int, float, NamedTuple) -> list
+    #type(Iterable[Number], int, float, NamedTuple) -> list
     """ Calculates inter-class boundaries for a legend or histogram,
         by placing bounds at the highest jumps between consecutive data 
         points.  Requires the values of data to be Number, and for data
@@ -251,7 +251,7 @@ def class_bounds_at_max_deltas(data
         outlying values. 
     """
     deltas = [(i, b - a )
-              for i, (b, a) in enumerate(itertools.pairwise(data.values()))
+              for i, (b, a) in enumerate(itertools.pairwise(data))
              ]
     class_bounds = []
     for _ in range(num_classes - 1):
@@ -262,7 +262,7 @@ def class_bounds_at_max_deltas(data
                 break
         deltas.remove(deltas[max_index])
         
-        class_bounds += [ data.values()[max_index] + 0.5 * max_delta] #midpoint
+        class_bounds += [ data[max_index] + 0.5 * max_delta] #midpoint
     return class_bounds
 
 
@@ -323,9 +323,6 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
     return None
         
 
-#def strict_quantile():
-
-
 
 
 
@@ -382,7 +379,7 @@ def search_one_way_only_from_index(search_direction):
 
 
     def decorator(condition):
-        def searcher(data_point, data, index = None):
+        def searcher(data_point, data, index = None, **kwargs):
         # type(Number, List[Number], int) -> bool, Number, int
             if not isinstance(index, int):
                 index = data.index(data_point)
@@ -398,7 +395,7 @@ def search_one_way_only_from_index(search_direction):
 
             success, lub = False, None
             for i in make_range(data, index):   
-                if condition(data[i], data_point):
+                if condition(data[i], data_point, **kwargs):
                     success, lub = True, data[i]
                     break
             
@@ -407,12 +404,12 @@ def search_one_way_only_from_index(search_direction):
     return decorator
 
 @search_one_way_only_from_index('ascending')
-def indexed_lowest_strict_UB(a, b):
-    return a > b
+def indexed_lowest_strict_UB(a, b, tol = TOL):
+    return a > b + tol
     
 @search_one_way_only_from_index('descending')
-def indexed_highest_strict_LB(a, b):
-    return a < b
+def indexed_highest_strict_LB(a, b, tol = TOL):
+    return tol + a < b
 
 def data_point_midpoint_and_next(data, index):
     #type(Sequence, int) -> Number, float, Number
@@ -426,12 +423,14 @@ def data_point_midpoint_and_next(data, index):
 
 
 
+
+
 def quantile_l_to_r(data
-                   ,num_classes
+                   ,num_classes_wanted
                    ,tol = TOL
                    ,options = None
                    ):
-    #type(OrderedDict, int, float, NamedTuple) -> list
+    #type(Sequence, int, float, NamedTuple) -> list
     """ Calculate inter-class boundaries of an ordered data Sequence
         (sorted in ascending order) using a quantile method. 
         This particular quantile method, as near as possible, 
@@ -439,8 +438,10 @@ def quantile_l_to_r(data
         of the remaining classes / bins, adjusting for repeated data 
         items, without being skewed by outliers.  
 
-        Placing a class bound evenly in the theoratically ideal position for
-        a sequnce with no repeated values may result in a bin with a different 
+        Requires data to be sorted in ascending order.
+
+        Placing a class bound evenly in the theoretically ideal position for
+        a sequence with no repeated values, may result in a bin with a different 
         number of data points to the previous one 
         (i.e. in a sorted data Sequence, if the data items either 
         side of the bound are equal).  If so, then if the items in the bin 
@@ -453,37 +454,56 @@ def quantile_l_to_r(data
         the bin having the same value, the bound is moved to the lowest upper 
         bound of the repeated data values.  
     """
-    num_data_points_left = len(data) 
     # n-1 is number of gaps between data points. max num of bounds
     class_bounds = []
-    data_index = 0
-    data_indices = [] #[data_index] 
-    indices = [] # of the highest data point below each bound
-    data_points_per_class = num_data_points_left // num_classes
-    for num_bounds_left in reversed(range(1, num_classes)):
-        num_classes_left = num_bounds_left + 1
-        data_points_per_class = num_data_points_left // num_classes_left
-        data_point_below_index = data_indices[-1] + data_points_per_class
+
+
+
+
+    num_classes_left = num_classes_wanted - 1 
+    # everything in data is already in one (big) class
+
+    while num_classes_left >= 1:
+        # try to place an inter-class bound amidst the remaining data_points 
+        # if there are 2 or more classes left
+        
+        num_classes_left = num_classes_wanted - (len(class_bounds) + 1)
+
+
+        if num_classes_left == num_classes_wanted - 1:
+            # Initialised correctly, so nothing with to do with 'old val'
+
+            # Calc new candidate index
+            data_point_below_index = (len(data) // num_classes_left) - 1
+            previous_bound = None
+        else:
+            # Update using Old val
+            num_data_points_left = len(data) - (data_point_below_index + 1) 
+            data_points_per_class = num_data_points_left // num_classes_left
+            # Calc new candidate index
+            data_point_below_index += data_points_per_class
+            previous_bound = class_bounds[-1]
+
 
         (data_point_below
         ,candidate_bound
-        ,data_point_above) = data_point_midpoint_and_next(
-                                                     data
-                                                    ,data_point_below_index
-                                                    )
-        previous_bound = class_bounds[-1] if class_bounds else data[0] 
+        ,data_point_above) = data_point_midpoint_and_next(data
+                                                         ,data_point_below_index
+                                                         )
 
         if data_point_above - candidate_bound < tol:
             # data is sorted so we don't need abs() < tol
             # data_point_below is in the class for this candidate bound
-            # so we don't need to test it
-            if data_point_below - previous_bound < tol:
+            # so we don't need to test it against candidate_bound
+            if previous_bound is None or data_point_below - previous_bound < tol:
+                # the data point just below candidate_bound, not the one just
+                # below previous_bound
                 success, lub, lub_index = indexed_lowest_strict_UB(data_point_below
                                                                   ,data
                                                                   ,data_point_below_index
                                                                   )
                 if not success:
-                    # all further items are the same ( tol-indistinguishable) 
+                    # all further items are the same (tol - indistinguishable) 
                     # until the end of data so can't place anymore 
                     # inter-class bounds.
                     msg = (' Rest of data is repeated indistinguishable data '
@@ -500,7 +520,12 @@ def quantile_l_to_r(data
                                         )
                     break
                 # assert success # !
+
+                # Need this to update num_data_points_left in next iteration.
                 data_point_below_index = lub_index - 1
+
+                # Move candidate_bound to the right, to the midpoint of
+                # the class and its lowest upper bound in data.
                 (data_point_below
                 ,candidate_bound
                 ,data_point_above) = data_point_midpoint_and_next(data
@@ -511,58 +536,100 @@ def quantile_l_to_r(data
                                                                    ,data
                                                                    ,data_point_below_index
                                                                    )
-                if not success:
-                    msg = ('Bug report: Failed to search for an upper '
-                          +'bound when it was already known there would be no '
-                          +'lower bound. Leading to failure to find a lower '
-                          +'bound that should have already been known not '
-                          +'to exist! Code to catch this not implemented'
+                if not success or ( previous_bound is not None 
+                                    and hlb <= previous_bound ):
+                    msg = (' highest lower bound search failed, or '
+                          +' hlb was at or below previous bound, '
+                          +' but should have had '
+                          +' data_point_below - previous_bound >= tol.  '
+                          +' data_point_below - previous_bound == '
+                          + str(data_point_below - previous_bound)
+                          +' and tol == '
+                          + str(tol)
                           )
                     logger.error(msg)
                     raise NotImplementedError(msg)
+
+                # update candidate_bound to a lower value, that splits the 
+                # data_point_below the previous candidate_bound and its 
+                # highest lower bound in data 
                 (data_point_below
                 ,candidate_bound
                 ,data_point_above) = data_point_midpoint_and_next(data
                                                                  ,hlb_index
                                                                  )
+
+                data_point_below_index = hlb_index
+                # Need this to update num_data_points_left in next iteration.
+                #
+                # The number of remaining data points to classify is the same 
+                # regardless of whether we add an extra class bound to those of the 
+                # preceding already classified data points or not.
+
                 indices_to_move_class_bound_R = hlb_index - previous_bound
                 indices_to_move_candidate_L = data_point_below_index - hlb_index
-                if indices_to_move_class_bound_R <= indices_to_move_candidate_L:
+                if indices_to_move_candidate_L > indices_to_move_class_bound_R:
+                    # move previous class bound to the R to candidate 
+                    # (overwrite previous class bound with candidate_bound)
                     class_bounds[-1] = candidate_bound
-                    data_indices[-1] = hlb_index
-                    continue
+                    continue # Haven't added an extra class or bound, just 
+                             # extended the previous class, so skip extending 
+                             # class_bounds
                 else:
-                    data_point_below_index = hlb_index
+                    # move candidate bound L to highest lower bound of 
+                    # data_point_below prev candidate bound
+
+                    class_bounds += [candidate_bound]
 
         class_bounds += [candidate_bound]
-        data_indices += [data_point_below_index]
+        num_classes_left = num_classes_wanted - (len(class_bounds) + 1)
+
+
     return class_bounds
 
 class SpikeIsolatingQuantileOptions(object):
     max_width = 200 * TOL
     min_num = None
 
-class IntegerDivision(object):
-    def __init__(self, val, divisor):
-        #type(int, int) -> None
-        """Type check val and divisor, carry out standard integer division of
-           them, save them and the quotient and remainder as instance 
+class NumberPartition(object):
+    """ Adds some extra methods to normal integer division numbers to allow
+        calculation of partitions of a number that can be decomposed into
+        subpartitions as 'even as possible', that sum to specified constraints.
+    """
+
+    def divide_by(self, divisor):
+        #type(int) -> None
+        """Type check divisor, then carry out standard integer division of
+           self.val by it, saving quotient and remainder as instance 
            variables.
         """
-        if not (isinstance(val, int) and isinstance(divisor, int)):
+        if not isinstance(divisor, int):
             msg = ('Integer division attempted with values of type '
-                    +' type(val) == ' + type(val).__name__ + ', '
-                    +' type(divisor) == ' + type(divisor).__name__ 
-                    )
+                  +' type(divisor) == ' + type(divisor).__name__ 
+                  )
+            logger.error(msg)
+            raise TypeError(msg)
+        self.divisor = divisor
+        self.quotient = self.val // divisor
+        self.remainder = self.val % divisor    
+        # val = divisor * self.quotient + self.remainder, all integers
+        #       where 0 <= self.remainder < divisor
+     
+
+    def __init__(self, val, divisor):
+        #type(int, int) -> None
+        """Type check val and call self.divide_by. """
+        if not isinstance(val, int):
+            msg = ('Integer division attempted with values of type '
+                  +' type(val) == ' 
+                  + type(val).__name__ 
+                  )
             logger.error(msg)
             raise TypeError(msg)
 
         self.val = val
-        self.div = divisor
-        self.quotient = val // divisor
-        self.remainder = val % divisor       
-        # val = divisor * self.quotient + self.remainder, all integers
-        #       where 0 <= self.remainder < divisor
+        self.divide_by(divisor)
+      
 
     def divisor_increase(self):
         #type() -> int
@@ -582,7 +649,7 @@ class IntegerDivision(object):
            producing distortion N_2.remainder // N_2.quotient, 
                                 + 1 if N_2.remainder % N_2.quotient  
         """
-        B = IntegerDivision(val = self.remainder, divisor = self.quotient)
+        B = NumberPartition(val = self.remainder, divisor = self.quotient)
         b = B.quotient
         retval = b  + ( 1 if B.remainder > 0 else 0 ) 
         #    B.remainder < B.divisor == N_2.quotient, so is in {1,0}
@@ -618,6 +685,22 @@ class IntegerDivision(object):
         #type(IntegerDivision) -> int
         return reallocator.divisor_increase() + self.divisor_decrease()
 
+    def partition(self, smallest_first = True):
+        #type(int, bool) -> Iterator
+        def generator():
+            if smallest_first:
+                for _ in range(self.remainder, self.divisor):
+                    yield self.quotient
+                for _ in range (self.remainder):
+                    yield self.quotient + 1
+            else:
+                for _ in range (self.remainder):
+                    yield self.quotient + 1
+                for _ in range(self.remainder, self.divisor):
+                    yield self.quotient
+        return generator()
+
+
 
 def discrete_pro_rata(n, N_1, N_2):
     #type(int, int, int) -> int, int
@@ -644,9 +727,9 @@ def discrete_pro_rata(n, N_1, N_2):
         between two sub partitions of 21 and 79, would divide 21 by 2.1 rounded up
     """ 
     N = N_1 + N_2
-    N =   IntegerDivision(val = N_1 + N_2, divisor = n)
-    N_1 = IntegerDivision(val = N_1,       divisor = N.quotient)
-    N_2 = IntegerDivision(val = N_2,       divisor = N.quotient)
+    N =   NumberPartition(val = N_1 + N_2, divisor = n)
+    N_1 = NumberPartition(val = N_1,       divisor = N.quotient)
+    N_2 = NumberPartition(val = N_2,       divisor = N.quotient)
 
     def error(msg):
         m, r = N.quotient, N.remainder           #N   = m   * n + r,   0 <= r   < n
@@ -732,23 +815,23 @@ def spike_isolating_quantile(data
                                                                       )
         if spike_interval:
             num_classes_a, num_classes_b = discrete_pro_rata(num_classes - 1
-                                                            ,spike_interval.i_a
-                                                            ,len(data) - spike_interval.i_b
+                                                            ,spike_interval.index_a
+                                                            ,len(data) - spike_interval.index_b
                                                             )
             _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_interval.i_a - 1
+                                                              ,spike_interval.index_a - 1
                                                               )
             _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_interval.i_b
+                                                              ,spike_interval.index_b
                                                               )
 
-            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.i_a]
+            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.index_a]
                                                          ,num_classes_a
                                                          ,tol
                                                          ,options
                                                          )                                  
             inter_class_bounds += [midpoint_i_a, midpoint_i_b]
-            inter_class_bounds += spike_isolating_quantile(data[spike_interval.i_b+1:]
+            inter_class_bounds += spike_isolating_quantile(data[spike_interval.index_b + 1:]
                                                           ,num_classes_b
                                                           ,tol
                                                           ,options
