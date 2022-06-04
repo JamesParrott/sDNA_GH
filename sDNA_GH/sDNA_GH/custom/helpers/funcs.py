@@ -430,7 +430,7 @@ def quantile_l_to_r(data
                    ,tol = TOL
                    ,options = None
                    ):
-    #type(Sequence, int, float, NamedTuple) -> list
+    #type(Sequence[Number], int, float, NamedTuple) -> list
     """ Calculate inter-class boundaries of an ordered data Sequence
         (sorted in ascending order) using a quantile method. 
         This particular quantile method, as near as possible, 
@@ -459,18 +459,20 @@ def quantile_l_to_r(data
 
 
 
-
-    num_classes_left = num_classes_wanted - 1 
+    num_classes_wanted = min(num_classes_wanted, len(data))
+    num_classes_left = num_classes_wanted
     # everything in data is already in one (big) class
 
-    while num_classes_left >= 1:
+    while num_classes_left >= 2:
         # try to place an inter-class bound amidst the remaining data_points 
         # if there are 2 or more classes left
         
-        num_classes_left = num_classes_wanted - (len(class_bounds) + 1)
+        # When we're considering dividing the remainder into new classes, we
+        # only count classes to the left of inter-class bounds in class_bounds
 
 
-        if num_classes_left == num_classes_wanted - 1:
+
+        if num_classes_left == num_classes_wanted:
             # Initialised correctly, so nothing with to do with 'old val'
 
             # Calc new candidate index
@@ -483,7 +485,6 @@ def quantile_l_to_r(data
             # Calc new candidate index
             data_point_below_index += data_points_per_class
             previous_bound = class_bounds[-1]
-
 
         (data_point_below
         ,candidate_bound
@@ -507,7 +508,7 @@ def quantile_l_to_r(data
                     # until the end of data so can't place anymore 
                     # inter-class bounds.
                     msg = (' Rest of data is repeated indistinguishable data '
-                          +'points. Cannot place anymore inter-class bounds so' 
+                          +'points. Cannot place anymore inter-class bounds so ' 
                           +'skipping. To avoid this, try selecting fewer '
                           +'classes or choose a different classification '
                           +'method.  '
@@ -582,7 +583,7 @@ def quantile_l_to_r(data
                     class_bounds += [candidate_bound]
 
         class_bounds += [candidate_bound]
-        num_classes_left = num_classes_wanted - (len(class_bounds) + 1)
+        num_classes_left = num_classes_wanted - (len(class_bounds))
 
 
     return class_bounds
