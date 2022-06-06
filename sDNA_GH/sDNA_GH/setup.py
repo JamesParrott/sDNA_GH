@@ -126,6 +126,34 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
                    #,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
                    #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
                    )
+
+
+                   # Long names for some Rhino installs that use component Name not Nickname
+                   # (these can be removed if the components are all rebuilt s.t. name == nickname) 
+    name_map.update({'Read Rhino geometry' : 'get_Geom'
+                   ,'Read user text' : 'read_Usertext'
+                   ,'Write shapefile' : 'write_shapefile'
+                   ,'Read shapefile' : 'read_shapefile'
+                   ,'Write user text' : 'write_Usertext'
+                   #,Bake_UserText : 'bake_Usertext'
+                   ,'Parse data' : 'parse_data'
+                   ,'Recolour objects' : 'recolour_objects'
+                   ,'Recolor objects' : 'recolour_objects'
+                   ,'Load configuration' : 'load_config'
+                   ,'Get component names' : 'get_comp_names'
+                   #
+                   ,'Integral Analysis' : 'sDNAIntegral'
+                   ,'Skim Matrix' : 'sDNASkim'
+                   ,'Integral from OD Matrix (assignment model)' : 'sDNAIntegralFromOD'
+                   ,'Geodesics' : 'sDNAGeodesics'
+                   ,'Convex Hulls' : 'sDNAHulls'
+                   ,'Network Radii' : 'sDNANetRadii'
+                   ,'Specific Origin Accessibility Maps' : 'sDNAAccessibilityMap'
+                   ,'Prepare network' : 'sDNAPrepare'
+                   ,'Individual Line Measures' : 'sDNALineMeasures'
+                   ,'Learn' : 'sDNALearn'
+                   ,'Predict' : 'sDNAPredict'                   
+                   })
                           
     categories = {'get_Geom'         : 'Support'
                  ,'read_Usertext'    : 'Data'

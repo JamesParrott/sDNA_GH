@@ -16,7 +16,7 @@ sDNA_GH:
 ### System Requirements. 
 #### Software
 1. Windows 10 or 8.1 (not tested in Windows 11) 
-2. A Python interpreter that can launch sDNA correctly from the command line (e.g. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly).
+2. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly.
 3. sDNA. 
 4. Rhino and Grasshopper (tested in Rhino 7)
 #### Hardware

@@ -275,9 +275,9 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
     #type(OrderedCounter, Number) -> dict 
     """Given a frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
-       collections recipe), calculate a minimum closed interval [a, b] of
-       width b - a <= w that contains the most data points.  In a 
-       histogram this would be the largest bin of width less than w.
+       collections recipe), calculates a minimum closed interval [a, b] of
+       width b - a <= w that contains the most data points over minimum_num.  
+       In a histogram this would be the largest bin of width less than w.
        This implementation calculates a moving sum using a moving interval 
        between a and b taking values of the sorted data keys.  The attributes of 
        the returned InclusiveInterval may not satisfy b-a = w (this function 
@@ -318,7 +318,7 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
             # stick with first if equal
             interval = InclusiveInterval() 
             
-    if interval.num_data_points > minimum_num:
+    if interval.num_data_points >= minimum_num:
         return interval
     return None
         
@@ -469,7 +469,7 @@ def quantile_l_to_r(data
         
         # When we're considering dividing the remainder into new classes, we
         # only count classes to the left of inter-class bounds in class_bounds
-
+        print(num_classes_left)
 
 
         if num_classes_left == num_classes_wanted:
@@ -588,9 +588,7 @@ def quantile_l_to_r(data
 
     return class_bounds
 
-class SpikeIsolatingQuantileOptions(object):
-    max_width = 200 * TOL
-    min_num = None
+
 
 class NumberPartition(object):
     """ Adds some extra methods to normal integer division numbers to allow
@@ -601,7 +599,7 @@ class NumberPartition(object):
     def divide_by(self, divisor):
         #type(int) -> None
         """Type check divisor, then carry out standard integer division of
-           self.val by it, saving quotient and remainder as instance 
+           self.value by it, saving quotient and remainder as instance 
            variables.
         """
         if not isinstance(divisor, int):
@@ -611,24 +609,24 @@ class NumberPartition(object):
             logger.error(msg)
             raise TypeError(msg)
         self.divisor = divisor
-        self.quotient = self.val // divisor
-        self.remainder = self.val % divisor    
+        self.quotient = self.value // divisor
+        self.remainder = self.value % divisor    
         # val = divisor * self.quotient + self.remainder, all integers
         #       where 0 <= self.remainder < divisor
      
 
-    def __init__(self, val, divisor):
+    def __init__(self, value, divisor):
         #type(int, int) -> None
         """Type check val and call self.divide_by. """
-        if not isinstance(val, int):
+        if not isinstance(value, int):
             msg = ('Integer division attempted with values of type '
                   +' type(val) == ' 
-                  + type(val).__name__ 
+                  + type(value).__name__ 
                   )
             logger.error(msg)
             raise TypeError(msg)
 
-        self.val = val
+        self.value = value
         self.divide_by(divisor)
       
 
@@ -650,7 +648,11 @@ class NumberPartition(object):
            producing distortion N_2.remainder // N_2.quotient, 
                                 + 1 if N_2.remainder % N_2.quotient  
         """
-        B = NumberPartition(val = self.remainder, divisor = self.quotient)
+        if self.quotient == 0:
+            # There are zero summands to reallocate the remainder across.
+            # The remainder already is, and will still be, the highest summand
+            return 0
+        B = NumberPartition(value = self.remainder, divisor = self.quotient)
         b = B.quotient
         retval = b  + ( 1 if B.remainder > 0 else 0 ) 
         #    B.remainder < B.divisor == N_2.quotient, so is in {1,0}
@@ -661,7 +663,7 @@ class NumberPartition(object):
 
     def divisor_decrease(self):
         #type() -> int
-        """ Try dividing self.val by a smaller than ideal divisor, self.divisor - a, 
+        """ Try dividing self.value by a smaller than ideal divisor, self.divisor - a, 
             to result in a 
             slightly higher quotient, self.quotient + 1, absorbing the split 
             class/summand with minimum distortion.  Return the decrease in the divisor
@@ -671,12 +673,22 @@ class NumberPartition(object):
             m = self.divisor
             n_1 = self.quotient
             r_1 = self.remainder
+            N_1 = self.value
             
             a = (m - r_1) // n_1, 
             so that n_1 * (a+1) >= m - r_1, 
             i.e. n_1 * a + r_1 = m - a + r_a for r_a > 0 
             thus N_1 = (n_1 + 1) * (m - a) + r_a
+
+            If n_1 == 0, just set m - a = N_1
         """
+        if self.quotient == 0:
+            # self.divisor is too big to divide self.value so the slightly 
+            # higher quotient we seek is 1, and so the smallest decrease in
+            # the divisor is that which will get it to divide self.value
+            # exactly once, i.e. the decrease s.t. self.divisor == self.value:
+            return self.divisor - self.value
+
         a =  (self.divisor - self.remainder) // self.quotient
         retval = a - ((self.quotient * a + self.remainder) // (self.quotient + 1))
         return retval
@@ -728,9 +740,9 @@ def discrete_pro_rata(n, N_1, N_2):
         between two sub partitions of 21 and 79, would divide 21 by 2.1 rounded up
     """ 
     N = N_1 + N_2
-    N =   NumberPartition(val = N_1 + N_2, divisor = n)
-    N_1 = NumberPartition(val = N_1,       divisor = N.quotient)
-    N_2 = NumberPartition(val = N_2,       divisor = N.quotient)
+    N =   NumberPartition(value = N_1 + N_2, divisor = n)
+    N_1 = NumberPartition(value = N_1,       divisor = N.quotient)
+    N_2 = NumberPartition(value = N_2,       divisor = N.quotient)
 
     def error(msg):
         m, r = N.quotient, N.remainder           #N   = m   * n + r,   0 <= r   < n
@@ -738,7 +750,7 @@ def discrete_pro_rata(n, N_1, N_2):
         n_2, r_2 = N_2.quotient, N_2.remainder;  #N_2 = n_2 * m + r_2, 0 <= r_2 < m
         msg +=  ('n == ' + str(N.divisor) 
                 +'!= n_1 + n_2, '
-                +'N == ' + str(N.val) + ' ?= '
+                +'N == ' + str(N.value) + ' ?= '
                 +'n*m + r == ' + str(n*m + r) + ', '
                 +'m == ' + str(m) + ', '
                 +'r == ' + str(r) + ', '
@@ -779,13 +791,21 @@ def discrete_pro_rata(n, N_1, N_2):
         return N_1.quotient, N_2.quotient + 1
 
 
+class SpikeIsolatingQuantileOptions(object):
+    max_width = 200 * TOL
+    min_num = None
+
 def spike_isolating_quantile(data
                             ,num_classes
                             ,tol = TOL
                             ,options = SpikeIsolatingQuantileOptions
                             ):
-    #type(OrderedDict, int, float, NamedTuple) -> list
-    """ This function places interclass bounds in data, a Sequence (e.g. 
+    #type(Sequence[Number], int, float, NamedTuple) -> list
+    """ Classify largest spike in the frequency distribution; 
+        allocate remainining classes using discrete_pro_rata
+        call self on the gaps, or quantile_l_to_r if no spikes.
+    
+        Places interclass bounds in data, a Sequence (e.g. 
         list / tuple) of Numbers that has been sorted (in ascending order).  
         It first isolates the largest / narrowest spike in the frequency 
         distribution, then calls itself on both remaining sub-Sequences 
@@ -810,30 +830,43 @@ def spike_isolating_quantile(data
             min_num = len(data) // num_classes
         else:
             min_num = options.min_num
+        print(str(min_num) + ', ' + str(options.max_width))
         spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
-                                                                      ,options.max_width
                                                                       ,min_num
+                                                                      ,options.max_width
                                                                       )
         if spike_interval:
-            num_classes_a, num_classes_b = discrete_pro_rata(num_classes - 1
-                                                            ,spike_interval.index_a
-                                                            ,len(data) - spike_interval.index_b
-                                                            )
+            print(num_classes - 1)
+            print(spike_interval.index_a)
+            print(spike_interval.index_b)
+            spike_data_index_a = data.index(ordered_counter.keys()[spike_interval.index_a])
+            spike_data_index_b = tuple(reversed(data)).index(ordered_counter.keys()[spike_interval.index_b])
+            spike_data_index_b = len(data) - 1 - spike_data_index_b
+            print(spike_data_index_a)
+            print(spike_data_index_b)
+            if num_classes - 3 <= 0:
+                extra_classes_a, extra_classes_b = 0, 0
+            else:
+                extra_classes_a, extra_classes_b = discrete_pro_rata(num_classes - 3
+                                                                    ,spike_data_index_a
+                                                                    ,len(data) - spike_data_index_b - 1
+                                                                    )
             _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_interval.index_a - 1
+                                                              ,spike_data_index_a - 1
                                                               )
             _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_interval.index_b
+                                                              ,spike_data_index_b
                                                               )
 
-            inter_class_bounds = spike_isolating_quantile(data[:spike_interval.index_a]
-                                                         ,num_classes_a
+
+            inter_class_bounds = spike_isolating_quantile(data[:spike_data_index_a]
+                                                         ,extra_classes_a + 1
                                                          ,tol
                                                          ,options
                                                          )                                  
             inter_class_bounds += [midpoint_i_a, midpoint_i_b]
-            inter_class_bounds += spike_isolating_quantile(data[spike_interval.index_b + 1:]
-                                                          ,num_classes_b
+            inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
+                                                          ,extra_classes_b + 1
                                                           ,tol
                                                           ,options
                                                           )
