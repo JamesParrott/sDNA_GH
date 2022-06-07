@@ -199,19 +199,28 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         metas = opts['metas']
         nick_name = self.nick_name
 
-        sDNAUISpec = opts['options'].sDNAUISpec
-        sDNA = opts['metas'].sDNA
-        self.sDNA = sDNA
+        sDNA = metas.sDNA #tuple of strings (the above modules' names)
+
+        self.sDNA = sDNA # tuple of two strings (the above module names)
+
+        if self.update_sDNA:
+            self.sDNA = self.update_sDNA(opts)
+
+        sDNAUISpec = opts['options'].sDNAUISpec # module
+        run_sDNA_command = opts['options'].runsdnacommand # module
+
 
         tool_opts = opts.setdefault(nick_name, {})
         if self.tool_name != nick_name:
             tool_opts = opts.setdefault(self.tool_name, {})
         # Note, this is intended to do nothing if nick_name == self.tool_name
 
+
+
         self.logger.debug(tool_opts)
         try:
             sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
-        except:
+        except AttributeError:
             msg =   ('No tool called '
                     +self.tool_name
                     +' found in '
@@ -222,7 +231,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             raise ValueError(msg)
                             
         self.input_spec = sDNA_Tool.getInputSpec()
-        self.get_syntax = sDNA_Tool.getSyntax     
+        self.get_syntax = sDNA_Tool.getSyntax
+        self.run_sDNA_command = run_sDNA_command     
 
         defaults_dict = OrderedDict((varname, default) for (varname
                                                            ,displayname
@@ -266,13 +276,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
 
-    def __init__(self, tool_name, nick_name, opts = None):
+    def __init__(self
+                ,tool_name
+                ,nick_name
+                ,opts = None
+                ,update_sDNA = None
+                ):
 
         if opts is None:
             opts = self.opts  # the class property, tool default opts
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name
+        self.update_sDNA = update_sDNA
         self.update_tool_opts_and_syntax(opts)
 
 
@@ -292,7 +308,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         sDNA = opts['metas'].sDNA
         sDNAUISpec = opts['options'].sDNAUISpec
-        run_sDNA = opts['options'].run_sDNA 
 
 
 
@@ -302,7 +317,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if self.sDNA != sDNA:
             self.update_tool_opts_and_syntax(opts)
-
+        # This doesn't trigger the import of new sDNAUISpec and runsdnacommand.
+        # But if new ones have been imported, if necessary the tool  
+        # updates itself again, from the new modules in the options.
 
         input_file = self.tool_opts[sDNA].input
         
@@ -329,6 +346,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         input_args = self.tool_opts[sDNA]._asdict()
         input_args.update(input = input_file, output = output_file)
         syntax = self.get_syntax(input_args)
+        run_sDNA = self.run_sDNA_command
 
         f_name = output_file
 

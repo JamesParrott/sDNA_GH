@@ -351,26 +351,33 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for DataParser
     #   
     field = 'BtEn'
-    plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
-    plot_min = Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
+    plot_max = Sentinel('plot_max is automatically calculated by' 
+                       +' sDNA_GH unless overridden.  '
+                       )
+    plot_min = Sentinel('plot_min is automatically calculated by' 
+                       +' sDNA_GH unless overridden.  '
+                       )
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
     if re_normaliser not in valid_re_normalisers:
-        raise ValueError(str(re_normaliser) 
-                        +' must be in '
-                        + str(valid_re_normalisers)
+        raise ValueError('%s must be in %s' 
+                        %(re_normaliser, valid_re_normalisers)
                         )
-    class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')] 
+    class_bounds = [Sentinel('class_bounds is automatically calculated by' 
+                            +' sDNA_GH unless overridden.  '
+                            )
+                   ] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
 
     number_of_classes = 7
     class_spacing = 'quantile' 
     #_valid_class_spacings = valid_re_normalisers + ('quantile', 'cluster', 'nice')
     if class_spacing not in DataParser.opts['options']._valid_class_spacings:
-        raise ValueError(str(class_spacing)
-                        +' must be in ' 
-                        +str(DataParser.opts['options']._valid_class_spacings)
+        raise ValueError('%s must be in %s' 
+                        %(class_spacing
+                         ,DataParser.opts['options']._valid_class_spacings
+                         )
                         )
     first_leg_tag_str = 'below {upper}'
     gen_leg_tag_str = '{lower} - {upper}' # also supports {mid_pt}
@@ -429,7 +436,7 @@ module_opts = OrderedDict( metas = default_metas
                          )                
            
 
-output(module_opts['options'].message,'DEBUG')
+output.debug(module_opts['options'].message)
 
 
 
@@ -534,25 +541,19 @@ def override_all_opts(args_dict
         path = args_metas['config']
         file_ext = path.rpartition('.')[2]
         if file_ext == 'ini':
-            output('Loading options from .ini file: ' + path, 'DEBUG')
+            output.debug('Loading options from .ini file: %s' % path)
             config_file_override =  load_ini_file(path
                                                  ,**kwargs(''
                                                           ,local_opts
                                                           ) 
                                                  )
         elif file_ext == 'toml':
-            output('Loading options from .toml file: ' + path, 'DEBUG')
+            output.debug('Loading options from .toml file: %s' % path)
             config_file_override =  load_toml_file( path )
         else:
-            output('config_file_override = ' 
-                  +str(config_file_override)
-                  ,'DEBUG'
-                  )
+            output.debug('config_file_override = %s' % config_file_override)
     else:
-        output('No valid config file in args.  '
-              +str(args_metas)
-              ,'DEBUG'
-              )
+        output.debug('No valid config file in args_metas == %s' % args_metas)
         file_ext = ''
 
 
@@ -643,14 +644,12 @@ def override_all_opts(args_dict
           #                           ] + overrides(key)
 
     for key in dict_to_update:
-        output('Overriding : ' + key, 'DEBUG')
+        output.debug('Overriding : ' + key)
         if key in ('options','metas'):
             dict_to_update[key] = override_namedtuple(dict_to_update[key]
                                                      ,overrides_list(key)
                                                      ,**kwargs(key, local_opts) 
                                                      ) 
-            #if key=='options':
-            #    print('dict_to_update message == '+dict_to_update['options'].message+' '+'DEBUG')
         else:
             if sDNA() in dict_to_update[key]:
                 dict_to_update[key][sDNA()] = override_namedtuple(
@@ -685,12 +684,11 @@ if os.path.isfile(default_metas.config):
                      ) 
 
 
-    output("After override: opts['options'].message == " 
+    output.debug("After override: opts['options'].message == " 
           + module_opts['options'].message
-          , 'DEBUG'
           )
 else:
-    output('Config file: ' + default_metas.config + ' not found. ','WARNING')    
+    output.warning('Config file: ' + default_metas.config + ' not found. ')    
 #
 #######################################################################
 
@@ -808,17 +806,96 @@ tools_dict.update(get_Geom = get_Geom
                  ,load_config = load_config
                  )
 
-def cache_sDNA_tool(compnt
+def update_sDNA(opts, load_modules = load_modules, logger = logger):
+    #type(dict, function, type[any]) -> tuple(str)
+    """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
+        opt['options'], when a new
+        module name is specified in opts['metas'].sDNAUISpec or 
+        opts['metas'].runsdnacommand.  
+
+        Returns a tuple of the latest modules names.
+    """
+    
+    metas = opts['metas']
+    options = opts['options']
+
+    logger.debug('metas.sDNAUISpec == %s ' % metas.sDNAUISpec
+                +', metas.runsdnacommand == % ' % metas.runsdnacommand 
+                )
+
+    logger.debug('before update, options.sDNAUISpec == %s ' % options.sDNAUISpec
+                +', options.run_sDNA == %s ' % options.run_sDNA
+                )
+
+
+    requested_sDNA = (metas.sDNAUISpec
+                     ,metas.runsdnacommand
+                     )
+    # This is just a tuple of strings to track and compare previously 
+    # imported versions; by default also 'sDNAUISpec' and 'runsdnacommand'.  
+    # To load new modules the user needs to give them new names, 
+    # and specify they want to load these names in these meta options.
+
+    # If they are loaded successfully the actual corresponding modules are
+    # in options.sDNAUISpec and options.run_sDNA
+
+    if ( isinstance(options.sDNAUISpec, Sentinel) or
+            isinstance(options.run_sDNA, Sentinel) or
+            (options.sDNAUISpec.__name__
+                    ,options.run_sDNA.__name__) != requested_sDNA ):
+        #
+        # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
+        sDNAUISpec, run_sDNA, _ = load_modules(m_names = requested_sDNA
+                                              ,folders = metas.sDNA_paths
+                                              ,logger = logger
+                                              ,module_name_error_msg = "Please supply valid names of 'sDNAUISpec.py' "
+                                                                       +"and 'runsdnacommand.py' files in "
+                                                                       +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                       +"respectively. "
+                                              ,folders_error_msg = "Please supply names of valid folders in "
+                                                                  +"metas.sDNA_paths.  "
+                                                                  +"And ensure one of them contains "
+                                                                  +"'sDNAUISpec.py' "
+                                                                  +"and 'runsdnacommand.py' files in "
+                                                                  +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                  +"respectively. "
+                                              ,modules_not_found_msg = "Please ensure one of the folders in "
+                                                                      +"metas.sDNA_paths contain valid "
+                                                                      +"'sDNAUISpec.py' "
+                                                                      +"and 'runsdnacommand.py' files, as named in "
+                                                                      +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                      +"respectively. "
+                                              )
+
+        opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
+                                                  ,run_sDNA = run_sDNA 
+                                                  ) 
+        # we want to mutate the value in the original dict 
+        # - so we can't use options for this assignment.  Latter for clarity.
+
+    return requested_sDNA
+
+
+def cache_sDNA_tool(compnt # instead of self
                    ,nick_name
                    ,mapped_name
                    ,name_map
                    ,tools_dict
+                   ,update_sDNA = update_sDNA
                    ):
-    sDNA_tool = sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts)
-    tools_dict[nick_name] =  sDNA_tool
+    #type(type[any], str, str, dict, dict, function) -> None
+    """ Custom tasks to be carried out by tool factory when no tool named 
+        mapped_name is found in tools_dict.  
+        
+        Imports sDNAUISpec and runsdnacommand if necessary.  
+        Builds a new sDNA tool from tools.py (and thence from sDNAUISpec.py).
+        Inserts this new tool into tools_dict (only under its nick_name).
+        Adds in any new tool option fields to the list of Params not to 
+        be removed.  """
     sDNA = compnt.opts['metas'].sDNA
+    sDNA_tool = sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts, update_sDNA)
+    tools_dict[nick_name] =  sDNA_tool
     compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   
-    # Could also call compnt.update_sDNA
 
             
 
@@ -829,6 +906,9 @@ sDNA_GH_tools = list(tools_dict.values())
 
 class sDNA_GH_Component(SmartComponent):
 
+    """ The main sDNA_GH Grasshopper Component class.  
+    
+    """
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
     local_metas = default_local_metas   # immutable.  controls syncing /
@@ -947,7 +1027,7 @@ class sDNA_GH_Component(SmartComponent):
             tools = self.tools
 
 
-        logger.debug("Updating Params: " + str(tools))
+        logger.debug('Updating Params: %s ' % tools)
 
         result = add_tool_params(Params
                                 ,tools
@@ -971,14 +1051,19 @@ class sDNA_GH_Component(SmartComponent):
                             ,tools_dict = tools_dict
                             ,tool_not_found = cache_sDNA_tool
                             )
+        # The component nick_name
+        # is mapped to a tool_name or list of tool_name via name_map. 
+        # cache_sDNA_tool is defined in this module.  It is called
+        # for any tool_name not in tools_dict, and then looks for 
+        # that tool_name in sDNAUISpec.py .  
         logger.debug(tools)
                 
 
         #logger.debug(self.opts)
-        logger.debug('Tool opts == ' + '\n'.join( str(k) + ' : ' + str(v) 
-                                                for k, v in self.opts.items()
-                                                if k not in ('options','metas')
-                                                ) 
+        logger.debug('Tool opts == %s ' % '\n'.join('%s : %s' % (k, v)
+                                                    for k, v in self.opts.items()
+                                                    if k not in ('options','metas')
+                                                   ) 
                     )
 
         return tools
@@ -1011,59 +1096,11 @@ class sDNA_GH_Component(SmartComponent):
         return 'Old name kept'
 
 
-
-
-
-
-        
-    def update_sDNA(self):
-        logger.debug('Self has attr sDNA == ' 
-                +str(hasattr(self,'sDNA'))
-                )
-        logger.debug('self.opts[metas].sDNAUISpec == ' 
-                +str(self.opts['metas'].sDNAUISpec)
-                +', self.opts[metas].runsdnacommand == '
-                +str(self.opts['metas'].runsdnacommand )
-                )
-
-        logger.debug('before update, self.opts[options].sDNAUISpec == ' 
-                +str(self.opts['options'].sDNAUISpec)
-                +', self.opts[options].run_sDNA == '
-                +str(self.opts['options'].run_sDNA )
-                )
-
-        if hasattr(self,'sDNA'):
-            logger.debug('Self has old attr sDNA == ' + str(hasattr(self,'sDNA')))
-
-        self.sDNA = (self.opts['metas'].sDNAUISpec
-                    ,self.opts['metas'].runsdnacommand
-                    ) 
-
-        if ( isinstance(self.opts['options'].sDNAUISpec, Sentinel) or
-             isinstance(self.opts['options'].run_sDNA, Sentinel) or
-             (self.opts['options'].sDNAUISpec.__name__
-                       ,self.opts['options'].run_sDNA.__name__) != self.sDNA ):
-            #
-            # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
-            #
-            sDNAUISpec, run_sDNA, _ = self.load_modules(self.sDNA
-                                                       ,self.opts['metas'].sDNA_paths
-                                                       )
-            self.opts['options'] = self.opts['options']._replace(sDNAUISpec = sDNAUISpec
-                                                                ,run_sDNA = run_sDNA 
-                                                                )  
-
-
-
-
-
-
     def __init__(self, *args, **kwargs):
         logger.debug('Calling sDNA_GH_Components parent initialiser')
         SmartComponent.__init__(self, *args, **kwargs)
-        self.load_modules = load_modules
         self.ghdoc = ghdoc
-        self.update_sDNA() 
+        # self.update_sDNA() moved to cache_sDNA_tool
 
 
 
@@ -1107,8 +1144,7 @@ class sDNA_GH_Component(SmartComponent):
 
         gdm = first_item_if_seq(kwargs.get('gdm', {}))
 
-        logger.debug('gdm from start of RunScript == ' + str(gdm)[:50])
-        #print('#1 self.local_metas == ' + str(self.local_metas))
+        logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
         result = self.try_to_update_nick_name()
         if result == 'Name updated': # True 1st run after __init__
@@ -1123,7 +1159,7 @@ class sDNA_GH_Component(SmartComponent):
         
             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
 
-            logger.debug('self.tools == ' + str(self.tools))
+            logger.debug('self.tools == %s ' % self.tools)
 
             extra_params_added = self.update_Params() #self.Params, self.tools)
 
@@ -1145,7 +1181,7 @@ class sDNA_GH_Component(SmartComponent):
         synced = self.local_metas.sync
         old_sDNA = self.opts['metas'].sDNA
         #######################################################################
-        logger.debug('kwargs == ' + str(kwargs))
+        logger.debug('kwargs == %s ' % kwargs)
         self.local_metas = override_all_opts(
                                  args_dict = kwargs
                                 ,local_opts = self.opts # mutated
@@ -1176,10 +1212,26 @@ class sDNA_GH_Component(SmartComponent):
                     self.opts = self.opts.copy() #desync
                     #
 
-            if self.opts['metas'].sDNA != old_sDNA:
-                self.update_sDNA()
+        if self.opts['metas'].sDNA != old_sDNA:
+            has_any_sDNA_tools = False
+            for tool in self.tools:
+                if isinstance(tool, sDNA_ToolWrapper):
+                    has_any_sDNA_tools = True
+                    tool.update_tool_opts_and_syntax()
+                    # this isn't necessary just to run these tools later.
+                    # they're just being updated now so they can get their 
+                    # inputs from sDNAUISpec, and so the component's input 
+                    # Params can be updated to reflect the new sDNA
+
+            if has_any_sDNA_tools:
                 #self.Params = 
                 self.update_Params()#self.Params, self.tools)
+                # to add in any new sDNA inputs to the component's Params
+            
+            return (None,) * len(self.Params.Output)
+            # to allow running the component again, with any new inputs
+            # supplied as Params
+
 
         logger.debug(go)
 
@@ -1193,15 +1245,11 @@ class sDNA_GH_Component(SmartComponent):
                                   if not isinstance(tool, RunnableTool)
                             ]
             if invalid_tools:
-                msg = ('Tools are not RunnableTool : ' 
-                      +' '.join(map(str, invalid_tools))
-                      )
+                msg = ('Tools are not RunnableTool : %s' % invalid_tools)
                 logger.error(msg)
                 raise ValueError(msg)
 
-            logger.debug('my_tools == '
-                    +str(self.tools)
-                    )
+            logger.debug('my_tools == $s' % self.tools)
 
 
 
@@ -1209,18 +1257,13 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-            logger.debug('type(geom_data_map) == '
-                        +str(type(geom_data_map))
-                        )
+            logger.debug('type(geom_data_map) == %s ' % geom_data_map)
             
-            logger.debug('Before merge gdm[:3] == ' 
-                        +str(gdm.items()[:3])
-                        +' ...'
-                        )
+            logger.debug('Before merge gdm[:3] == %s ' % gdm.items()[:3])
 
-            logger.debug('Before merge geom_data_map[:3] == ' 
-                        +str(geom_data_map.items()[:3])
-                        +' ...'
+
+            logger.debug('Before merge geom_data_map[:3] == %s ' 
+                        % geom_data_map.items()[:3]
                         )
 
             gdm = override_gdm(gdm
@@ -1228,21 +1271,16 @@ class sDNA_GH_Component(SmartComponent):
                                        ,self.opts['options'].merge_subdicts
                                        )
 
-            logger.debug('After merge type(gdm) == ' 
-                        +str(type(gdm))
-                        )                
+            logger.debug('After merge type(gdm) == %s ' % type(gdm))
             
-            logger.debug('After merge gdm[:3] == ' 
-                        +str(gdm.items()[:3])
-                        +' ...'
-                        )
+            logger.debug('After merge gdm[:3] == %s ' % gdm.items()[:3])
+
             kwargs['gdm'] = gdm
 
             ##################################################################
             ret_vals_dict = run_tools(self.tools, kwargs)
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
-            #print (str(gdm))
             if isinstance(gdm, dict):
                 logger.debug('Converting gdm to Data and Geometry')
                 (NewData, NewGeometry) = dict_from_DataTree_and_lists(gdm)
@@ -1274,7 +1312,7 @@ class sDNA_GH_Component(SmartComponent):
                         tmp.update(sub_tools_dict)
                     tool_opts = tmp
         else:
-            logger.debug('go == ' + str(True))
+            logger.debug('go == %s ' % go)
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}

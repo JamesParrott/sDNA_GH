@@ -1,9 +1,10 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
 import sys
 import os
+import logging
+import functools
 import inspect
 
 class LoggingOptions(object):
@@ -203,6 +204,9 @@ class Output(object):
             self.store(message, logging_level)
 
         return logging_level + ' : ' + message + ' '
+
+    def __getattr__(self, attr):
+        return functools.partial(self.__call__, logging_level = attr.upper())
 
     def flush(self):
         tmp_logs = self.tmp_logs[:] # __call__ might cache back to tmp_logs
