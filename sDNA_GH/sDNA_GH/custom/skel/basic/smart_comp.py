@@ -1,5 +1,26 @@
 #! Grasshopper Python
 # -*- coding: utf-8 -*-
+
+""" A framework to build 'Smart' Components for Grasshopper.
+
+    Smart Components are uncompiled GhPython components that 
+    support a user or code specified dynamic variable number 
+    of Input and Output Params.  
+    
+    Input Params and their names
+    can e.g. be passed as kwargs to Python functions.  Arbitrary
+    positional arguments and named ordinary positional arguments are
+    supported too, using function introspection via 
+    inspect.getargspec, and some customisable priority hints.  
+    
+    Output Params can have
+    the values passed to them automatically that e.g. correspond
+    to local Python variables of the same name.  This currently
+    requires a couple of lines of boiler plate at each return 
+    statement in the function until a bug with 
+    inspect.currentframe in GhPython is fixed.  
+"""
+
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
@@ -29,7 +50,7 @@ from ghpythonlib.componentbase import executingcomponent as component
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def strip_whitespace(strng):
+def remove_whitespace(strng):
     #type(str) -> str
     return ''.join([char for char in strng if not char.isspace()])
 
@@ -80,7 +101,7 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
     else:
         key = key.lower()
         if support_whitespace:
-            key = strip_whitespace(key)
+            key = remove_whitespace(key)
         return get_val(key.lower(), sources, True)
 
     # Whitespace is not stripped as valid python names, namedtuple fields
@@ -264,14 +285,16 @@ def custom_inputs_class_deco(BaseComponent
         def RunScript(self, *param_vals):
             params_dict = OrderedDict( (param.NickName, delistify(param_val))
                                        for (param, param_val) 
-                                        in zip(self.Params.Input, param_vals)
+                                          in zip(self.Params.Input, param_vals)
                                      )
-            if not case_sensitive or not leave_whitespace: # Add in extra keys to make case insensitive
+            if not case_sensitive or not leave_whitespace: # Add in extra keys 
+                                                           # to make case insensitive
                 for key, val in params_dict.copy().items():   
                     if not case_sensitive and not key.islower():
                         key = key.lower() 
-                    if strip_whitespace and any(char.isspace() for char in key):
-                        key = strip_whitespace(key)
+                    if remove_whitespace and any(char.isspace() for char in key):
+                        key = remove_whitespace(key)
+                        key = key.replace('_','')
                     params_dict.setdefault(key, val)
         # If tools accept **kwargs or *args
         # duped kwargs or args could be a problem here. ymmv.

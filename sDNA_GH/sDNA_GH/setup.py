@@ -29,7 +29,7 @@ from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
                                          ,override_gdm
                                          ,dict_from_DataTree_and_lists
                                          )
-from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, strip_whitespace
+from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, remove_whitespace
 from .custom.skel.basic.ghdoc import ghdoc                                       
 from .custom.skel.tools.inserter import insert_tool
 from .custom.skel.tools.runner import run_tools, tools_dict, RunnableTool
@@ -46,7 +46,7 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ObjectsRecolourer
                           ,sDNA_ToolWrapper
                           ,sDNA_GeneralDummyTool
-                          ,Load_Config
+                          ,ConfigManager
                           )
 from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
 
@@ -370,7 +370,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                    ] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
 
-    number_of_classes = 7
+    num_classes = 7
     class_spacing = 'quantile' 
     #_valid_class_spacings = valid_re_normalisers + ('quantile', 'cluster', 'nice')
     if class_spacing not in DataParser.opts['options']._valid_class_spacings:
@@ -790,7 +790,7 @@ recolour_objects = ObjectsRecolourer()
 get_tool_names = GetToolNames()
 build_components = sDNA_GH_Builder()
 sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
-load_config = Load_Config()
+load_config = ConfigManager()
 
 tools_dict.update(get_Geom = get_Geom
                  ,read_Usertext = read_Usertext

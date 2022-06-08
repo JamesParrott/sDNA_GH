@@ -62,6 +62,8 @@ def validate_name_map(name_map, known_tool_names):
 
     return True
 
+class NickNameNotFoundError(Exception):
+    pass
 
 def tool_not_found_error(inst
                         ,nick_name
@@ -69,9 +71,11 @@ def tool_not_found_error(inst
                         ,name_map
                         ,tools_dict
                         ):
-    msg = 'Tool: ' + mapped_name + ' not found for nick name ' + nick_name
+    msg = ('Tool name: %s not found in tools_dict or in (for nick name: %s)' 
+          %(mapped_name, nick_name)
+          )
     logger.error(msg)
-    raise ValueError(msg)
+    raise NickNameNotFoundError(msg)
 
 
 def tool_factory(inst

@@ -79,8 +79,6 @@ from .gdm_from_GH_Datatree import (make_gdm
                                   ,obj_layer
                                   ,doc_layers
                                   )
-from .integral_advanced_config import advanced_options
-
 
 
 logger = logging.getLogger(__name__)
@@ -261,6 +259,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.opts = opts
         if metas.show_all:
             self.component_inputs += tuple(defaults_dict.keys())
+
             if 'advanced' not in defaults_dict:
                 msg = "'advanced' not in defaults_dict"
                 self.logger.warning(msg)
@@ -301,6 +300,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __call__(self # the callable instance / func, not the GH component.
                 ,f_name
                 ,opts
+                ,**kwargs
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
         if opts is None:
@@ -345,6 +345,17 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         input_args = self.tool_opts[sDNA]._asdict()
         input_args.update(input = input_file, output = output_file)
+
+        advanced = input_args.get('advanced', None)
+        if not advanced:
+            advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
+                                for (key, val) in kwargs.items()
+                               )
+            input_args['advanced'] = advanced
+            self.logger.info('Advanced command string == %s' % advanced)
+        else:
+            self.logger.debug('Advanced command string == %s' % advanced)
+
         syntax = self.get_syntax(input_args)
         run_sDNA = self.run_sDNA_command
 
@@ -389,24 +400,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     
-    retvals = 'retcode', 'f_name'
-    component_outputs = ('file',) # retvals[-1])
-
-advanced_options = advanced_options.copy()
-advanced_comp_opts = OrderedDict()
-advanced_comp_opts['lineformula'] = advanced_options.pop('lineformula').default
-advanced_comp_opts['juncformula'] = advanced_options.pop('juncformula').default
-for key, value in advanced_options.items():
-    advanced_comp_opts[key] = value.default
-
-class sDNAAdvancedConfigOptionsPreparer(sDNA_GH_Tool):
-    opts = get_dict_of_Classes(options = advanced_comp_opts)
-
-    component_inputs = tuple(advanced_options.keys())
-    
-    def __call__(self, opts):
-        locs = locals().copy()
-        return tuple(locs[retval] for retval in self.retvals)        
     retvals = 'retcode', 'f_name'
     component_outputs = ('file',) # retvals[-1])
 
@@ -955,7 +948,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,plot_max = Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
                                     ,re_normaliser = 'linear'
                                     ,sort_data = False
-                                    ,number_of_classes = 8
+                                    ,num_classes = 8
                                     ,class_bounds = [Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
                                     ,class_spacing = 'quantile'
@@ -980,7 +973,7 @@ class DataParser(sDNA_GH_Tool):
     def __init__(self):
         self.debug('Initialising Class.  Creating Class Logger. ')
         self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
-                                ,'plot_min', 'class_bounds')
+                                ,'plot_min', 'num_classes', 'class_spacing', 'class_bounds')
     #
     # Geom is essentially unused in this function, except that the legend tags
     # are appended to it, to colour them in exactly the same way as the 
@@ -1118,9 +1111,9 @@ class DataParser(sDNA_GH_Tool):
             self.logger.debug('num class boundaries == ' 
                                 + str(len(class_bounds))
                                 )
-            self.logger.debug(options.number_of_classes)
+            self.logger.debug(options.num_classes)
             self.logger.debug(n)
-            assert len(class_bounds) + 1 == options.number_of_classes
+            assert len(class_bounds) + 1 == options.num_classes
 
             msg = 'x_min == ' + str(x_min) + '\n'
             msg += 'class bounds == ' + str(class_bounds) + '\n'
@@ -1145,11 +1138,11 @@ class DataParser(sDNA_GH_Tool):
                                                           ,param.get(options.class_spacing
                                                                     ,'Not used'
                                                                     )
-                                                          ,options.number_of_classes
+                                                          ,options.num_classes
                                                           ,y_min = x_min
                                                           ,y_max = x_max
                                                           )     
-                            for i in range(1, options.number_of_classes) 
+                            for i in range(1, options.num_classes) 
                             ]
 
 
@@ -1243,7 +1236,7 @@ class DataParser(sDNA_GH_Tool):
                                                        )        
                        ]                                                       
 
-        assert len(legend_tags) == options.number_of_classes == len(mid_points)
+        assert len(legend_tags) == options.num_classes == len(mid_points)
 
         self.logger.debug(legend_tags)
 
@@ -1502,7 +1495,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                      +(bbox_ymax - bbox_ymin)**2
                                      )
                 tag_height = max( 10, 0.4 * leg_width / 0.7)
-                leg_height = options.number_of_classes * tag_height * 1.04
+                leg_height = options.num_classes * tag_height * 1.04
                 legend_xmin = bbox_xmax - leg_width
                 legend_ymin = bbox_ymax - leg_height
 
@@ -1564,15 +1557,32 @@ class sDNA_GeneralDummyTool(sDNA_GH_Tool):
                                  )
     component_outputs = ()
 
-class Load_Config(sDNA_GH_Tool):
+class ConfigManager(sDNA_GH_Tool):
+
+    """ A convenience tool to update opts objects, and load and save 
+        config.toml files.  
+
+        All args connected to its input Params are loaded into opts,
+        even if go == false.  
+
+        If go == true
+        Tries to save the options. If config is a valid file path ending 
+        in toml, the opts are saved to it (overwriting an existing file), 
+        e.g. creating a project specific options file.  Otherwise if 
+        config is not specified and no installation wide config.toml 
+        file is found (in the sDNA_GH installation directory 
+        %appdata%/Grasshopper/UserObjects/sDNA_GH) e.g. on the first use of
+        sDNA_GH after installation, 
+    """
     component_inputs = ('config' # Primary Meta
+                       ,'python_exe'
+                       ,'sDNA_paths'
                        ,'auto_get_Geom' 
                        ,'auto_read_Usertext'
                        ,'auto_write_Shp'
                        ,'auto_read_Shp'
                        ,'auto_plot_data'
-                       ,'python_exe'
-                       ,'sDNA_paths'
+
                        )
 
     def __call__(self, opts):
@@ -1580,6 +1590,7 @@ class Load_Config(sDNA_GH_Tool):
         options = opts['options']
         self.debug('options == ' + str(options))
         retcode = 0
+        
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
     retvals = ('retcode',)
