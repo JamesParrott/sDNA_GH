@@ -35,11 +35,11 @@ reload_already_imported = False
 
 
 # There may be multiple components, all running this same launcher code.
-# Therefore we want the root logger to live in the sDNA_GH.setup module
+# Therefore we want the root logger to live in the sDNA_GH.main module
 # that they each import.  The logging system is configurable by the user,
 # but only through the options that are read in during the main package
 # import, and we want to create logs before this too.  So before a 
-# component has imported sDNA_GH.setup, logging is routed through output, 
+# component has imported sDNA_GH.main, logging is routed through output, 
 # a callable instance of Output, with a cache, defined below.  output's cache 
 # is flushed through the normal logging system, after a logger has been set up 
 # according to the user's configuration, after the main package import.
@@ -327,17 +327,17 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         pass
 
     error_message =1
-    sDNA_GH.setup, _ = load_modules(sDNA_GH_package + '.setup'
+    sDNA_GH.main, _ = load_modules(sDNA_GH_package + '.main'
                                    ,sDNA_GH_search_paths
                                    ,folders_error_msg = 'Please install sDNA_GH according to README.md,'
                                                         +' ensuring a folder called '
                                                         +sDNA_GH_subfolder + os.sep + sDNA_GH_package
                                                         +' is created in '
                                                         +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
-                                                        +', and that setup.py and all sDNA_GH python' 
+                                                        +', and that main.py and all sDNA_GH python' 
                                                         +' files and subfolders are inside it. ' 
                                    ,modules_not_found_msg = 'Please install sDNA_GH according to README.md,'
-                                                            +' ensuring that setup.py and all sDNA_GH python' 
+                                                            +' ensuring that main.py and all sDNA_GH python' 
                                                             +' files and subfolders are inside '
                                                             +os.sep.join(
                                                                  Grasshopper.Folders.DefaultUserObjectFolder
@@ -347,7 +347,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                    )         
 
 
-    logger = sDNA_GH.setup.logger.getChild('launcher')
+    logger = sDNA_GH.main.logger.getChild('launcher')
     output.set_logger(logger, flush = True)
 
 
@@ -358,7 +358,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # and overwriting this very class immediately below.  
             # Initial parser step / scope check trips this?
 
-    MyComponent = sDNA_GH.setup.sDNA_GH_Component
+    MyComponent = sDNA_GH.main.sDNA_GH_Component
 
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  

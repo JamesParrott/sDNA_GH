@@ -48,7 +48,7 @@ from .custom.tools import (sDNA_GH_Tool
                           ,sDNA_GeneralDummyTool
                           ,ConfigManager
                           )
-from .dev_tools.dev_tools import GetToolNames, sDNA_GH_Builder
+from .dev_tools.dev_tools import ToolNamesGetter, sDNA_GH_Builder
 
 
 
@@ -59,6 +59,33 @@ output = Output()
 # Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
 # arguments in its constructor so we build our options and metas namedtuples
 # from a class, to avoid re-stating the order of the keys.
+
+default_name_map = dict(Read_Geom = 'get_Geom'
+                       ,Read_Usertext = 'read_Usertext'
+                       ,Write_Shp = 'write_shapefile'
+                       ,Read_Shp = 'read_shapefile'
+                       ,Write_Usertext = 'write_Usertext'
+                       #,Bake_UserText = 'bake_Usertext'
+                       ,Parse_Data = 'parse_data'
+                       ,Recolour_Objects = 'recolour_objects'
+                       ,Recolor_Objects = 'recolour_objects'
+                       ,Load_Config = 'load_config'
+                       ,Comp_Names = 'get_comp_names'
+                       #
+                       ,sDNA_Integral = 'sDNAIntegral'
+                       ,sDNA_Skim = 'sDNASkim'
+                       ,sDNA_Int_From_OD = 'sDNAIntegralFromOD'
+                       ,sDNA_Geodesics = 'sDNAGeodesics'
+                       ,sDNA_Hulls = 'sDNAHulls'
+                       ,sDNA_Net_Radii = 'sDNANetRadii'
+                       ,sDNA_Access_Map = 'sDNAAccessibilityMap'
+                       ,sDNA_Prepare = 'sDNAPrepare'
+                       ,sDNA_Line_Measures = 'sDNALineMeasures'
+                       ,sDNA_Learn = 'sDNALearn'
+                       ,sDNA_Predict = 'sDNAPredict'
+                       #,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
+                       #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
+                       )
 
 class HardcodedMetas(sDNA_ToolWrapper.opts['metas']): 
     config = os.path.join(os.path.dirname(  os.path.dirname(__file__)  )
@@ -100,34 +127,9 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
     #
     #               Abbreviation = Tool Name
     #
-    name_map = dict(Read_Geom = 'get_Geom'
-                   ,Read_Usertext = 'read_Usertext'
-                   ,Write_Shp = 'write_shapefile'
-                   ,Read_Shp = 'read_shapefile'
-                   ,Write_Usertext = 'write_Usertext'
-                   #,Bake_UserText = 'bake_Usertext'
-                   ,Parse_Data = 'parse_data'
-                   ,Recolour_Objects = 'recolour_objects'
-                   ,Recolor_Objects = 'recolour_objects'
-                   ,Load_Config = 'load_config'
-                   ,Comp_Names = 'get_comp_names'
-                   #
-                   ,sDNA_Integral = 'sDNAIntegral'
-                   ,sDNA_Skim = 'sDNASkim'
-                   ,sDNA_Int_From_OD = 'sDNAIntegralFromOD'
-                   ,sDNA_Geodesics = 'sDNAGeodesics'
-                   ,sDNA_Hulls = 'sDNAHulls'
-                   ,sDNA_Net_Radii = 'sDNANetRadii'
-                   ,sDNA_Access_Map = 'sDNAAccessibilityMap'
-                   ,sDNA_Prepare = 'sDNAPrepare'
-                   ,sDNA_Line_Measures = 'sDNALineMeasures'
-                   ,sDNA_Learn = 'sDNALearn'
-                   ,sDNA_Predict = 'sDNAPredict'
-                   #,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
-                   #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
-                   )
 
 
+    name_map = default_name_map.copy()
                    # Long names for some Rhino installs that use component Name not Nickname
                    # (these can be removed if the components are all rebuilt s.t. name == nickname) 
     name_map.update({'Read Rhino geometry' : 'get_Geom'
@@ -787,7 +789,7 @@ write_Usertext = UsertextWriter()
 # bake_Usertext = UsertextBaker()
 parse_data = DataParser()
 recolour_objects = ObjectsRecolourer()
-get_tool_names = GetToolNames()
+get_tool_names = ToolNamesGetter()
 build_components = sDNA_GH_Builder()
 sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
 load_config = ConfigManager()

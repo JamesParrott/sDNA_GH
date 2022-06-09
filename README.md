@@ -91,8 +91,8 @@ Not only is the sDNA_GH component class definition defined in the shared package
 1. The component input param options override options in the *primary meta*.  
 2. The *primary meta* overrides options from another sDNA_GH component.  
 3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
-4. The installation-wide options file overrides the sDNA_GH hard-coded default options in `setup.py` [^note]
-[note] Dev note: the options in `setup.py` themselves override every individual tool's default options in `tools.py`.
+4. The installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
+[note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
 
 
 ###### Name map (abbreviations, NickNames and work flows)
@@ -106,7 +106,7 @@ tool or tools (including other NickNames) its NickName corresponds to, then retr
 Each NickName in name map creates a new set of options.  These contain options for each tool (real name) in the list of tools used under that NickName.  Each of these has a set of options for each version of sDNA encountered by the component so far.  Primarily this is where the settings for sDNA wrapper tools are stored (apart from a couple of helper overrides, like `file`).  Support tools and sDNA_GH tools use options and meta options in the common name root space (which is the same for all sDNA versions sDNA_GH has found).  
 
 ##### Local meta options.
-By default all sDNA_GH components share (and may change) the same global dictionary of options (module options, tool options, and *meta* options, together in *opts*) in the `setup.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users.  
+By default all sDNA_GH components share (and may change) the same global dictionary of options (module options, tool options, and *meta* options, together in *opts*) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users.  
 
 For advanced users, each component with a given NickName in name_map also has its own set of tool options (one for each version of sDNA).  However, for one support component to have a different set of options to another, one of them must no longer update the global options dictionary - it must desynchronise from them.  This syncing and desyncing is controlled by each component's individual *local meta options*, (in `local_metas`) `sync_to_module_opts`, `read_from_shared_global_opts`.  By default these booleans are both equal to True.  More than one *primary meta* is then possible - just create a new project specific options file (`config.toml`) for each, and specify its name on the `config` input of the desired components.  Just like other options, *local metas* can be set in Input Params, read from Output Params, shared between components via Grasshopper connections in the same way as opts, can be set by project config files(`config.toml`) and set in the installation-wide config file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  But unlike *meta options*, *local metas* are not updated automatically by syncing to the main module options (as this would defeat their entire purpose).
 
@@ -260,7 +260,7 @@ Not a tool in the same sense as the others (this has no tool function in sDNA). 
 cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests to the functions in the launcher, can also be added to the launcher code.
 
 ###### Build_components 
-Easily build all the other components for the sDNA installation provided.  User Objects still need to be built manually, but components are all the same launcher code in a Gh_Python component, but with different names.  Functionality is provided by setup.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
+Easily build all the other components for the sDNA installation provided.  User Objects still need to be built manually, but components are all the same launcher code in a Gh_Python component, but with different names.  Functionality is provided by main.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
 
   
 
@@ -306,14 +306,14 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 3. Ensure the File Reader Component (that the Path Component is connected to) is set to read the whole file, and also is connected to the _launcher code_ input param on the Build_components GhPython component.  Set the plug-in name on _plug in name_.
 4. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays comoponent names instead).
 5. Change the Boolean toggle to True, and connect it to the `go` input param of Build_components.
-6. A slight delay may occur as sDNA_GH/setup.py is imported, and the 23 or so components are created.
-7. Turn the Boolean toggle to False (connected to the go input param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The components are disabled, otherwise the next update will makes each one ask Grasshopper what its name is, connect to sDNA_GH.setup.py, and update its own Input and Output params.
+6. A slight delay may occur as sDNA_GH/main.py is imported, and the 23 or so components are created.
+7. Turn the Boolean toggle to False (connected to the go input param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The components are disabled, otherwise the next update will makes each one ask Grasshopper what its name is, connect to sDNA_GH.main.py, and update its own Input and Output params.
 8. Click the pull down menu *Solution* and select *Disable Solver*.  
 9. Right click each new component (on its name not its Params) and select Enable. 
 <!-- Click through all the warnings (as we cleared all Params from each component).  
 9. The red error on read shp and write shp can be toggling _Show output "out"_ parameter (or building them from components that already have an 'OK' param and a 'go' input param (set to list acess) ) -->
 10. Select each component one at a time, and go to the main Grasshopper File pull down menu, and select _Create User Object ..._
-11. Ensure both the Name and Nickname are the same as the automatically created component name (as some versions of Rhino 7 read their component names from the descriptive human-readable name).  Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the setup.py meta option categories.  Description text
+11. Ensure both the Name and Nickname are the same as the automatically created component name (as some versions of Rhino 7 read their component names from the descriptive human-readable name).  Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the main.py meta option categories.  Description text
 can be used from the tool's description in this readme file itself (above).
 12. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH` in the main repo, next to config.toml
 13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (Print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory.  

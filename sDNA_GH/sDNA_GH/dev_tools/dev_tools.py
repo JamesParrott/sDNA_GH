@@ -7,7 +7,7 @@ import logging
 
 from ..custom.skel.tools.name_mapper import validate_name_map
 from ..custom.tools import sDNA_GH_Tool
-from ..setup import tools_dict
+from ..main import tools_dict, update_sDNA, default_name_map
 from ..custom.skel.builder import BuildComponents
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,9 @@ logger.addHandler(logging.NullHandler())
 
 
 
-class GetToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
+class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
+
+    """ Gets list of Tool Names from tools_dict and sDNA.  """
 
     def __init__(self):
         self.component_inputs = ()
@@ -24,8 +26,9 @@ class GetToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
     def __call__(self, opts):
         
         #logger.debug(opts)
-        name_map = opts['metas'].name_map
+        name_map = default_name_map #opts['metas'].name_map
         names = list(tools_dict.keys())
+
         sDNAUISpec = opts['options'].sDNAUISpec
         names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
@@ -43,7 +46,7 @@ class GetToolNames(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
 
 class sDNA_GH_Builder(sDNA_GH_Tool):
     builder = BuildComponents()
-    get_names = GetToolNames()
+    get_names = ToolNamesGetter()
     component_inputs = 'launcher_code', 'plug_in_name'
 
     def __call__(self, launcher_code, plug_in_name, opts):
@@ -51,6 +54,8 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
         logger.debug('opts.keys() == ' + str(opts.keys()))
 
         metas = opts['metas']
+        
+        update_sDNA(opts)
         sDNAUISpec = opts['options'].sDNAUISpec
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False
