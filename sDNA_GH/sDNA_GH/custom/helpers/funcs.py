@@ -102,7 +102,7 @@ def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
         order.  
     """
     if a >= b:
-        msg = str(a) + ' == ' + a_name + ' >= ' + b_name + ' == ' + str(b)
+        msg = '%s == %s >= %s == %s ' % (a, a_name, b_name, b)
         logger.error(msg)
         raise ValueError(msg)
 
@@ -134,7 +134,7 @@ def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = 0):
         higher than the approx machine espilon ~1.11e-16
     """
     if abs(a - b) < tol:
-        msg = str(a) + ' == ' + a_name + ' == ' + b_name + ' == ' + str(b)
+        msg = '%s == %s ~= %s == %s ' % (a, a_name, b_name, b)
         logger.error(msg)
         raise ValueError(msg)
 
@@ -351,7 +351,7 @@ def lowest_strict_UB(data_point, data):
 def search_one_way_only_from_index(search_direction):
     #type(function, str) -> function
     """ Factory that makes decorator that makes partial search functions for the first 
-        item for which condition == True, in the specified 
+        item for which condition is True, in the specified 
         search_direction, e.g. for making efficient functions to 
         find the lowest / highest strict upper / lower bound of an 
         element in a Sequence (e.g. tuple or list) if 
@@ -359,7 +359,7 @@ def search_one_way_only_from_index(search_direction):
         If known, the index of the element can 
         be provided to make the search faster.  
         If no item
-        satisfying condition(element, item) == True is found
+        satisfying condition(element, item) is True is found
         in the specified search direction, the first return value 
         (the variable success) is False. 
     """
@@ -385,11 +385,11 @@ def search_one_way_only_from_index(search_direction):
                 index = data.index(data_point)
             if data[index] != data_point:
                 msg = ('Incorrect index of data_point in data: '
-                    'data[' + str(index) + '] == ' 
-                    +str(data[index]) 
-                    +' != ' + str(data_point) 
-                    +' == data_point'
-                    )
+                      +'data[%s ' % index + '] == ' 
+                      +str(data[index]) 
+                      +' != %s ' % data_point 
+                      +' == data_point'
+                      )
                 logger.error(msg)
                 raise ValueError(msg)
 
@@ -469,7 +469,7 @@ def quantile_l_to_r(data
         
         # When we're considering dividing the remainder into new classes, we
         # only count classes to the left of inter-class bounds in class_bounds
-        print(num_classes_left)
+        logger.debug(num_classes_left)
 
 
         if num_classes_left == num_classes_wanted:
@@ -748,20 +748,20 @@ def discrete_pro_rata(n, N_1, N_2):
         m, r = N.quotient, N.remainder           #N   = m   * n + r,   0 <= r   < n
         n_1, r_1 = N_1.quotient, N_1.remainder;  #N_1 = n_1 * m + r_1, 0 <= r_1 < m
         n_2, r_2 = N_2.quotient, N_2.remainder;  #N_2 = n_2 * m + r_2, 0 <= r_2 < m
-        msg +=  ('n == ' + str(N.divisor) 
+        msg +=  ('n == %s ' % N.divisor 
                 +'!= n_1 + n_2, '
-                +'N == ' + str(N.value) + ' ?= '
-                +'n*m + r == ' + str(n*m + r) + ', '
-                +'m == ' + str(m) + ', '
-                +'r == ' + str(r) + ', '
-                +'N_1 == ' + str(N_1) + ' ?= '
-                +'m*n_1 + r_1 == ' + str(m*n_1 + r_1) + ', '
-                +'n_1 == ' + str(n_1) + ', '
-                +'r_1 == ' + str(r_1) + ', '
-                +'N_2 == ' + str(N_2) + ' ?= '
-                +'m*n_2 + r_2 == ' + str(m*n_2 + r_2) + ', '
-                +'n_2 == ' + str(n_2) + ', '
-                +'r_2 == ' + str(r_2) 
+                +'N == %s ' % N.value + ' ?= '
+                +'n*m + r == %s ' % n*m + r + ', '
+                +'m == %s ' % m + ', '
+                +'r == %s ' % r + ', '
+                +'N_1 == %s ' % N_1 + ' ?= '
+                +'m*n_1 + r_1 == %s ' % m*n_1 + r_1 + ', '
+                +'n_1 == %s ' % n_1 + ', '
+                +'r_1 == %s ' % r_1 + ', '
+                +'N_2 == %s ' % N_2 + ' ?= '
+                +'m*n_2 + r_2 == %s ' % m*n_2 + r_2 + ', '
+                +'n_2 == %s ' % n_2 + ', '
+                +'r_2 == %s ' % r_2 
                 )
         logger.error(msg)
         raise NotImplementedError(msg)
@@ -830,20 +830,20 @@ def spike_isolating_quantile(data
             min_num = len(data) // num_classes
         else:
             min_num = options.min_num
-        print(str(min_num) + ', ' + str(options.max_width))
+        logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
         spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
                                                                       ,options.max_width
                                                                       )
         if spike_interval:
-            print(num_classes - 1)
-            print(spike_interval.index_a)
-            print(spike_interval.index_b)
+            logger.debug(num_classes - 1)
+            logger.debug(spike_interval.index_a)
+            logger.debug(spike_interval.index_b)
             spike_data_index_a = data.index(ordered_counter.keys()[spike_interval.index_a])
             spike_data_index_b = tuple(reversed(data)).index(ordered_counter.keys()[spike_interval.index_b])
             spike_data_index_b = len(data) - 1 - spike_data_index_b
-            print(spike_data_index_a)
-            print(spike_data_index_b)
+            logger.debug(spike_data_index_a)
+            logger.debug(spike_data_index_b)
             if num_classes - 3 <= 0:
                 extra_classes_a, extra_classes_b = 0, 0
             else:

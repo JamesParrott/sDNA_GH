@@ -32,13 +32,11 @@ def add_custom_file_to_logger(logger
                              ,custom = None
                              ,options = LoggingOptions
                              ):
-    try:
-        custom_stream=logging.StreamHandler(custom)
-        custom_stream.setLevel(getattr(logging, options.log_custom_level))
-        custom_stream.setFormatter(logging.Formatter(options.log_fmt_str))
-        logger.addHandler(custom_stream)
-    except: 
-        pass
+    custom_stream=logging.StreamHandler(custom)
+    custom_stream.setLevel(getattr(logging, options.log_custom_level))
+    custom_stream.setFormatter(logging.Formatter(options.log_fmt_str))
+    logger.addHandler(custom_stream)
+
 
 
 
@@ -155,11 +153,11 @@ def class_logger_factory(logger = None, module_name = None):
 # A single callable wrapper with a cache.  Saves logging messages from before the
 # logger system is setup until they can be flushed into the logger, and provides
 # a central point to redirect all log messaging calls through, (e.g. if the logger
-# itself needs debugging, providing the perfect place to temporarily use print)
+# itself needs debugging, providing the perfect place to temporarily use logger.debug)
 #
 #
 class Output(object): 
-    """   Wrapper class for logger, logging, print, with a cache.  Example setup:
+    """   Wrapper class for logger, logging, logger.debug, with a cache.  Example setup:
     import logging
     logger = logging.getLogger(__name__)
     logger.addHandler(logging.NullHandler())
@@ -203,7 +201,7 @@ class Output(object):
         else:
             self.store(message, logging_level)
 
-        return logging_level + ' : ' + message + ' '
+        return '%s : %s ' %(logging_level, message )
 
     def __getattr__(self, attr):
         return functools.partial(self.__call__, logging_level = attr.upper())
@@ -253,9 +251,9 @@ class Debugger(object):
         # https://stackoverflow.com/a/40536047
 
         if names:
-            return self.output(str(names) + ' == ' + str(x)+' ','DEBUG')
+            return self.output('%s == %s '%(names, x),'DEBUG')
         else:
-            return self.output(str(x)+' ','DEBUG')
+            return self.output(str(x),'DEBUG')
 #
 #
 ##############################################################################

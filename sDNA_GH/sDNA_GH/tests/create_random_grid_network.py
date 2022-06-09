@@ -26,7 +26,7 @@ def make_poly_line(x1,y1,x2,y2,store,func,offset=[x,y]):
         store += [new_poly_line]
         func(new_poly_line)
 
-if go == True:  
+if go is True:  
     M,N=map( floor,  [M, N] )
     geometries = []
     with shapefile.Writer('test_random_grid.shp', shapeType = shapefile.POLYLINEZ) as w:

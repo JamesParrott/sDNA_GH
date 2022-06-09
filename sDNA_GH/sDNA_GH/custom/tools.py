@@ -153,7 +153,7 @@ def delete_shp_files_if_req(f_name
     #type(str, type[any], bool, str/tuple) -> None
     if not strict_no_del:
         file_name = f_name.rpartition('.')[0]
-        logger.debug('Delete == ' + str(delete))
+        logger.debug('Delete == %s ' % delete)
         if (delete or name_matches(file_name, regexes)):
             for ending in ('.shp', '.dbf', '.shx'):
                 path = file_name + ending
@@ -329,7 +329,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             and f_name.rpartition('.')[2] in ['shp','dbf','shx']):  
             input_file = f_name
 
-        self.logger.debug('input file == ' + str(input_file))
+        self.logger.debug('input file == %s ' % input_file)
          
 
 
@@ -525,7 +525,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                      for x in gdm.keys()[:3]
                                    )
                          )
-        if len(gdm) > 0:
+        if gdm:
             self.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
 
 
@@ -541,7 +541,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                          )
 
         sc.doc = ghdoc 
-        self.logger.debug('retvals == ' + str(self.retvals))
+        self.logger.debug('retvals == %s ' % self.retvals)
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
@@ -560,8 +560,8 @@ class UsertextReader(sDNA_GH_Tool):
         #type(str, dict, dict) -> int, str, dict, list
 
         self.debug('Starting read_Usertext..  Creating Class logger. ')
-        self.debug('type(gdm) == ' + str(type(gdm)))
-        self.debug('gdm[:3] == ' + str({key : gdm[key] for key in gdm.keys()[:3]} ))
+        self.debug('type(gdm) == %s ' % type(gdm))
+        self.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
@@ -652,7 +652,7 @@ class ShapefileWriter(sDNA_GH_Tool):
             #     else:
             #         return []
 
-        self.debug('Test points obj 0: ' + str(get_list_of_lists_from_tuple(gdm.keys()[0]) ))
+        self.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -732,9 +732,9 @@ class ShapefileReader(sDNA_GH_Tool):
         ,shapes
         ,bbox ) = get_fields_recs_and_shapes( f_name )
 
-        self.debug('gdm == ' + str(gdm))
+        self.debug('gdm == %s ' % gdm)
 
-        self.debug('recs[0].as_dict() == ' + str(recs[0].as_dict()))
+        self.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
 
         if not recs:
             self.logger.warning('No data read from Shapefile ' + f_name + ' ')
@@ -786,8 +786,8 @@ class ShapefileReader(sDNA_GH_Tool):
         #     # # key_val_tuples
         #     # i.e. if options.uuid_field in fields but also otherwise
         #     msg =   ('Geom data map and shapefile have unequal'
-        #             +' lengths len(gdm) == ' + str(len(gdm))
-        #             +' len(recs) == ' + str(len(recs))
+        #             +' lengths len(gdm) == %s ' % len(gdm))
+        #             +' len(recs) == %s ' % len(recs))
         #             +' (or invalid gdm), and bool(new_geom)'
         #             +' != True'
         #             )
@@ -817,7 +817,7 @@ class ShapefileReader(sDNA_GH_Tool):
                 delete_file(csv_f_name, self.logger)
 
 
-        self.logger.debug('bbox == ' + str(bbox))
+        self.logger.debug('bbox == %s ' % bbox)
 
         delete_shp_files_if_req(f_name
                                ,logger = self.logger
@@ -865,7 +865,7 @@ class UsertextWriter(sDNA_GH_Tool):
         options = opts['options']
 
         date_time_of_run = asctime()
-        self.debug('Creating Class logger at: ' + str(date_time_of_run))
+        self.debug('Creating Class logger at: %s ' % date_time_of_run)
 
 
         def write_dict_to_UserText_on_Rhino_obj(d, rhino_obj):
@@ -1015,7 +1015,7 @@ class DataParser(sDNA_GH_Tool):
                                 for obj, val in gdm.items() 
                               )
             x_min, x_max = min(data.values()), max(data.values())
-        # bool(0) == False so in case x_min==0 we can't use if options.plot_min
+        # bool(0) is False so in case x_min==0 we can't use if options.plot_min
         # so test isinstance of Number ABC. 
         #
         # x_min & x_max are not stored in options, so sDNA_GH will carry on 
@@ -1054,7 +1054,7 @@ class DataParser(sDNA_GH_Tool):
             n = len(data)
             class_size = n // m
             if class_size < 2:
-                msg = 'Class size == ' + str(class_size) + ' is less than 2 '
+                msg = 'Class size == %s  is less than 2 ' % class_size
                 if options.suppress_small_classes_error:
                     self.logger.warning(msg)
                     warnings.showwarning(message = msg
@@ -1115,9 +1115,9 @@ class DataParser(sDNA_GH_Tool):
             self.logger.debug(n)
             assert len(class_bounds) + 1 == options.num_classes
 
-            msg = 'x_min == ' + str(x_min) + '\n'
-            msg += 'class bounds == ' + str(class_bounds) + '\n'
-            msg += 'x_max == ' + str(x_max)
+            msg = 'x_min == %s \n' % x_min
+            msg += 'class bounds == %s \n' % class_bounds
+            msg += 'x_max == %s ' % x_max
             self.logger.debug(msg)
 
             return class_bounds
@@ -1148,7 +1148,7 @@ class DataParser(sDNA_GH_Tool):
 
         if options.re_normaliser not in valid_re_normalisers:
             # e.g.  'linear', exponential, logarithmic
-            msg = 'Invalid re_normaliser : ' + str(options.re_normaliser)
+            msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
             self.error(msg)
             raise ValueError(msg)
 
@@ -1317,8 +1317,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             gdm_in = {}
             x_min, x_max = plot_min, plot_max
 
-        self.logger.debug('x_min == ' + str(x_min))
-        self.logger.debug('x_max == ' + str(x_max))
+        self.logger.debug('x_min == %s ' % x_min)
+        self.logger.debug('x_max == %s ' % x_max)
 
         objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
                                                 if isinstance(v, Number) 
@@ -1399,7 +1399,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
         for obj, new_colour in objs_to_recolour.items():
-            self.logger.debug('is_uuid == ' + str(is_uuid(obj)) + ' ' + str(obj))
+            self.logger.debug('obj, is_uuid == %s, %s ' % (obj, is_uuid(obj))) 
             
             # try:
             #     obj_guid = System.Guid(str(obj))
@@ -1418,7 +1418,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 try:
                     rs.ObjectColor(obj, new_colour)
                     recoloured_Rhino_objs.append(obj)
-                except:
+                except TypeError:
                     GH_objs_to_recolour[obj] = new_colour 
                     
         sc.doc = ghdoc
@@ -1437,7 +1437,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
             #     else:
 
-            #         msg =   ('sc.doc == ' + str(sc.doc) 
+            #         msg =   ('sc.doc == %s ' % sc.doc) 
             #                 +' i.e. neither Rhinodoc.ActiveDoc '
             #                 +'nor ghdoc'
             #                 )
@@ -1450,7 +1450,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             #     legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
             # else:
             #     self.logger.debug(obj)
-            #     self.logger.debug('is_uuid(obj) == ' + str(is_uuid(obj)))
+            #     self.logger.debug('is_uuid(obj) == %s ' % is_uuid(obj)))
             #     msg = 'Valid colour in Data but no geom obj or legend tag.'
             #     self.logger.error(msg)
             #     raise NotImplementedError(msg)
@@ -1464,7 +1464,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             sc.doc = Rhino.RhinoDoc.ActiveDoc                             
             rs.ObjectColorSource(keys, 1)  # 1 => colour from object
             rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
-            rs.ObjectPrintWidthSource(keys, 1)  # 1 => print width from object
+            rs.ObjectPrintWidthSource(keys, 1)  # 1 => logger.debug width from object
             rs.ObjectPrintWidth(keys, options.line_width) # width in mm
             rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
                     +str(options.line_width)
@@ -1482,7 +1482,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 ,legend_ymin
                 ,legend_xmax
                 ,legend_ymax] = options.leg_extent
-                self.logger.debug('legend extent == ' + str(options.leg_extent))
+                self.logger.debug('legend extent == %s ' % options.leg_extent)
             else: 
                 if bbox:
                     self.logger.debug('Using bbox from args')
@@ -1503,7 +1503,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
                 legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
                 
-                self.logger.debug('bbox == ' + str(bbox))
+                self.logger.debug('bbox == %s ' % bbox)
 
 
             plane = rs.WorldXYPlane()
@@ -1563,9 +1563,9 @@ class ConfigManager(sDNA_GH_Tool):
         config.toml files.  
 
         All args connected to its input Params are loaded into opts,
-        even if go == false.  
+        even if go is False.  
 
-        If go == true
+        If go is True
         Tries to save the options. If config is a valid file path ending 
         in toml, the opts are saved to it (overwriting an existing file), 
         e.g. creating a project specific options file.  Otherwise if 
@@ -1588,9 +1588,12 @@ class ConfigManager(sDNA_GH_Tool):
     def __call__(self, opts):
         self.debug('Starting class logger')
         options = opts['options']
-        self.debug('options == ' + str(options))
-        retcode = 0
+        self.debug('options == %s ' % options)
         
+        toml_types = (int, str, bool, list, tuple, dict)
+        
+        
+        retcode = 0
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
     retvals = ('retcode',)

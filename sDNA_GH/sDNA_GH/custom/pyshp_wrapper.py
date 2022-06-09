@@ -243,7 +243,7 @@ def coerce_and_get_code(x, options = ShpOptions):
     try:
         y = int(x)   # if isinstance(x,int):  # Bool test needs to come before this as int(True) == 1
         return y, shp_field_codes['int']    # i.e.   'N'
-    except:
+    except ValueError:
         try:
             n = options.max_dp
             if options.decimal:
@@ -261,7 +261,7 @@ def coerce_and_get_code(x, options = ShpOptions):
                 
             return x if options.keep_floats else y, shp_field_codes['float']  
                     # Tuple , binds to result of ternary operator
-        except:
+        except ValueError:
             if isinstance(x, date):
                 return x, shp_field_codes['date']   # i.e. 'D'   
 
@@ -309,11 +309,11 @@ def get_filename(f, options = ShpOptions):
                             ,options.dupe_file_key_str.format(name = file_name 
                                                              ,number = str(i)
                                                              )
-                             + '.' + file_extension
+                            + '.' + file_extension
                             ) 
             i += 1
     elif not options.suppress_warning:
-        logger.warning('Overwriting file ' + f + ' !')
+        logger.warning('Overwriting file %s ! ' % f)
     return f
 
 def ensure_correct(fields
@@ -339,7 +339,7 @@ def ensure_correct(fields
                 or (val_type == shp_field_codes['bool'] 
                     and fields[nice_key]['fieldType'] == shp_field_codes['int'] 
                     and all( attribute_tables[i][nice_key] in [0,1] 
-                             for i in attribute_tables.keys()
+                             for i in attribute_tables
                            )
                    )
                ):
@@ -414,23 +414,25 @@ def write_iterable_to_shp(my_iterable
          or not os.path.isdir( os.path.dirname(shp_file_path) ) 
         ):
         logger.error ('returning.  Not writing to .shp file')
-        msg_1 = ' Is Iterable == ' + str(is_iterable) 
+        msg_1 = ' Is Iterable == %s' % is_iterable
         logger.info (msg_1)
-        msg_2 = ' Is str ==' + str(is_str)
+        msg_2 = ' Is my_iterable str == %s' % is_str
         logger.info (msg_2)
-        msg_3 = ' Is path str ==' + str(is_path_str)
+        msg_3 = ' Is path str == %s' % is_path_str
         logger.info (msg_3)
-        msg_4 = 'my_iterable == ' + str(my_iterable)
+        msg_4 = 'my_iterable == %s ' % my_iterable
         logger.info(msg_4)
         
         try:
-            msg_5 = ' Is path path ==' 
-            msg_5 += str( os.path.isdir( os.path.dirname(shp_file_path)))
+            msg_5 = (' Is path path == %s ' 
+                    % os.path.isdir( os.path.dirname(shp_file_path))
+                    )
             logger.info (msg_5)
-        except:
-            pass
-        logger.info ('Path == ' + str(shp_file_path))
-        raise TypeError('\n'.join([msg_1, msg_1, msg_3, msg_4]))
+        except TypeError:
+            msg_5 = 'Invalid path type == %s ' % shp_file_path
+        logger.info ('Path == %s' %shp_file_path)
+        msg = '\n'.join([msg_1, msg_1, msg_3, msg_4, msg_5])
+        raise TypeError(msg)
         
 
 

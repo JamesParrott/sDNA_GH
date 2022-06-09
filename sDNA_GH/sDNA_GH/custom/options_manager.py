@@ -299,19 +299,26 @@ def override_namedtuple_with_config(nt_lesser
     new_dict = {}
     for key, value in config.items(section_name):
         message = key + ' : ' + value
-        if not leave_as_strings and key in old_dict:   
+        if (not leave_as_strings) and key in old_dict:   
             try:
-                getter = get_coercer( old_dict[key],  config )
-                new_dict[key] = getter( section_name,  key )
-            except:
-                message +=  (".  failed to parse value in field "
-                            + key
-                            +'  old_dict[key]) == ' 
-                            + str(old_dict[key]) 
-                            +'   type(old_dict[key]) == ' 
-                            + type(old_dict[key]).__name__ 
-                            + 'getter = ' + getter.__name__
+                coercer = get_coercer( old_dict[key],  config )
+                new_dict[key] = coercer( section_name,  key )
+            except ValueError:
+                try:
+                    new_val = config.get(section_name, key)
+                except KeyError:
+                    raise ValueError('Bad key / value in config: %s' % key)
+
+                message +=  ('Type of new value did not match type of old value?.   '
+                            +' Failed to parse value in field '
+                            +' key = %s ' % key
+                            +' old_dict[key]) == %s ' % str(old_dict[key]) 
+                            +' type(old_dict[key]) == %s '% type(old_dict[key])
+                            +' new val == %s ' % new_val
+                            +' type(new val) == %s ' % type(new_val)
+                            +' coercer = %s ' % coercer.__name__
                             ) 
+                logging.error(message)
                 raise TypeError(message)
 
         else:
@@ -327,7 +334,7 @@ def override_namedtuple_with_config(nt_lesser
                                         ,**kwargs
                                         )      
 
-        # We know new_dict is a dict so strict == False.
+        # We know new_dict is a dict so strict is False.
         # We may have already done some type checking
         # using config's methods, so setting 
         # check_types = True on top of this
@@ -359,7 +366,7 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
     https://github.com/uiri/toml/blob/master/toml/decoder.py
 
     Please note, .toml tables are mapped correctly to OrderedDictionaries
-    by the line below.  But if convert_subdicts == False, then this dict is
+    by the line below.  But if convert_subdicts is False, then this dict is
     passed into override_namedtuple, and will pass up through the normal 
     heirarchy of functions in this options_manager module, finally having 
     make_nested_namedtuple called on it, turning the .toml table
@@ -384,7 +391,7 @@ def override_namedtuple(nt_lesser
     """ Override an nt, from a list of dicts, configs, ini, toml and nt.
     
     Full function heirarchy kwargs
-    kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_', convert_subdicts == False}
+    kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_', convert_subdicts is False}
              override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
              override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
              override_namedtuple_with_namedtuple{strict = True}
@@ -460,7 +467,7 @@ class Sentinel(object):
     def __repr__(self):
         return 'Sentinel("' + self.message + '")'
 
-#TODO:  Make bool(Sentinel)== False optionally, and fail louder on iteration.
+#TODO:  Make bool(Sentinel)is False optionally, and fail louder on iteration.
 
 def error_raising_sentinel_factory(warning
                                   ,message

@@ -62,7 +62,7 @@ class ParamInfo(dict, ParamInfoABC):
             Access = getattr(Grasshopper.Kernel.GH_ParamAccess, Access)
         elif Access not in [getattr(Grasshopper.Kernel.GH_ParamAccess, x) 
                             for x in self.access_methods]:
-            logger.warning('Unrecognised access method : ' + str(Access))
+            logger.warning('Unrecognised access method : %s ' % Access)
         super(ParamInfo, self).__init__(NickName = NickName
                                         ,Name = Name
                                         ,Description = Description
@@ -224,10 +224,10 @@ def add_tool_params(Params
     #type(type[any], list[ToolwithParamsABC], list, list, function) -> type[any]
     
     current_output_names = current_param_names(Params, 'Output')
-    logger.debug('current_output_names == ' + str(current_output_names))
+    logger.debug('current_output_names == %s ' % current_output_names)
     
     current_input_names = current_param_names(Params, 'Input')
-    logger.debug('current_input_names == ' + str(current_input_names))
+    logger.debug('current_input_names == %s ' % current_input_names)
 
 
 
@@ -254,8 +254,8 @@ def add_tool_params(Params
         logger.debug(msg)
         return msg
     else:
-        logger.debug('needed_output_params == ' + str(needed_output_params))
-        logger.debug('needed_input_params == ' + str(needed_input_params))
+        logger.debug('needed_output_params == %s ' % needed_output_params)
+        logger.debug('needed_input_params == %s ' % needed_input_params)
 
 
     ParamsSyncObj = Params.EmitSyncObject()

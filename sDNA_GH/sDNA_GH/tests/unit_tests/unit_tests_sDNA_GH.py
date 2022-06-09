@@ -62,7 +62,7 @@ class TestStringMethods(unittest.TestCase):
     
     def test_split(self):
         s = 'hello world'
-        print(s)
+        logger.debug(s)
         self.assertEqual(s.split(), ['hello', 'world'])
         
         # check that s.split fails when the separator is not a string

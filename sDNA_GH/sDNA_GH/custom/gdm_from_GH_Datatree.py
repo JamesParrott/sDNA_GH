@@ -179,8 +179,8 @@ def gdm_from_DataTree_and_list(Geom, Data):
         # same as any other list below:
 
 
-    logger.debug('len(Geom) == ' + str(len(Geom)))
-    logger.debug('len(Data) == ' + str(len(Data)))
+    logger.debug('len(Geom) == %s' % len(Geom))
+    logger.debug('len(Data) == %s' % len(Data))
 
 
     if len(Geom) < len(Data):

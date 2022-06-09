@@ -187,11 +187,11 @@ if __name__ == '__main__':
     if 'shapefile' in globals():
         logger.info('Pyshp (shapefile.py) version == %s' % shapefile.__version__)
     else:
-        logger.debug('PyShp (shapefile.py) not found. ')
+        logger.warning('PyShp (shapefile.py) not found. Cannot read shapefile type. ')
 
     if not args:
         logger.info('Running default test')
-        run_sDNA()
+        run_all_sDNAs(pythons =('iron', 'python'))
     else:    
         logger.debug('Parsing args')
         input_shp_files = [arg

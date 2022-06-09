@@ -15,36 +15,36 @@ from ...basic.ghdoc import ghdoc
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+class NullPathError(Exception):
+    pass
 
-def get_path(inst = None):
+def get_path(fallback = None, inst = None):
     #type(dict, type[any]) -> str
-    #refers to `magic' global ghdoc so needs to be in main
+    #refers to `magic' global ghdoc so needs to 
+    # be in module scope (imported above)
     
-    path = Rhino.RhinoDoc.ActiveDoc.Path
-                    
-    if not isinstance(path, str) or not os.path.isfile(path):
+    path_getters = [lambda : Rhino.RhinoDoc.ActiveDoc.Path
+                   ,lambda : ghdoc.Path
+                   ,lambda : inst.ghdoc.Path  #e.g. via old Component decorator
+                   ,lambda : sc.doc.Path
+                   ,lambda : fallback
+                   ]
+    path = None
+    for path_getter in path_getters:
         try:
-            path = ghdoc.Path
-        except:
-            try:
-                path = inst.ghdoc.Path 
-            except:
-                try:
-                    path = sc.doc.Path
-                except:
-                    path = None
-        finally:
-            if not path:
-                path = None
-    
-    return path
+            path = path_getter()
+        except AttributeError:
+            pass
+        if isinstance(path, str) and os.path.isfile(path):
+            return path 
+    return None 
 
 
 def toggle_sc_doc():
     #type() -> None
     if sc.doc not in (Rhino.RhinoDoc.ActiveDoc, ghdoc): 
         # ActiveDoc may change on Macs 
-        msg = 'sc.doc == ' + str(sc.doc) + ' type == ' + str(type(sc.doc))
+        msg = 'sc.doc == %s , type == %s ' % (sc.doc, type(sc.doc))
         logger.error(msg)
         raise NameError(msg)
     sc.doc = Rhino.RhinoDoc.ActiveDoc if sc.doc == ghdoc else ghdoc # type: ignore
@@ -92,15 +92,15 @@ def get_sc_doc_of_obj(x):
     #return rs.IsObject(x) if x else False
     #return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
     #return bool(sc.doc.Objects.FindGeometry(System.Guid(x))) if x else False 
-    #print(str(x))
-    # print('str(x): ' + str(x))
-    # print('System.Guid(x): ')
-    # print(System.Guid(x))
-    # print('x.ToString(): ')
-    # print(x.ToString())
-    # print('To Guid')
-    # print(System.Guid(x.ToString()))
-    # print('Check: ')
+    #logger.debug(str(x))
+    # logger.debug('str(x): %s ' % x))
+    # logger.debug('System.Guid(x): ')
+    # logger.debug(System.Guid(x))
+    # logger.debug('x.ToString(): ')
+    # logger.debug(x.ToString())
+    # logger.debug('To Guid')
+    # logger.debug(System.Guid(x.ToString()))
+    # logger.debug('Check: ')
     # return bool(sc.doc.Objects.FindGeometry(System.Guid(x.ToString()))) if x else False 
 
 @multi_context_checker

@@ -60,10 +60,10 @@ def get_args_spec(callable):
     # assert hasattr(callable, '__call__')
     try:
         arg_spec = inspect.getargspec(callable)
-    except:
+    except TypeError:
         try:
             arg_spec = inspect.getargspec(callable.__call__)
-        except:
+        except TypeError:
             raise Exception("Could not get argspec for " + str(callable))
     
     if arg_spec.args[0] in ('self', 'cls'):
@@ -86,16 +86,16 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
         # https://developer.rhino3d.com/guides/rhinopython/ghpython-component/#out-parameter
 
     for source in sources:
-        #print('Fetching : '+ str(key))
+        #logger.debug('Fetching : '+ str(key))
         if isinstance(source, dict) and key in source:
-            #print('Fetching : '+ str(source[key]))
+            #logger.debug('Fetching : '+ str(source[key]))
 
             return source[key]
         elif hasattr(source, key):
-            #print('Fetching : '+ str(getattr(source, key)))
+            #logger.debug('Fetching : '+ str(getattr(source, key)))
 
             return getattr(source, key)
-    #print('No variable or field: ' + key + ' found. ')
+    #logger.debug('No variable or field: ' + key + ' found. ')
     if case_sensitive or key.islower():
         return 'No variable or field: ' + key + ' found. '
     else:
@@ -159,7 +159,7 @@ def prepare_args(function
                 ):
     #type(function) -> tuple, dict
     argspec = get_args_spec(function)
-    logger.debug('argspec(function) == ' + str(argspec))
+    logger.debug('argspec(function) == %s ' % argspec)
 
     params_dict = params_dict.copy()  #We'll be popping keys out later
 
@@ -172,7 +172,7 @@ def prepare_args(function
         req_pos_args = req_pos_args[:-len(argspec.defaults)]
         # required positional arguments (i.e. before those with default values)
 
-    logger.debug('required positional arguments == ' + str(req_pos_args))
+    logger.debug('required positional arguments == %s ' % req_pos_args)
     
     missing_req_pos_args = []
     
@@ -183,7 +183,7 @@ def prepare_args(function
         else:
             missing_req_pos_args += [param_name]
 
-    #logger.debug('pos_args == ' + str(pos_args))
+    #logger.debug('pos_args == %s ' % pos_args))
 
     for param_name in params_dict.copy():   # Try to fill other named args
                                             # with names in Params.
@@ -235,9 +235,9 @@ def prepare_args(function
 
     if missing_req_pos_args:
         msg = 'Missing named positional argument'
-        logger.debug('missing_req_pos_args == ' + str(missing_req_pos_args))
-        logger.debug('pos_args keys == ' + str(pos_args.keys()))
-        logger.debug('args_dict keys == ' + str(args_dict.keys()))
+        logger.debug('missing_req_pos_args == %s ' % missing_req_pos_args)
+        logger.debug('pos_args keys == %s ' % pos_args.keys())
+        logger.debug('args_dict keys == %s ' % args_dict.keys())
 
         logger.error(msg)
         raise TypeError(msg)
@@ -250,14 +250,14 @@ def prepare_args(function
             unnamed_pos_args += tuple(params_dict.values())
             logger.debug('Adding all remaining Input Params to unnamed_pos_args')
         else:
-            logger.debug('Unallocated params: ' + str(params_dict))
+            logger.debug('Unallocated params: %s ' % params_dict)
 
 
     pos_args_tupl = (tuple(pos_args[arg] for arg in argspec.args if arg in pos_args) 
                      + unnamed_pos_args)
 
-    #logger.debug('pos_args == ' + str(pos_args_tupl))
-    #logger.debug('args_dict == ' + str(args_dict))
+    #logger.debug('pos_args == %s ' % pos_args_tupl))
+    #logger.debug('args_dict == %s ' % args_dict))
 
     return pos_args_tupl, args_dict
 
@@ -303,11 +303,11 @@ def custom_inputs_class_deco(BaseComponent
             # if 'Geom' in params_dict:
             #     Geom = params_dict['Geom']
             #     from ..tools.helpers.checkers import get_sc_doc_of_obj
-            #     print('Main: ')
-            #     print(Geom[0])
+            #     logger.debug('Main: ')
+            #     logger.debug(Geom[0])
             #     import rhinoscriptsyntax as rs
-            #     print('PolylineVertices: ' + str([list(y) for y in rs.PolylineVertices(Geom[0])] ))
-            #     print(get_sc_doc_of_obj(Geom[0]))
+            #     logger.debug('PolylineVertices: %s ' % [list(y) for y in rs.PolylineVertices(Geom[0])] ))
+            #     logger.debug(get_sc_doc_of_obj(Geom[0]))
             #     raise Exception('Break point')
 
             pos_args, args_dict = prepare_args(self.script

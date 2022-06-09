@@ -8,7 +8,7 @@ import logging
 from ..custom.skel.tools.name_mapper import validate_name_map
 from ..custom.tools import sDNA_GH_Tool
 from ..main import tools_dict, update_sDNA, default_name_map
-from ..custom.skel.builder import BuildComponents
+from ..custom.skel.builder import ComponentsBuilder
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -26,9 +26,9 @@ class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
     def __call__(self, opts):
         
         #logger.debug(opts)
-        name_map = default_name_map #opts['metas'].name_map
+        name_map = opts['metas'].name_map
+        
         names = list(tools_dict.keys())
-
         sDNAUISpec = opts['options'].sDNAUISpec
         names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
@@ -45,13 +45,13 @@ class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
 
 
 class sDNA_GH_Builder(sDNA_GH_Tool):
-    builder = BuildComponents()
+    builder = ComponentsBuilder()
     get_names = ToolNamesGetter()
     component_inputs = 'launcher_code', 'plug_in_name'
 
     def __call__(self, launcher_code, plug_in_name, opts):
         
-        logger.debug('opts.keys() == ' + str(opts.keys()))
+        logger.debug('opts.keys() == %s ' % opts.keys())
 
         metas = opts['metas']
         
@@ -69,7 +69,7 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
         categories.update(metas.categories)
 
-        name_map = metas.name_map
+        name_map = default_name_map # metas.name_map
 
         retcode, names = self.get_names(opts)
 
@@ -79,15 +79,15 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
                                     )
                              ]
         component_names = list(name_map.keys()) + nicknameless_names
-        logger.debug('list(name_map.keys()) == ' + str(list(name_map.keys())))                           
-        logger.debug('nicknameless_names == ' + str(list(nicknameless_names)))                           
+        logger.debug('list(name_map.keys()) == %s ' % list(name_map.keys()))                         
+        logger.debug('nicknameless_names == %s ' % list(nicknameless_names))                           
 
-        logger.debug('component_names == ' + str(component_names))                           
-        logger.debug('type(component_names) == ' + str(type(component_names)))
+        logger.debug('component_names == %s ' % component_names)                           
+        logger.debug('type(component_names) == %s ' % type(component_names))
         unique_component_names = set(component_names)
-        logger.debug('unique_component_names == ' + str(unique_component_names))
+        logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        logger.debug('names == ' + str(names))
+        logger.debug('names == %s ' % names)
 
 
         if retcode == 0:

@@ -19,7 +19,7 @@ logger.addHandler(logging.NullHandler())
 def validate_name_map(name_map, known_tool_names):
     #type(dict, list) -> bool
     if not isinstance(name_map, dict):
-        msg = ('Name map is of type: ' + str(type(name_map))
+        msg = ('Name map is of type: %s ' % type(name_map)
               +'but is required to be a dictionary.  '
               )
         logger.error(msg)
@@ -92,7 +92,7 @@ def tool_factory(inst
     """
 
     if not isinstance(nick_name, Hashable):
-        msg = 'Non-hashable variable given for key' + str(nick_name)
+        msg = 'Non-hashable variable given for key %s ' % nick_name
         logger.error(msg)
         raise TypeError(msg)
 
@@ -101,7 +101,7 @@ def tool_factory(inst
         # in case nick_name is a tool_name
         
         if not isinstance(map_result, str):
-            logger.debug('Processing list of tools found for ' + nick_name)
+            logger.debug('Processing list of tools found for %s ' % nick_name)
             tools =[]
             #nick_name_opts = {}
             for mapped_name in map_result:
@@ -131,8 +131,8 @@ def tool_factory(inst
                               )
 
     try:
-        logger.debug('tools_dict[' + nick_name + '] == ' + str(tools_dict[nick_name]) )
-    except:
+        logger.debug('tools_dict[%s] == %s' % (nick_name, tools_dict[nick_name]) )
+    except KeyError:
         logger.debug(nick_name + ' not in tools_dict' )
 
     return tools_dict[nick_name] 

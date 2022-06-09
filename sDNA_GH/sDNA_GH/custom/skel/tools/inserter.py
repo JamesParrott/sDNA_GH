@@ -55,7 +55,7 @@ def connected_components(up_or_downstream, Params):
     IO = {'upstream':'Input', 'downstream':'Output'}
     connected = {'upstream':'Sources', 'downstream':'Recipients'}
     if up_or_downstream not in IO.keys():
-        msg = 'Value : ' + str(up_or_downstream) + ' not in ' + str(IO.keys())
+        msg = 'Value: %s not in %s ' % (up_or_downstream. IO.keys())
         logger.error(msg)
         raise ValueError(msg)
 
@@ -84,7 +84,7 @@ def are_any_GhPython_comps(up_or_downstream, names, Params):
                                   if type( comp.Attributes.GetTopLevel.DocObject ) 
                                   is GhPython.Component.ZuiPythonComponent
                                 ]
-    logger.debug('GhPython comp nicknames = ' + str(GhPython_compnt_NickNames))
+    logger.debug('GhPython comp nicknames = %s ' % GhPython_compnt_NickNames)
 
     return ( any(name in GhPython_compnt_NickNames 
                 for name in names
@@ -136,7 +136,7 @@ def already_inserted(up_or_downstream
                         ]
                     # tools_dict is keyed on all present nick names 
                     # as well as names of tools defined in this module
-    logger.debug('already_have_tool == ' + str(already_have_tool))
+    logger.debug('already_have_tool == %s ' % already_have_tool)
     #logger.debug(tools_dict)
     #if (  not are_GhPython_components_in_GH(compnt, already_have_tool) and
 
@@ -195,8 +195,8 @@ def insert_tool(before_or_after
                              # component that will be executed next.
                              # TODO: None in entire canvas is too strict?
             for i, tool in enumerate(tools):
-                logger.debug('is_target(tool) : ' + str(is_target(tool)))
-                logger.debug('tool : ' + str(tool))
+                logger.debug('is_target(tool) : %s ' % is_target(tool))
+                logger.debug('tool : %s ' % tool)
                 if before_or_after == 'after':
                     tools_run_anyway = tools[i:] 
                 else:
@@ -205,7 +205,7 @@ def insert_tool(before_or_after
                 if is_target(tool) and tool_to_insert not in tools_run_anyway:
                          # check tool not already inserted 
                          # in tools after specials
-                    logger.info('Inserting tool : ' + str(tool_to_insert))
+                    logger.info('Inserting tool : %s ' % tool_to_insert)
                     tools.insert(i + offset, tool_to_insert)
 
     

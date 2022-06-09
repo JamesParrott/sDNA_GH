@@ -83,7 +83,7 @@ class Output(object):
     def __call__(self, message, logging_level = "INFO", logging_dict = {}):
         #type: (str, str, dict, list) -> str
         
-        #print(s)
+        #logger.debug(s)
 
         if logging_dict == {} and hasattr(self, 'logger'): 
             logging_dict = dict( DEBUG = self.logger.debug
@@ -99,7 +99,7 @@ class Output(object):
         else:
             self.store(message, logging_level)
 
-        return logging_level + ' : ' + message + ' '
+        return '%s : %s ' % (logging_level, message)
 
     def __getattr__(self, attr):
         return functools.partial(self.__call__, logging_level = attr.upper())
@@ -316,7 +316,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     sc.doc = ghdoc #type: ignore
 
-    print(sDNA_GH_search_paths)
+    output.debug(sDNA_GH_search_paths)
 
     ModuleNameError
 

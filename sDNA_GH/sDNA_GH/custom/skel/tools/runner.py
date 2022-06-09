@@ -29,7 +29,7 @@ tools_dict = OrderedDict()
 
 class RunnableTool(ABC):    
                     #Template for tools that can be run by run_tools()
-                    # Subclass of this is only enforced if enforceABC == True,
+                    # Subclass of this is only enforced if enforceABC is True,
                     # to permit running of regular
                     # functions with attributes via ducktyping check
                     # in quacks_like
@@ -67,7 +67,7 @@ def run_tools(tools
                                  )
                     ]
     if invalid_tools:
-        msg = 'Invalid tool(s) == ' + str(invalid_tools)
+        msg = 'Invalid tool(s) == %s ' % invalid_tools
         logger.error(msg)
         raise ValueError(msg)
 
@@ -94,7 +94,7 @@ def run_tools(tools
 
         anon_pos_args = getattr(tool, 'anon_pos_args', [])
         anon_kwargs = getattr(tool, 'anon_kwargs', [])
-        logger.debug('vals_dict.keys() == ' + str(vals_dict.keys()))
+        logger.debug('vals_dict.keys() == %s ' % vals_dict.keys())
 
         pos_args, input_kw_args = prepare_args(function = tool
                                               ,params_dict = vals_dict
@@ -110,10 +110,11 @@ def run_tools(tools
         vals_dict.update( zip(tool.retvals, retvals) )
         retcode = vals_dict.get('retcode', 0)
 
-        logger.debug(' return code == ' + str(retcode))
+        logger.debug(' return code == %s ' % retcode)
         if retcode != 0:
             msg = ('Tool ' + tool.__class__.__name__
-                  +' exited with status code ' + str(retcode))
+                  +' exited with status code %s ' % retcode
+                  )
             logger.error(msg)
             raise Exception(msg)
 

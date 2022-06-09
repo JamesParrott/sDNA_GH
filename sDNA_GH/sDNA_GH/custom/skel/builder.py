@@ -54,7 +54,7 @@ def make_component(name
     success = GH_doc.AddObject(docObject = new_comp, update = False)
     return success
 
-class BuildComponents(ToolWithParams, RunnableTool): 
+class ComponentsBuilder(ToolWithParams, RunnableTool): 
     component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'd_h', 'w')
 
     def __call__(self

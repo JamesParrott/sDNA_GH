@@ -30,7 +30,8 @@ from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
                                          ,dict_from_DataTree_and_lists
                                          )
 from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, remove_whitespace
-from .custom.skel.basic.ghdoc import ghdoc                                       
+from .custom.skel.basic.ghdoc import ghdoc             
+from .custom.skel.tools.helpers.checkers import get_path                          
 from .custom.skel.tools.inserter import insert_tool
 from .custom.skel.tools.runner import run_tools, tools_dict, RunnableTool
 from .custom.skel.tools.name_mapper import tool_factory
@@ -186,28 +187,8 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
 
 #######################################################################################################################
 
-def get_path_to_users_working_file(inst = None):
-    #type(dict, type[any]) -> str
-    #refers to `magic' global ghdoc so needs to 
-    # be in module scope (imported above)
-    
-    path_getters = [lambda : Rhino.RhinoDoc.ActiveDoc.Path
-                   ,lambda : ghdoc.Path
-                   ,lambda : inst.ghdoc.Path  #e.g. via old Component decorator
-                   ,lambda : sc.doc.Path
-                   ,lambda : __file__
-                   ]
-    working_file = None
-    for path_getter in path_getters:
-        try:
-            working_file = path_getter()
-        except:
-            pass
-        if isinstance(working_file, str) and os.path.isfile(working_file):
-            break
-    return working_file 
 
-file_to_work_from = get_path_to_users_working_file()
+file_to_work_from = get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,pyshp_wrapper.ShpOptions
@@ -646,7 +627,7 @@ def override_all_opts(args_dict
           #                           ] + overrides(key)
 
     for key in dict_to_update:
-        output.debug('Overriding : ' + key)
+        output.debug('Overriding : %s' % key)
         if key in ('options','metas'):
             dict_to_update[key] = override_namedtuple(dict_to_update[key]
                                                      ,overrides_list(key)
@@ -678,7 +659,7 @@ def override_all_opts(args_dict
 #  the primary meta from the hardcoded defaults.
 
 if os.path.isfile(default_metas.config):
-    #print('Before override: message == '+opts['options'].message)
+    #logger.debug('Before override: message == '+opts['options'].message)
     override_all_opts(args_dict = default_metas._asdict() 
                      # to get installation config.toml only once, for this call
                      ,local_opts = module_opts #  mutates opts
@@ -690,7 +671,7 @@ if os.path.isfile(default_metas.config):
           + module_opts['options'].message
           )
 else:
-    output.warning('Config file: ' + default_metas.config + ' not found. ')    
+    output.warning('Config file: %s not found. ' % default_metas.config)    
 #
 #######################################################################
 
@@ -724,7 +705,7 @@ if ( module_name in sys.modules
     #
     logger = sys.modules[module_name].logger
     #
-    logger.warning('Using sys.modules[' + module_name + '].logger. '
+    logger.warning('Using sys.modules[%s].logger. ' % module_name
                   +'Previous import failed?'
                   )
 else:
@@ -1080,7 +1061,7 @@ class sDNA_GH_Component(SmartComponent):
             new_name = self.Attributes.Owner.NickName 
             # If this is run before __init__ has run, there is no 
             # Attributes attribute yet (ghenv.Component can be used instead).
-            logger.debug('new_name == ' + new_name)
+            logger.debug('new_name == %s' % new_name)
 
         if (isinstance(self.local_metas.nick_name, Sentinel)) or (
            self.opts['metas'].cmpnts_change and 
@@ -1093,7 +1074,7 @@ class sDNA_GH_Component(SmartComponent):
                        +self.local_metas.nick_name
                        )
             return 'Name updated'
-        logger.debug('Old name kept == ' + self.local_metas.nick_name)
+        logger.debug('Old name kept == %s' % self.local_metas.nick_name)
 
         return 'Old name kept'
 
@@ -1201,7 +1182,7 @@ class sDNA_GH_Component(SmartComponent):
         if (self.opts['metas'].update_path 
             or not os.path.isfile(self.opts['options'].path) ):
 
-            path = get_path_to_users_working_file(self)
+            path = get_path(fallback = __file__,  inst = self)
 
             self.opts['options'] = self.opts['options']._replace(path = path)
 
@@ -1237,7 +1218,7 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug(go)
 
-        if go == True: 
+        if go is True: 
             if not isinstance(self.tools, list):
                 msg = 'self.tools is not a list'
                 logger.error(msg)

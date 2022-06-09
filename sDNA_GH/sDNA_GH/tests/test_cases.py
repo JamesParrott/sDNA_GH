@@ -25,7 +25,7 @@ def create_random_grid_network(go, x, y, p):
             y1 += offset[1]; y2 += offset[1]
             store += [rs.AddLine([x1, y1, 0], [x2, y2, 0])]
 
-    if go == True:  #if Go is canonical in Rhino.  ==True stops execution on
+    if go is True:  #if Go is canonical in Rhino.  ==True stops execution on
                     # input of a truthy variable != True. 
                     # smart component should've already delistified go.
         M, N = map(floor,[M, N])
