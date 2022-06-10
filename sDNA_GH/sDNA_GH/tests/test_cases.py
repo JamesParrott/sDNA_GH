@@ -3,16 +3,20 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+
+import sys
+from random import random as random_num
+from math import floor
+
+try:
+    xrange #type: ignore
+except NameError:
+    range = xrange #type: ignore
+
 def create_random_grid_network(go, x, y, p):
     import rhinoscriptsyntax as rs
 
 
-    import sys
-    from random import random as random_num
-    from math import floor
-
-    if sys.version < '3':
-        range = xrange #type: ignore
 
     def grid_point_coords(n, m):
         for y in range(n):

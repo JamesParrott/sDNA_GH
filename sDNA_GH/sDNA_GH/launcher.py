@@ -6,28 +6,19 @@ __version__ = '0.02'
 import sys
 import os
 import functools
-from importlib import import_module
-
-def is_builtin(name):
-    #type(str) -> bool
-    """ Checks if a variable named name is in __builtins__, even if it's a dict
-    
-        In some Python implementations (such as in GhPython), __builtins__ is 
-        a dict, not a module as normal elsewhere.
-    """
-    return hasattr(__builtins__, 'reload') or (isinstance(__builtins__, dict)
-                                               and name in __builtins__ )
-
-if not is_builtin('reload'):
-    from importlib import reload 
-    # reload was builtin until Python 3.4
+import importlib
 
 
+import_module = importlib.import_module
+try:
+    reload #type: ignore
+except NameError:
+    reload = importlib.reload
 
-if not is_builtin('basestring'):
+try:
+    basestring #type: ignore
+except NameError:
     basestring = str
-    # basestring is the ABC of str and unicode in Python 2
-    # In Python 3 str supports unicode and there is no unicode type
 
 sDNA_GH_subfolder = 'sDNA_GH' 
 sDNA_GH_package = 'sDNA_GH'               

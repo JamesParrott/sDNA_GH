@@ -5,14 +5,9 @@ __version__ = '0.02'
 
 import sys
 import os
-import string
 from collections import namedtuple, OrderedDict
 
-import Rhino
-import scriptcontext as sc
-
-from .custom.options_manager import (any_clashes
-                                    ,load_toml_file
+from .custom.options_manager import (load_toml_file
                                     ,load_ini_file                             
                                     ,override_namedtuple  
                                     ,namedtuple_from_class
@@ -29,7 +24,7 @@ from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
                                          ,override_gdm
                                          ,dict_from_DataTree_and_lists
                                          )
-from .custom.skel.basic.smart_comp import SmartComponent, custom_retvals, remove_whitespace
+from .custom.skel.basic.smart_comp import SmartComponent
 from .custom.skel.basic.ghdoc import ghdoc             
 from .custom.skel.tools.helpers.checkers import get_path                          
 from .custom.skel.tools.inserter import insert_tool
@@ -42,7 +37,6 @@ from .custom.tools import (sDNA_GH_Tool
                           ,ShapefileWriter
                           ,ShapefileReader
                           ,UsertextWriter
-                        #   ,UsertextBaker
                           ,DataParser
                           ,ObjectsRecolourer
                           ,sDNA_ToolWrapper

@@ -3,21 +3,22 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
+
 import logging
-from collections import OrderedDict
 import itertools
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Iterable
+import collections
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
 else:
-    from collections.abc import Iterable
+    import collections.abc
+    Iterable = collections.abc.Iterable
 
 import rhinoscriptsyntax as rs
 from ghpythonlib import treehelpers as th
 from Grasshopper import DataTree
 
 
+OrderedDict = collections.OrderedDict
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

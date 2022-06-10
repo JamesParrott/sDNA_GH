@@ -3,17 +3,16 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
 import logging
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Iterable
+import collections
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
 else:
-    from collections.abc import Iterable
+    import collections.abc
+    Iterable = collections.abc.Iterable
 
 import GhPython
 
-from .helpers.funcs import tool_name
 
 
 logger = logging.getLogger(__name__)

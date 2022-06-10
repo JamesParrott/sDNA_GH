@@ -16,10 +16,10 @@ import os
 import logging
 from collections import namedtuple, OrderedDict
 # https://docs.python.org/2.7/library/collections.html#collections.namedtuple
-if sys.version_info.major >= 3: 
-    import configparser as ConfigParser # Python 3
-else:   
+try:  
     import ConfigParser # Python 2
+except ImportError:
+    import configparser as ConfigParser # Python 3
 
 from ..third_party.toml import decoder
 

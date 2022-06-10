@@ -3,13 +3,14 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
+
 import logging
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Iterable
+import collections
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
 else:
-    from collections.abc import Iterable
+    import collections.abc
+    Iterable = collections.abc.Iterable
 
 import GhPython
 import System.Drawing  # .Net / C# Classes.
@@ -18,6 +19,7 @@ import System.Drawing  # .Net / C# Classes.
 from .basic.ghdoc import ghdoc
 from .tools.runner import RunnableTool
 from .add_params import ToolWithParams
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

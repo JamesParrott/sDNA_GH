@@ -6,7 +6,6 @@ __version__ = '0.02'
 # from any iterable object and to any function
 
 
-import sys
 import os
 import re
 import logging
@@ -14,16 +13,15 @@ import locale
 from collections import OrderedDict
 from datetime import date
 import re
-from unicodedata import decimal
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Iterable
+import collections
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
 else:
-    from collections.abc import Iterable
+    import collections.abc
+    Iterable = collections.abc.Iterable
 
 
 import rhinoscriptsyntax as rs
-import scriptcontext as sc
 
 from ..third_party.PyShp import shapefile as shp  
                                   

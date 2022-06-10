@@ -3,7 +3,8 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import unittest, sys
+
+import unittest
 from os.path import dirname, join
 from time import asctime    
 from itertools import repeat, izip
@@ -62,7 +63,7 @@ class TestStringMethods(unittest.TestCase):
     
     def test_split(self):
         s = 'hello world'
-        logger.debug(s)
+        print(s)
         self.assertEqual(s.split(), ['hello', 'world'])
         
         # check that s.split fails when the separator is not a string

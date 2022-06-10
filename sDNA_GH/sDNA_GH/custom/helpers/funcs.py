@@ -13,17 +13,17 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
 import logging
+import warnings
 import itertools
 import math
-from collections import OrderedDict, Counter
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Sequence
+import collections
+if hasattr(collections, 'Sequence'):
+    Sequence = collections.Sequence 
 else:
-    from collections.abc import Sequence
-import warnings
+    import collections.abc
+    Sequence = collections.abc.Sequence
+OrderedDict, Counter = collections.OrderedDict, collections.Counter
 
 
 

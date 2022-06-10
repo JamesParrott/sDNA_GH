@@ -3,22 +3,22 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
+
 import logging
 from collections import OrderedDict
+import abc
 
-from abc import abstractmethod
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 4):
-    from abc import ABCMeta
-    class ABC(object):
-        __metaclass__ = ABCMeta
-else:
-    from abc import ABC
 
 from ..basic.smart_comp import prepare_args
 from ..basic.quacks_like import quacks_like
 
+
+if hasattr(abc, 'ABC'):
+    ABC = abc.ABC
+else:
+    class ABC(object):
+        __metaclass__ = abc.ABCMeta
+abstractmethod = abc.abstractmethod
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

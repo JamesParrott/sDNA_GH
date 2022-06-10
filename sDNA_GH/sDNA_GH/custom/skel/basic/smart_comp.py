@@ -24,24 +24,24 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-import sys
 import logging
 import inspect
-import sys
-from collections import OrderedDict
-from abc import abstractmethod
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 4):
-    from abc import ABCMeta
+import collections
+if hasattr(collections, 'Callable'):
+    Callable = collections.Callable 
+else:
+    import collections.abc
+    Callable = collections.abc.Callable
+import abc
+
+if hasattr(abc, 'ABC'):
+    ABC = abc.ABC
+else:
     class ABC(object):
-        __metaclass__ = ABCMeta
-else:
-    from abc import ABC
-if sys.version_info.major <= 2 or (
-   sys.version_info.major == 3 and sys.version_info.minor <= 3):
-    from collections import Callable
-else:
-    from collections.abc import Callable
+        __metaclass__ = abc.ABCMeta
+OrderedDict = collections.OrderedDict
+abstractmethod = abc.abstractmethod
+
 
 
 from ghpythonlib.componentbase import executingcomponent as component
