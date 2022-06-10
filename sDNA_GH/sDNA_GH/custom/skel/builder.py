@@ -1,4 +1,4 @@
-#! Grasshopper Python
+#! Grasshopper Python (Rhino3D)
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -17,8 +17,8 @@ import System.Drawing  # .Net / C# Classes.
                        # System is in Iron Python.  But System.Drawing is not.
 
 from .basic.ghdoc import ghdoc
-from .tools.runner import RunnableTool
-from .add_params import ToolWithParams
+from .tools import runner
+from . import add_params
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def make_component(name
     success = GH_doc.AddObject(docObject = new_comp, update = False)
     return success
 
-class ComponentsBuilder(ToolWithParams, RunnableTool): 
+class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool): 
     component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'd_h', 'w')
 
     def __call__(self

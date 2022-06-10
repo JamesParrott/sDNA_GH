@@ -1,5 +1,19 @@
-#! Grasshopper Python
+#! Grasshopper Python (Rhino3D)
 # -*- coding: utf-8 -*-
+
+""" Main sDNA_GH module imported by copies of launcher.py in the Grasshopper
+    component files.  All functionality is via the sDNA_GH_Component class, 
+    which Grasshopper reads from launcher.py and instantiates itself.  Multiple
+    components share the same imported instance of this module.  If it has not 
+    been changed, the same code in launcher.py is also imported here.
+
+    The default module options are defined here, and the main options override 
+    logic for the supported opts structure is defined in override_all_opts.
+
+    The function to import sDNA is defined here (update_sDNA()), but this is
+    passed to sDNA_Tool_Wrapper instances, the only things that call it.
+"""
+
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
@@ -7,47 +21,24 @@ import sys
 import os
 from collections import namedtuple, OrderedDict
 
-from .custom.options_manager import (load_toml_file
-                                    ,load_ini_file                             
-                                    ,override_namedtuple  
-                                    ,namedtuple_from_class
-                                    ,Sentinel  
-                                    ,error_raising_sentinel_factory
-                                    )
+from . import launcher
+from .custom import options_manager
 from .custom import logging_wrapper
 from .custom import pyshp_wrapper
-from .launcher import Output, load_modules
-from .custom.helpers.funcs import (first_item_if_seq
-                                  ,valid_re_normalisers
-                                  )
-from .custom.gdm_from_GH_Datatree import (gdm_from_DataTree_and_list
-                                         ,override_gdm
-                                         ,dict_from_DataTree_and_lists
-                                         )
-from .custom.skel.basic.smart_comp import SmartComponent
-from .custom.skel.basic.ghdoc import ghdoc             
-from .custom.skel.tools.helpers.checkers import get_path                          
-from .custom.skel.tools.inserter import insert_tool
-from .custom.skel.tools.runner import run_tools, tools_dict, RunnableTool
-from .custom.skel.tools.name_mapper import tool_factory
-from .custom.skel.add_params import add_tool_params
-from .custom.tools import (sDNA_GH_Tool
-                          ,RhinoObjectsReader
-                          ,UsertextReader
-                          ,ShapefileWriter
-                          ,ShapefileReader
-                          ,UsertextWriter
-                          ,DataParser
-                          ,ObjectsRecolourer
-                          ,sDNA_ToolWrapper
-                          ,sDNA_GeneralDummyTool
-                          ,ConfigManager
-                          )
-from .dev_tools.dev_tools import ToolNamesGetter, sDNA_GH_Builder
+from .custom.helpers import funcs 
+from .custom import gdm_from_GH_Datatree
+from .custom.skel.basic import smart_comp
+from .custom.skel.basic.ghdoc import ghdoc #GhPython 'magic' global variable
+from .custom.skel.tools.helpers import checkers                         
+from .custom.skel.tools import inserter 
+from .custom.skel.tools import runner
+from .custom.skel.tools import name_mapper
+from .custom.skel import add_params
+from .custom import tools
+from .dev_tools import dev_tools
 
 
-
-output = Output()
+output = launcher.Output()
 
 
 
@@ -82,10 +73,9 @@ default_name_map = dict(Read_Geom = 'get_Geom'
                        #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
                        )
 
-class HardcodedMetas(sDNA_ToolWrapper.opts['metas']): 
-    config = os.path.join(os.path.dirname(  os.path.dirname(__file__)  )
-                         ,r'config.toml'  
-                         )
+class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
+                    ,tools.ConfigManager.opts['metas']
+                    ): 
     add_new_opts = False
     cmpnts_change = False
     strict_namedtuples = True
@@ -115,7 +105,7 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
     update_path = True
     ##########################################################################
     #
-    # Override for sDNA_ToolWrapper
+    # Override for tools.sDNA_ToolWrapper
     #
     show_all = True
     ###########################################################################
@@ -182,18 +172,18 @@ class HardcodedMetas(sDNA_ToolWrapper.opts['metas']):
 #######################################################################################################################
 
 
-file_to_work_from = get_path(fallback = __file__)
+file_to_work_from = checkers.get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,pyshp_wrapper.ShpOptions
-                      ,RhinoObjectsReader.opts['options']
-                      ,ShapefileWriter.opts['options']
-                      ,ShapefileReader.opts['options']
-                      ,UsertextWriter.opts['options']
-                    #   ,UsertextBaker.opts['options']
-                      ,DataParser.opts['options']
-                      ,ObjectsRecolourer.opts['options']
-                      ,sDNA_ToolWrapper.opts['options']
+                      ,tools.RhinoObjectsReader.opts['options']
+                      ,tools.ShapefileWriter.opts['options']
+                      ,tools.ShapefileReader.opts['options']
+                      ,tools.UsertextWriter.opts['options']
+                    #   ,tools.UsertextBaker.opts['options']
+                      ,tools.DataParser.opts['options']
+                      ,tools.ObjectsRecolourer.opts['options']
+                      ,tools.sDNA_ToolWrapper.opts['options']
                       ):            
     ###########################################################################
     #System
@@ -229,10 +219,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     ##########################################################################
     #
-    # Overrides for sDNA_ToolWrapper
+    # Overrides for tools.sDNA_ToolWrapper
     #
-    sDNAUISpec = error_raising_sentinel_factory('No sDNA module: sDNAUISpec '
-                                               +'loaded yet. '
+    sDNAUISpec = options_manager.error_raising_sentinel_factory('No sDNA module:'
+                                               +' sDNAUISpec loaded yet. '
                                                ,'Module is loaded from the '
                                                +'first files named in '
                                                +'metas.sDNAUISpec and '
@@ -240,15 +230,15 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                +'found in a path in '
                                                +'metas.sDNA_paths. '
                                                )
-    run_sDNA = error_raising_sentinel_factory('No sDNA module: '
-                                             +'runsdnacommand loaded yet. '
-                                             ,'Module is loaded from the '
-                                             +'first files named in '
-                                             +'metas.sDNAUISpec and '
-                                             +'metas.runsdnacommand both '
-                                             +'found in a path in '
-                                             +'metas.sDNA_paths. '
-                                             )
+    run_sDNA = options_manager.error_raising_sentinel_factory('No sDNA module:'
+                                               +' run_sDNA loaded yet. '
+                                               ,'Module is loaded from the '
+                                               +'first files named in '
+                                               +'metas.sDNAUISpec and '
+                                               +'metas.runsdnacommand both '
+                                               +'found in a path in '
+                                               +'metas.sDNA_paths. '
+                                               )
     python_exe = r'C:\Python27\python.exe' 
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
@@ -328,32 +318,34 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for DataParser
     #   
     field = 'BtEn'
-    plot_max = Sentinel('plot_max is automatically calculated by' 
-                       +' sDNA_GH unless overridden.  '
-                       )
-    plot_min = Sentinel('plot_min is automatically calculated by' 
-                       +' sDNA_GH unless overridden.  '
-                       )
+    plot_max = options_manager.Sentinel('plot_max is automatically calculated'
+                                       +' by sDNA_GH unless overridden.  '
+                                       )
+    plot_min = options_manager.Sentinel('plot_min is automatically calculated'
+                                       +' by sDNA_GH unless overridden.  '
+                                       )
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
-    if re_normaliser not in valid_re_normalisers:
+    if re_normaliser not in funcs.valid_re_normalisers:
         raise ValueError('%s must be in %s' 
-                        %(re_normaliser, valid_re_normalisers)
+                        %(re_normaliser, funcs.valid_re_normalisers)
                         )
-    class_bounds = [Sentinel('class_bounds is automatically calculated by' 
-                            +' sDNA_GH unless overridden.  '
-                            )
+    class_bounds = [options_manager.Sentinel('class_bounds is automatically '
+                                            +'calculated by sDNA_GH unless '
+                                            +'overridden.  '
+                                            )
                    ] 
     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
 
     num_classes = 7
     class_spacing = 'quantile' 
-    #_valid_class_spacings = valid_re_normalisers + ('quantile', 'cluster', 'nice')
-    if class_spacing not in DataParser.opts['options']._valid_class_spacings:
+    #_valid_class_spacings = (funcs.valid_re_normalisers
+    #                         + ('quantile', 'cluster', 'nice'))
+    if class_spacing not in tools.DataParser.opts['options']._valid_class_spacings:
         raise ValueError('%s must be in %s' 
                         %(class_spacing
-                         ,DataParser.opts['options']._valid_class_spacings
+                         ,tools.DataParser.opts['options']._valid_class_spacings
                          )
                         )
     first_leg_tag_str = 'below {upper}'
@@ -372,13 +364,19 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #         
     # Overrides for ObjectsRecolourer
     #   
-    leg_extent = Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
-    bbox = Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ')  # [xmin, ymin, xmax, ymax]
+    leg_extent = options_manager.Sentinel('leg_extent is automatically '
+                                         +'calculated by sDNA_GH unless '
+                                         +'overridden.  '
+                                         ) # [xmin, ymin, xmax, ymax]
+    bbox = options_manager.Sentinel('bbox is automatically '
+                                   +'calculated by sDNA_GH unless '
+                                   +'overridden.  '
+                                   )  # [xmin, ymin, xmax, ymax]
     Col_Grad = False
     Col_Grad_num = 5
-    rgb_max = (155, 0, 0) #990000
-    rgb_min = (0, 0, 125) #3333cc
-    rgb_mid = (0, 155, 0) # guessed
+    rgb_max = [155, 0, 0] #990000
+    rgb_min = [0, 0, 125] #3333cc
+    rgb_mid = [0, 155, 0] # guessed
     line_width = 4 # milimetres? 
     ###########################################################################
     #
@@ -391,7 +389,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 class HardcodedLocalMetas(object):
     sync = True    
     read_only = True
-    nick_name = error_raising_sentinel_factory('Nick name has not been read '
+    nick_name = options_manager.error_raising_sentinel_factory('Nick name has '
+                                              +'not been read '
                                               +'from component yet! '
                                               ,'nick_name will automatically '
                                               +'be updated on each component.'
@@ -400,7 +399,7 @@ class HardcodedLocalMetas(object):
 
 
 
-
+namedtuple_from_class = options_manager.namedtuple_from_class
 
 default_metas = namedtuple_from_class(HardcodedMetas, 'Metas')
 default_options = namedtuple_from_class(HardcodedOptions, 'Options')
@@ -423,6 +422,7 @@ output.debug(module_opts['options'].message)
 
 #########################################################################
 #
+override_namedtuple = options_manager.override_namedtuple
 #
 def override_all_opts(args_dict
                      ,local_opts # mutated
@@ -482,17 +482,21 @@ def override_all_opts(args_dict
                 args_metas[arg_name] = arg_val
             elif arg_name in options._fields:   
                 args_options[arg_name] = arg_val
-            elif arg_name in getattr( local_opts.get(name
-                                                    ,{}
-                                                    ).get(sDNA()
-                                                         ,{} 
-                                                         )
-                                    ,'_fields' 
-                                    ,{} 
-                                    ): 
-                args_tool_options[arg_name] = arg_val
             elif arg_name in local_metas._fields:
                 args_local_metas[arg_name] = arg_val
+            else:
+                args_tool_options[arg_name] = arg_val
+
+            # elif any(arg_name in tools.get_tool_opts(name, opts, tool, sDNA())    
+            # elif arg_name in getattr( local_opts.get(name
+            #                                         ,{}
+            #                                         ).get(sDNA()
+            #                                              ,{} 
+            #                                              )
+            #                         ,'_fields' 
+            #                         ,{} 
+            #                         ): 
+            #     args_tool_options[arg_name] = arg_val
 
     def kwargs(key, local_opts):
         d = dict( 
@@ -519,14 +523,14 @@ def override_all_opts(args_dict
         file_ext = path.rpartition('.')[2]
         if file_ext == 'ini':
             output.debug('Loading options from .ini file: %s' % path)
-            config_file_override =  load_ini_file(path
+            config_file_override =  options_manager.load_ini_file(path
                                                  ,**kwargs(''
                                                           ,local_opts
                                                           ) 
                                                  )
         elif file_ext == 'toml':
             output.debug('Loading options from .toml file: %s' % path)
-            config_file_override =  load_toml_file( path )
+            config_file_override =  options_manager.load_toml_file( path )
         else:
             output.debug('config_file_override = %s' % config_file_override)
     else:
@@ -534,12 +538,12 @@ def override_all_opts(args_dict
         file_ext = ''
 
 
-    def config_file_reader(key):
+    def config_file_reader(key, tool = None, sDNA = None):
         #type(str)->[dict/file object]
         if (isinstance(config_file_override, dict) 
             and key in config_file_override  ):
             #
-            return config_file_override[key] 
+            return tools.get_tool_opts(key, config_file_override, tool, sDNA)
         else:
             return config_file_override
 
@@ -578,10 +582,17 @@ def override_all_opts(args_dict
 
     sub_args_dict = {'metas' : args_metas
                     ,'options' : args_options
-                    ,name : args_tool_options
                     }
 
-    def overrides_list(key):
+    def get_deepest_dict(d, key, tool = None):
+            retval = module_opts.get( key,  {} )
+            if isinstance(retval, dict):
+                retval = retval.get(tool, retval)
+            if isinstance(retval, dict):
+                retval = retval.get( sDNA(),  retval )    
+            return retval
+
+    def overrides_list(key, tool = None, sDNA = None):
         # type (str) -> list
         if (local_metas.sync or 
             not local_metas.read_only):
@@ -589,16 +600,16 @@ def override_all_opts(args_dict
         else: 
             #if not synced but still reading from module opts, 
             # then add module opts to overrides
-            retval = [    module_opts.get( key,  {} ).get( sDNA(),  {} )    ]
+            retval = [tools.get_tool_opts(key, module_opts, tool, sDNA)]
 
         
-        ext_opts = external_opts.get( key,  {} )
-        if key not in ('options','metas') :
-            ext_opts = ext_opts.get( sDNA(),  {} )
+        # ext_opts = external_opts.get( key,  {} )
+        # if key not in ('options','metas') :
+        #     ext_opts = ext_opts.get( sDNA(),  {} )
         
-        retval += [ext_opts
-                  ,config_file_reader(key)
-                  ,sub_args_dict.get(key, {})
+        retval += [tools.get_tool_opts(key, external_opts, tool, sDNA)
+                  ,config_file_reader(key, tool, sDNA)
+                  ,sub_args_dict.get(key, args_tool_options)
                   ]
 
 
@@ -628,18 +639,19 @@ def override_all_opts(args_dict
                                                      ,**kwargs(key, local_opts) 
                                                      ) 
         else:
-            if sDNA() in dict_to_update[key]:
-                dict_to_update[key][sDNA()] = override_namedtuple(
-                                                    dict_to_update[key][sDNA()]
-                                                   ,overrides_list(key)
+            sDNA = sDNA()
+            if sDNA in dict_to_update[key]:
+                dict_to_update[key][sDNA] = override_namedtuple(
+                                                    dict_to_update[key][sDNA]
+                                                   ,overrides_list(key, tool = None, sDNA = sDNA)
                                                    ,**kwargs(key, local_opts) 
                                                                  )
             else:
                 for tool in dict_to_update[key]:
-                    dict_to_update[key][tool][sDNA()] = override_namedtuple( 
-                                                          dict_to_update[key][tool][sDNA()]
-                                                         ,overrides_list(key) # + '_tool'
-                                                         ,**kwargs(key, local_opts) # + '_tool'  
+                    dict_to_update[key][tool][sDNA] = override_namedtuple( 
+                                                          dict_to_update[key][tool][sDNA]
+                                                         ,overrides_list(key, tool, sDNA) 
+                                                         ,**kwargs(key, local_opts)  
                                                                            ) 
                                                     # TODO: add in tool name to key
     return local_metas
@@ -756,34 +768,34 @@ do_not_remove += default_local_metas._fields
 #########################################################
 
 
-get_Geom = RhinoObjectsReader()
-read_Usertext = UsertextReader()
-write_shapefile = ShapefileWriter()
-read_shapefile = ShapefileReader()
-write_Usertext = UsertextWriter()
+get_Geom = tools.RhinoObjectsReader()
+read_Usertext = tools.UsertextReader()
+write_shapefile = tools.ShapefileWriter()
+read_shapefile = tools.ShapefileReader()
+write_Usertext = tools.UsertextWriter()
 # bake_Usertext = UsertextBaker()
-parse_data = DataParser()
-recolour_objects = ObjectsRecolourer()
-get_tool_names = ToolNamesGetter()
-build_components = sDNA_GH_Builder()
-sDNA_General_dummy_tool = sDNA_GeneralDummyTool()
-load_config = ConfigManager()
+parse_data = tools.DataParser()
+recolour_objects = tools.ObjectsRecolourer()
+get_tool_names = dev_tools.ToolNamesGetter()
+build_components = dev_tools.sDNA_GH_Builder()
+sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
+load_config = tools.ConfigManager()
 
-tools_dict.update(get_Geom = get_Geom
-                 ,read_Usertext = read_Usertext
-                 ,write_shapefile = write_shapefile
-                 ,read_shapefile = read_shapefile
-                 ,write_Usertext = write_Usertext
-                #  ,bake_Usertext = bake_Usertext
-                 ,parse_data = parse_data
-                 ,recolour_objects = recolour_objects 
-                 ,get_comp_names = get_tool_names
-                 ,Build_components = build_components
-                 ,sDNA_General = sDNA_General_dummy_tool
-                 ,load_config = load_config
-                 )
+runner.tools_dict.update(get_Geom = get_Geom
+                        ,read_Usertext = read_Usertext
+                        ,write_shapefile = write_shapefile
+                        ,read_shapefile = read_shapefile
+                        ,write_Usertext = write_Usertext
+                        #  ,bake_Usertext = bake_Usertext
+                        ,parse_data = parse_data
+                        ,recolour_objects = recolour_objects 
+                        ,get_comp_names = get_tool_names
+                        ,Build_components = build_components
+                        ,sDNA_General = sDNA_General_dummy_tool
+                        ,load_config = load_config
+                        )
 
-def update_sDNA(opts, load_modules = load_modules, logger = logger):
+def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = logger):
     #type(dict, function, type[any]) -> tuple(str)
     """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
         opt['options'], when a new
@@ -805,20 +817,17 @@ def update_sDNA(opts, load_modules = load_modules, logger = logger):
                 )
 
 
-    requested_sDNA = (metas.sDNAUISpec
-                     ,metas.runsdnacommand
-                     )
-    # This is just a tuple of strings to track and compare previously 
-    # imported versions; by default also 'sDNAUISpec' and 'runsdnacommand'.  
-    # To load new modules the user needs to give them new names, 
-    # and specify they want to load these names in these meta options.
+    requested_sDNA = (metas.sDNAUISpec, metas.runsdnacommand)
+
+    # To load new sDNA modules, specify the new module names in
+    # metas.sDNAUISpec and metas.runsdnacommand
 
     # If they are loaded successfully the actual corresponding modules are
     # in options.sDNAUISpec and options.run_sDNA
 
-    if ( isinstance(options.sDNAUISpec, Sentinel) or
-            isinstance(options.run_sDNA, Sentinel) or
-            (options.sDNAUISpec.__name__
+    if ( isinstance(options.sDNAUISpec, options_manager.Sentinel) or
+         isinstance(options.run_sDNA, options_manager.Sentinel) or
+         (options.sDNAUISpec.__name__
                     ,options.run_sDNA.__name__) != requested_sDNA ):
         #
         # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
@@ -843,22 +852,22 @@ def update_sDNA(opts, load_modules = load_modules, logger = logger):
                                                                       +"metas.sDNAUISpec and metas.runsdnacommand "
                                                                       +"respectively. "
                                               )
-
+        new_sDNA_key = tools.sDNA_key(opts)
+        opts['metas'] = opts['metas']._replace(sDNA = new_sDNA_key)
         opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
                                                   ,run_sDNA = run_sDNA 
                                                   ) 
         # we want to mutate the value in the original dict 
         # - so we can't use options for this assignment.  Latter for clarity.
 
-    return requested_sDNA
 
 
 def cache_sDNA_tool(compnt # instead of self
                    ,nick_name
                    ,mapped_name
-                   ,name_map
-                   ,tools_dict
-                   ,update_sDNA = update_sDNA
+                   ,name_map = default_metas.name_map
+                   ,tools_dict = runner.tools_dict
+                   ,update_sDNA = import_sDNA_modules
                    ):
     #type(type[any], str, str, dict, dict, function) -> None
     """ Custom tasks to be carried out by tool factory when no tool named 
@@ -870,7 +879,7 @@ def cache_sDNA_tool(compnt # instead of self
         Adds in any new tool option fields to the list of Params not to 
         be removed.  """
     sDNA = compnt.opts['metas'].sDNA
-    sDNA_tool = sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts, update_sDNA)
+    sDNA_tool = tools.sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts, update_sDNA)
     tools_dict[nick_name] =  sDNA_tool
     compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   
 
@@ -878,10 +887,10 @@ def cache_sDNA_tool(compnt # instead of self
 
 
 
-sDNA_GH_tools = list(tools_dict.values())
+sDNA_GH_tools = list(runner.tools_dict.values())
 
 
-class sDNA_GH_Component(SmartComponent):
+class sDNA_GH_Component(smart_comp.SmartComponent):
 
     """ The main sDNA_GH Grasshopper Component class.  
     
@@ -928,61 +937,61 @@ class sDNA_GH_Component(SmartComponent):
             return checker
 
         if options.auto_write_Shp:
-            insert_tool('before'
-                       ,tools
-                       ,Params
-                       ,tool_to_insert = write_shapefile
-                       ,is_target = is_class(sDNA_ToolWrapper)
-                       ,not_a_target = sDNA_GH_tools
-                       ,tools_dict = tools_dict
-                       ,name_map = name_map
-                       )
+            inserter.insert_tool('before'
+                                ,tools
+                                ,Params
+                                ,tool_to_insert = write_shapefile
+                                ,is_target = is_class(tools.sDNA_ToolWrapper)
+                                ,not_a_target = sDNA_GH_tools
+                                ,tools_dict = runner.tools_dict
+                                ,name_map = name_map
+                                )
 
         if options.auto_read_Usertext:
-            insert_tool('before'
-                       ,tools
-                       ,Params
-                       ,tool_to_insert = read_Usertext
-                       ,is_target = is_class(ShapefileWriter)
-                       ,not_a_target = []
-                       ,tools_dict = tools_dict
-                       ,name_map = name_map
-                       )   
+            inserter.insert_tool('before'
+                                ,tools
+                                ,Params
+                                ,tool_to_insert = read_Usertext
+                                ,is_target = is_class(tools.ShapefileWriter)
+                                ,not_a_target = []
+                                ,tools_dict = runner.tools_dict
+                                ,name_map = name_map
+                                )   
 
         if options.auto_get_Geom:
-            insert_tool('before'
-                       ,tools
-                       ,Params
-                       ,tool_to_insert = get_Geom
-                       ,is_target = is_class(UsertextReader)
-                       ,not_a_target = []
-                       ,tools_dict = tools_dict
-                       ,name_map = name_map
-                       )   
+            inserter.insert_tool('before'
+                                ,tools
+                                ,Params
+                                ,tool_to_insert = get_Geom
+                                ,is_target = is_class(tools.UsertextReader)
+                                ,not_a_target = []
+                                ,tools_dict = runner.tools_dict
+                                ,name_map = name_map
+                                )   
 
         if options.auto_read_Shp:
-            insert_tool('after'
-                       ,tools
-                       ,Params
-                       ,tool_to_insert = read_shapefile
-                       ,is_target = is_class(sDNA_ToolWrapper)
-                       ,not_a_target = sDNA_GH_tools
-                       ,tools_dict = tools_dict
-                       ,name_map = name_map
-                       )
+            inserter.insert_tool('after'
+                                ,tools
+                                ,Params
+                                ,tool_to_insert = read_shapefile
+                                ,is_target = is_class(tools.sDNA_ToolWrapper)
+                                ,not_a_target = sDNA_GH_tools
+                                ,tools_dict = runner.tools_dict
+                                ,name_map = name_map
+                                )
         
       
         
         if options.auto_plot_data: # already parses if Data not all colours
-            insert_tool('after'                
-                       ,tools
-                       ,Params
-                       ,tool_to_insert = recolour_objects
-                       ,is_target = is_class(ShapefileReader)
-                       ,not_a_target = []
-                       ,tools_dict = tools_dict
-                       ,name_map = name_map
-                       ) 
+            inserter.insert_tool('after'                
+                                ,tools
+                                ,Params
+                                ,tool_to_insert = recolour_objects
+                                ,is_target = is_class(tools.ShapefileReader)
+                                ,not_a_target = []
+                                ,tools_dict = runner.tools_dict
+                                ,name_map = name_map
+                                ) 
                                           
         return tools
 
@@ -1006,12 +1015,12 @@ class sDNA_GH_Component(SmartComponent):
 
         logger.debug('Updating Params: %s ' % tools)
 
-        result = add_tool_params(Params
-                                ,tools
-                                ,do_not_add
-                                ,do_not_remove
-                                ,wrapper = self.script
-                                )
+        result = add_params.add_tool_params(Params
+                                           ,tools
+                                           ,do_not_add
+                                           ,do_not_remove
+                                           ,wrapper = self.script
+                                           )
 
         return result
 
@@ -1022,12 +1031,12 @@ class sDNA_GH_Component(SmartComponent):
         if nick_name is None:
             nick_name = self.local_metas.nick_name
 
-        tools = tool_factory(inst = self
-                            ,nick_name = nick_name
-                            ,name_map = self.opts['metas'].name_map
-                            ,tools_dict = tools_dict
-                            ,tool_not_found = cache_sDNA_tool
-                            )
+        tools = name_mapper.tool_factory(inst = self
+                                        ,nick_name = nick_name
+                                        ,name_map = self.opts['metas'].name_map
+                                        ,tools_dict = runner.tools_dict
+                                        ,tool_not_found = cache_sDNA_tool
+                                        )
         # The component nick_name
         # is mapped to a tool_name or list of tool_name via name_map. 
         # cache_sDNA_tool is defined in this module.  It is called
@@ -1057,9 +1066,9 @@ class sDNA_GH_Component(SmartComponent):
             # Attributes attribute yet (ghenv.Component can be used instead).
             logger.debug('new_name == %s' % new_name)
 
-        if (isinstance(self.local_metas.nick_name, Sentinel)) or (
-           self.opts['metas'].cmpnts_change and 
-           self.local_metas.nick_name != new_name ):  
+        if ( (isinstance(self.local_metas.nick_name, options_manager.Sentinel)) 
+              or (self.opts['metas'].cmpnts_change 
+                  and self.local_metas.nick_name != new_name )):  
             #
             self.local_metas = self.local_metas._replace(nick_name = new_name)
             self.logger = logger.getChild(self.local_metas.nick_name)
@@ -1075,7 +1084,7 @@ class sDNA_GH_Component(SmartComponent):
 
     def __init__(self, *args, **kwargs):
         logger.debug('Calling sDNA_GH_Components parent initialiser')
-        SmartComponent.__init__(self, *args, **kwargs)
+        super(smart_comp.SmartComponent, self).__init__(self, *args, **kwargs)
         self.ghdoc = ghdoc
         # self.update_sDNA() moved to cache_sDNA_tool
 
@@ -1091,7 +1100,7 @@ class sDNA_GH_Component(SmartComponent):
         logger.debug('self.script started... \n')
         #logger.debug(kwargs)
 
-        go = first_item_if_seq(kwargs.get('go', False), False) 
+        go = funcs.first_item_if_seq(kwargs.get('go', False), False) 
              # Input Params set 
              # to list acess so
              # strip away outer 
@@ -1100,26 +1109,22 @@ class sDNA_GH_Component(SmartComponent):
         Geom = kwargs.get('geom', None)
 
         if 'file' in kwargs:
-            kwargs['f_name'] = first_item_if_seq(kwargs['file'], '')
+            kwargs['f_name'] = funcs.first_item_if_seq(kwargs['file'], '')
         elif 'f_name' not in kwargs:
             kwargs['f_name'] = ''
         else:
-            kwargs['f_name'] = first_item_if_seq(kwargs['f_name'], '')
+            kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
 
-        external_opts = first_item_if_seq(kwargs.pop('opts'
-                                                    ,{}
-                                                    )
-                                         ,{}
-                                         )
+        external_opts = funcs.first_item_if_seq(kwargs.pop('opts', {}), {})
 
-        external_local_metas = first_item_if_seq(kwargs.pop('local_metas'
-                                                           ,empty_NT
-                                                           )
-                                                ,empty_NT
-                                                )
+        external_local_metas = funcs.first_item_if_seq(kwargs.pop('local_metas'
+                                                                 ,empty_NT
+                                                                 )
+                                                      ,empty_NT
+                                                      )
         logger.debug(external_opts)
 
-        gdm = first_item_if_seq(kwargs.get('gdm', {}))
+        gdm = funcs.first_item_if_seq(kwargs.get('gdm', {}))
 
         logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
@@ -1156,7 +1161,6 @@ class sDNA_GH_Component(SmartComponent):
 
         
         synced = self.local_metas.sync
-        old_sDNA = self.opts['metas'].sDNA
         #######################################################################
         logger.debug('kwargs == %s ' % kwargs)
         self.local_metas = override_all_opts(
@@ -1176,7 +1180,7 @@ class sDNA_GH_Component(SmartComponent):
         if (self.opts['metas'].update_path 
             or not os.path.isfile(self.opts['options'].path) ):
 
-            path = get_path(fallback = __file__,  inst = self)
+            path = checkers.get_path(fallback = __file__,  inst = self)
 
             self.opts['options'] = self.opts['options']._replace(path = path)
 
@@ -1189,10 +1193,10 @@ class sDNA_GH_Component(SmartComponent):
                     self.opts = self.opts.copy() #desync
                     #
 
-        if self.opts['metas'].sDNA != old_sDNA:
+        if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:
             has_any_sDNA_tools = False
             for tool in self.tools:
-                if isinstance(tool, sDNA_ToolWrapper):
+                if isinstance(tool, tools.sDNA_ToolWrapper):
                     has_any_sDNA_tools = True
                     tool.update_tool_opts_and_syntax()
                     # this isn't necessary just to run these tools later.
@@ -1219,10 +1223,10 @@ class sDNA_GH_Component(SmartComponent):
                 raise TypeError(msg)
 
             invalid_tools = [tool for tool in self.tools 
-                                  if not isinstance(tool, RunnableTool)
+                                  if not isinstance(tool, runner.RunnableTool)
                             ]
             if invalid_tools:
-                msg = ('Tools are not RunnableTool : %s' % invalid_tools)
+                msg = ('Tools are not runner.RunnableTool : %s' % invalid_tools)
                 logger.error(msg)
                 raise ValueError(msg)
 
@@ -1230,7 +1234,9 @@ class sDNA_GH_Component(SmartComponent):
 
 
 
-            geom_data_map = gdm_from_DataTree_and_list(Geom, Data)
+            geom_data_map = gdm_from_GH_Datatree.gdm_from_DataTree_and_list(Geom
+                                                                           ,Data
+                                                                           )
 
 
 
@@ -1243,7 +1249,8 @@ class sDNA_GH_Component(SmartComponent):
                         % geom_data_map.items()[:3]
                         )
 
-            gdm = override_gdm(gdm
+            gdm = gdm_from_GH_Datatree.override_gdm(
+                                        gdm
                                        ,geom_data_map
                                        ,self.opts['options'].merge_subdicts
                                        )
@@ -1255,12 +1262,14 @@ class sDNA_GH_Component(SmartComponent):
             kwargs['gdm'] = gdm
 
             ##################################################################
-            ret_vals_dict = run_tools(self.tools, kwargs)
+            ret_vals_dict = runner.run_tools(self.tools, kwargs)
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
             if isinstance(gdm, dict):
                 logger.debug('Converting gdm to Data and Geometry')
-                (NewData, NewGeometry) = dict_from_DataTree_and_lists(gdm)
+                (NewData
+                ,NewGeometry
+                ) = gdm_from_GH_Datatree.dict_from_DataTree_and_lists(gdm)
                                         
             else:
                 NewData, NewGeometry = None, None
@@ -1308,7 +1317,7 @@ class sDNA_GH_Component(SmartComponent):
                               ]
                              )
         return ret_args
-    script.input_params = lambda : sDNA_GH_Tool.params_list(['go', 'opts'])
-    script.output_params = lambda : sDNA_GH_Tool.params_list(['OK', 'opts'])
+    script.input_params = lambda : tools.sDNA_GH_Tool.params_list(['go', 'opts'])
+    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['OK', 'opts'])
 
 

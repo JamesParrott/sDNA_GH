@@ -1,4 +1,4 @@
-#! Grasshopper Python
+#! Grasshopper Python (Rhino3D)
 # -*- coding: utf-8 -*-
 
 """ A framework to build 'Smart' Components for Grasshopper.
@@ -125,7 +125,7 @@ def custom_retvals(retval_names
 #                   ,frames_back = 1
 #                   ):
 #     #type(list[str], list, bool, int) -> tuple(type[any])
-#     """ To get inspect.inspect.currentframe to target the correct scope,
+#     """ To get inspect.currentframe to target the correct scope,
 #         if you wrap this function in n functions, that are called from 
 #         the target call it with frames_back = n"""
 #     if sources is None:
@@ -298,17 +298,6 @@ def custom_inputs_class_deco(BaseComponent
                     params_dict.setdefault(key, val)
         # If tools accept **kwargs or *args
         # duped kwargs or args could be a problem here. ymmv.
-
-
-            # if 'Geom' in params_dict:
-            #     Geom = params_dict['Geom']
-            #     from ..tools.helpers.checkers import get_sc_doc_of_obj
-            #     logger.debug('Main: ')
-            #     logger.debug(Geom[0])
-            #     import rhinoscriptsyntax as rs
-            #     logger.debug('PolylineVertices: %s ' % [list(y) for y in rs.PolylineVertices(Geom[0])] ))
-            #     logger.debug(get_sc_doc_of_obj(Geom[0]))
-            #     raise Exception('Break point')
 
             pos_args, args_dict = prepare_args(self.script
                                               ,params_dict = params_dict

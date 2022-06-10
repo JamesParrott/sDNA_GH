@@ -1,14 +1,15 @@
-#! Grasshopper Python
+#! Grasshopper Python (Rhino3D)
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
 
-from ..custom.skel.tools.name_mapper import validate_name_map
-from ..custom.tools import sDNA_GH_Tool
-from ..main import tools_dict, update_sDNA, default_name_map
-from ..custom.skel.builder import ComponentsBuilder
+from ..custom.skel.tools import name_mapper
+from ..custom import tools
+from ..custom.skel.tools import runner
+from .. import main
+from ..custom.skel import builder
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -16,7 +17,7 @@ logger.addHandler(logging.NullHandler())
 
 
 
-class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
+class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
 
     """ Gets list of Tool Names from tools_dict and sDNA.  """
 
@@ -28,11 +29,11 @@ class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
         #logger.debug(opts)
         name_map = opts['metas'].name_map
         
-        names = list(tools_dict.keys())
+        names = list(runner.tools_dict.keys())
         sDNAUISpec = opts['options'].sDNAUISpec
         names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
-        retcode = 0 if validate_name_map(name_map, names) else 1
+        retcode = 0 if name_mapper.validate_name_map(name_map, names) else 1
         logger.debug('Returning from ReturnComponentNames.  ')
 
         locs = locals().copy()
@@ -44,8 +45,8 @@ class ToolNamesGetter(sDNA_GH_Tool): # (name, name_map, inst, retvals = None):
                
 
 
-class sDNA_GH_Builder(sDNA_GH_Tool):
-    builder = ComponentsBuilder()
+class sDNA_GH_Builder(tools.sDNA_GH_Tool):
+    builder = builder.ComponentsBuilder()
     get_names = ToolNamesGetter()
     component_inputs = 'launcher_code', 'plug_in_name'
 
@@ -55,7 +56,7 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
 
         metas = opts['metas']
         
-        update_sDNA(opts)
+        main.import_sDNA_modules(opts)
         sDNAUISpec = opts['options'].sDNAUISpec
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False
@@ -69,7 +70,7 @@ class sDNA_GH_Builder(sDNA_GH_Tool):
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
         categories.update(metas.categories)
 
-        name_map = default_name_map # metas.name_map
+        name_map = main.default_name_map # metas.name_map
 
         retcode, names = self.get_names(opts)
 

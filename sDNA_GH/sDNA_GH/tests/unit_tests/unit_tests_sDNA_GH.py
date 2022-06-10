@@ -1,4 +1,4 @@
-#! Grasshopper Python
+#! Grasshopper Python (Rhino3D)
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
 __version__ = '0.02'
@@ -21,10 +21,9 @@ import ghpythonlib.treehelpers as th
 from ...custom.skel.basic.ghdoc import ghdoc 
 
 
-
-from ...custom.tools import (opts
-                            ,convert_Data_tree_and_Geom_list_to_gdm
-                            )
+from ... import main
+from ...custom import tools
+                            
 
 
 class FileAndStream():
@@ -83,7 +82,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
            ,'aae5eb82-a28b-4ae0-99db-03b76ebd86c0'
           ]
 
-    opts = opts['options']
+    opts = main.default_options
 
     #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
 
@@ -128,7 +127,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                       ]
    
     def conv_opts(self, x):
-        return convert_Data_tree_and_Geom_list_to_gdm(x[0], x[1], self.opts)
+        return tools.convert_Data_tree_and_Geom_list_to_gdm(x[0], x[1], self.opts)
 
     def get_expected_and_actual(self, f, l):
         return [x[1] for x in l], [f(x[0]) for x in l]

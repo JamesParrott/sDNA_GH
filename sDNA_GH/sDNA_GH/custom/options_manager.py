@@ -15,14 +15,19 @@ import sys
 import os
 import logging
 from collections import namedtuple, OrderedDict
-# https://docs.python.org/2.7/library/collections.html#collections.namedtuple
+from numbers import Number
 try:  
     import ConfigParser # Python 2
 except ImportError:
     import configparser as ConfigParser # Python 3
 
-from ..third_party.toml import decoder
+from ..third_party import toml
 
+
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
 def attrs(X):
     return [attr for attr in dir(X) if not attr.startswith('_')]
@@ -109,14 +114,19 @@ def namedtuple_from_dict(d
                      )(**d)  # Don't return nt class
 
 def delistify_vals_if_not_list_in(d_lesser, d_greater): 
-    #type(dict, dict) -> None   # Mutates d_greater.  d_lesser unaltered.
-        for key, val in d_greater.items():
-            if isinstance(val, list) and (  key not in d_lesser 
-                or not isinstance(d_lesser[key], list)  ):
-               d_greater[key]=val[0]
+    #type(dict, dict) -> None   
+    """ Changes d_greater's values that are lists to their first element,
+        unless the corresponding value with the same key in d_lesser is
+        already a list.
+        Mutates d_greater.  d_lesser unaltered. 
+    """
+    for key, val in d_greater.items():
+        if isinstance(val, list) and (  key not in d_lesser 
+            or not isinstance(d_lesser[key], list)  ):
+            d_greater[key]=val[0]
 
 
-def override_OrderedDict_with_dict( d_lesser
+def override_OrderedDict_with_dict(d_lesser
                                   ,od_greater
                                   ,strict = True
                                   ,check_types = False
@@ -356,6 +366,15 @@ def override_namedtuple_with_ini_file(nt_lesser
                                           ,**kwargs 
                                           )
 
+
+toml_types = [bool, basestring, Number, tuple, list, dict]
+
+def save_toml_file(file_name, d):
+    #type(str, dict) -> None
+    """ Saves a dictionary to a toml file.  """
+    with open(file_name, 'w') as f:
+        toml.dump(d, f)
+
 def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
                   ,**kwargs
                   ):
@@ -371,7 +390,7 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
     heirarchy of functions in this options_manager module, finally having 
     make_nested_namedtuple called on it, turning the .toml table
     into a namedtuple."""
-    return decoder.load(config_path, _dict = OrderedDict)
+    return toml.load(config_path, _dict = OrderedDict)
 
 
 override_funcs_dict = {  

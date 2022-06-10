@@ -17,6 +17,13 @@ logger.addHandler(logging.NullHandler())
 
 def validate_name_map(name_map, known_tool_names):
     #type(dict, list) -> bool
+    reserved_names = ('options', 'metas', 'local_metas')
+    if any(key in name_map for key in reserved_names):
+        msg = 'Cannot use the name %s for a component nick_name' 
+        msg = msg % reserved_names
+        logger.error(msg)
+        raise ValueError(msg)
+
     if not isinstance(name_map, dict):
         msg = ('Name map is of type: %s ' % type(name_map)
               +'but is required to be a dictionary.  '
