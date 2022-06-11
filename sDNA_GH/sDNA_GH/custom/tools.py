@@ -20,6 +20,7 @@ from time import asctime
 from numbers import Number
 import locale
 import math
+import shutil
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
@@ -139,7 +140,7 @@ def delete_shp_files_if_req(f_name
         file_name = f_name.rpartition('.')[0]
         logger.debug('Delete == %s ' % delete)
         if (delete or name_matches(file_name, regexes)):
-            for ending in ('.shp', '.dbf', '.shx'):
+            for ending in ('.shp', '.dbf', '.shx', '.prj'):
                 path = file_name + ending
                 delete_file(path, logger)
 
@@ -626,9 +627,9 @@ class ShapefileWriter(sDNA_GH_Tool):
                                        )
                         )
 
-    component_inputs = ('file', 'Geom', 'Data', 'config') 
+    component_inputs = ('file', 'prj', 'Geom', 'Data', 'config') 
 
-    def __call__(self, f_name, gdm, opts = None):
+    def __call__(self, f_name, gdm, prj = None, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
@@ -719,6 +720,13 @@ class ShapefileWriter(sDNA_GH_Tool):
                                 ,field_names = None 
                                 )
         
+        if (isinstance(prj, str) and 
+            prj.endswith('.prj') and 
+            os.path.isfile(prj)):
+            #
+            new_prj = f_name.rpartition('.')[0] + '.prj'
+            shutil.copy2(prj, new_prj)
+
         # get_list_of_lists_from_tuple() will 
         # switch the targeted file to RhinoDoc if needed, hence the following line 
         # is important:
