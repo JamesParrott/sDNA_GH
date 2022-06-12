@@ -14,9 +14,11 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
+from operator import not_
 import warnings
 import itertools
 import math
+from numbers import Number
 import collections
 if hasattr(collections, 'Sequence'):
     Sequence = collections.Sequence 
@@ -273,7 +275,7 @@ def min_interval_lt_width_w_with_most_data_points(ordered_counter
                                                  ,w = TOL
                                                  ):
     #type(OrderedCounter, Number) -> dict 
-    """Given a frequency distribution of Numbers in the form of an 
+    """Given a discrete frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
        collections recipe), calculates a minimum closed interval [a, b] of
        width b - a <= w that contains the most data points over minimum_num.  
@@ -590,205 +592,61 @@ def quantile_l_to_r(data
 
 
 
-class NumberPartition(object):
-    """ Adds some extra methods to normal integer division numbers to allow
-        calculation of partitions of a number that can be decomposed into
-        subpartitions as 'even as possible', that sum to specified constraints.
+
+
+def pro_rata(n, N_1, N_2, tol = TOL):
+    #type(Number, Number, Number) -> int, int
+    """ Divides n up pro-rata into n = n_1 + n_2, with 
+        n_1 and n_2 proportional to N_1 and N_2.
+    
+        If n, N_1 and N_2 are all integers, attempts to return 
+        the number of summands in the collectively most evenly 
+        distributed partitions (into integers) of N_1 and N_2.
     """
+    # N_1 + N_2 = N = n * m + r   0 <= r < n
+    #N_1 = m*n_1 + r_1            0 <= r_1 < m
+    #N_2 = m*n_2 + r_2            0 <= r_2 < m
 
-    def divide_by(self, divisor):
-        #type(int) -> None
-        """Type check divisor, then carry out standard integer division of
-           self.value by it, saving quotient and remainder as instance 
-           variables.
-        """
-        if not isinstance(divisor, int):
-            msg = ('Integer division attempted with values of type '
-                  +' type(divisor) == ' + type(divisor).__name__ 
-                  )
-            logger.error(msg)
-            raise TypeError(msg)
-        self.divisor = divisor
-        self.quotient = self.value // divisor
-        self.remainder = self.value % divisor    
-        # val = divisor * self.quotient + self.remainder, all integers
-        #       where 0 <= self.remainder < divisor
-     
+    not_numbers = [x for x in (n, N_1, N_2) if not isinstance(x, Number) ]
+    if not_numbers:
+        msg = 'All args need to be numbers. Invalid args: %s' % not_numbers
+        logger.error(msg)
+        raise TypeError(msg)
 
-    def __init__(self, value, divisor):
-        #type(int, int) -> None
-        """Type check val and call self.divide_by. """
-        if not isinstance(value, int):
-            msg = ('Integer division attempted with values of type '
-                  +' type(val) == ' 
-                  + type(value).__name__ 
-                  )
-            logger.error(msg)
-            raise TypeError(msg)
-
-        self.value = value
-        self.divide_by(divisor)
-      
-
-    def divisor_increase(self):
-        #type() -> int
-        """Return the increase in the highest summand of the partition by reallocation
-           of the remainder across the summands.  The increase every summand, 
-           + 1 if there is still a remainder for the increase resulting in the highest.
-
-           r_2 = self.remainder
-           n_2 = self.quotient
-           N_2 = self.value
-           
-           r_2 = b * n_2 + r_b,   0 <= r_b < n_2,  
-           r_b = B.remainder
-           b = B.quotient
-
-           Reallocate the remainder of N_2 across its partition's summands
-           producing distortion N_2.remainder // N_2.quotient, 
-                                + 1 if N_2.remainder % N_2.quotient  
-        """
-        if self.quotient == 0:
-            # There are zero summands to reallocate the remainder across.
-            # The remainder already is, and will still be, the highest summand
-            return 0
-        B = NumberPartition(value = self.remainder, divisor = self.quotient)
-        b = B.quotient
-        retval = b  + ( 1 if B.remainder > 0 else 0 ) 
-        #    B.remainder < B.divisor == N_2.quotient, so is in {1,0}
-        #    if r_b > 0, it will be reallocated to a summand in the partition, 
-        #    making the highest summand higher, and the distortion higher.
-        
-        return retval
-
-    def divisor_decrease(self):
-        #type() -> int
-        """ Try dividing self.value by a smaller than ideal divisor, self.divisor - a, 
-            to result in a 
-            slightly higher quotient, self.quotient + 1, absorbing the split 
-            class/summand with minimum distortion.  Return the decrease in the divisor
-            a minus any increase of the smallest summand (if any) from reallocating 
-            the remainder across all the summands.
-            
-            m = self.divisor
-            n_1 = self.quotient
-            r_1 = self.remainder
-            N_1 = self.value
-            
-            a = (m - r_1) // n_1, 
-            so that n_1 * (a+1) >= m - r_1, 
-            i.e. n_1 * a + r_1 = m - a + r_a for r_a > 0 
-            thus N_1 = (n_1 + 1) * (m - a) + r_a
-
-            If n_1 == 0, just set m - a = N_1
-        """
-        if self.quotient == 0:
-            # self.divisor is too big to divide self.value so the slightly 
-            # higher quotient we seek is 1, and so the smallest decrease in
-            # the divisor is that which will get it to divide self.value
-            # exactly once, i.e. the decrease s.t. self.divisor == self.value:
-            return self.divisor - self.value
-
-        a =  (self.divisor - self.remainder) // self.quotient
-        retval = a - ((self.quotient * a + self.remainder) // (self.quotient + 1))
-        return retval
-
-
-    def distortion(self, reallocator):
-        #type(IntegerDivision) -> int
-        return reallocator.divisor_increase() + self.divisor_decrease()
-
-    def partition(self, smallest_first = True):
-        #type(int, bool) -> Iterator
-        def generator():
-            if smallest_first:
-                for _ in range(self.remainder, self.divisor):
-                    yield self.quotient
-                for _ in range (self.remainder):
-                    yield self.quotient + 1
-            else:
-                for _ in range (self.remainder):
-                    yield self.quotient + 1
-                for _ in range(self.remainder, self.divisor):
-                    yield self.quotient
-        return generator()
-
-
-
-def discrete_pro_rata(n, N_1, N_2):
-    #type(int, int, int) -> int, int
-    """ A mathematical algorithm using integer division and modular 
-        arithmetic to find a pair of generalised integer divisors n_1 and n_2
-        of N_1 and N_2 respectively, s.t. n = n_1 + n_2 with N_1 // n_1 
-        and N_2 // n_2 are both as close as possible to (N_1 + N_2) // n.    
-        
-        Given a desired number of summands n of a partition of N = N_1 + N_2,
-        this function finds the number of summands of partitions of 
-        N_1 and N_2, n_1 and n_2 respectively, such that the max - min of
-        the superset of the summands of both these sub partitions is minimised.
-        E.g. normally if we wanted to divide 90 into 9 even summands, we could 
-        split it into 9 summands of 10 (==90 // 9).  However if we also 
-        required that the summands be abel to be split into two subpartitions, 
-        both summing to 45, we would have to split 90 into 5 * 9 and 3*11 + 12.
-        This is the most even least distorted pair of partitions of 45 of 
-        with 4 and 5 summands, that generalises the integer division of 90 // 9
-        to satisfy our additional constraints.  
-
-        Note, just using the floating point approximation, and the ceil of the 
-        ratio on the smaller interval, and rounding down on the larger one can
-        produce unneccessary extra distortion, e.g. dividing 100//100 split 
-        between two sub partitions of 21 and 79, would divide 21 by 2.1 rounded up
-    """ 
     N = N_1 + N_2
-    N =   NumberPartition(value = N_1 + N_2, divisor = n)
-    N_1 = NumberPartition(value = N_1,       divisor = N.quotient)
-    N_2 = NumberPartition(value = N_2,       divisor = N.quotient)
-
-    def error(msg):
-        m, r = N.quotient, N.remainder           #N   = m   * n + r,   0 <= r   < n
-        n_1, r_1 = N_1.quotient, N_1.remainder;  #N_1 = n_1 * m + r_1, 0 <= r_1 < m
-        n_2, r_2 = N_2.quotient, N_2.remainder;  #N_2 = n_2 * m + r_2, 0 <= r_2 < m
-        msg +=  ('n == %s ' % N.divisor 
-                +'!= n_1 + n_2, '
-                +'N == %s ' % N.value + ' ?= '
-                +'n*m + r == %s ' % n*m + r + ', '
-                +'m == %s ' % m + ', '
-                +'r == %s ' % r + ', '
-                +'N_1 == %s ' % N_1 + ' ?= '
-                +'m*n_1 + r_1 == %s ' % m*n_1 + r_1 + ', '
-                +'n_1 == %s ' % n_1 + ', '
-                +'r_1 == %s ' % r_1 + ', '
-                +'N_2 == %s ' % N_2 + ' ?= '
-                +'m*n_2 + r_2 == %s ' % m*n_2 + r_2 + ', '
-                +'n_2 == %s ' % n_2 + ', '
-                +'r_2 == %s ' % r_2 
+    #if math.abs(N) < tol:
+    if N == 0:
+        msg = ('Cannot divide n pro-rata with respect to a total of zero. '
+                +' Choose N_1 != - N2.  '
+                +'Invalid args: N1 == %s, N_2 == %s' % (N_1, N_2)
                 )
         logger.error(msg)
-        raise NotImplementedError(msg)
+        raise TypeError(msg)  
 
-    if N_1.remainder + N_2.remainder == N.remainder:
-        if N_1.quotient + N_2.quotient == n:
-            return N_1.quotient, N_2.quotient
-        else:
-            # N_1 + N_2 == N should mean (n_1 + n_2)*m + r_1 + r_2 == m * n + r
-            error('r_1 + r_2 == r but n_1 + n_2 != n.  Possible mistake? ')
-    elif N_1.remainder + N_2.remainder != N.remainder + N.quotient:
-        error('r_1 + r_2 should= r mod m and r_1 + r_2 should< 2 * m. Possible mistake? ')
-    elif N_1.quotient + N_2.quotient != n - 1:
-        error('r_1 + r_2 == r + m but n_1 + n_2 != n - 1.  Possible mistake? ')
+    if any(isinstance(x, float) for x in (n, N_1, N_2)):
+        # Normal floating point pro-rata
+        return n * N_1 / N, n * N_2 / N
+        
 
 
-    #What if we divide N_2 or N_2 by m + b using any factors of n_2 or 
-    # n_1 in r_2 or r_1 respectively?  And what if we also reallocate 
-    # the remainder of N_1 or N_2, r_1 or r_2 to divide N_1 or N_2 by m - a 
-    # instead, to try and increase the quotients n_1 or n_2, respectively?
-    #
-    #We calculate the distortion in both cases and pick the one with the lowest
+    m = float(N) / n
 
-    if N_1.distortion(N_2) <= N_2.distortion(N_1):
-        return N_1.quotient + 1, N_2.quotient 
+    n_1, n_2 = N_1 / m, N_2 / m
+    r_1, r_2 = N_1 - int(n_1) *m, N_2 - int(n_2) * m
+    logger.debug('m == %s, n_1 == %s, r_1 == %s, n_2 == %s, r_2 == %s' % (m, n_1, r_1, n_2, r_2))
+    if N_1 <= m:
+        return 1, n-1
+    if N_2 <= m:
+        return n-1, 1
+    logger.debug('r_1 / n_1 == %s, r_2 / n_2 == %s' % (r_1 / n_1, r_2 / n_2))
+    if (r_1 / n_1) >= (r_2 / n_2):
+        return n - int(n_2), int(n_2)
     else:
-        return N_1.quotient, N_2.quotient + 1
+        return int(n_1), n - int(n_1)
+
+
+
+
 
 
 class SpikeIsolatingQuantileOptions(object):
@@ -797,6 +655,8 @@ class SpikeIsolatingQuantileOptions(object):
 
 def spike_isolating_quantile(data
                             ,num_classes
+                            ,min_num = None
+                            ,ordered_counter = None
                             ,tol = TOL
                             ,options = SpikeIsolatingQuantileOptions
                             ):
@@ -817,8 +677,8 @@ def spike_isolating_quantile(data
         inter-class bounds returned by these recursive calls are appended 
         together and returned.  
     """
-
-    ordered_counter = OrderedCounter(data)
+    if ordered_counter is None:
+        ordered_counter = OrderedCounter(data)
     num_inter_class_bounds = num_classes - 1
     if num_inter_class_bounds <= 0:
         return []
@@ -826,10 +686,11 @@ def spike_isolating_quantile(data
         return quantile_l_to_r(data, num_inter_class_bounds + 1, tol, options)
     inter_class_bounds = []
     if num_inter_class_bounds >= 2:
-        if options.min_num is None:
-            min_num = len(data) // num_classes
-        else:
-            min_num = options.min_num
+        if min_num is None:
+            if options.min_num is None:
+                min_num = len(data) // num_classes
+            else:
+                min_num = options.min_num
         logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
         spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
@@ -847,10 +708,15 @@ def spike_isolating_quantile(data
             if num_classes - 3 <= 0:
                 extra_classes_a, extra_classes_b = 0, 0
             else:
-                extra_classes_a, extra_classes_b = discrete_pro_rata(num_classes - 3
-                                                                    ,spike_data_index_a
-                                                                    ,len(data) - spike_data_index_b - 1
-                                                                    )
+                print('n == %s, N_1 == %s, N_2 == %s ' %   (num_classes - 3
+                                                           ,spike_data_index_a
+                                                           ,len(data) - spike_data_index_b - 1
+                                                           )
+                     )
+                extra_classes_a, extra_classes_b = pro_rata(num_classes - 3
+                                                           ,spike_data_index_a
+                                                           ,len(data) - spike_data_index_b - 1
+                                                           )
             _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
                                                               ,spike_data_index_a - 1
                                                               )
@@ -861,14 +727,16 @@ def spike_isolating_quantile(data
 
             inter_class_bounds = spike_isolating_quantile(data[:spike_data_index_a]
                                                          ,extra_classes_a + 1
-                                                         ,tol
-                                                         ,options
+                                                         ,min_num = min_num
+                                                         ,tol = tol
+                                                         ,options = options
                                                          )                                  
             inter_class_bounds += [midpoint_i_a, midpoint_i_b]
             inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
                                                           ,extra_classes_b + 1
-                                                          ,tol
-                                                          ,options
+                                                          ,min_num = min_num
+                                                          ,tol = tol
+                                                          ,options = options
                                                           )
         else:
             inter_class_bounds = quantile_l_to_r(data, num_classes, tol, options)

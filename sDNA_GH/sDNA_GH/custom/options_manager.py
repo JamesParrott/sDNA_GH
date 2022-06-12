@@ -3,11 +3,12 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 """
-Functions to override namedtuples, from dicts, ini files, toml files 
+Functions to override namedtuples, from dicts, toml files 
 and other named tuples e.g. for options data structures.
 
-There is no logger in this module, as loggers themselves may be 
-configured from options calculated from this module.  Logs go to the default
+There is no module logger, as other loggers themselves may be 
+configured from options calculated from this module.  Logs go to 
+the root logger with the default settings
 from logging (i.e. to stderr for >= warning, into the void otherwise).
 """
 
@@ -16,10 +17,6 @@ import os
 import logging
 from collections import namedtuple, OrderedDict
 from numbers import Number
-try:  
-    import ConfigParser # Python 2
-except ImportError:
-    import configparser as ConfigParser # Python 3
 
 from ..third_party import toml
 
@@ -222,149 +219,6 @@ def override_namedtuple_with_namedtuple(nt_lesser
                                             ,**kwargs
                                             )
 
-def readline_generator(fp):
-    yield '[DEFAULT]'
-    from re import match
-    line = fp.readline()             # Snippet modified to skip .ini file section headers.  
-    while line:                      # https://docs.python.org/3.10/library/configparser.html#configparser.ConfigParser.readfp
-        if not match(r'\[.*', line):  # we could -only ignore- '[...]' instead of anything that starts with '[.....' but 
-                                        # best not to have to worry about how ConfigParser will deal with '[.....' & no ']'
-                                        # re.match only matches from the beginning, so we don't need \A as with re.search
-            yield line
-        line = fp.readline()
-    fp.close()
-    yield ''
-
-def load_ini_file( file_path
-                 ,dump_all_in_default_section = False
-                 ,empty_lines_in_values = False
-                 ,interpolation = None
-                 ,**kwargs
-                 ):
-    if not os.path.isfile(file_path):
-        return None
-    else:
-        if sys.version_info.major >= 3 : # version > '3':   # if Python 3
-            config = ConfigParser.ConfigParser(empty_lines_in_values, interpolation)
-        else:   # e.g.  Python 2
-            config = ConfigParser.RawConfigParser()   # to turn off interpolation.  Python 3 documentation implies RawConfigParser is 
-                                                    # unsafe, so 
-                                                    # we have wrapped it in this function to limit its scope 
-    
-    if dump_all_in_default_section:
-        f = open(file_path,'rU')
-        f_gen = readline_generator(f)
-
-        if sys.version_info.major < 3 or (sys.version_info.major ==3 and sys.version_info.minor < 2) :  
-            class G(object):
-                pass
-            G.readline = f_gen.next
-            config.readfp(G)
-        #  ConfigParser.readfp deprecated in Python 3.2 but read_file not available before then
-        else:
-            config.read_file(f_gen)
-
-    else:
-        result = config.read(file_path)
-        if not result:
-            return None
-
-    return config
-
-def get_coercer(old_val
-               ,config
-               ,d = None
-               ,**kwargs
-               ):
-    # type (any, Class, dict) -> function
-    if ( d is None or not isinstance(d, dict) 
-         or any(not isinstance(k, type) for k in d) 
-         or any(not hasattr(config, v) for v in ['get'] + d.values()) ):
-        #
-        d = OrderedDict( [(bool,  config.getboolean)
-                         ,(int,   config.getint)
-                         ,(float, config.getfloat)
-                         ] 
-                       ) 
-    for k, v in d.items():
-        if type(old_val) is k: # isinstance is quirky: isinstance(True, int)
-            return v           # and these getters perhaps shouldn't read 
-                               # unsual derived classes from a config.ini file
-    return config.get     
-
-def override_namedtuple_with_config(nt_lesser
-                                   ,config 
-                                   ,section_name = 'DEFAULT'
-                                   ,leave_as_strings = False
-                                   ,**kwargs
-                                   ):
-    #type ([str,RawConfigParser], namedtuple,Boolean, Boolean, Boolean, Boolean) -> namedtuple
-    
-    #assert isinstance(ConfigParser.ConfigParser()
-    #                 ,ConfigParser.RawConfigParser)
-    if  not isinstance(config, ConfigParser.RawConfigParser) : 
-        return nt_lesser
-
-    old_dict = nt_lesser._asdict()
-    new_dict = {}
-    for key, value in config.items(section_name):
-        message = key + ' : ' + value
-        if (not leave_as_strings) and key in old_dict:   
-            try:
-                coercer = get_coercer( old_dict[key],  config )
-                new_dict[key] = coercer( section_name,  key )
-            except ValueError:
-                try:
-                    new_val = config.get(section_name, key)
-                except KeyError:
-                    raise ValueError('Bad key / value in config: %s' % key)
-
-                message +=  ('Type of new value did not match type of old value?.   '
-                            +' Failed to parse value in field '
-                            +' key = %s ' % key
-                            +' old_dict[key]) == %s ' % str(old_dict[key]) 
-                            +' type(old_dict[key]) == %s '% type(old_dict[key])
-                            +' new val == %s ' % new_val
-                            +' type(new val) == %s ' % type(new_val)
-                            +' coercer = %s ' % coercer.__name__
-                            ) 
-                logging.error(message)
-                raise TypeError(message)
-
-        else:
-            new_dict[key] = value    
-            # Let override_namedtuple_with_dict decide 
-            # whether to exclude new keys or not
-
-
-
-    return override_namedtuple_with_dict(nt_lesser
-                                        ,new_dict
-                                        ,strict = False
-                                        ,**kwargs
-                                        )      
-
-        # We know new_dict is a dict so strict is False.
-        # We may have already done some type checking
-        # using config's methods, so setting 
-        # check_types = True on top of this
-        # means the user cannot override e.g. lists or dicts
-        # until we make type_coercer_factory support them
-
-def override_namedtuple_with_ini_file(nt_lesser
-                                     ,config_path = os.path.join(sys.path[0]
-                                                                ,'config.ini'
-                                                                )
-                                     ,**kwargs
-                                     ):
-    #type (namedtuple, [str,RawConfigParser]) -> namedtuple
-    if not isinstance(config_path, str) and not os.path.isfile(config_path):
-        return nt_lesser
-    config = load_ini_file(config_path, **kwargs)
-    return override_namedtuple_with_config(nt_lesser
-                                          ,config 
-                                          ,**kwargs 
-                                          )
 
 
 toml_types = [bool, basestring, Number, tuple, list, dict]
@@ -393,12 +247,7 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
     return toml.load(config_path, _dict = OrderedDict)
 
 
-override_funcs_dict = {  
-             dict : override_namedtuple_with_dict 
-            ,str : override_namedtuple_with_ini_file # TODO: Write switcher function that also does .toml
-            ,ConfigParser.RawConfigParser : override_namedtuple_with_config
-            ,ConfigParser.ConfigParser : override_namedtuple_with_config
-                        }
+override_funcs_dict = {  dict : override_namedtuple_with_dict  }
 
 
 def override_namedtuple(nt_lesser
@@ -445,8 +294,6 @@ def override_namedtuple(nt_lesser
     def get_nt_overrider_func(override, nt_lesser):
         #type(type[any], namedtuple) -> function
         if isinstance(override, str):
-            if override.endswith('.ini'):
-                return override_namedtuple_with_ini_file
             if override.endswith('.toml'):
                 msg = 'Call load_toml_file first and add dict to overrides'
                 logging.error(msg)
