@@ -66,9 +66,12 @@ from .custom import tools
 from .dev_tools import dev_tools
 
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+
 output = launcher.Output()
-
-
 
 # Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
 # arguments in its constructor so we build our options and metas namedtuples
@@ -116,7 +119,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                             # to run runsdnacommand.runsdnacommand in future 
                             # with an env, while being able to get the 
                             # sDNA stderr and stdout to the sDNA_GH logging
-    sDNA = (sDNAUISpec, runsdnacommand)  # Read only.  Auto updates from above.
+    sDNA = None  # Read only.  Auto updates from above.
     #sDNA_path = ''  
     # Read only.  Determined after loading sDNAUISpec to which ever below
     # it is found in.
@@ -128,8 +131,15 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
     #sDNA_paths = [sDNA_UISpec_path, 
     sDNA_paths  = [r'C:\Program Files (x86)\sDNA']
     sDNA_paths += [os.path.join(os.getenv('APPDATA'),'sDNA')]
-    sDNA_paths += [path for path in os.getenv('PATH').split(';')
-                               if 'sDNA' in path ]
+    sDNA_paths += list(path 
+                       for path in os.getenv('PATH').split(';')
+                       if 'sDNA' in path 
+                      )             # list( generator expression) is used here
+                  # to avoid getting path as a class variable in Python 2 from
+                  # the leaky scope of list comprehensions.  In testing, I had
+                  # path = 'C:\Users\James\AppData\Local\Programs\Julia-1.7.3\bin
+                  # as that Julia simply happened to be the last thing I 
+                  # installed that added itself to the system path.
     update_path = True
     ##########################################################################
     #
@@ -541,9 +551,15 @@ def override_all_opts(args_dict
     ###########################################################################
     #Primary meta:
     #
+    #local_opts['metas']
+    #external_opts['metas']
+
     config_toml_dict = {}
 
-    if args_dict and 'config' in args_dict:
+    if (args_dict and 
+        'config' in args_dict and 
+        isinstance(args_dict['config'], basestring)):
+        #
         if os.path.isfile(args_dict['config']): 
             path = args_dict['config']
             file_ext = path.rpartition('.')[2]
@@ -560,8 +576,9 @@ def override_all_opts(args_dict
             raise ValueError(msg)
 
     else:
-        output.debug('No config specfied in args_dict == %s' % args_dict)
-        file_ext = ''
+        msg = 'No config specfied in args_dict'
+        output.debug(msg + ' == %s' % args_dict)
+        file_ext = msg
 
 
     # def config_file_reader(key, tool = None, sDNA = None):
@@ -591,11 +608,8 @@ def override_all_opts(args_dict
     if 'nick_name' in ext_local_metas_dict:
         ext_local_metas_dict.pop('nick_name')
 
-    if file_ext and (file_ext == 'toml' or 
-                     isinstance(config_toml_dict, dict)):
-            if ( 'local_metas' in config_toml_dict and
-                 'nick_name' in config_toml_dict['local_metas'] ):
-                config_toml_dict['local_metas'].pop('nick_name')
+    if file_ext == 'toml' and isinstance(config_toml_dict, dict):
+            config_toml_dict.get('local_metas', {}).pop('nick_name', None)
 
     if 'nick_name' in args_dict:
         args_dict.pop('nick_name')
@@ -647,6 +661,9 @@ def override_all_opts(args_dict
     #overrides_list = lambda key : [ 
     #                       external_opts.get(key,{}).get(sDNA(), {})
     #                       config_file_reader, sub_args_dict.get(key, {})]
+
+    #Introduce dict_to_update to capitalise on the local metas we just updated,
+    #instead of waiting for the next update to sync or desync.
     if local_metas.sync:
         dict_to_update = module_opts # the opts in module's global scope, 
                                      # outside this function
@@ -657,37 +674,57 @@ def override_all_opts(args_dict
           #                 opts.get(key,{}).get(sDNA(), {})
           #                           ] + overrides(key)
 
-    def is_strict_nested_dict(d):
-        #type(dict) -> bool
-        return all(isinstance(val, dict) for val in d.values())
+
+
+    # def is_strict_nested_dict(d):
+    #     #type(dict) -> bool
+    #     return all(isinstance(val, dict) for val in d.values())
 
 
 
-    def override_nested_dict_dfs(d, override):
-        #type(dict, Optional[dict/namedtuple]
-        """ Depth first search. """
-        if not isinstance(d, dict):
-            metas = local_opts['metas']
-            return options_manager.override_namedtuple(d
-                                                      ,override
-                                                      ,**metas._asdict()
-                                                      )
-        if isinstance(override, dict):
-            if is_strict_nested_dict(override):
-                #
-                # Insert or update d with any 
-                # pure nested dict structure in override
-                #
-                for key_ov in override:
-                    if key_ov in d:
-                        d[key_ov] = override_nested_dict_dfs(d[key_ov], override[key_ov])
-                    else:
-                        d[key_ov] = override[key_ov]
-            else:  
-                # override has non-dict vals, e.g has flattened out.  
-                # Override all subdicts of d with them.
-                for key_d in d:
-                    d[key_d] = override_nested_dict_dfs(d[key_d], override)
+    # if 'sDNA_Integral' in module_opts:
+    #     print('is_strict_nested_dict(module_opts[sDNA_Integral]) == %s' % is_strict_nested_dict(module_opts['sDNA_Integral']))
+
+
+
+
+    # def override_nested_dict_dfs(d, override):
+    #     #type(Optional[dict/NamedTuple], dict) -> Optional[None/NamedTuple]
+    #     if not isinstance(d, dict):
+    #         print('type(d) == %s' % (type(d)))
+    #         metas = local_opts['metas']
+    #         ovrd_nt = options_manager.override_namedtuple(d
+    #                                                   ,override
+    #                                                   ,**metas._asdict()
+    #                                                   )
+    #         print('override_nt == %s' % ovrd_nt)
+    #         return ovrd_nt
+    #     if isinstance(override, dict):
+    #         if is_strict_nested_dict(override):
+    #             #
+    #             # Insert or update d with any 
+    #             # pure nested dict structure in override
+    #             #
+    #             print('Override is strict nested_dict')
+    #             for key_ov in override:
+    #                 print('override key == %s' % key_ov)
+    #                 print('override[key_ov] == %s' % override[key_ov])
+    #                 d[key_ov] = override_nested_dict_dfs(d[key_ov], override[key_ov])
+
+
+
+    #         else:  
+    #             print('Override is not a strict nested_dict')
+
+    #             # override has non-dict vals, e.g has flattened out.  
+    #             # Override all subdicts of d with them.
+    #             for key_d in d:
+    #                 if key_d in override:
+    #                     print('nested dict key == %s' % key_d)
+    #                     d[key_d] = override_nested_dict_dfs(d[key_d], override)
+    #     return "something went wrong"
+
+
 
     # for (key, val) in d.items():
     #     if (key in override and 
@@ -703,28 +740,53 @@ def override_all_opts(args_dict
     #     for key in d:
     #         output.debug('Overriding : %s' % key)
 
+    print('external_opts == %s' % external_opts)
+
     overrides = [external_opts
                 ,config_toml_dict
                 ,OrderedDict((key, val )
-                             for (key, val) in args_dict.items() 
-                             if val is not None
-                            )
+                            for (key, val) in args_dict.items() 
+                            if val is not None
+                           )
                 ]            
 
-    if (local_metas.sync or 
-            not local_metas.read_only):
-        overrides.insert(0,module_opts)
+    if (not local_metas.sync and local_metas.read_only) and dict_to_update is not module_opts:
+        overrides.insert(0, module_opts.copy())
+
+    metas_overrides = map(lambda x : x.pop('metas',x), overrides)
 
     dict_to_update['metas'] = options_manager.override_namedtuple(
-                                         dict_to_update['metas']
-                                        ,map(lambda x : x.pop('metas',{}), overrides)
-                                        ,**local_opts['metas']._asdict()
-                                        )
-    # Update metas first, then we don't have to code up a breadth first search.
+                                        dict_to_update['metas']
+                                       ,metas_overrides
+                                       ,**local_opts['metas']._asdict()
+                                       )
+
+    #options_overrides = map(lambda x : x.pop('options',x), overrides)
+
+    #dict_to_update['options'] = options_manager.override_namedtuple(
+    #                                     dict_to_update['options']
+    #                                    ,options_overrides
+    #                                    ,**local_opts['metas']._asdict()
+    #                                    )
 
     for override in overrides:
-        override_nested_dict_dfs(dict_to_update, override)
+        tools.update_opts(opts = dict_to_update
+                         ,override = override
+                         ,metas = dict_to_update['metas']
+                         )
 
+    # for override in overrides:
+    #     for nick_name in override.keys():
+    #         if nick_name not in d:
+    #             d[nick_name] = {}
+    #         if not is_strict_nested_dict(override):
+    #             options_manager.override_namedtuple(
+    #                                     dict_to_update['metas']
+    #                                    ,override
+    #                                    ,**local_opts['metas']._asdict()
+    #                                    )
+    #for tool_name in override[nick_name]:
+    #    pass
     # for key in dict_to_update:
     #     output.debug('Overriding : %s' % key)
     #     if key in ('options','metas'):
@@ -765,7 +827,7 @@ if os.path.isfile(default_metas.config):
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
                      ) 
-
+    print(module_opts)
 
     output.debug("After override: opts['options'].message == " 
           + module_opts['options'].message
@@ -818,14 +880,12 @@ else:
     logger = logging_wrapper.new_Logger(custom = None
                                        ,options = module_opts['options']
                                        ) 
-                                       
 
-
-    output.set_logger(logger) # Flushes cached log messages to above handlers
+     # Flushes cached log messages to above handlers
 
     logger.debug('Logging set up in sDNA_GH package ')
 
-
+output.set_logger(logger, flush = True)
 
 ############################################################################
 
@@ -903,11 +963,11 @@ def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = log
     options = opts['options']
 
     logger.debug('metas.sDNAUISpec == %s ' % metas.sDNAUISpec
-                +', metas.runsdnacommand == % ' % metas.runsdnacommand 
+                +', metas.runsdnacommand == %s ' % metas.runsdnacommand 
                 )
 
-    logger.debug('before update, options.sDNAUISpec == %s ' % options.sDNAUISpec
-                +', options.run_sDNA == %s ' % options.run_sDNA
+    logger.debug('before update, options.sDNAUISpec == %s ' % repr(options.sDNAUISpec)
+                +', options.run_sDNA == %s ' % repr(options.run_sDNA)
                 )
 
 
@@ -919,7 +979,8 @@ def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = log
     # If they are loaded successfully the actual corresponding modules are
     # in options.sDNAUISpec and options.run_sDNA
 
-    if ( isinstance(options.sDNAUISpec, options_manager.Sentinel) or
+    if ( metas.sDNA is None or
+         isinstance(options.sDNAUISpec, options_manager.Sentinel) or
          isinstance(options.run_sDNA, options_manager.Sentinel) or
          (options.sDNAUISpec.__name__
                     ,options.run_sDNA.__name__) != requested_sDNA ):
@@ -946,8 +1007,6 @@ def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = log
                                                                       +"metas.sDNAUISpec and metas.runsdnacommand "
                                                                       +"respectively. "
                                               )
-        new_sDNA_key = tools.sDNA_key(opts)
-        opts['metas'] = opts['metas']._replace(sDNA = new_sDNA_key)
         opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
                                                   ,run_sDNA = run_sDNA 
                                                   ) 
@@ -959,7 +1018,7 @@ def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = log
 def cache_sDNA_tool(compnt # instead of self
                    ,nick_name
                    ,mapped_name
-                   ,name_map = default_metas.name_map
+                   ,name_map = None # unused; just for tool_not_found ArgSpec
                    ,tools_dict = runner.tools_dict
                    ,update_sDNA = import_sDNA_modules
                    ):
@@ -972,10 +1031,20 @@ def cache_sDNA_tool(compnt # instead of self
         Inserts this new tool into tools_dict (only under its nick_name).
         Adds in any new tool option fields to the list of Params not to 
         be removed.  """
-    sDNA = compnt.opts['metas'].sDNA
-    sDNA_tool = tools.sDNA_ToolWrapper(mapped_name, nick_name, compnt.opts, update_sDNA)
+    sDNA_tool = tools.sDNA_ToolWrapper(tool_name = mapped_name
+                                      ,nick_name = nick_name
+                                      ,opts = compnt.opts
+                                      ,import_sDNA_modules = update_sDNA
+                                      )                                      
     tools_dict[nick_name] =  sDNA_tool
-    compnt.do_not_remove += tuple(sDNA_tool.tool_opts[sDNA]._fields)   
+    sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
+                                # sDNA_ToolWrapper.update_tool_opts_and_syntax
+    compnt.do_not_remove += tuple( tools.get_tool_opts(nick_name
+                                                      ,compnt.opts
+                                                      ,mapped_name
+                                                      ,sDNA
+                                                      )._fields
+                                 )   
 
             
 
@@ -1006,11 +1075,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     do_not_remove = do_not_remove
     
 
-    def auto_insert_tools(self, tools = None, Params = None):
+    def auto_insert_tools(self, my_tools = None, Params = None):
         #type(type[any], list) -> None
-        if tools is None:
-            tools = self.my_tools
-        tools = tools[:] if isinstance(tools, list) else [tools]
+        if my_tools is None:
+            my_tools = self.my_tools
+        my_tools = my_tools[:] if isinstance(my_tools, list) else [my_tools]
 
         if Params is None:
             Params = self.Params
@@ -1032,7 +1101,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_write_Shp:
             inserter.insert_tool('before'
-                                ,tools
+                                ,my_tools
                                 ,Params
                                 ,tool_to_insert = write_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
@@ -1043,7 +1112,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_read_Usertext:
             inserter.insert_tool('before'
-                                ,tools
+                                ,my_tools
                                 ,Params
                                 ,tool_to_insert = read_Usertext
                                 ,is_target = is_class(tools.ShapefileWriter)
@@ -1054,7 +1123,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_get_Geom:
             inserter.insert_tool('before'
-                                ,tools
+                                ,my_tools
                                 ,Params
                                 ,tool_to_insert = get_Geom
                                 ,is_target = is_class(tools.UsertextReader)
@@ -1065,7 +1134,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_read_Shp:
             inserter.insert_tool('after'
-                                ,tools
+                                ,my_tools
                                 ,Params
                                 ,tool_to_insert = read_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
@@ -1078,7 +1147,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         
         if options.auto_plot_data: # already parses if Data not all colours
             inserter.insert_tool('after'                
-                                ,tools
+                                ,my_tools
                                 ,Params
                                 ,tool_to_insert = recolour_objects
                                 ,is_target = is_class(tools.ShapefileReader)
@@ -1087,7 +1156,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                 ,name_map = name_map
                                 ) 
                                           
-        return tools
+        return my_tools
 
 
 
@@ -1140,10 +1209,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 
 
         #logger.debug(self.opts)
-        logger.debug('Tool opts == %s ' % '\n'.join('%s : %s' % (k, v)
-                                                    for k, v in self.opts.items()
-                                                    if k not in ('options','metas')
-                                                   ) 
+        logger.debug('Tool opts == ' + '\n'.join('%s : %s' % (k, v)
+                                                 for k, v in self.opts.items()
+                                                 if k not in ('options','metas')
+                                                ) 
                     )
 
         return tools
@@ -1178,7 +1247,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
     def __init__(self, *args, **kwargs):
         logger.debug('Calling sDNA_GH_Components parent initialiser')
-        super(smart_comp.SmartComponent, self).__init__(self, *args, **kwargs)
+        super(smart_comp.SmartComponent, self).__init__()
         self.ghdoc = ghdoc
         # self.update_sDNA() moved to cache_sDNA_tool
 
@@ -1275,7 +1344,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             or not os.path.isfile(self.opts['options'].path) ):
 
             path = checkers.get_path(fallback = __file__,  inst = self)
-
             self.opts['options'] = self.opts['options']._replace(path = path)
 
         if self.opts['metas'].cmpnts_change: 
@@ -1292,9 +1360,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             for tool in self.tools:
                 if isinstance(tool, tools.sDNA_ToolWrapper):
                     has_any_sDNA_tools = True
-                    tool.update_tool_opts_and_syntax()
-                    # this isn't necessary just to run these tools later.
-                    # they're just being updated now so they can get their 
+                    tool.update_tool_opts_and_syntax(opts = self.opts)
+                    # This isn't necessary just to run these tools later.
+                    # They're just being updated now so they can get their 
                     # inputs from sDNAUISpec, and so the component's input 
                     # Params can be updated to reflect the new sDNA
 
@@ -1396,7 +1464,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}
-        ret_vals_dict['opts'] = [self.opts.copy()]
+        ret_vals_dict['opts'] = [self.opts.copy()] # could become external_opts
+                                                   # in another component
         ret_vals_dict['l_metas'] = self.local_metas #immutable
 
         logger.debug('Returning from self.script ')

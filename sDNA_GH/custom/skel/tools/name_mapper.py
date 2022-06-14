@@ -4,6 +4,7 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
+import collections
 if hasattr(collections, 'Hashable'):
     Hashable = collections.Hashable 
 else:

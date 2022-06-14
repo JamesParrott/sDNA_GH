@@ -218,15 +218,14 @@ def strict_import(module_name = ''
     #
     search_path = os.path.join(folder, sub_folder)
 
-    tmp = sys.path
     if (search_path 
         and isinstance(search_path, basestring) 
         and os.path.isdir(search_path)):
         #
         logger.debug('Search path == %s' % search_path)
-        if search_folder_only:
-            sys.path = [search_path]
-        else:
+        #if search_folder_only:
+        #    sys.path = [search_path]
+        if search_path not in sys.path:
             sys.path.insert(0, search_path)
     else:
         raise FilePathError(module_name = module_name
@@ -235,7 +234,6 @@ def strict_import(module_name = ''
                            )
 
     logger.debug('Trying import... ')
-    sys.path.insert(0, search_path)
     module = import_module(module_name, '')           
 
     return module       
@@ -294,7 +292,7 @@ def load_modules(m_names
                 if isinstance(name, basestring)
               ):
             #
-            logger.debug('Importing %s' % m_names)
+            logger.debug('Importing %s' % repr(m_names))
 
             return tuple(strict_import(name, folder, '', logger = logger) 
                             for name in m_names

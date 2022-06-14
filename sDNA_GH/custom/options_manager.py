@@ -53,6 +53,10 @@ try:
 except NameError:
     basestring = str
 
+def isnamedtuple(obj):
+    #type(type[any]) -> bool
+    return isinstance(obj, tuple)
+
 def attrs(X):
     return [attr for attr in dir(X) if not attr.startswith('_')]
 
@@ -327,6 +331,7 @@ def override_namedtuple(nt_lesser
 
         for key, val in override_funcs_dict.items():
             if isinstance(override, key):
+                print('returning val == %s' % val)
                 return val 
         
         if hasattr(override, 'asdict'):
