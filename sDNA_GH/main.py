@@ -253,7 +253,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     log_file = logger_name + '.log'
     logs_dir = 'logs'
     log_file_level = 'DEBUG'
-    log_console_level = 'INFO'
+    log_console_level = 'DEBUG'
     #
     ##########################################################################
     #
@@ -277,7 +277,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                +'found in a path in '
                                                +'metas.sDNA_paths. '
                                                )
-    python_exe = r'C:\Python27\python.exe' 
+    python = r'C:\Python27\python.exe' 
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
     del_after_sDNA = False
@@ -770,7 +770,7 @@ def override_all_opts(args_dict
     #                                    )
 
     for override in overrides:
-        tools.update_opts(opts = dict_to_update
+        tools.update_opts(current_opts = dict_to_update
                          ,override = override
                          ,metas = dict_to_update['metas']
                          )
@@ -833,7 +833,13 @@ if os.path.isfile(default_metas.config):
           + module_opts['options'].message
           )
 else:
-    output.warning('Config file: %s not found. ' % default_metas.config)    
+    output.warning('Config file: %s not found. '% default_metas.config 
+                  +'If no sDNA install or Python is automatically found or to '
+                  +'use a different one, and to save any other '
+                  +'options for future use, place a Config component, set '
+                  +'sDNA_paths to your sDNA folder, python to your Python'
+                  +'interpreter, and set go to true to save your settings.'
+                  )    
 #
 #######################################################################
 
@@ -849,11 +855,11 @@ possible_pythons = (os.path.join(folder, python) for folder in folders
                                                  for python in pythons
                    )
 
-while not os.path.isfile(module_opts['options'].python_exe):
-    module_opts['options'] = module_opts['options']._replace(python_exe = next(possible_pythons))
+while not os.path.isfile(module_opts['options'].python):
+    module_opts['options'] = module_opts['options']._replace(python = next(possible_pythons))
 
-if not os.path.isfile(module_opts['options'].python_exe):
-    raise ValueError('python_exe is not a file. ')
+if not os.path.isfile(module_opts['options'].python):
+    raise ValueError('python is not a file. ')
 
 module_name = '.'.join([module_opts['options'].package_name 
                        ,module_opts['options'].sub_module_name
@@ -1392,7 +1398,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            logger.debug('my_tools == $s' % self.tools)
+            logger.debug('my_tools == %s' % self.tools)
 
 
 

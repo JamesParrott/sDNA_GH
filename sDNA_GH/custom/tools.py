@@ -176,7 +176,10 @@ def has_keywords(nick_name, keywords = ('prepare',)):
               for substr in keywords
               )
 
-sDNA_fmt_str = '"({sDNAUISPec},{runsdnacommand})"'
+sDNA_fmt_str = '{sDNAUISPec}_and_{runsdnacommand}' 
+# extra quotes make it a quoted key string for toml, 
+# which supports an extended character set than ascii
+# but mean we can't use this string in a NamedTuple class name
 
 
 def sDNA_key(opts):
@@ -191,27 +194,28 @@ def sDNA_key(opts):
     return sDNA_fmt_str.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
 def nested_set_default(d, keys, last_default = None):
-    #type(dict, Sequence[Hashable], type[any])
+    #type(dict, Sequence(Hashable), type[any])
+    
     if last_default is None:
-        defaults = itertools.repeat({})
-    else:
-        defaults = itertools.chain(itertools.repeat({}, len(keys) - 1)
-                                  ,[last_default]
-                                  )
+        last_default = OrderedDict()
 
-    for key, default in zip(keys, defaults):
+    def generator():
+        for key in keys[:-1]:
+            yield key, OrderedDict()
+        yield keys[-1], last_default
+
+    for key, default in generator():
         d = d.setdefault(key, default)
     return d
 
 def get_tool_opts(nick_name, opts, tool_name = None, sDNA = None, val = None):
     #type(str, dict, str, str, type[any])
     # might mutate opts
+    keys = (nick_name,)
     if tool_name and tool_name != nick_name:
-        keys = [nick_name, tool_name]
-    else:
-        keys = [nick_name]
+        keys += (tool_name,)
     if sDNA is not None:
-        keys += [sDNA]
+        keys += (sDNA,)
     return nested_set_default(d = opts, keys = keys, last_default = val)
 
     # tool_opts = opts.setdefault(nick_name, {})
@@ -229,77 +233,124 @@ def is_strict_nested_dict(d):
     #type(dict) -> bool
     return all(isinstance(val, dict) for val in d.values())
 
-def update_opts(opts
-               ,override
-               ,metas = None
-               ,keys = []
-               ,depth = 1
-               ,max_depth = None 
-               ,end_conditions = None
-               ,key_patterns = (funcs.make_regex(sDNA_fmt_str),)
+def is_data_key(key
+               ,value
+               ,**kwargs
                ):
-    #type(type[any], dict, Sequence[Hashable], int, dict, Sequence[function]) -> NamedTuple
+    depth = kwargs['depth']
+    max_depth = kwargs['max_depth']
+    specials = kwargs['specials']
+    patterns = kwargs['patterns']
+    return (key in specials or 
+            depth > max_depth or 
+            not isinstance(value, dict) or
+            any(re.match(pattern, key) for pattern in patterns)
+           )
 
-    current_opts = nested_set_default(opts, keys)  # returns opts if keys == []
+def get_subdicts_keys_and_data_keys(d
+                                   ,**kwargs
+                                   ):
+    
+    sub_dict_keys, data_keys = [], []
+    for key, value in d.items(): 
+        if is_data_key(key, value, **kwargs):
+            data_keys.append(key)
+        else:
+            sub_dict_keys.append(key)
 
+    return sub_dict_keys, data_keys
+
+class DefaultMetas(object):
+    strict = True
+    check_types = True
+    add_new_opts = False
+
+
+def update_opts(current_opts
+               ,override
+               ,depth = 0
+               ,update_data_node = options_manager.override_namedtuple
+               ,make_new_data_node = options_manager.namedtuple_from_dict
+               ,get_subdicts_keys_and_data_keys = get_subdicts_keys_and_data_keys
+               ,**kwargs
+               ):
+    #type(dict, dict, tuple, int, function, function, function, **kwargs) -> None
+    """ Updates or creates a nested dict of data nodes, from a) another one, 
+        b) a nested dict including data dicts and c) flat dicts.  
+        
+        As the tree of override is walked, at each level all data items are read 
+        and used to update (override) the data items from previous (shallower) 
+        levels.  Recursion proceeds only on sub-dict keys.
+        Updating or creating a data node in current_opts is only done when the 
+        function can go no deeper in current_opts, or when opts flattens out.
+        A nested dict flattens out when get_subdicts_keys_and_data_keys 
+        returns no keys of subdicts.
+        When the override dict flattens out, the tree walk shifts to the tree of 
+        opts instead.
+
+        Depth is counted for possible use by get_subdicts_keys_and_data_keys.
+    """
+
+    logger.debug('depth == %s' % depth)
     if not isinstance(current_opts, dict) or not isinstance(override, dict):
         msg = ('opts and override need to be dictionaries. '
-              +'keys == %s, depth == %s' % (keys, depth)
+              +'depth == %s' % depth
               )
         logger.error(msg)
         raise TypeError(msg)
-    if max_depth is None:
-        max_depth = {'options' : 1, 'metas' : 1, None : 3}
-    if end_conditions is None:
+    logger.debug('current_opts.keys() == %s ' % current_opts.keys())
+    logger.debug('override.keys() == %s ' % override.keys())
+
+    if not kwargs:
+        kwargs = {}
+    metas = kwargs.setdefault('metas', current_opts.get('metas', DefaultMetas))
+                #,strict 
+                #,check_types
+                #,add_new_opts, for update_data_node and make_new_data_node
+    kwargs.setdefault('max_depth', 3)
+    kwargs.setdefault('specials', ('options', 'metas'))
+    kwargs.setdefault('patterns', (funcs.make_regex(sDNA_fmt_str),))
+    
+    kwargs['depth'] = depth
+
+    sub_dicts_keys, data_node_keys = get_subdicts_keys_and_data_keys(override
+                                                                    ,**kwargs
+                                                                    )
+    logger.debug('sub_dicts_keys == %s, data_node_keys == %s' % (sub_dicts_keys, data_node_keys))
+    override_data = {key : override[key] for key in data_node_keys}
+
+    if not sub_dicts_keys:  
+        # continue walking the tree, only the tree in current_opts instead,
+        # starting at the same level.
+        sub_dicts_keys, _  = get_subdicts_keys_and_data_keys(current_opts
+                                                            ,**kwargs
+                                                            )
+                  # Needs explicit type, as general_opts above.
         
-        end_conditions = [lambda key, value : not isinstance(value, dict)
-                     ,lambda key, value : max_depth.get(keys[0], max_depth[None]) >= depth
-                     ]
-        end_conditions += list(lambda key, value : bool(re.match(pattern, key))
-                           for pattern in key_patterns
-                          )  # list( generator expression) is used here
-                             # to avoid getting path as a class variable in Python 2 from
-                             # the leaky scope of list comprehensions.  
-    sub_dicts = override.copy()
-    general_opts = {key : sub_dicts.pop(key) 
-                    for key, value in override.items() 
-                    if any(end_condition(key, value) 
-                           for end_condition in end_conditions)
-                   }
-    if not sub_dicts:  # Shallow enough dicts, whose keys aren't 
-                       # "(sDNAUISpec,runsdnacommand)"
-        sub_dicts = {key : {} 
-                     for (key, value) in current_opts.items()
-                     if all(not end_condition(key, value) 
-                            for end_condition in end_conditions)
-                    }
-    if sub_dicts:
-        for key, val in sub_dicts.items():
-            new_override = general_opts.copy()
-            new_override.update(val)
-            update_opts(opts
+    if sub_dicts_keys:
+        for key in sub_dicts_keys:
+            new_override = override_data.copy()
+            new_override.update( override.get(key, {}) )
+            update_opts(current_opts.setdefault(key, {})
                        ,override = new_override 
-                       ,metas = metas
-                       ,keys = keys + [key]
                        ,depth = depth + 1
-                       ,max_depth = max_depth
-                       ,end_conditions = end_conditions
-                       ,key_patterns = key_patterns
+                       ,update_data_node = update_data_node
+                       ,make_new_data_node = make_new_data_node
+                       ,get_subdicts_keys_and_data_keys = get_subdicts_keys_and_data_keys
+                       ,**kwargs
                        )
     else:
-        for key, val in general_opts.items():
+        for key in data_node_keys:
             if key in current_opts:
-                current_opts[key] = options_manager.override_namedtuple(
-                                             current_opts[key]
-                                            ,val
-                                            ,**metas._asdict()
-                                            )
+                current_opts[key] = update_data_node(current_opts[key]
+                                                    ,override_data
+                                                    ,**metas._asdict()
+                                                    )
             else:
-                current_opts[key] = options_manager.namedtuple_from_dict(
-                                                 general_opts
-                                                ,'NT_%s' % key
-                                                ,strict = True
-                                                )  
+                current_opts[key] = make_new_data_node(override_data[key]
+                                                      ,key # NamedTuple type name
+                                                      ,**metas._asdict()
+                                                      )  
 
 
 
@@ -405,15 +456,18 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         #                         )
         # self.logger.debug('Making tool opts namedtuple called %s ' % namedtuple_class_name)
 
-        default_tool_opts = get_tool_opts(nick_name
-                                         ,{}
-                                         ,tool_name
-                                         ,sDNA
-                                         ,val = defaults_dict
-                                         )
-        update_opts(opts = opts
+        default_tool_opts = {}
+        get_tool_opts(nick_name
+                     ,default_tool_opts
+                     ,tool_name
+                     ,sDNA
+                     ,val = defaults_dict
+                     )
+        self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
+
+
+        update_opts(current_opts = opts
                    ,override = default_tool_opts
-                   ,metas = opts['metas']
                    )
 
         # tool_opts[sDNA] = options_manager.namedtuple_from_dict(
@@ -421,7 +475,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         #                                       ,namedtuple_class_name
         #                                       ,strict = True
         #                                       ) 
-        print(opts)
+        self.logger.debug('\n\n'.join(map(str, opts.items())))
         # self.tool_opts = tool_opts
         # self.opts = opts
         self.sDNA = sDNA
