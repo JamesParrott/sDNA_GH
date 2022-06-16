@@ -998,6 +998,8 @@ class ShapefileReader(sDNA_GH_Tool):
         ,shapes
         ,bbox ) = pyshp_wrapper.get_fields_recs_and_shapes( f_name )
 
+        self.debug('bbox == %s' % bbox)
+
         self.debug('gdm == %s ' % gdm)
 
         self.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
@@ -1748,8 +1750,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
                 leg_width = math.sqrt((bbox_xmax - bbox_xmin)**2 
                                      +(bbox_ymax - bbox_ymin)**2
-                                     )
-                tag_height = max( 10, 0.4 * leg_width / 0.7)
+                                     ) / 2
+                tag_height = max( 1, 0.4 * leg_width / 7)
                 leg_height = options.num_classes * tag_height * 1.04
                 legend_xmin = bbox_xmax - leg_width
                 legend_ymin = bbox_ymax - leg_height

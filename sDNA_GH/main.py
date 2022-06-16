@@ -280,7 +280,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     python = r'C:\Python27\python.exe' 
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
-    del_after_sDNA = False
+    del_after_sDNA = True
     strict_no_del = False # Also in ShapefileReader
     ###########################################################################    
     #
@@ -338,8 +338,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for ShapefileReader
     #
-    new_geom = True
-    del_after_read = False                 
+    new_geom = False
+    del_after_read = True                 
     sDNA_names_fmt = '{name}.shp.names.csv'  
     ###########################################################################   
     #         
