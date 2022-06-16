@@ -234,7 +234,6 @@ def is_strict_nested_dict(d):
     return all(isinstance(val, dict) for val in d.values())
 
 def is_data_key(key
-               ,value
                ,**kwargs
                ):
     depth = kwargs['depth']
@@ -243,22 +242,27 @@ def is_data_key(key
     patterns = kwargs['patterns']
     return (key in specials or 
             depth > max_depth or 
-            not isinstance(value, dict) or
             any(re.match(pattern, key) for pattern in patterns)
            )
 
-def get_subdicts_keys_and_data_keys(d
-                                   ,**kwargs
-                                   ):
+def categorise_keys(d
+                   ,**kwargs
+                   ):
     
-    sub_dict_keys, data_keys = [], []
+    sub_dict_keys, data_node_keys, data_field_keys = [], [], []
     for key, value in d.items(): 
-        if is_data_key(key, value, **kwargs):
-            data_keys.append(key)
-        else:
-            sub_dict_keys.append(key)
+        if isinstance(value, dict) or options_manager.isnamedtuple(value):
+            if is_data_key(key, **kwargs):
+                data_node_keys.append(key)
+            else:
+                sub_dict_keys.append(key)
+        else: 
+            data_field_keys.append(key)
 
-    return sub_dict_keys, data_keys
+    return sub_dict_keys, data_node_keys, data_field_keys
+
+
+
 
 class DefaultMetas(object):
     strict = True
@@ -271,7 +275,7 @@ def update_opts(current_opts
                ,depth = 0
                ,update_data_node = options_manager.override_namedtuple
                ,make_new_data_node = options_manager.namedtuple_from_dict
-               ,get_subdicts_keys_and_data_keys = get_subdicts_keys_and_data_keys
+               ,categorise_keys = categorise_keys
                ,**kwargs
                ):
     #type(dict, dict, tuple, int, function, function, function, **kwargs) -> None
@@ -307,50 +311,60 @@ def update_opts(current_opts
                 #,strict 
                 #,check_types
                 #,add_new_opts, for update_data_node and make_new_data_node
-    kwargs.setdefault('max_depth', 3)
+    kwargs.setdefault('max_depth', 2)
     kwargs.setdefault('specials', ('options', 'metas'))
     kwargs.setdefault('patterns', (funcs.make_regex(sDNA_fmt_str),))
     
     kwargs['depth'] = depth
 
-    sub_dicts_keys, data_node_keys = get_subdicts_keys_and_data_keys(override
-                                                                    ,**kwargs
-                                                                    )
+    sub_dicts_keys, data_node_keys, data_field_keys = categorise_keys(override
+                                                                     ,**kwargs
+                                                                     )
     logger.debug('sub_dicts_keys == %s, data_node_keys == %s' % (sub_dicts_keys, data_node_keys))
-    override_data = {key : override[key] for key in data_node_keys}
 
     if not sub_dicts_keys:  
         # continue walking the tree, only the tree in current_opts instead,
         # starting at the same level.
-        sub_dicts_keys, _  = get_subdicts_keys_and_data_keys(current_opts
-                                                            ,**kwargs
-                                                            )
+        sub_dicts_keys, current_data_node_keys, _  = categorise_keys(current_opts
+                                                                    ,**kwargs
+                                                                    )
                   # Needs explicit type, as general_opts above.
-        
+
+
     if sub_dicts_keys:
         for key in sub_dicts_keys:
-            new_override = override_data.copy()
-            new_override.update( override.get(key, {}) )
+            new_override_data = OrderedDict((key, override[key]) 
+                                            for key in data_field_keys
+                                           )
+            new_override_data.update( override.get(key, {}) )
             update_opts(current_opts.setdefault(key, {})
-                       ,override = new_override 
+                       ,override = new_override_data 
                        ,depth = depth + 1
                        ,update_data_node = update_data_node
                        ,make_new_data_node = make_new_data_node
-                       ,get_subdicts_keys_and_data_keys = get_subdicts_keys_and_data_keys
+                       ,categorise_keys = categorise_keys
                        ,**kwargs
                        )
     else:
-        for key in data_node_keys:
+        new_override_data = OrderedDict((key, override[key]) 
+                                        for key in data_field_keys
+                                       )
+        for key in data_node_keys + current_data_node_keys:
             if key in current_opts:
+                overrides = [new_override_data]
+                if key in override:
+                    overrides += [override[key]]
                 current_opts[key] = update_data_node(current_opts[key]
-                                                    ,override_data
+                                                    ,overrides
                                                     ,**metas._asdict()
                                                     )
             else:
-                current_opts[key] = make_new_data_node(override_data[key]
+                new_override_data.update(override[key])
+                current_opts[key] = make_new_data_node(new_override_data
                                                       ,key # NamedTuple type name
                                                       ,**metas._asdict()
                                                       )  
+        
 
 
 
@@ -504,15 +518,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __init__(self
                 ,tool_name
                 ,nick_name
-                ,opts = None
+                ,component = None
                 ,import_sDNA_modules = None
                 ):
 
-        if opts is None:
+        if component is None:
             opts = self.opts  # the class property, tool default opts
+        else:
+            opts = component.opts
+        
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name
+        self.component = component
         self.import_sDNA_modules = import_sDNA_modules
         self.update_tool_opts_and_syntax(opts)
 
@@ -526,6 +544,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __call__(self # the callable instance / func, not the GH component.
                 ,f_name
                 ,opts
+                ,gdm     # just so they're omitted from kwargs below, 
+                ,l_metas # so kwargs only contains entries 
+                ,retcode # for the advanced command string
                 ,**kwargs
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
@@ -582,8 +603,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         advanced = input_args.get('advanced', None)
         if not advanced:
+            user_inputs = self.component.params_adder.user_inputs
+            print('user_inputs == %s' % user_inputs)
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
                                 for (key, val) in kwargs.items()
+                                if key in user_inputs
                                )
             input_args['advanced'] = advanced
             self.logger.info('Advanced command string == %s' % advanced)
@@ -721,7 +745,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
     opts = options_manager.get_dict_of_Classes(metas = {}
                               ,options = dict(selected = False
                                              ,layer = ''
-                                             ,shape_type = 'POLYLINEZ'
+                                             ,shp_type = 'POLYLINEZ'
                                              ,merge_subdicts = True
                                              ,include_groups = False
                                              )
@@ -747,7 +771,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.make_gdm(get_objs_and_OrderedDicts(
                                                  only_selected = options.selected
                                                 ,layers = options.layer
-                                                ,shp_type = options.shape_type
+                                                ,shp_type = options.shp_type
                                                 ,include_groups = options.include_groups 
                                                 ) 
                        )
@@ -825,7 +849,7 @@ class UsertextReader(sDNA_GH_Tool):
 class ShapefileWriter(sDNA_GH_Tool):
 
     opts = options_manager.get_dict_of_Classes(metas = {}
-                        ,options = dict(shape_type = 'POLYLINEZ'
+                        ,options = dict(shp_type = 'POLYLINEZ'
                                        ,input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
                                        ,path = __file__
                                        ,output_shp = os.path.join( os.path.dirname(__file__)
@@ -844,7 +868,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         self.debug('Creating Class Logger.  ')
 
 
-        shp_type = options.shape_type            
+        shp_type = options.shp_type            
 
 
         format_string = options.input_key_str
@@ -1011,8 +1035,11 @@ class ShapefileReader(sDNA_GH_Tool):
              or len(gdm) != len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = pyshp_wrapper.objs_maker_factory() 
-            shapes_to_output = (objs_maker(shp.points) for shp in shapes )
+            objs_maker = pyshp_wrapper.objs_maker_factory(shp_type = options.shp_type) 
+            shapes_to_output = (objs_maker(shp.points) 
+                                for shp in shapes )
+            #self.logger.debug('shapes == %s' % shapes)
+            self.logger.debug('objs_maker == %s' % objs_maker)
         else:
             #elif isinstance(gdm, dict) and len(gdm) == len(recs):
             # an override for different number of overrided geom objects
@@ -1040,7 +1067,6 @@ class ShapefileReader(sDNA_GH_Tool):
         shp_file_gen_exp  = itertools.izip(shapes_to_output
                                           ,(rec.as_dict() for rec in recs)
                                           )
-      
         sc.doc = Rhino.RhinoDoc.ActiveDoc
         gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 

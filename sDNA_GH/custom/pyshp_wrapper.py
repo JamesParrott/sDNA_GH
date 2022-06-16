@@ -61,7 +61,7 @@ logger.addHandler(logging.NullHandler())
 file_name_no_ext = os.path.split(__file__)[-1].split('.')[0]   
 
 class ShpOptions(object):
-    shape_type = 'POLYLINEZ'
+    shp_type = 'POLYLINEZ'
     locale = ''  # '' => User's own settings.  
                  # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
     #
@@ -579,27 +579,29 @@ def make_group(group_name = None):
 
 def objs_maker_factory(
        shp_type = 'POLYLINEZ'
-      ,make_new_group = make_group
-      ,add_objects_to_group = add_objs_to_group
+      #,make_new_group = make_group
+      #,add_objects_to_group = add_objs_to_group
       ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
       ):
     #type(namedtuple, function, function, dict) -> function
     rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
+    return rhino_obj_maker
     # e.g. rhino_obj_maker = rs.AddPolyline
 
-    def g(obj, rec):  # The shape from pyshp is a list of polylines, 
+    #def g(obj, rec):  # The shape from pyshp is a list of polylines, 
                       # even if there is only 1 polyline
-        objs_list = [rhino_obj_maker(points_list) for points_list in obj] 
+    #    return rhino_obj_maker(obj)
+        #objs_list = [rhino_obj_maker(points_list) for points_list in obj] 
     # Creates not necessarily returned Rhino object as intentional side effect
-        if len(objs_list) > 1:
-            new_group_name = make_new_group()
-            add_objects_to_group(objs_list, new_group_name)
-            return new_group_name
-        elif len(objs_list)==1:  #The normal case
-            return objs_list[0]
-        else: 
-            return None
-    return g
+        #if len(objs_list) > 1:
+        #    new_group_name = make_new_group()
+        #    add_objects_to_group(objs_list, new_group_name)
+        #    return new_group_name
+        #elif len(objs_list)==1:  #The normal case
+        #    return objs_list[0]
+        #else: 
+        #    return None
+    #return g
 
 
 

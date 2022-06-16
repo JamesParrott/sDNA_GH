@@ -322,7 +322,7 @@ def custom_inputs_class_deco(BaseComponent
                         key = key.lower() 
                     if remove_whitespace and any(char.isspace() for char in key):
                         key = remove_whitespace(key)
-                        key = key.replace('_','')
+                        key = key.replace('_', '')
                     params_dict.setdefault(key, val)
         # If tools accept **kwargs or *args
         # duped kwargs or args could be a problem here. ymmv.

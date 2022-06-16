@@ -55,7 +55,7 @@ except NameError:
 
 def isnamedtuple(obj):
     #type(type[any]) -> bool
-    return isinstance(obj, tuple)
+    return isinstance(obj, tuple) and hasattr(obj, '_fields')
 
 def attrs(X):
     return [attr for attr in dir(X) if not attr.startswith('_')]

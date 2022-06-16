@@ -296,7 +296,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #     Shapefiles
     #     Application specific overrides for .custom.pyshp_wrapper
     #
-    shape_type = 'POLYLINEZ' # Also in RhinoObjectsReader, ShapefileWriter
+    shp_type = 'POLYLINEZ' # Also in RhinoObjectsReader, ShapefileWriter
     locale = ''  # '' => User's own settings.  Also in DataParser
                  # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
                  # Used for locale.setlocale(locale.LC_ALL,  options.locale)
@@ -556,6 +556,12 @@ def override_all_opts(args_dict
 
     config_toml_dict = {}
 
+    args_dict = OrderedDict((key, value) 
+                            for (key, value) in args_dict.items() 
+                            if value is not None
+                           )
+
+
     if (args_dict and 
         'config' in args_dict and 
         isinstance(args_dict['config'], basestring)):
@@ -750,10 +756,14 @@ def override_all_opts(args_dict
                            )
                 ]            
 
+    print('overrides == %s' % overrides)
+
+
+
     if (not local_metas.sync and local_metas.read_only) and dict_to_update is not module_opts:
         overrides.insert(0, module_opts.copy())
 
-    metas_overrides = map(lambda x : x.pop('metas',x), overrides)
+    metas_overrides = map(lambda x : x.pop('metas', x), overrides)
 
     dict_to_update['metas'] = options_manager.override_namedtuple(
                                         dict_to_update['metas']
@@ -761,7 +771,7 @@ def override_all_opts(args_dict
                                        ,**local_opts['metas']._asdict()
                                        )
 
-    #options_overrides = map(lambda x : x.pop('options',x), overrides)
+    #options_overrides = map(lambda x : x.pop('options', x), overrides)
 
     #dict_to_update['options'] = options_manager.override_namedtuple(
     #                                     dict_to_update['options']
@@ -1039,7 +1049,7 @@ def cache_sDNA_tool(compnt # instead of self
         be removed.  """
     sDNA_tool = tools.sDNA_ToolWrapper(tool_name = mapped_name
                                       ,nick_name = nick_name
-                                      ,opts = compnt.opts
+                                      ,component = compnt
                                       ,import_sDNA_modules = update_sDNA
                                       )                                      
     tools_dict[nick_name] =  sDNA_tool
@@ -1176,7 +1186,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             Params = self.Params
             # If this is run before __init__ has finished .Params may not be
             # there yet.  But it is still available at ghenv.Component.Params
-            # if ghenv is available (unlike here in a module).
+            # if ghenv is available (ghenv is not available here in a module).
+
+        if not hasattr(self, 'params_adder'):
+            self.params_adder = add_params.ParamsToolAdder(self.Params)
 
         if tools is None:
             tools = self.tools
@@ -1184,12 +1197,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         logger.debug('Updating Params: %s ' % tools)
 
-        result = add_params.add_tool_params(Params
-                                           ,tools
-                                           ,do_not_add
-                                           ,do_not_remove
-                                           ,wrapper = self.script
-                                           )
+        result = self.params_adder.add_tool_params(Params
+                                                  ,tools
+                                                  ,do_not_add
+                                                  ,do_not_remove
+                                                  ,wrapper = self.script
+                                                  )
 
         return result
 
@@ -1269,13 +1282,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug('self.script started... \n')
         #logger.debug(kwargs)
 
-        go = funcs.first_item_if_seq(kwargs.get('go', False), False) 
+        go = funcs.first_item_if_seq(kwargs.pop('go', False), False) 
              # Input Params set 
              # to list acess so
              # strip away outer 
              # list container
-        Data = kwargs.get('data', None)
-        Geom = kwargs.get('geom', None)
+        Data = kwargs.pop('data', None)
+        Geom = kwargs.pop('geom', None)
 
         if 'file' in kwargs:
             kwargs['f_name'] = funcs.first_item_if_seq(kwargs['file'], '')
@@ -1418,7 +1431,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                         )
 
             gdm = gdm_from_GH_Datatree.override_gdm(
-                                        gdm
+                                        gdm  # External one from args
                                        ,geom_data_map
                                        ,self.opts['options'].merge_subdicts
                                        )
