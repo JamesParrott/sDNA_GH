@@ -140,6 +140,8 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                   # path = 'C:\Users\James\AppData\Local\Programs\Julia-1.7.3\bin
                   # as that Julia simply happened to be the last thing I 
                   # installed that added itself to the system path.
+    python = r'C:\Python27\python.exe' 
+
     update_path = True
     ##########################################################################
     #
@@ -245,7 +247,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for .custom.logging_wrapper
     #
-    path = file_to_work_from if file_to_work_from else __file__ 
+    path = file_to_work_from
     # Also used by ShapefileWriter, ShapefileReader
     working_folder = os.path.dirname(path)
     logger_name = package_name
@@ -276,7 +278,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                +'found in a path in '
                                                +'metas.sDNA_paths. '
                                                )
-    python = r'C:\Python27\python.exe' 
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
     del_after_sDNA = True
@@ -783,6 +784,8 @@ def override_all_opts(args_dict
                          ,override = override
                          ,metas = dict_to_update['metas']
                          )
+        print('dict_to_update.keys() == %s' % dict_to_update.keys())
+        print('override.keys() == %s' % override.keys())
 
     # for override in overrides:
     #     for nick_name in override.keys():
@@ -852,28 +855,32 @@ else:
 #
 #######################################################################
 
-folders = [r'C:\Program Files\Python27'
-          ,r'%appdata%\Python27'
-          ,r'C:\Program Files (x86)\Python27'
-          ]
-pythons = ['python.exe'
-          ,'py27.exe'
-          ]
+def check_python(opts):
 
-possible_pythons = (os.path.join(folder, python) for folder in folders 
-                                                 for python in pythons
-                   )
+    folders = [r'C:\Program Files\Python27'
+            ,r'%appdata%\Python27'
+            ,r'C:\Program Files (x86)\Python27'
+            ]
+    pythons = ['python.exe'
+            ,'py27.exe'
+            ]
 
-while not os.path.isfile(module_opts['options'].python):
-    module_opts['options'] = module_opts['options']._replace(python = next(possible_pythons))
+    possible_pythons = (os.path.join(folder, python) for folder in folders 
+                                                    for python in pythons
+                       )
 
-if not os.path.isfile(module_opts['options'].python):
-    raise ValueError('python is not a file. ')
+    while not os.path.isfile(opts['metas'].python):
+        opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
+
+    if not os.path.isfile(opts['metas'].python):
+        msg = 'python: %s is not a file. ' % opts['metas'].python
+        logging_wrapper.logging.error(msg)
+        raise ValueError(msg)
 
 module_name = '.'.join([module_opts['options'].package_name 
-                       ,module_opts['options'].sub_module_name
-                       ]
-                      )
+                    ,module_opts['options'].sub_module_name
+                    ]
+                    )
 
 if ( module_name in sys.modules
     and hasattr(sys.modules[module_name], 'logger') ):  
@@ -937,34 +944,9 @@ do_not_remove += default_local_metas._fields
 #########################################################
 
 
-get_Geom = tools.RhinoObjectsReader()
-read_Usertext = tools.UsertextReader()
-write_shapefile = tools.ShapefileWriter()
-read_shapefile = tools.ShapefileReader()
-write_Usertext = tools.UsertextWriter()
-# bake_Usertext = UsertextBaker()
-parse_data = tools.DataParser()
-recolour_objects = tools.ObjectsRecolourer()
-get_tool_names = dev_tools.ToolNamesGetter()
-build_components = dev_tools.sDNA_GH_Builder()
-sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
-config = tools.ConfigManager()
 
-runner.tools_dict.update(get_Geom = get_Geom
-                        ,read_Usertext = read_Usertext
-                        ,write_shapefile = write_shapefile
-                        ,read_shapefile = read_shapefile
-                        ,write_Usertext = write_Usertext
-                        #  ,bake_Usertext = bake_Usertext
-                        ,parse_data = parse_data
-                        ,recolour_objects = recolour_objects 
-                        ,get_comp_names = get_tool_names
-                        ,Build_components = build_components
-                        ,sDNA_General = sDNA_General_dummy_tool
-                        ,config = config
-                        )
 
-def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = logger):
+def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
     #type(dict, function, type[any]) -> tuple(str)
     """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
         opt['options'], when a new
@@ -1027,7 +1009,32 @@ def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = log
                                                   ) 
         # we want to mutate the value in the original dict 
         # - so we can't use options for this assignment.  Latter for clarity.
+get_Geom = tools.RhinoObjectsReader()
+read_Usertext = tools.UsertextReader()
+write_shapefile = tools.ShapefileWriter()
+read_shapefile = tools.ShapefileReader()
+write_Usertext = tools.UsertextWriter()
+# bake_Usertext = UsertextBaker()
+parse_data = tools.DataParser()
+recolour_objects = tools.ObjectsRecolourer()
+get_tool_names = dev_tools.ToolNamesGetter()
+build_components = dev_tools.sDNA_GH_Builder()
+sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
+config = tools.ConfigManager()
 
+runner.tools_dict.update(get_Geom = get_Geom
+                        ,read_Usertext = read_Usertext
+                        ,write_shapefile = write_shapefile
+                        ,read_shapefile = read_shapefile
+                        ,write_Usertext = write_Usertext
+                        #  ,bake_Usertext = bake_Usertext
+                        ,parse_data = parse_data
+                        ,recolour_objects = recolour_objects 
+                        ,get_comp_names = get_tool_names
+                        ,Build_components = build_components
+                        ,sDNA_General = sDNA_General_dummy_tool
+                        ,config = config
+                        )
 
 
 def cache_sDNA_tool(compnt # instead of self
@@ -1035,7 +1042,7 @@ def cache_sDNA_tool(compnt # instead of self
                    ,mapped_name
                    ,name_map = None # unused; just for tool_not_found ArgSpec
                    ,tools_dict = runner.tools_dict
-                   ,update_sDNA = import_sDNA_modules
+                   ,import_sDNA = import_sDNA
                    ):
     #type(type[any], str, str, dict, dict, function) -> None
     """ Custom tasks to be carried out by tool factory when no tool named 
@@ -1049,7 +1056,8 @@ def cache_sDNA_tool(compnt # instead of self
     sDNA_tool = tools.sDNA_ToolWrapper(tool_name = mapped_name
                                       ,nick_name = nick_name
                                       ,component = compnt
-                                      ,import_sDNA_modules = update_sDNA
+                                      ,import_sDNA = import_sDNA
+                                      ,check_python = check_python
                                       )                                      
     tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
@@ -1489,7 +1497,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                                    # in another component
         ret_vals_dict['l_metas'] = self.local_metas #immutable
 
-        logger.debug('Returning from self.script ')
+        logger.debug('Returning from self.script. opts.keys() == %s ' % self.opts.keys() )
         locs = locals().copy()
         ret_args = self.component_Outputs( 
                               [  ret_vals_dict

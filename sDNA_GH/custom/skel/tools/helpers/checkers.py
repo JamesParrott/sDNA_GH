@@ -61,7 +61,7 @@ def get_path(fallback = None, inst = None):
         try:
             path = path_getter()
         except AttributeError:
-            pass
+            continue
         if isinstance(path, str) and os.path.isfile(path):
             return path 
     return None 

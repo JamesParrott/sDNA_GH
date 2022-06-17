@@ -382,6 +382,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                            ,runsdnacommand = 'runsdnacommand'
                                            ,sDNA = None
                                            ,show_all = True
+                                           ,python = r'C:\Python27\python.exe'
+
                                            #,strict 
                                            #,check_types
                                            #,add_new_opts
@@ -392,7 +394,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                              ,output_fmt = "{name}_output"   
                                              # file extensions are actually optional in PyShp, 
                                              # but just to be safe and future proof
-                                             ,python_exe = r'C:\Python27\python.exe'
                                              ,del_after_sDNA = True
                                              ,strict_no_del = False # for debugging
 # Default installation path of Python 2.7.3 release (32 bit ?) 
@@ -408,10 +409,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         nick_name = self.nick_name
         tool_name = self.tool_name
 
+        self.check_python(opts)
+
         if sDNA_key(opts) != opts['metas'].sDNA:
             # Do the sDNA modules in the opts need updating?
-            if self.import_sDNA_modules:
-                self.import_sDNA_modules(opts)
+            if self.import_sDNA:
+                self.import_sDNA(opts)
                 opts['metas'] = opts['metas']._replace(sDNA = sDNA_key(opts))
             else:
                 self.logger.warning(
@@ -519,7 +522,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,tool_name
                 ,nick_name
                 ,component = None
-                ,import_sDNA_modules = None
+                ,import_sDNA = None
+                ,check_python = None
                 ):
 
         if component is None:
@@ -531,7 +535,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.tool_name = tool_name
         self.nick_name = nick_name
         self.component = component
-        self.import_sDNA_modules = import_sDNA_modules
+        self.import_sDNA = import_sDNA
+        self.check_python = check_python
         self.update_tool_opts_and_syntax(opts)
 
 
@@ -561,6 +566,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if not hasattr(sDNAUISpec, self.tool_name): 
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
+        metas = opts['metas']
 
         if self.sDNA != sDNA:  # last sDNA this tool has seen != metas.sDNA
             outcome = self.update_tool_opts_and_syntax(opts)
@@ -619,7 +625,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         f_name = output_file
 
-        command =   (options.python_exe 
+        command =   (metas.python
                     + ' -u ' 
                     + '"' 
                     + os.path.join(  os.path.dirname(sDNAUISpec.__file__)
@@ -1297,10 +1303,11 @@ class DataParser(sDNA_GH_Tool):
 
 
 
-        use_manual_classes = (isinstance(options.class_bounds, list)
-                             and all( isinstance(x, Number) 
-                                               for x in options.class_bounds
-                                    )
+        use_manual_classes = (options.class_bounds and
+                              isinstance(options.class_bounds, list)
+                              and all( isinstance(x, Number) 
+                                       for x in options.class_bounds
+                                     )
                              )
 
         if options.sort_data or (
@@ -1833,29 +1840,20 @@ def parse_values_for_toml(x, supported_types = toml_no_tuples):
         supported type.  
     """
     if options_manager.isnamedtuple(x) and hasattr(x, '_asdict'):
-        print('Converting named tuple %s' % x.__class__.__name__)
         x = x._asdict()
     if isinstance(x, list):
-        print('Iterating over list')
-        return [parse_values_for_toml(y) 
+        return [parse_values_for_toml(y, supported_types) 
                 for y in x 
                 if isinstance(y, tuple(supported_types))
                ]
     if isinstance(x, dict):
-        print('Walking dict ')
-        print('Bad val types == '+', '.join(str(v) for k,v in x.items() if not options_manager.isnamedtuple(v) and not isinstance(v, tuple(supported_types))))
-        print('Keys contain white space == '+', '.join(k for k in x if any(char.isspace() for char in k) ))
-        print('Keys not strings == '+', '.join(k for k in x if not isinstance(k, basestring)))
         return OrderedDict((key, parse_values_for_toml(val, supported_types)) 
                             for key, val in x.items() 
                             if (isinstance(key, basestring) 
                                 and all(not char.isspace() for char in key) 
                                 and (options_manager.isnamedtuple(val) or 
-                                     isinstance(val, tuple(supported_types))
-                                    ) 
-                               )
+                                     isinstance(val, tuple(supported_types))))
                           )
-    print('Returning x %s' % x)
     return x
 
 
@@ -1877,6 +1875,7 @@ class ConfigManager(sDNA_GH_Tool):
         values in opts are saved to the installation wide config.toml.
     """
 
+
     save_to = os.path.join(os.path.dirname(os.path.dirname(__file__))
                           ,'config.toml'
                           ) 
@@ -1890,7 +1889,7 @@ class ConfigManager(sDNA_GH_Tool):
 
 
     component_inputs = ('save_to' # Primary Meta
-                       ,'python_exe'
+                       ,'python'
                        ,'sDNA_paths'
                        ,'auto_get_Geom' 
                        ,'auto_read_Usertext'
@@ -1906,14 +1905,40 @@ class ConfigManager(sDNA_GH_Tool):
         options = opts['options']
         self.debug('options == %s ' % options)
 
-        if save_to is None and not os.path.isfile(self.save_to): 
-                               # Don't overwrite an existing installation 
-                               # wide config.toml file
-            #
-            save_to = self.save_to
-            self.warning('Saving opts to installation wide '
-                        +' file: %s' % self.save_to
-                        )
+        # self.debug('opts == %s' % '\n\n'.join(str(item) 
+        #                                      for item in opts.items()
+        #                                      )
+        #           )
+
+
+        parsed_dict = parse_values_for_toml(opts)   
+        del parsed_dict['metas']['config'] # no nested options files
+        if 'sDNA' in parsed_dict['metas']:
+            del parsed_dict['metas']['sDNA'] # read only.  auto-updated.
+        # self.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
+        #                                              for item in parsed_dict.items()
+        #                                             )
+        #           )
+
+        if save_to is None:
+            if not os.path.isfile(self.save_to): 
+                                # Don't overwrite an existing installation 
+                                # wide config.toml file
+                #
+                save_to = self.save_to
+                self.warning('Saving opts to installation wide '
+                            +' file: %s' % self.save_to
+                            )
+                del parsed_dict['options']['path'] # no possibly specific path 
+                                                # saved to the installation wide 
+                                                # config file's options
+                del parsed_dict['options']['working_folder']
+                parsed_dict['options']['message'] = 'Installation wide user options file. '
+        else:
+            parsed_dict['options']['message'] = 'Project specific user options file. '
+
+
+            
         if not isinstance(save_to, basestring):
             msg = 'File path to save to: %s needs to be a string' % save_to
             self.error(msg)
@@ -1923,17 +1948,8 @@ class ConfigManager(sDNA_GH_Tool):
             self.error(msg)
             raise ValueError(msg)
 
-        self.debug('opts == %s' % '\n\n'.join(str(item) 
-                                             for item in opts.items()
-                                             )
-                  )
 
-        parsed_dict = parse_values_for_toml(opts)   
 
-        self.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
-                                                     for item in parsed_dict.items()
-                                                    )
-                  )
 
 
         options_manager.save_toml_file(save_to, parsed_dict)
