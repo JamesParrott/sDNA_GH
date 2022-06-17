@@ -86,7 +86,7 @@ default_name_map = dict(Read_Geom = 'get_Geom'
                        ,Parse_Data = 'parse_data'
                        ,Recolour_Objects = 'recolour_objects'
                        ,Recolor_Objects = 'recolour_objects'
-                       ,Load_Config = 'load_config'
+                       ,Config = 'config'
                        ,Comp_Names = 'get_comp_names'
                        #
                        ,sDNA_Integral = 'sDNAIntegral'
@@ -164,7 +164,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                    ,'Parse data' : 'parse_data'
                    ,'Recolour objects' : 'recolour_objects'
                    ,'Recolor objects' : 'recolour_objects'
-                   ,'Load configuration' : 'load_config'
                    ,'Get component names' : 'get_comp_names'
                    #
                    ,'Integral Analysis' : 'sDNAIntegral'
@@ -203,7 +202,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'get_comp_names'   : 'Dev'
                  ,'Self_test'        : 'Dev'
                  ,'Build_components' : 'Dev' 
-                 ,'Load_Config'      : 'Support'
+                 ,'Config'      : 'Support'
                  }
 
 
@@ -949,7 +948,7 @@ recolour_objects = tools.ObjectsRecolourer()
 get_tool_names = dev_tools.ToolNamesGetter()
 build_components = dev_tools.sDNA_GH_Builder()
 sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
-load_config = tools.ConfigManager()
+config = tools.ConfigManager()
 
 runner.tools_dict.update(get_Geom = get_Geom
                         ,read_Usertext = read_Usertext
@@ -962,7 +961,7 @@ runner.tools_dict.update(get_Geom = get_Geom
                         ,get_comp_names = get_tool_names
                         ,Build_components = build_components
                         ,sDNA_General = sDNA_General_dummy_tool
-                        ,load_config = load_config
+                        ,config = config
                         )
 
 def import_sDNA_modules(opts, load_modules = launcher.load_modules, logger = logger):
@@ -1287,15 +1286,15 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
              # to list acess so
              # strip away outer 
              # list container
-        Data = kwargs.pop('data', None)
-        Geom = kwargs.pop('geom', None)
+        Data = kwargs.pop('Data', None)
+        Geom = kwargs.pop('Geom', None)
 
         if 'file' in kwargs:
             kwargs['f_name'] = funcs.first_item_if_seq(kwargs['file'], '')
-        elif 'f_name' not in kwargs:
-            kwargs['f_name'] = ''
-        else:
-            kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
+        # elif 'f_name' not in kwargs:
+        #     kwargs['f_name'] = ''
+        # else:
+        #     kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
 
         external_opts = funcs.first_item_if_seq(kwargs.pop('opts', {}), {})
 
@@ -1390,9 +1389,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 self.update_Params()#self.Params, self.tools)
                 # to add in any new sDNA inputs to the component's Params
             
-            return (None,) * len(self.Params.Output)
-            # to allow running the component again, with any new inputs
-            # supplied as Params
+                logger.info('sDNA has been updated.  '
+                           +'Returning None to allow new Params to be set. '
+                           )
+                return (None,) * len(self.Params.Output)
+                # to allow running the component again, with any new inputs
+                # supplied as Params
 
 
         logger.debug(go)

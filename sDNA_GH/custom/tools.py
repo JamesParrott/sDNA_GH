@@ -633,15 +633,20 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     )
         self.logger.info('sDNA command run = ' + command)
 
-        output_lines = subprocess.check_output(command)
-        retcode = 0 # An error in subprocess.check_output will cease execution
-                    # in the previous line.  Can set retcode =0 and proceed 
-                    # safely to delete files.
+        try:
+            output_lines = subprocess.check_output(command)
+            retcode = 0 
+        except subprocess.CalledProcessError as e:
+            self.logger.error('error.output == %s' % e.output)
+            self.logger.error('error.returncode == %s' % e.returncode)
+            self.logger.error('error.command == %s' % e.command)
+            raise e
+
 
         self.logger.info(output_lines)
 
 
-
+        # Does not execute if subprocess raises an Exception
         delete_shp_files_if_req(input_file
                                ,logger = self.logger
                                ,delete = options.del_after_sDNA
@@ -858,7 +863,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                                        )
                         )
 
-    component_inputs = ('file', 'prj', 'Geom', 'Data', 'config') 
+    component_inputs = ('Geom', 'Data', 'file', 'prj', 'config') 
 
     def __call__(self, f_name, gdm, prj = None, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -910,8 +915,8 @@ class ShapefileWriter(sDNA_GH_Tool):
             #                 if is_shape(y, shp_type)]
             #     else:
             #         return []
-
-        self.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
+        if gdm:
+            self.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -1622,13 +1627,14 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     bounded_colour += ( max(0, min(255, channel)), )
                 return rs.CreateColor(bounded_colour)
 
-        objs_to_recolour = OrderedDict( (k, v) for k, v in gdm.items()
-                                            if isinstance(v, Colour)  
-                                    )
+        objs_to_recolour = OrderedDict( (k, v) 
+                                        for k, v in gdm.items()
+                                        if isinstance(v, Colour)  
+                                      )
             
         objs_to_recolour.update( (key,  get_colour(val))
-                                for key, val in objs_to_get_colour.items()
-                                )
+                                 for key, val in objs_to_get_colour.items()
+                               )
 
 
         legend_tags = OrderedDict()
@@ -1637,9 +1643,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         legend_last_pattern = funcs.make_regex(options.last_leg_tag_str)
 
         legend_tag_patterns = (legend_first_pattern
-                            ,legend_inner_pattern
-                            ,legend_last_pattern
-                            )
+                              ,legend_inner_pattern
+                              ,legend_last_pattern
+                              )
 
 
         GH_objs_to_recolour = OrderedDict()
@@ -1656,7 +1662,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
         for obj, new_colour in objs_to_recolour.items():
-            self.logger.debug('obj, is_uuid == %s, %s ' % (obj, is_uuid(obj))) 
+            #self.logger.debug('obj, is_uuid == %s, %s ' % (obj, is_uuid(obj))) 
             
             # try:
             #     obj_guid = System.Guid(str(obj))
@@ -1826,18 +1832,31 @@ def parse_values_for_toml(x, supported_types = toml_no_tuples):
         or contains whitespace, or for which the value is not a 
         supported type.  
     """
+    if options_manager.isnamedtuple(x) and hasattr(x, '_asdict'):
+        print('Converting named tuple %s' % x.__class__.__name__)
+        x = x._asdict()
     if isinstance(x, list):
-        return [parse_values_for_toml(y) for y in x]
+        print('Iterating over list')
+        return [parse_values_for_toml(y) 
+                for y in x 
+                if isinstance(y, tuple(supported_types))
+               ]
     if isinstance(x, dict):
-        return OrderedDict((key, parse_values_for_toml(val)) 
+        print('Walking dict ')
+        print('Bad val types == '+', '.join(str(v) for k,v in x.items() if not options_manager.isnamedtuple(v) and not isinstance(v, tuple(supported_types))))
+        print('Keys contain white space == '+', '.join(k for k in x if any(char.isspace() for char in k) ))
+        print('Keys not strings == '+', '.join(k for k in x if not isinstance(k, basestring)))
+        return OrderedDict((key, parse_values_for_toml(val, supported_types)) 
                             for key, val in x.items() 
                             if (isinstance(key, basestring) 
                                 and all(not char.isspace() for char in key) 
-                                and isinstance(val, supported_types)
+                                and (options_manager.isnamedtuple(val) or 
+                                     isinstance(val, tuple(supported_types))
+                                    ) 
                                )
                           )
+    print('Returning x %s' % x)
     return x
-
 
 
 class ConfigManager(sDNA_GH_Tool):
@@ -1878,27 +1897,51 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'auto_write_Shp'
                        ,'auto_read_Shp'
                        ,'auto_plot_data'
-
                        )
 
     def __call__(self, save_to, opts):
         self.debug('Starting class logger')
+        if opts is None:
+            opts = self.opts
         options = opts['options']
-        metas = opts['metas']
         self.debug('options == %s ' % options)
-        if ( (not isinstance(save_to, str) or
-              not save_to.endswith('.toml') or
-              not os.path.isfile(save_to)) 
-             and not os.path.isfile(self.save_to)):
+
+        if save_to is None and not os.path.isfile(self.save_to): 
+                               # Don't overwrite an existing installation 
+                               # wide config.toml file
             #
             save_to = self.save_to
-            self.logger.warning('Saving opts to installation wide save_to.toml')
-        parsed_dict = parse_values_for_toml(opts)        
+            self.warning('Saving opts to installation wide '
+                        +' file: %s' % self.save_to
+                        )
+        if not isinstance(save_to, basestring):
+            msg = 'File path to save to: %s needs to be a string' % save_to
+            self.error(msg)
+            raise TypeError(msg)            
+        if not save_to.endswith('.toml'):
+            msg = 'File path to save to: %s needs to end in .toml' % save_to
+            self.error(msg)
+            raise ValueError(msg)
+
+        self.debug('opts == %s' % '\n\n'.join(str(item) 
+                                             for item in opts.items()
+                                             )
+                  )
+
+        parsed_dict = parse_values_for_toml(opts)   
+
+        self.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
+                                                     for item in parsed_dict.items()
+                                                    )
+                  )
+
+
         options_manager.save_toml_file(save_to, parsed_dict)
 
         
         retcode = 0
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
+
     retvals = ('retcode',)
     component_outputs = ()

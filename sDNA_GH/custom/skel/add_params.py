@@ -279,58 +279,64 @@ class ParamsToolAdder(object):
         
         logger.debug('self.current_inputs == %s ' % self.current_inputs)
 
+        self.needed_outputs = [output['NickName'] 
+                               for tool in reversed(tools) 
+                               for output in tool.output_params() 
+                              ]
+        self.needed_inputs = [input['NickName'] 
+                              for tool in tools 
+                              for input in tool.input_params() 
+                             ]
 
 
-        needed_output_params = [ output for tool in reversed(tools)
+        missing_output_params = [ output for tool in reversed(tools)
                                  for output in tool.output_params() 
                                  if output['NickName'] not in self.current_outputs]
 
-        needed_input_params = [ input for tool in tools 
+        missing_input_params = [ input for tool in tools 
                                 for input in tool.input_params() 
                                 if input['NickName'] not in self.current_inputs ]
                             
         if wrapper:
             for output in reversed(wrapper.output_params()):
                 if output['NickName'] not in self.current_outputs:
-                    needed_output_params = [output] + needed_output_params
+                    missing_output_params = [output] + missing_output_params
             for input in reversed(wrapper.input_params()):
                 if input['NickName'] not in self.current_inputs:
-                    needed_input_params = [input] + needed_input_params
+                    missing_input_params = [input] + missing_input_params
 
 
 
-        if not needed_output_params and not needed_input_params:
+        if not missing_output_params and not missing_input_params:
             msg = 'No extra Params required. '
             logger.debug(msg)
             return msg
         else:
-            logger.debug('needed_output_params == %s ' % needed_output_params)
-            logger.debug('needed_input_params == %s ' % needed_input_params)
+            logger.debug('needed_output_params == %s ' % missing_output_params)
+            logger.debug('needed_input_params == %s ' % missing_input_params)
 
 
         ParamsSyncObj = Params.EmitSyncObject()
 
-        if needed_output_params:
+        if missing_output_params:
             add_Params('Output'
                     ,do_not_add
                     ,do_not_remove
                     ,Params
-                    ,needed_output_params
+                    ,missing_output_params
                     )
 
-        if needed_input_params:
+        if missing_input_params:
             add_Params('Input'
                     ,do_not_add
                     ,do_not_remove
                     ,Params
-                    ,needed_input_params
+                    ,missing_input_params
                     )
 
         Params.Sync(ParamsSyncObj)
         Params.RepairParamAssociations()
 
-        self.needed_inputs = [input['NickName'] for input in needed_input_params]
-        self.needed_outputs = [output['NickName'] for output in needed_output_params]
 
         return 'Tried to add extra Params. '
 

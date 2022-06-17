@@ -301,8 +301,8 @@ def custom_inputs_class_deco(BaseComponent
                             ,anon_pos_args = []
                             ,anon_kwargs = []
                             ,prioritise_kwargs = True
-                            ,case_sensitive = False
-                            ,leave_whitespace = False
+                            ,case_sensitive = True
+                            ,leave_whitespace = True
                             ):
     #type(type[any], list, list, bool) -> type[any]
 
@@ -318,9 +318,9 @@ def custom_inputs_class_deco(BaseComponent
             if not case_sensitive or not leave_whitespace: # Add in extra keys 
                                                            # to make case insensitive
                 for key, val in params_dict.copy().items():   
-                    if not case_sensitive and not key.islower():
+                    if not case_sensitive:
                         key = key.lower() 
-                    if remove_whitespace and any(char.isspace() for char in key):
+                    if not leave_whitespace:
                         key = remove_whitespace(key)
                         key = key.replace('_', '')
                     params_dict.setdefault(key, val)
