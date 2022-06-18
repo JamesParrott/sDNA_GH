@@ -84,6 +84,7 @@ from . import options_manager
 from . import pyshp_wrapper
 from . import logging_wrapper
 from . import gdm_from_GH_Datatree
+from .. import launcher
 
 try:
     basestring #type: ignore
@@ -215,7 +216,9 @@ def sDNA_key(opts):
         Returns a string so the key can be loaded from a toml file.
     """
     metas = opts['metas']
-    sDNA = (metas.sDNAUISpec, metas.runsdnacommand)
+    sDNA = (metas.sDNAUISpec.partition['.'][0]
+           ,metas.runsdnacommand.partition['.'][0]
+           )
     return sDNA_fmt_str.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
 def nested_set_default(d, keys, last_default = None):
@@ -255,6 +258,25 @@ def get_tool_opts(nick_name, opts, tool_name = None, sDNA = None, val = None):
     # return tool_opts
 
 
+class sDNAMetaOptions(object):
+    """All options needed to import sDNA. """
+
+    sDNAUISpec = 'sDNAUISpec'
+    runsdnacommand = 'runsdnacommand'
+    sDNA_paths = funcs.windows_installation_paths('sDNA')
+
+sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
+
+class PythonOptions(object):
+    """All options needed to specify a Python interpreter, or search for one. """
+
+    python_paths = funcs.windows_installation_paths('Python27')
+    python_exes = ['python.exe', 'py27.exe']
+    python = r'C:\Python27\python.exe'
+
+python_options = options_manager.namedtuple_from_class(PythonOptions)
+
+
 def check_python(opts):
     #type(dict) -> None 
     """ Searches opts['metas'].python_paths, updating opts['metas'].python 
@@ -264,15 +286,24 @@ def check_python(opts):
     folders = opts['metas'].python_paths
     pythons = opts['metas'].python_exes
 
+    if isinstance(folders, basestring):
+        folders = [folders]
+
+    if isinstance(pythons, basestring):
+        pythons = pythons
+
     possible_pythons = (os.path.join(folder, python) for folder in folders 
-                                                    for python in pythons
+                                                     for python in pythons
                        )
 
-    while not os.path.isfile(opts['metas'].python):
+    while not opts['metas'].python or not os.path.isfile(opts['metas'].python):
         opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
 
     if not os.path.isfile(opts['metas'].python):
-        msg = 'python: %s is not a file. ' % opts['metas'].python
+        msg = ('No Python interpreter file found.  Please specify a valid '
+              +'python interpreter in metas.python.  ' % opts['metas'].python
+              +'or a range of python intepreter names and folder names to '
+              +'search for one in metas.python_exes and metas.python_paths.')
         logger.error(msg)
         raise ValueError(msg)
 
@@ -412,6 +443,76 @@ def update_opts(current_opts
 
 
 
+def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
+    #type(dict, function, type[any]) -> tuple(str)
+    """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
+        opt['options'], when a new
+        module name is specified in opts['metas'].sDNAUISpec or 
+        opts['metas'].runsdnacommand.  
+
+        Returns a tuple of the latest modules names.
+    """
+    
+    metas = opts['metas']
+    options = opts['options']
+
+    logger.debug('metas.sDNAUISpec == %s ' % metas.sDNAUISpec
+                +', metas.runsdnacommand == %s ' % metas.runsdnacommand 
+                )
+
+    logger.debug('before update, options.sDNAUISpec == %s ' % repr(options.sDNAUISpec)
+                +', options.run_sDNA == %s ' % repr(options.run_sDNA)
+                )
+
+
+    requested_sDNA = (metas.sDNAUISpec.partition['.'][0]
+                     ,metas.runsdnacommand.partition['.'][0]) # get rid of .py
+
+    # To load new sDNA modules, specify the new module names in
+    # metas.sDNAUISpec and metas.runsdnacommand
+
+    # If they are loaded successfully the actual corresponding modules are
+    # in options.sDNAUISpec and options.run_sDNA
+
+    if ( metas.sDNA is None or
+         isinstance(options.sDNAUISpec, options_manager.Sentinel) or
+         isinstance(options.run_sDNA, options_manager.Sentinel) or
+         (options.sDNAUISpec.__name__
+                    ,options.run_sDNA.__name__) != requested_sDNA ):
+        #
+        # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
+        sDNAUISpec, run_sDNA, _ = load_modules(m_names = requested_sDNA
+                                              ,folders = metas.sDNA_paths
+                                              ,logger = logger
+                                              ,module_name_error_msg = "Invalid file names.  "
+                                                                       +"Please supply valid names of 'sDNAUISpec.py' "
+                                                                       +"and 'runsdnacommand.py' files in "
+                                                                       +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                       +"respectively. " # not strings
+                                              ,folders_error_msg = "sDNA_GH could not find sDNA.  Please supply the "
+                                                                  +"correct name of the path to the sDNA folder you "
+                                                                  +"wish to use with sDNA_GH, in "
+                                                                  +"metas.sDNA_paths.  This folder should "
+                                                                  +"contain both a valid "
+                                                                  +"'sDNAUISpec.py' and a valid 'runsdnacommand.py' "
+                                                                  +"(or equivalent files as named in "
+                                                                  +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                  +"respectively). " # not existing folders
+                                              ,modules_not_found_msg = "sDNA_GH failed to import sDNA.  Please ensure a "
+                                                                      +"folder in "
+                                                                      +"metas.sDNA_paths contains both the valid "
+                                                                      +"'sDNAUISpec.py' "
+                                                                      +"and the valid 'runsdnacommand.py' for your "
+                                                                      +"chosen sDNA installation (or equivalent "
+                                                                      +"files, as named in "
+                                                                      +"metas.sDNAUISpec and metas.runsdnacommand "
+                                                                      +"respectively). "
+                                              )
+        opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
+                                                  ,run_sDNA = run_sDNA 
+                                                  ) 
+        # we want to mutate the value in the original dict 
+        # - so we can't use options for this assignment.  Latter for clarity.
 
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
@@ -421,19 +522,17 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     # self.tool_name.  When the instance is called, the version of sDNA
     # is looked up in opts['metas'], from its args.
     # 
+    metas = dict(sDNA = None
+                ,show_all = True
+                #,strict 
+                #,check_types
+                #,add_new_opts
+                )
+    metas.update(python_options._asdict())
+    metas.update(sDNA_meta_options._asdict())
+
     opts = options_manager.get_dict_of_Classes(
-                               metas = dict(sDNAUISpec = 'sDNAUISpec'
-                                           ,runsdnacommand = 'runsdnacommand'
-                                           ,sDNA = None
-                                           ,show_all = True
-                                           ,python = '' #r'C:\Python27\python.exe'
-                                           ,sDNA_paths = funcs.windows_installation_paths('sDNA')
-                                           ,python_paths = funcs.windows_installation_paths('Python27')
-                                           ,python_exes = ['python.exe', 'py27.exe']
-                                           #,strict 
-                                           #,check_types
-                                           #,add_new_opts
-                                           )
+                               metas = metas
                               ,options = dict(sDNAUISpec = options_manager.Sentinel('Module not imported yet')
                                              ,run_sDNA = options_manager.Sentinel('Module not imported yet')
                                              ,prepped_fmt = "{name}_prepped"
@@ -447,7 +546,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
                                              )
                               )
-
+    opts['metas]']
 
     def update_tool_opts_and_syntax(self, opts = None):
         if opts is None:
@@ -459,18 +558,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if sDNA_key(opts) != opts['metas'].sDNA:
             # Do the sDNA modules in the opts need updating?
-            if self.import_sDNA:
-                self.import_sDNA(opts)
-                opts['metas'] = opts['metas']._replace(sDNA = sDNA_key(opts))
-            else:
-                self.logger.warning(
-                            'Tool opts and syntax need updating but'
-                           +' this tool cannot import sDNA modules. '
-                           +' Waiting for next call to this method.'
-                           )
-                # Pointless updating tool_opts
-                # to out of date modules that should be changed.
-                return 'Failed to update sDNA, and modules need (re)importing. '
+            self.import_sDNA(opts, logger = self.logger)
+            opts['metas'] = opts['metas']._replace(sDNA = sDNA_key(opts))
+
 
         metas = opts['metas']
         sDNA = metas.sDNA
@@ -568,7 +658,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,tool_name
                 ,nick_name
                 ,component = None
-                ,import_sDNA = None
+                ,import_sDNA = import_sDNA
                 ):
 
         if component is None:
@@ -1916,12 +2006,13 @@ class ConfigManager(sDNA_GH_Tool):
                           ,'config.toml'
                           ) 
 
-    opts = options_manager.get_dict_of_Classes(metas = dict(config = save_to)
+    metas = dict(config = save_to)
+    metas.update(python_options._asdict())
+    metas.update(sDNA_meta_options._asdict())
+
+    opts = options_manager.get_dict_of_Classes(metas = metas
                                               ,options = {}
                                               )
-
-
-
 
 
     component_inputs = ('save_to' # Primary Meta
@@ -1934,11 +2025,27 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'auto_plot_data'
                        )
 
-    def __call__(self, save_to, opts):
+    def __call__(self
+                ,save_to
+                ,python = None
+                ,sDNA_paths = None
+                ,opts = opts
+                ):
         self.debug('Starting class logger')
+            
+
         if opts is None:
             opts = self.opts
+
         options = opts['options']
+
+        if python is not None:
+            opts['metas'] = opts['metas']._replace(python = python)
+            check_python(opts)
+        if sDNA_paths is not None:
+            opts['metas'] = opts['metas']._replace(sDNA_paths = sDNA_paths)
+            import_sDNA(opts)
+
         self.debug('options == %s ' % options)
 
         # self.debug('opts == %s' % '\n\n'.join(str(item) 

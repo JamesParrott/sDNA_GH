@@ -183,10 +183,9 @@ def strict_import(module_name = ''
                  ,sub_folder = ''
                  ,logger = output
                  ,reload_already_imported = reload_already_imported
-                 ,search_folder_only = False
                  ):
 
-    # type: (str, str, str, type[any], bool, bool) -> type[any]
+    # type: (str, str, str, type[any], bool) -> type[any]
     """ Imports the named module from the specified folder\subfolder only, 
         and returns it.
         
@@ -247,7 +246,7 @@ def load_modules(m_names
                 ,folders
                 ,logger = output
                 ,module_name_error_msg = 'Please supply valid names of modules to import, %s'
-                ,folders_error_msg = 'Please supply valid folders to import from, %s'
+                ,folders_error_msg = 'Please supply valid folders to import from. %s'
                 ,modules_not_found_msg = 'Specified modules not found in any folder, %s'):
     #type(str/ Iterable, list, type[any], str, str) -> tuple / None
     """ Tries to import all modules in m_names, from the first folder in 
@@ -257,7 +256,7 @@ def load_modules(m_names
         Returns a tuple of all the modules and the path they were found in.  Else 
         raises a ModuleNotFoundError.
     """
-    if not m_names or not any( isinstance(m_name, basestring) 
+    if not m_names or any( not isinstance(m_name, basestring) 
                                for m_name in m_names ):
         raise ModuleNameError(message_fmt = module_name_error_msg
                              ,m_names = m_names
@@ -269,7 +268,9 @@ def load_modules(m_names
     logger.debug('m_names == %s of type : %s' % (m_names, type(m_names).__name__))
 
     logger.debug('Testing paths : %s ' % folders)
-    logger.debug('Type(folders) : %s' % type(folders).__name__)
+    
+    if isinstance(folders, basestring):
+        folders = [folders]
 
     if not any(os.path.isdir(folder) or os.path.isdir(os.path.dirname(folder)) 
                for folder in folders
@@ -289,7 +290,6 @@ def load_modules(m_names
                     for ending in ['.py','.pyc'] 
                    )
                 for name in m_names
-                if isinstance(name, basestring)
               ):
             #
             logger.debug('Importing %s' % repr(m_names))
@@ -340,18 +340,22 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     error_message = 1
     sDNA_GH.main, _ = load_modules(sDNA_GH_package + '.main'
                                    ,sDNA_GH_search_paths
-                                   ,folders_error_msg = 'Please ensure a folder called '
-                                                        + sDNA_GH_package +' is created in '
+                                   ,folders_error_msg = 'Please ensure a folder called %s' % sDNA_GH_package 
+                                                        +' is created in '
                                                         +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
                                                         +', containing main.py and all sDNA_GH python' 
                                                         +' files and subfolders. ' 
-                                   ,modules_not_found_msg = 'Please install sDNA_GH according to README.md,'
-                                                            +' ensuring that main.py and all sDNA_GH python' 
+                                   ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  Please copy'
+                                                            +' sDNA_GH.zip into: '
+                                                            +Grasshopper.Folders.DefaultUserObjectFolder
+                                                            +', Unblock it if necessary, and then right click'
+                                                            +' it and select Extract All... in that location. '
+                                                            +' Ensure that main.py and all sDNA_GH python' 
                                                             +' files and subfolders are inside: '
                                                             +os.path.join(
                                                                  Grasshopper.Folders.DefaultUserObjectFolder
                                                                 ,sDNA_GH_package
-                                                                        )
+                                                                )
                                    )         
 
 
