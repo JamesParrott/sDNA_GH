@@ -53,7 +53,7 @@ from . import launcher
 from .custom import options_manager
 from .custom import logging_wrapper
 from .custom import pyshp_wrapper
-from .custom.helpers import funcs 
+from .custom import data_cruncher 
 from .custom import gdm_from_GH_Datatree
 from .custom.skel.basic import smart_comp
 from .custom.skel.basic.ghdoc import ghdoc #GhPython 'magic' global variable
@@ -120,27 +120,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                             # with an env, while being able to get the 
                             # sDNA stderr and stdout to the sDNA_GH logging
     sDNA = None  # Read only.  Auto updates from above.
-    #sDNA_path = ''  
-    # Read only.  Determined after loading sDNAUISpec to which ever below
-    # it is found in.
-    # after loading, 
-    # assert 
-    #   opts['metas'].sDNA_path 
-    #      == os.path.dirname(opts['options'].sDNAUISpec.__file__)
-    #sDNA_UISpec_path = r'C:\Program Files (x86)\sDNA\sDNAUISpec.py'
-    #sDNA_paths = [sDNA_UISpec_path, 
-    sDNA_paths  = [r'C:\Program Files (x86)\sDNA']
-    sDNA_paths += [os.path.join(os.getenv('APPDATA'),'sDNA')]
-    sDNA_paths += list(path 
-                       for path in os.getenv('PATH').split(';')
-                       if 'sDNA' in path 
-                      )             # list( generator expression) is used here
-                  # to avoid getting path as a class variable in Python 2 from
-                  # the leaky scope of list comprehensions.  In testing, I had
-                  # path = 'C:\Users\James\AppData\Local\Programs\Julia-1.7.3\bin
-                  # as that Julia simply happened to be the last thing I 
-                  # installed that added itself to the system path.
-    python = r'C:\Python27\python.exe' 
+    #python = r'C:\Python27\python.exe' 
 
     update_path = True
     ##########################################################################
@@ -365,9 +345,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
-    if re_normaliser not in funcs.valid_re_normalisers:
+    if re_normaliser not in data_cruncher.valid_re_normalisers:
         raise ValueError('%s must be in %s' 
-                        %(re_normaliser, funcs.valid_re_normalisers)
+                        %(re_normaliser, data_cruncher.valid_re_normalisers)
                         )
     class_bounds = [options_manager.Sentinel('class_bounds is automatically '
                                             +'calculated by sDNA_GH unless '
@@ -425,7 +405,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
 
 class HardcodedLocalMetas(object):
-    sync = True    
+    synced = True    
     read_only = True
     nick_name = options_manager.error_raising_sentinel_factory('Nick name has '
                                               +'not been read '
@@ -640,7 +620,7 @@ def override_all_opts(args_dict
 
     # def overrides_list(key, tool = None, sDNA = None):
     #     # type (str) -> list
-    #     if (local_metas.sync or 
+    #     if (local_metas.synced or 
     #         not local_metas.read_only):
     #         retval = []  
     #     else: 
@@ -670,7 +650,7 @@ def override_all_opts(args_dict
 
     #Introduce dict_to_update to capitalise on the local metas we just updated,
     #instead of waiting for the next update to sync or desync.
-    if local_metas.sync:
+    if local_metas.synced:
         dict_to_update = module_opts # the opts in module's global scope, 
                                      # outside this function
     else:
@@ -760,7 +740,7 @@ def override_all_opts(args_dict
 
 
 
-    if (not local_metas.sync and local_metas.read_only) and dict_to_update is not module_opts:
+    if (not local_metas.synced and local_metas.read_only) and dict_to_update is not module_opts:
         overrides.insert(0, module_opts.copy())
 
     metas_overrides = map(lambda x : x.pop('metas', x), overrides)
@@ -855,27 +835,7 @@ else:
 #
 #######################################################################
 
-def check_python(opts):
 
-    folders = [r'C:\Program Files\Python27'
-            ,r'%appdata%\Python27'
-            ,r'C:\Program Files (x86)\Python27'
-            ]
-    pythons = ['python.exe'
-            ,'py27.exe'
-            ]
-
-    possible_pythons = (os.path.join(folder, python) for folder in folders 
-                                                    for python in pythons
-                       )
-
-    while not os.path.isfile(opts['metas'].python):
-        opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
-
-    if not os.path.isfile(opts['metas'].python):
-        msg = 'python: %s is not a file. ' % opts['metas'].python
-        logging_wrapper.logging.error(msg)
-        raise ValueError(msg)
 
 module_name = '.'.join([module_opts['options'].package_name 
                     ,module_opts['options'].sub_module_name
@@ -1057,7 +1017,6 @@ def cache_sDNA_tool(compnt # instead of self
                                       ,nick_name = nick_name
                                       ,component = compnt
                                       ,import_sDNA = import_sDNA
-                                      ,check_python = check_python
                                       )                                      
     tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
@@ -1289,7 +1248,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug('self.script started... \n')
         #logger.debug(kwargs)
 
-        go = funcs.first_item_if_seq(kwargs.pop('go', False), False) 
+        go = data_cruncher.first_item_if_seq(kwargs.pop('go', False), False) 
              # Input Params set 
              # to list acess so
              # strip away outer 
@@ -1298,22 +1257,22 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         Geom = kwargs.pop('Geom', None)
 
         if 'file' in kwargs:
-            kwargs['f_name'] = funcs.first_item_if_seq(kwargs['file'], '')
+            kwargs['f_name'] = data_cruncher.first_item_if_seq(kwargs['file'], '')
         # elif 'f_name' not in kwargs:
         #     kwargs['f_name'] = ''
         # else:
         #     kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
 
-        external_opts = funcs.first_item_if_seq(kwargs.pop('opts', {}), {})
+        external_opts = data_cruncher.first_item_if_seq(kwargs.pop('opts', {}), {})
 
-        external_local_metas = funcs.first_item_if_seq(kwargs.pop('local_metas'
+        external_local_metas = data_cruncher.first_item_if_seq(kwargs.pop('local_metas'
                                                                  ,empty_NT
                                                                  )
                                                       ,empty_NT
                                                       )
         logger.debug(external_opts)
 
-        gdm = funcs.first_item_if_seq(kwargs.get('gdm', {}))
+        gdm = data_cruncher.first_item_if_seq(kwargs.get('gdm', {}))
 
         logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
@@ -1349,7 +1308,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # and saved should still run when the canvas loads. 
 
         
-        synced = self.local_metas.sync
+        synced = self.local_metas.synced
         #######################################################################
         logger.debug('kwargs == %s ' % kwargs)
         self.local_metas = override_all_opts(
@@ -1374,8 +1333,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if self.opts['metas'].cmpnts_change: 
             
-            if self.local_metas.sync != synced:
-                if self.local_metas.sync:
+            if self.local_metas.synced != synced:
+                if self.local_metas.synced:
                     self.opts = module_opts #resync
                 else:
                     self.opts = self.opts.copy() #desync

@@ -39,7 +39,7 @@ __version__ = '0.02'
 import os
 import logging
 import subprocess
-from .helpers.funcs import itertools #pairwise from recipe if we're in Python 2
+from .data_cruncher import itertools #pairwise from recipe if we're in Python 2
 import re
 import warnings
 from collections import OrderedDict, Counter
@@ -74,10 +74,10 @@ from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Guid
                                           )
 
-from .helpers import funcs 
+from . import data_cruncher 
 from .skel.basic.ghdoc import ghdoc
-from .skel.tools.helpers.funcs import is_uuid
 from .skel.tools.helpers import checkers
+from .skel.tools.helpers import funcs
 from .skel.tools import runner                                       
 from .skel import add_params
 from . import options_manager
@@ -143,6 +143,35 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolWithParams, ClassLogger):
                          ) for name in names                            
                ]
 
+
+def make_regex(pattern):
+    # type (str) -> str
+    """ Makes a regex from its 'opposite'/'inverse': a format string.  
+        Escapes special characters.
+        Turns format string fields: {name} 
+        into regex named capturing groups: (?P<name>.*) 
+    """
+    
+    the_specials = '.^$*+?[]|():!#<='
+    #escape special characters
+    for c in the_specials:
+        pattern = pattern.replace(c,'\\' + c)
+
+    # turn all named fields '{name}' in the format string 
+    # into named capturing groups r'(?P<name>.*)' in a regex
+    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
+
+    # Anchor to beginning and end.
+    return r'\A' + pattern + r'\Z'
+    
+
+
+def name_matches(file_name, regexes = ()):
+    if isinstance(regexes, str):
+        regexes = (regexes,)
+    return any(bool(re.match(regex, file_name)) for regex in regexes)
+
+
 def delete_file(path
                ,logger = logger
                ):
@@ -151,10 +180,6 @@ def delete_file(path
         logger.info('Deleting file ' + path)
         os.remove(path)
 
-def name_matches(file_name, regexes = ()):
-    if isinstance(regexes, str):
-        regexes = (regexes,)
-    return any(bool(re.match(regex, file_name)) for regex in regexes)
 
 def delete_shp_files_if_req(f_name
                            ,logger = logger
@@ -229,9 +254,28 @@ def get_tool_opts(nick_name, opts, tool_name = None, sDNA = None, val = None):
     
     # return tool_opts
 
-def is_strict_nested_dict(d):
-    #type(dict) -> bool
-    return all(isinstance(val, dict) for val in d.values())
+
+def check_python(opts):
+    #type(dict) -> None 
+    """ Searches opts['metas'].python_paths, updating opts['metas'].python 
+        until it is a file.  Mutates opts.  Raises ValueError if no file found.
+    """
+
+    folders = opts['metas'].python_paths
+    pythons = opts['metas'].python_exes
+
+    possible_pythons = (os.path.join(folder, python) for folder in folders 
+                                                    for python in pythons
+                       )
+
+    while not os.path.isfile(opts['metas'].python):
+        opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
+
+    if not os.path.isfile(opts['metas'].python):
+        msg = 'python: %s is not a file. ' % opts['metas'].python
+        logger.error(msg)
+        raise ValueError(msg)
+
 
 def is_data_key(key
                ,**kwargs
@@ -313,7 +357,7 @@ def update_opts(current_opts
                 #,add_new_opts, for update_data_node and make_new_data_node
     kwargs.setdefault('max_depth', 2)
     kwargs.setdefault('specials', ('options', 'metas'))
-    kwargs.setdefault('patterns', (funcs.make_regex(sDNA_fmt_str),))
+    kwargs.setdefault('patterns', (make_regex(sDNA_fmt_str),))
     
     kwargs['depth'] = depth
 
@@ -382,8 +426,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                            ,runsdnacommand = 'runsdnacommand'
                                            ,sDNA = None
                                            ,show_all = True
-                                           ,python = r'C:\Python27\python.exe'
-
+                                           ,python = '' #r'C:\Python27\python.exe'
+                                           ,sDNA_paths = funcs.windows_installation_paths('sDNA')
+                                           ,python_paths = funcs.windows_installation_paths('Python27')
+                                           ,python_exes = ['python.exe', 'py27.exe']
                                            #,strict 
                                            #,check_types
                                            #,add_new_opts
@@ -409,7 +455,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         nick_name = self.nick_name
         tool_name = self.tool_name
 
-        self.check_python(opts)
+        check_python(opts)
 
         if sDNA_key(opts) != opts['metas'].sDNA:
             # Do the sDNA modules in the opts need updating?
@@ -523,7 +569,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,nick_name
                 ,component = None
                 ,import_sDNA = None
-                ,check_python = None
                 ):
 
         if component is None:
@@ -536,7 +581,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.nick_name = nick_name
         self.component = component
         self.import_sDNA = import_sDNA
-        self.check_python = check_python
         self.update_tool_opts_and_syntax(opts)
 
 
@@ -883,7 +927,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 
         format_string = options.input_key_str
-        pattern = funcs.make_regex( format_string )
+        pattern = make_regex( format_string )
 
         def pattern_match_key_names(x):
             #type: (str)-> object #re.MatchObject
@@ -1104,8 +1148,8 @@ class ShapefileReader(sDNA_GH_Tool):
                                ,logger = self.logger
                                ,delete = options.del_after_read
                                ,strict_no_del = options.strict_no_del
-                               ,regexes = (funcs.make_regex(options.output_fmt)
-                                          ,funcs.make_regex(options.prepped_fmt)
+                               ,regexes = (make_regex(options.output_fmt)
+                                          ,make_regex(options.prepped_fmt)
                                           )
                                )
 
@@ -1210,8 +1254,16 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
+
+
 class DataParser(sDNA_GH_Tool):
 
+
+    quantile_methods = dict(simple = data_cruncher.simple_quantile
+                           ,max_deltas = data_cruncher.class_bounds_at_max_deltas
+                           ,adjuster = data_cruncher.quantile_l_to_r
+                           ,quantile = data_cruncher.spike_isolating_quantile
+                           )
 
     opts = options_manager.get_dict_of_Classes(metas = {}
                               ,options = dict(
@@ -1224,7 +1276,7 @@ class DataParser(sDNA_GH_Tool):
                                     ,class_bounds = [options_manager.Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
                                     # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
                                     ,class_spacing = 'quantile'
-                                    ,_valid_class_spacings = funcs.valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
+                                    ,_valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
                                     ,base = 10 # for Log and exp
                                     ,colour_as_class = False
                                     ,locale = '' # '' => User's own settings.  Also in DataParser
@@ -1239,13 +1291,14 @@ class DataParser(sDNA_GH_Tool):
                                     ,suppress_class_overlap_error = False
                                     )
                               )
-    assert opts['options'].re_normaliser in funcs.valid_re_normalisers
+
+    assert opts['options'].re_normaliser in data_cruncher.valid_re_normalisers
+    assert opts['options'].class_spacing in quantile_methods
                         
 
-    def __init__(self):
-        self.debug('Initialising Class.  Creating Class Logger. ')
-        self.component_inputs = ('Geom', 'Data', 'field', 'plot_max'
-                                ,'plot_min', 'num_classes', 'class_spacing', 'class_bounds')
+    component_inputs = ('Geom', 'Data', 'field', 'plot_max', 'plot_min' 
+                       ,'num_classes', 'class_spacing', 'class_bounds'
+                       )
     #
     # Geom is essentially unused in this function, except that the legend tags
     # are appended to it, to colour them in exactly the same way as the 
@@ -1322,91 +1375,34 @@ class DataParser(sDNA_GH_Tool):
         param={}
         param['exponential'] = param['logarithmic'] = options.base
 
-        def quantile_classes():
-            m = options.num_classes
-            n = len(data)
-            class_size = n // m
-            if class_size < 2:
-                msg = 'Class size == %s  is less than 2 ' % class_size
-                if options.suppress_small_classes_error:
-                    self.logger.warning(msg)
-                    warnings.showwarning(message = msg
-                                        ,category = UserWarning
-                                        ,filename = __file__ + '.' + self.__class__.__name__
-                                        ,lineno = 1050
-                                        )
-                else:
-                    self.logger.error(msg)
-                    raise ValueError(msg)
+        m = options.num_classes
+        n = len(data)
+        class_size = n // m
+        if class_size < 2:
+            msg = 'Class size == %s  is less than 2 ' % class_size
+            if options.suppress_small_classes_error:
+                self.logger.warning(msg)
+                warnings.showwarning(message = msg
+                                    ,category = UserWarning
+                                    ,filename = __file__ + '.' + self.__class__.__name__
+                                    ,lineno = 1050
+                                    )
+            else:
+                self.logger.error(msg)
+                raise ValueError(msg)
 
-            # assert gdm is already sorted
-            class_bound_indices = list(range(class_size, m*class_size, class_size))
-            data_vals = data.values()
-            #
-            class_bounds = [data_vals[index] for index in class_bound_indices] 
-            # class_bounds = [ val for val in 
-            #                  data.values()[class_size:m*class_size:class_size] 
-            #                ]  
-                            # classes include their lower bound
-            #
-            count_bound_counts = Counter(class_bounds)
-            class_overlaps = [val for val in count_bound_counts
-                                if count_bound_counts[val] > 1
-                                ]
 
-            if class_overlaps:
-                msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
-                if options.remove_overlaps:
-                    for overlap in class_overlaps:
-                        pass
-                        #remove 
-                        class_bounds.remove(overlap)
-                if options.class_spacing == 'combo':
-                    msg += ' but in combo mode. Setting classes around max_deltas'
-                    self.logger.warning(msg)
-                    class_bounds = funcs.class_bounds_at_max_deltas()
-                else:
-                    msg += (' Maybe try a) fewer classes,'
-                            +' b) class_spacing == combo, or'
-                            +' c) class_spacing == max_deltas'
-                            )
-                    if options.suppress_class_overlap_error:
-                        self.logger.warning(msg)
-                        warnings.showwarning(message = msg
-                                            ,category = UserWarning
-                                            ,filename = 'DataParser.tools.py'
-                                            ,lineno = 1001
-                                            )
-                    else:
-                        self.logger.error(msg)
-                        raise ValueError(msg)                    
-            #
-            self.logger.debug('num class boundaries == ' 
-                                + str(len(class_bounds))
-                                )
-            self.logger.debug(options.num_classes)
-            self.logger.debug(n)
-            assert len(class_bounds) + 1 == options.num_classes
-
-            msg = 'x_min == %s \n' % x_min
-            msg += 'class bounds == %s \n' % class_bounds
-            msg += 'x_max == %s ' % x_max
-            self.logger.debug(msg)
-
-            return class_bounds
 
         if use_manual_classes:
             class_bounds = options.class_bounds
             self.logger.info('Using manually specified'
                             +' inter-class boundaries. '
                             )
-            #
-        elif options.class_spacing == 'max_deltas':
-            class_bounds = funcs.class_bounds_at_max_deltas()
-        elif options.class_spacing in ('quantile', 'combo'):
-            class_bounds = quantile_classes()
+        elif options.class_spacing in self.quantile_methods:
+            class_bounds = self.quantile_methods[options.class_spacing](data.values(), m)
+
         else: 
-            class_bounds = [funcs.splines[options.class_spacing](i
+            class_bounds = [data_cruncher.splines[options.class_spacing](i
                                                           ,1
                                                           ,param.get(options.class_spacing
                                                                     ,'Not used'
@@ -1418,22 +1414,62 @@ class DataParser(sDNA_GH_Tool):
                             for i in range(1, options.num_classes) 
                             ]
 
+        count_bound_counts = Counter(class_bounds)
 
-        if options.re_normaliser not in funcs.valid_re_normalisers:
-            # e.g.  'linear', exponential, logarithmic
-            msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
-            self.error(msg)
-            raise ValueError(msg)
+        class_overlaps = [val for val in count_bound_counts
+                          if count_bound_counts[val] > 1
+                         ]
+
+        if class_overlaps:
+            msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
+            if options.remove_overlaps:
+                for overlap in class_overlaps:
+                    class_bounds.remove(overlap)
+            msg += (' Maybe try a) fewer classes,'
+                    +' b) class_spacing == combo, or'
+                    +' c) class_spacing == max_deltas'
+                    )
+            if options.suppress_class_overlap_error:
+                self.logger.warning(msg)
+                warnings.showwarning(message = msg
+                                    ,category = UserWarning
+                                    ,filename = 'DataParser.tools.py'
+                                    ,lineno = 1001
+                                    )
+            else:
+                self.logger.error(msg)
+                raise ValueError(msg)
+
+
+            if options.re_normaliser not in data_cruncher.valid_re_normalisers:
+                # e.g.  'linear', exponential, logarithmic
+                msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
+                self.error(msg)
+                raise ValueError(msg)
+
+
+        self.logger.debug('num class boundaries == ' 
+                    + str(len(class_bounds))
+                    )
+        self.logger.debug('m == %s' % m)
+        self.logger.debug('n == %s' % n)
+        assert len(class_bounds) + 1 == m
+
+        msg = 'x_min == %s \n' % x_min
+        msg += 'class bounds == %s \n' % class_bounds
+        msg += 'x_max == %s ' % x_max
+        self.logger.debug(msg)
+
 
         def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
-            spline = funcs.splines[options.re_normaliser]
+            spline = data_cruncher.splines[options.re_normaliser]
             return spline(x
-                         ,x_min
-                         ,p   # base or x_mid.  Can't be kwarg.
-                         ,x_max
-                         ,y_min = x_min
-                         ,y_max = x_max
-                         )
+                        ,x_min
+                        ,p   # base or x_mid.  Can't be kwarg.
+                        ,x_max
+                        ,y_min = x_min
+                        ,y_max = x_max
+                        )
         
         def class_mid_point(x): 
             highest_lower_bound = x_min if x < class_bounds[0] else max(
@@ -1604,7 +1640,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
-                linearly_interpolate = funcs.enforce_bounds(funcs.linearly_interpolate)
+                linearly_interpolate = data_cruncher.enforce_bounds(data_cruncher.linearly_interpolate)
                 return grad().ColourAt(linearly_interpolate( x
                                                             ,x_min
                                                             ,None
@@ -1620,7 +1656,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
-                rgb_col =  funcs.map_f_to_three_tuples(funcs.three_point_quad_spline
+                rgb_col =  data_cruncher.map_f_to_three_tuples(data_cruncher.three_point_quad_spline
                                                 ,x
                                                 ,x_min
                                                 ,0.5*(x_min + x_max)
@@ -1645,9 +1681,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
         legend_tags = OrderedDict()
-        legend_first_pattern = funcs.make_regex(options.first_leg_tag_str)
-        legend_inner_pattern = funcs.make_regex(options.gen_leg_tag_str)
-        legend_last_pattern = funcs.make_regex(options.last_leg_tag_str)
+        legend_first_pattern = make_regex(options.first_leg_tag_str)
+        legend_inner_pattern = make_regex(options.gen_leg_tag_str)
+        legend_last_pattern = make_regex(options.last_leg_tag_str)
 
         legend_tag_patterns = (legend_first_pattern
                               ,legend_inner_pattern

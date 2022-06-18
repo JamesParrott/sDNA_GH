@@ -55,11 +55,10 @@ __version__ = '0.02'
 import logging
 import inspect
 import collections
-if hasattr(collections, 'Callable'):
-    Callable = collections.Callable 
+if hasattr(collections, 'abc'):
+    collections.abc = collections # Python 2
 else:
-    import collections.abc
-    Callable = collections.abc.Callable
+    import collections.abc   #Python 3
 import abc
 
 if hasattr(abc, 'ABC'):
@@ -78,12 +77,34 @@ from ghpythonlib.componentbase import executingcomponent as component
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+
 def remove_whitespace(strng):
     #type(str) -> str
     return ''.join([char for char in strng if not char.isspace()])
 
+
+def first_item_if_seq(l, null_container = {}):
+    #type(type[any], type[any])-> dict
+    """A function to strip out unnecessary wrappping containers, e.g. 
+       first_item_if_seq([[1,2,3,4,5]]) == [1,2,3,4,5] without breaking 
+       up strings.  
+       
+       Returns the second argument if the first argument is null.
+       Returns the first item of a Sequence, otherwise returns the 
+       not-a-Sequence first argument.  
+    """
+    if not l:
+        return null_container        
+
+    if isinstance(l, collections.abc.Sequence) and not isinstance(l, str):
+        l = l[0]
+    
+    return l
+
+
+
 def get_args_spec(callable):
-    if not isinstance(callable, Callable):
+    if not isinstance(callable, collections.abc.Callable):
         raise TypeError('Argument is not callable, therefore has no args')
     # assert hasattr(callable, '__call__')
     try:

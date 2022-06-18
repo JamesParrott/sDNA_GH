@@ -3,9 +3,10 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+import os
 import inspect
 from uuid import UUID # Only used for checking str format. 
-                      # Haven't tried Iron Python / .Net System.Guid
+                      # Iron Python/GhPython System.Guid is an option in .Net
     
 
 def tool_name(tool):
@@ -35,3 +36,26 @@ def is_uuid(val):
         return False
 #https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
 
+
+def windows_installation_paths(name):
+    #type(str) -> list(str)
+    """ Constructs a list of possible installation paths on Windows for an 
+        unlocated app named name.
+
+        e.g. returns [r'C:\' + name
+                     ,r'C:\Program Files\' + name
+                     ,r'C:\Program Files (x86)\' + name
+                     ,r'C:\Users\James\AppData\Roaming\' + name
+                     ] 
+        and any paths on the system path with name as a substring. 
+    """
+    paths = os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)# r'C:\' + name
+    paths += [os.path.join(os.getenv('PROGRAMFILES'), name)]
+    paths += [os.path.join(os.getenv('PROGRAMFILES(X86)'), name)]
+    paths += [os.path.join(os.getenv('APPDATA'),name)]
+    paths += list(path 
+                  for path in os.getenv('PATH').split(';')
+                  if name in path 
+                 )   
+    return paths         
+# https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables

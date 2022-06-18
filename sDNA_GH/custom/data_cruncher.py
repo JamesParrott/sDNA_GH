@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 
-""" Python 2 / 3 helper functions and classes, for sDNA_GH.  
+""" Data parsing functions and classes, for sDNA_GH.  
 
     Mainly numerical interpolation and inter_class bound calculation 
     functions and classes used by DataParser and ObjectsRecolourer, 
@@ -40,17 +40,12 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import logging
-from operator import not_
 import warnings
 import itertools
 import math
 from numbers import Number
 import collections
-if hasattr(collections, 'Sequence'):
-    Sequence = collections.Sequence 
-else:
-    import collections.abc
-    Sequence = collections.abc.Sequence
+
 OrderedDict, Counter = collections.OrderedDict, collections.Counter
 
 
@@ -83,45 +78,6 @@ class OrderedCounter(Counter, OrderedDict):
 TOL = 24 * 2e-17  # eps s.t. 1 + eps == 1 on my machine is ~1.1102e-16
 
 
-
-def first_item_if_seq(l, null_container = {}):
-    #type(type[any], type[any])-> dict
-    """A function to strip out unnecessary wrappping containers, e.g. 
-       first_item_if_seq([[1,2,3,4,5]]) == [1,2,3,4,5] without breaking 
-       up strings.  
-       
-       Returns the second argument if the first argument is null.
-       Returns the first item of a Sequence, otherwise returns the 
-       not-a-Sequence first argument.  
-    """
-    if not l:
-        return null_container        
-
-    if isinstance(l, Sequence) and not isinstance(l, str):
-        l = l[0]
-    
-    return l
-
-
-def make_regex(pattern):
-    # type (str) -> str
-    """ Makes a regex from its 'opposite'/'inverse': a format string.  
-        Escapes special characters.
-        Turns format string fields: {name} 
-        into regex named capturing groups: (?P<name>.*) 
-    """
-    
-    the_specials = '.^$*+?[]|():!#<='
-    #escape special characters
-    for c in the_specials:
-        pattern = pattern.replace(c,'\\' + c)
-
-    # turn all named fields '{name}' in the format string 
-    # into named capturing groups r'(?P<name>.*)' in a regex
-    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
-
-    # Anchor to beginning and end.
-    return r'\A' + pattern + r'\Z'
 
 def check_strictly_less_than(a, b, a_name = 'a', b_name = 'b'):
     #type(Number, Number, str, str) -> None
@@ -450,6 +406,22 @@ def data_point_midpoint_and_next(data, index):
     return data_point, midpoint, next_data_point
 
 
+def simple_quantile(data_vals, m):
+    #type(Sequence(Number), int) -> Sequence(float)
+    """ Returns a list of m-1 numbers that splits a sorted sequence into 
+        m sub sequences, with roughly the same number of values (remainder is
+        not reallocated).  
+    """
+    # assert data_vals is already sorted
+    n = len(data_vals)
+    class_size = n // m
+
+    class_bound_indices = list(range(class_size, m*class_size, class_size))
+    class_bounds = [data_vals[index] for index in class_bound_indices] 
+
+
+
+    return class_bounds
 
 
 
