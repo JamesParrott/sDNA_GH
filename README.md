@@ -16,7 +16,7 @@ sDNA_GH:
 ### System Requirements. 
 #### Software
 1. Windows 10 or 8.1 (not tested in Windows 11) 
-2. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly.
+2. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly (as incorrect shapefiles are produced).
 3. sDNA. 
 4. Rhino and Grasshopper (tested in Rhino 7)
 #### Hardware
@@ -27,41 +27,33 @@ sDNA_GH:
 
 ### Installation.
 1. Ensure you have an installation of [Rhino 3D](https://www.rhino3d.com/download/) including Grasshopper (versions 6 and 7 are supported).
-2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0]  that can run sDNA correctly from the command line.  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced.  There is no guarantee the Python implementation provided with other applications, e.g. Python 3 QGIS can run sDNA from the command line correctly, and even if it were possible to access the Iron Python shipped with Rhino from the command line, this would produce erroneous results.
+2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0]  that can run sDNA correctly from the command line.  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced (it is not possible to access the Iron Python shipped with Rhino from the command line, in any case).  
 3. Ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA itself may require the 64 bit Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ) ). 
 4. Download `sDNA_GH.zip` from [food4Rhino](https://www.food4rhino.com) or the [sDNA_GH releases page on Github](https://www.example.com).
-5. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files the zip archive.  If any files still need to be unblocked,  a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2))  Please note, you should not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
+5. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files the zip archive.  If any files still need to be unblocked,  a [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]   Please do not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
 6. Open Rhino and Grasshopper.
 7. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
 8. Copy in sDNA_GH.zip to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
-9. Unzip `sDNA_GH.zip` to this location (e.g. in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).
-10. Ensure sDNA_GH can find sDNA and Python 2.7.  Open the folder `sDNA_GH` (just created by the unzip in the previous step), and inside it, using any text-file editor (e.g. Notepad), open the sDNA_GH user installation-wide options configuration file, `config.toml`.  In the `[metas]` section, look for the option: 
-```
-sDNA_search_paths = ['C:\Program Files (x86)\sDNA',
-                     'C:\Program Files\sDNA',
-                     '%appdata%\sDNA',
-                     ]
-```
-Select and `Copy` the first file path (e.g. `C:\Program Files (x86)\sDNA`).  This is the default sDNA installation directory (if this option is not within `config.toml`, select it with the mouse, then copy (`Ctrl` + `C`) and paste (`Ctrl` + `V`) it from here into there).  
-Open a new `File Explorer` window. `Paste`  the default sDNA installation directory into the browser bar, and press Enter.  Scroll down and check the folder contains two files, called `sDNAUISpec.py`  (i.e. `C:\Program Files (x86)\sDNA\sDNAUISpec.py`) and `runsdnacommand.py`.
-
-Similarly, scroll down to the `[options]` section of `config.toml`, and find the `python_exe = 'C:\Python27\python.exe'` option (or paste it in there).  Select and copy the file path `C:\Python27\python.exe` and paste this into the browser bar of Windows File Explorer.   Press `Enter`, and Python 2.7 should start (you may close this - press `Ctrl` + `Z` and hit `Enter`)[^3].  
-
-OPTIONAL: If you want to run sDNA from a different version of Python, or if you have installed Python 2.7 somewhere other than its default folder, or if you are using sDNA Open from elsewhere than its default directory, you must alter the values of the above options in `config.toml` to equal the correct sDNA installation folder and Python executable's location respectively, in order for sDNA_GH to find the programs you want.[^4] 
-
-These options may also be specified in a project specific config.toml file, or in an input Parameter to an sDNA_GH component.  But then they need to be entered in each Grasshopper definition (.gh file) using sDNA_GH.  Setting the installation-wide options is a one off procedure (unless the Python or sDNA folders are subsequently moved!).  
-
-11. Restart Rhino and Grasshopper.
-12. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc.)
-13. For a first test of sDNA_GH, open  `\sDNA_GH\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the folder from the unzip, in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
+9. Unzip `sDNA_GH.zip` to this location (in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a single subfolder called sDNA_GH should have been created.
+10. Restart Rhino and Grasshopper.
+11. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).
+12. To ensure sDNA_GH uses the desired version of sDNA and Python 2.7 (and to be sure it can find one at all):
+    -place a Config component on the canvas (the component with a lightbulb icon, under Support Tools).
+    -Specify the file path of the sDNA folder (containing sDNAUISpec.py and runsdnacommand.py) of the sDNA you wish to use in the `sDNA_folders` input.
+    -Specify the file path of the Python 2.7 interpreter's main executable in the `python` input.
+    -Specify any other options you wish to save and reuse on all projects, if necessary by adding custom input Params with the option's name.
+    -Connect a True boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
+    -To save to other project specific `config.toml` files, or to update the installation wide user options file, specify the file path in 
+    save_to and repeat the previous 4 sub steps.
+13. For a first test of sDNA_GH, open  `\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the folder from the unzip, in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
 
 
 ### Usage.  
 #### Components.
 ##### Automatic multi-tools.
-Each sDNA tool has its own a Grasshopper component.  To run a tool a True value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, unless an option is set not to, some tools by default also automatically run other tools before or after they run themselves.  For example, this allows an entire sDNA process to be run on Rhino Geometry, with the results from the sDNA calculation being used to recolour the Rhino geometry, from one single sDNA tool component.  When placed on the canvas, each component adds in Params for all its required Input and Output arguments (if the Params are not already present), including those of any automatically added tools.  Extra customisation can be carried out by adding in extra Params too.  Such extra user added Params are not removed.
+Each sDNA tool has its own a Grasshopper component.  To run a tool, a True value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows (unless an `auto_` option is set not to) some tools by default also automatically run other tools before or after they run themselves.  For example, this allows an entire sDNA process to be run on Rhino Geometry, with the results from the sDNA calculation being used to recolour the Rhino geometry, from one single sDNA tool component.  When placed on the canvas, each component adds in Params for all its required Input and Output arguments (if the Params are not already present), including those of any extra automatically added tools.  Extra customisation can be carried out by adding in extra Params too.  Such extra user added Params are not removed.  This can make the components quite large, but any Params not being specified can be removed.  Another way to make the components smaller, that also allows any other custom work to be carried out in between individual tools, is to set the `auto_` options for that component to `false`.  A newly placed component will then only add in the Params for that component's own tool.
 
-[note] All except the Load_Config tool which runs when placed or its Inputs are updated, and Unload_sDNA_GH on which `unload` does the same thing as `go`.
+[note] All except the Config tool which always loads its options when placed or its Inputs are updated (saving options when `go` is true), and Unload_sDNA_GH on which `unload` does the same thing as `go`.
 
 ##### Running individual tools.  
 Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.
@@ -73,23 +65,15 @@ sDNA_GH is highly customisable.  This customisation is controlled by setting opt
 ##### Adding Component Input and Output Params.  
 To add a new Input or Output Param, zoom in on the component until symbols can be seen.  Click on the one where you want the new Param.  Right click the new Param's name and to rename it to the desired option, click its name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param).
 
-##### Meta options.
-###### Primary meta (options file)
-Some options are particularly important as they may change other options, change how they are read, or add new parts to the whole options data structure (`opts`).  These are called _meta options_. All options can be set on the Input Params of a GH_sDNA component (zoom in, add a new Input Param, and rename it to the desired option name.  This is case sensitive).  The most important of all the  _meta options_, is the `config` (the *primary meta*).  This may be 
-set to a file path of a project specific options file.  To create one, copy and paste `config.toml` and edit its values (to the right of the equals signs) in a text editor (the keys (to the left of the equals signs) must be left unchanged else their values will be ignored, or cause a name clash).  The file can be renamed, but should still end in `.toml`.  It may contain other meta options, tool options and local metas, but not another *primary meta*.  Tool options in the file may refer to any named tool or NickNamed component, not necessarily the tools of the component that reads the file.  This is intended to enable cleaner Grasshopper definitions, with fewer required connections, by storing the values of options that do not need to be changed away in a separate file.  Options that are used only when a component is first placed, e.g. to set a logging file or logging levels, before any input params may have even been set up, must be configured in the installation-wide `config.toml`.
-
-##### Module wide options.
-It is tempting to conclude that Input parameter options are the most important, followed by the project specific options file (*primary meta*), and in turn by an external component's options.  This is largely true, but not necessarily the case on startup.  For efficiency, the sDNA_GH design forces all of its components in the same Grasshopper instance to share the same Python package, which is only imported once by the first component to run (subsequent ones refer to it directly in sys.modules).  This import occurs, before the main method of the Grasshopper Python component class runs.  This method (RunScript) is responsible for reading in the component's input Params.  Therefore any setup code that runs before this method cannot possibly know about the values of the Input Params, the *primary meta*, nor any other component's options.  At this early stage, the component can only refer to the installation-wide options (plus a few necessary hard coded settings in the launcher).  
-
 ##### Logging options
-Not only is the sDNA_GH component class definition defined in the shared package, the root logger is set up there too when the package is first imported.  All components subsequently refer to it there.  So in particular, the advance loading of the default options and installation-wide options, mean logging options (e.g. custom logging levels for more verbose or quieter output, and the name of the actual log file) have to be set up there, i.e. in the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  The same goes for any other options that control code that runs on component setup and module import, before Grasshopper calls RunScript and reads in the component's inputs.  Ordinarily, the higher priority options would override the lower priority ones.  But for code that must run before this override process happens at all, (especially on setup) it is simply too late for some options defined there to have any affect. 
+When the first sDNA_GH component is placed (or when the first one runs when a .gh file is loaded) you may notice a slight delay.  This is because the main sDNA_GH code base is being imported from the installation sub folder in the User Objects folder.  Subsequent components simply link to it once it has already been imported.  This happens before a component knows what its input Params are.  The installation wide options file is read and the main logger for trouble shooting is created during this first import.  Therefore unlike other options, custom logger options for configuring the logger (e.g. making it less verbose by raising the logging level from `DEBUG`) must be set in the installation wide options file (`config.toml`).  Like other options, logger options are overridden by other files, components and Input Params afterwards.  Only as the logger has already been set up by the time the InputParams are created, it's simply too late by then for changes to logger options (made using what are normally the higher priority channels) to have any effect.  Supported values for logging levels are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
 
-<!-- TODO.  Put such options into their own section of "setup options" -->
+
 
  
 ###### Options override priority order
-1. The component input param options override options in the *primary meta*.  
-2. The *primary meta* overrides options from another sDNA_GH component.  
+1. The component input param options override options in a project specific options file (`config`).  
+2. A project specific options file (specified in `config`) overrides options from another sDNA_GH component.  
 3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
 4. The installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
 [note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
@@ -108,13 +92,13 @@ Each NickName in name map creates a new set of options.  These contain options f
 ##### Local meta options.
 By default all sDNA_GH components share (and may change) the same global dictionary of options (module options, tool options, and *meta* options, together in *opts*) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users.  
 
-For advanced users, each component with a given NickName in name_map also has its own set of tool options (one for each version of sDNA).  However, for one support component to have a different set of options to another, one of them must no longer update the global options dictionary - it must desynchronise from them.  This syncing and desyncing is controlled by each component's individual *local meta options*, (in `local_metas`) `sync_to_module_opts`, `read_from_shared_global_opts`.  By default these booleans are both equal to True.  More than one *primary meta* is then possible - just create a new project specific options file (`config.toml`) for each, and specify its name on the `config` input of the desired components.  Just like other options, *local metas* can be set in Input Params, read from Output Params, shared between components via Grasshopper connections in the same way as opts, can be set by project config files(`config.toml`) and set in the installation-wide config file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  But unlike *meta options*, *local metas* are not updated automatically by syncing to the main module options (as this would defeat their entire purpose).
+For advanced users, each component with a given NickName in name_map also has its own set of tool options (one for each version of sDNA).  However, for one support component to have a different set of options to another, one of them must no longer update the global options dictionary - it must desynchronise from them.  This syncing and desyncing is controlled by each component's individual *local meta options*, (in `local_metas`) `sync_to_module_opts`, `read_from_shared_global_opts`.  By default these booleans are both equal to True.  More than one project specific options file (`config.toml`) can then be supported on the same canvas.  Just create the files, and specify the name of the one you wish to be used on the `config` input of the desired components (or connect their `opts` to one with this `config`).  Just like other options, *local metas* can be set in Input Params, read from Output Params, shared between components via Grasshopper connections in the same way as opts, can be set by project config files(`config.toml`) and set in the installation-wide config file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  But unlike *meta options*, *local metas* are not updated automatically by syncing to the main module options (as this would defeat their entire purpose).
 
 
 #### Tools.
 ##### Support tools
-###### Load_Config (load_config)
-Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and any specified options the user wishes to add in.  It does not require `go` to be set to true as the options override occurs in a wrapper before any of the the actual tools below run.
+###### Config (config)
+Loads an sDNA_GH project configuration file (`.toml` or `.ini`, e.g. `config.toml`) along with the sDNA_GH Python package and overrides any other specific options the user wishes to set, even if `go` is not set to true.  Setting `go` to true saves these options to the `.toml` options file if there is one named in `save_to`.  If nothing is connected to `save_to`, then if an installation wide user options file does not already exist one is created, with the current options are saved to it (subsequently to overwrite it, its file path must be specified in `save_to`).  
 
 ###### Read_Geom (get_Geom)
 Read in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option `selected` to true, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify `layer` = your_layer_name to only read Rhino objects from the layer named your_layer_name.
@@ -146,26 +130,26 @@ The domain this data is parsed against can be customised by setting the options 
 Either, specify the number of classes desired in the legend in `number_of_classes` (the default is 7), or specify a list of the actual class boundaries desired in `class_bounds` manually.  Note these are the inter-class bounds.  Use `plot_min` for the lower bound of the bottom class and `plot_max` for the upper bound of the top class.  There should be n-1 inter-class bounds, n classes and n+1 class bounds including the `plot_max` and `plot_min`.  
 
 If no valid inter-class boundaries are manually specified in `class_bounds`, sDNA_GH will automatically calculate them based onthe following methods (each are valid values for `class_spacing`):
- - `quantile` - space the inter-class boundaries so that each class contains the same number of data points.  Sorts the data.
- - `cluster` - place the inter-class boundaries at the largest gaps between consecutive data points.  Sorts the data. 
- - `combo` - attempt `quantile` if that results in overlaps (e.g. due to low data variability), use `cluster` instead.  Sorts the data. 
- - `linear` - space the inter-class boundaries evenly between `plot_min` and `plot_max`.
+ - `quantile` - classify 'spikes' in the frequency distribution containing more data points than the normal class size, narrower than a specified width (in `max_width`).  Then classify the remaining data values according to `adjuster`.  Sorts the data.
+ - `adjuster` - Sort the data and place inter class bounds in ascending order so that classes contain approximately the same number of data points, adjusting the inter-class boundaries to the closest gap, if one would otherwise be placed between identical data values.  
+  - `linear` - space the inter-class boundaries evenly between `plot_min` and `plot_max`.
  - `exponential` - space the inter-class boundaries between `plot_min` and `plot_max` but with a skewed spacing determined from an exponential curve (customisable `base`).
  - `log` - space the inter-class boundaries between `plot_min` and `plot_max` but with a skewed spacing determined from an logarithmic curve (customisable `base`).
-
+ - `simple` - Uncomplicated quantile classification.  Sort the data and divide it into classes containing approximately the same number of data points.  Take no action if this places an interclass bound between identical values.
+ - `max_deltas` - place the inter-class boundaries at the largest gaps between consecutive data points.  Prone to distortion from outlying values.  Sorts the data.
 **Legend class names** Three customisable fields are provided in the options for the first, general and last legend tag names, and a numeric formatting string: `first_leg_tag_str = 'below {upper}'`, `gen_leg_tag_str = '{lower} - {upper}'`, `last_leg_tag_str = 'above {lower}'` and `num_format = '{:.5n}'` respectively.  The numeric format string supports a single unnamed field.  This is applied to the Classbounds and min and max above, before being substituted into the named fields in the format string for their corresponding legend tag (the general one may be used to produce more than one tag).  All must be set to valid Python format strings, with the supported named fields `lower`, `mid_pt` and `upper`.
 
 **Re-normalisation** Finally in order to produce a recolourisation that has a set number of identicla colours (the same for each member of the same class) it is possible to assign the value of the midpoint of its class to each parsed data point.  The parsed values may then additionally be renormalised, in order to tinker with the spread of colours against different colour gradients and other possible colourisations and applications, it is possible to 'renormalise' the parsed data points - the default value of `re_normaliser` is `linear` (for no re-normalisation) but `exponential` or `log` curves are also supported (with customisable `base` as above).  
 
-###### Recolour_Objects
+###### Recolour_Objects (recolour_objects)
 Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (RGB).  Custom colour calculation is possible, as is the Grasshopper Colour Gradient internally via Node In Code.  Create a legend by connecting leg_cols, leg_tags and leg_frame to a Grasshopper Legend component.  Custom legend tag templates and class boundaries are supported via three format strings.  Recolouring unbaked Grasshopper geometry instead of Rhino Geometry requires the Data and Geometry outputs to be connected to a Grasshopper Custom Preview component.  If unparsed data is inputted, Parse_Data is first called.
 
 ##### Usertext tools    
 ##### Data tools
-###### Read_Usertext
+###### Read_Usertext (read_Usertext)
 Reads all Usertext from the provided Rhino objects.  If no Geometry is provided, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
-###### Write_Usertext
+###### Write_Usertext (write_Usertext)
 Write user text to Rhino objects using a customisable pattern for the keys.
 
 #### sDNA Tools
@@ -173,23 +157,23 @@ Write user text to Rhino objects using a customisable pattern for the keys.
 By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set the *meta* `show_all` = false.  **WARNING!  All sDNA tools will delete the shapefile after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):
 
-###### sDNA_Integral
+###### [sDNA_Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-analysis) (sDNAIntegral)
 sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding `auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
 
-###### sDNA_Skim
+###### [sDNA_Skim](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix) (sDNASkim)
 Skim Matrix.  Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
 
-###### sDNA_Int_From_OD
+###### [sDNA_Int_From_OD](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-from-od-matrix-assignment-model) (sDNAIntegralFromOD)
 A simplified version of sDNA Integral geared towards use of an external Origin Destination matrix. Note that several other tools (including Integral) allow Origin Destination matrix input as well.
 The file must be formatted correctly, see Creating a zone table or matrix file. All geodesic and destination weights are replaced by values read from the matrix. The matrix is defined between sets of zones; polylines must contain text fields to indicate their zone.
 
-###### sDNA_Access_Map
+###### [sDNA_Access_Map](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#specific-origin-accessibility-maps) (sDNAAccessibilityMap)
 Outputs accessibility maps for specific origins.
 The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.
 If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
 
 ##### Preparation tools
-###### sDNA_Prepare
+###### [sDNA_Prepare](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#prepare-network) (sDNAPrepare)
 Prepares spatial networks for analysis by checking and optionally repairing various kinds of error. 
 Note that the functions offered by sDNA prepare are only a small subset of those needed for preparing networks. A good understanding of Network Preparation is needed, and other (free) tools can complement sDNA Prepare. 
 The errors fixed by sDNA Prepare are: 
@@ -199,25 +183,25 @@ The errors fixed by sDNA Prepare are:
 - split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
 - isolated systems. 
 
-###### sDNA_Line_Measures
+###### [sDNA_Line_Measures](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#individual-line-measures) (sDNALineMeasures)
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
 This tool can be useful for checking and debugging spatial networks. In particular, connectivity output can reveal geometry errors.
 
 ##### Geometric analysis tools
-###### sDNA_Geodesics
+###### [sDNA_Geodesics](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#geodesics) (sDNAGeodesics)
 Outputs the geodesics (shortest paths) used by Integral Analysis. 
 The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
 
-###### sDNA_Hulls
+###### [sDNA_Hulls](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#convex-hulls) (sDNAHulls)
 Outputs the convex hulls of network radii used in Integral Analysis. 
 The convex hulls tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output hulls for all origins.
 
-###### sDNA_Net_Radii
+###### [sDNA_Net_Radii](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#network-radii) (sDNANetRadii)
 Outputs the network radii used in Integral Analysis. 
 The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
 
 ##### Calibration tools
-###### sDNA_Learn
+###### [sDNA_Learn](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#learn) (sDNALearn)
 sDNA Learn selects the best model for predicting a target variable, then computes GEH and cross-validated *R²*. 
 If an output model file is set, the best model is saved and can be applied to fresh data using sDNA Predict. 
 
@@ -236,7 +220,7 @@ Ridge and Lasso regression can cope with multicollinear predictor variables, as 
 
 *Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inpect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 
-###### sDNA_Predict
+###### [sDNA_Predict](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#predict) (sDNAPredict)
 Predict takes an output model file from sDNA Learn, and applies it to fresh data. For example, suppose we wish to calibrate a traffic model, using measured traffic flows at a small number of points on the network: 
 - First run a Betweenness analysis at a number of radii using Integral Analysis. 
 - Use a GIS spatial join to join Betweenness variables (the output of Integral) to the measured traffic flows. 
@@ -282,6 +266,7 @@ Easily build all the other components for the sDNA installation provided.  User 
 #### Baking (saving Grasshopper objects to a Rhino document) with Usertext.
 
 
+
 ### License.
 See [license.md](license.md)
 
@@ -302,7 +287,7 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 
 ### Build instructions.
 1. Open `\dev_tools\sDNA_build_components.gh` in Grasshopper. 
-2. Right click the Path Component and ensure it points to `\sDNA_GH\sDNA_GH\sDNA_GH_launcher.py`
+2. Right click the Path Component and ensure it points to `\sDNA_GH\sDNA_GH_launcher.py`
 3. Ensure the File Reader Component (that the Path Component is connected to) is set to read the whole file, and also is connected to the _launcher code_ input param on the Build_components GhPython component.  Set the plug-in name on _plug in name_.
 4. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays comoponent names instead).
 5. Change the Boolean toggle to True, and connect it to the `go` input param of Build_components.
@@ -318,7 +303,7 @@ can be used from the tool's description in this readme file itself (above).
 12. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH` in the main repo, next to config.toml
 13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (logger.debug, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-logger.debug].  This will render the markdown file in your web browser.  logger.debug it to a pdf with the name `README.pdf` in the same directory.  
 14. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
-15. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
+15. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
   
 
 ### Misc
@@ -337,9 +322,6 @@ Select GHPython component.   Optionally compile to .ghpy.  File -> Create User O
 
 [^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2)) 
 
-[^3] These checks can also be performed by copy and pasting directly from this document.  However that would only prove the correctness of README.md (this is a good thing, but sDNA_GH does not refer to this file).  For example, if in future a breaking 
-change (even an entirely inadvertant one) causes this document to be incorrect (and it has not been updated), `config.toml` still needs to be checked to ensure sDNA_GH will find Python 2.7 and sDNA correctly.
 
-[^4] In the absence of configuration options, sDNA_GH will search certain default directories (`C:\`, `C:\Program Files (x86)`, `%appdata%`, and the system path) for sDNA and Python27, so if sDNA and Python 2.7 are installed in a 'normal' place, the sDNA_search_paths option can also be deleted from `config.toml`.  However if a new Python 2.7 version or new sDNA version is installed in future, the behaviour of sDNA_GH may suddenly change if it finds a new version instead, possibly no longer 
-working at all (e.g. if it finds Iron Python 2.7).
+
 

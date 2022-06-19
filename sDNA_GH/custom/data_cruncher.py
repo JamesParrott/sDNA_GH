@@ -252,14 +252,14 @@ def class_bounds_at_max_deltas(data
 
 
 
-def min_interval_lt_width_w_with_most_data_points(ordered_counter
+def max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                  ,minimum_num
                                                  ,w = TOL
                                                  ):
     #type(OrderedCounter, Number) -> dict 
     """Given a discrete frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
-       collections recipe), calculates a minimum closed interval [a, b] of
+       collections recipe), calculates a maximum closed interval [a, b] of
        width b - a <= w that contains the most data points over minimum_num.  
        In a histogram this would be the largest bin of width less than w.
        This implementation calculates a moving sum using a moving interval 
@@ -690,7 +690,7 @@ def spike_isolating_quantile(data
             else:
                 min_num = options.min_num
         logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
-        spike_interval = min_interval_lt_width_w_with_most_data_points(ordered_counter
+        spike_interval = max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
                                                                       ,options.max_width
                                                                       )
