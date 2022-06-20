@@ -544,17 +544,17 @@ def override_all_opts(args_dict
         dict_to_update = local_opts
 
 
-    print('external_opts == %s' % external_opts)
+    output.debug('external_opts == %s' % external_opts)
 
     overrides = [external_opts
                 ,config_toml_dict
                 ,OrderedDict((key, val )
-                            for (key, val) in args_dict.items() 
-                            if val is not None
-                           )
+                             for (key, val) in args_dict.items() 
+                             if val is not None
+                            )
                 ]            
 
-    print('overrides == %s' % overrides)
+    output.debug('overrides == %s' % overrides)
 
 
 
@@ -574,9 +574,11 @@ def override_all_opts(args_dict
                          ,override = override
                          ,metas = dict_to_update['metas']
                          )
-        print('dict_to_update.keys() == %s' % dict_to_update.keys())
-        print('override.keys() == %s' % override.keys())
+        output.debug('dict_to_update.keys() == %s' % dict_to_update.keys())
+        #output.debug('override == %s' % override)
 
+
+    #output.debug('dict_to_update (opts) == %s' % dict_to_update)
 
     return local_metas
 
@@ -595,7 +597,7 @@ if os.path.isfile(default_metas.config):
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
                      ) 
-    print(module_opts)
+    output.debug(module_opts)
 
     output.debug("After override: opts['options'].message == " 
           + module_opts['options'].message
@@ -974,12 +976,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         Data = kwargs.pop('Data', None)
         Geom = kwargs.pop('Geom', None)
 
-        if 'file' in kwargs:
+        if  'file' in kwargs:
             kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['file'], '')
-        # elif 'f_name' not in kwargs:
-        #     kwargs['f_name'] = ''
-        # else:
-        #     kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
+        elif 'f_name' not in kwargs:
+             kwargs['f_name'] = ''
+        else:
+             kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['f_name'], '')
 
         external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 

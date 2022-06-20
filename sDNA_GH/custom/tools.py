@@ -327,11 +327,15 @@ def categorise_keys(d
     sub_dict_keys, data_node_keys, data_field_keys = [], [], []
     for key, value in d.items(): 
         if isinstance(value, dict) or options_manager.isnamedtuple(value):
+            logger.debug('key == %s is a node' % key)
             if is_data_key(key, **kwargs):
                 data_node_keys.append(key)
+                logger.debug('key == %s is a data_node' % key)
             else:
                 sub_dict_keys.append(key)
+                logger.debug('key == %s is a sub_dict' % key)
         else: 
+            logger.debug('key == %s is a data field' % key)
             data_field_keys.append(key)
 
     return sub_dict_keys, data_node_keys, data_field_keys
@@ -395,8 +399,11 @@ def update_opts(current_opts
     sub_dicts_keys, data_node_keys, data_field_keys = categorise_keys(override
                                                                      ,**kwargs
                                                                      )
-    logger.debug('sub_dicts_keys == %s, data_node_keys == %s' % (sub_dicts_keys, data_node_keys))
+    logger.debug('sub_dicts_keys == %s' % sub_dicts_keys)
+    logger.debug('data_node_keys == %s' % data_node_keys)
+    logger.debug('data_field_keys == %s' % data_field_keys)
 
+    current_data_node_keys = []
     if not sub_dicts_keys:  
         # continue walking the tree, only the tree in current_opts instead,
         # starting at the same level.
@@ -404,41 +411,48 @@ def update_opts(current_opts
                                                                     ,**kwargs
                                                                     )
                   # Needs explicit type, as general_opts above.
+        logger.debug('after current_opts update, sub_dicts_keys == %s' % sub_dicts_keys)
+        logger.debug('after current_opts update, current_data_node_keys == %s' % current_data_node_keys)
 
 
-    if sub_dicts_keys:
-        for key in sub_dicts_keys:
-            new_override_data = OrderedDict((key, override[key]) 
-                                            for key in data_field_keys
-                                           )
-            new_override_data.update( override.get(key, {}) )
-            update_opts(current_opts.setdefault(key, {})
-                       ,override = new_override_data 
-                       ,depth = depth + 1
-                       ,update_data_node = update_data_node
-                       ,make_new_data_node = make_new_data_node
-                       ,categorise_keys = categorise_keys
-                       ,**kwargs
-                       )
-    else:
-        new_override_data = OrderedDict((key, override[key]) 
-                                        for key in data_field_keys
-                                       )
-        for key in data_node_keys + current_data_node_keys:
-            if key in current_opts:
-                overrides = [new_override_data]
-                if key in override:
-                    overrides += [override[key]]
-                current_opts[key] = update_data_node(current_opts[key]
-                                                    ,overrides
+    #if sub_dicts_keys:
+    for key in sub_dicts_keys:
+        this_level_override_data = OrderedDict((key, override[key]) 
+                                                for key in data_field_keys
+                                                )
+        this_level_override_data.update( override.get(key, {}) )
+        update_opts(current_opts.setdefault(key, {})
+                    ,override = this_level_override_data 
+                    ,depth = depth + 1
+                    ,update_data_node = update_data_node
+                    ,make_new_data_node = make_new_data_node
+                    ,categorise_keys = categorise_keys
+                    ,**kwargs
+                    )
+    #else:
+    for key in data_node_keys + current_data_node_keys:
+        this_level_override_data = OrderedDict((key, override[key]) 
+                                                for key in data_field_keys
+                                                )
+        logger.debug('this_level_override_data == %s' % this_level_override_data)
+
+        if key in current_opts:
+            overrides = [this_level_override_data]
+            if key in override:
+                overrides += [override[key]]
+            logger.debug('Updating current_opts with overrides == %s & key == %s' % (overrides, key))
+            current_opts[key] = update_data_node(current_opts[key]
+                                                ,overrides
+                                                ,**metas._asdict()
+                                                )
+        else:
+            this_level_override_data.update(override[key])
+            logger.debug('Creating node with this_level_override_data == %s & key == %s' % (this_level_override_data, key))
+
+            current_opts[key] = make_new_data_node(this_level_override_data
+                                                    ,key # NamedTuple type name
                                                     ,**metas._asdict()
-                                                    )
-            else:
-                new_override_data.update(override[key])
-                current_opts[key] = make_new_data_node(new_override_data
-                                                      ,key # NamedTuple type name
-                                                      ,**metas._asdict()
-                                                      )  
+                                                    )  
         
 
 
@@ -488,7 +502,7 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                                                                        +"Please supply valid names of 'sDNAUISpec.py' "
                                                                        +"and 'runsdnacommand.py' files in "
                                                                        +"metas.sDNAUISpec and metas.runsdnacommand "
-                                                                       +"respectively. " # not strings
+                                                                       +"respectively. " # names not strings error
                                               ,folders_error_msg = "sDNA_GH could not find sDNA.  Please supply the "
                                                                   +"correct name of the path to the sDNA folder you "
                                                                   +"wish to use with sDNA_GH, in "
@@ -497,7 +511,7 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                                                                   +"'sDNAUISpec.py' and a valid 'runsdnacommand.py' "
                                                                   +"(or equivalent files as named in "
                                                                   +"metas.sDNAUISpec and metas.runsdnacommand "
-                                                                  +"respectively). " # not existing folders
+                                                                  +"respectively). " # not existing folders error
                                               ,modules_not_found_msg = "sDNA_GH failed to import sDNA.  Please ensure a "
                                                                       +"folder in "
                                                                       +"metas.sDNA_paths contains both the valid "
@@ -682,9 +696,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __call__(self # the callable instance / func, not the GH component.
                 ,f_name
                 ,opts
-                ,gdm     # just so they're omitted from kwargs below, 
-                ,l_metas # so kwargs only contains entries 
-                ,retcode # for the advanced command string
+                # ,gdm = {}    # just so they're omitted from kwargs below, 
+                # ,l_metas = ()# so kwargs only contains entries 
+                # ,retcode = 0# for the advanced command string
                 ,**kwargs
                 ):
         #type(Class, str, dict, namedtuple) -> Boolean, str
@@ -743,7 +757,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         advanced = input_args.get('advanced', None)
         if not advanced:
             user_inputs = self.component.params_adder.user_inputs
-            print('user_inputs == %s' % user_inputs)
+            self.logger.debug('user_inputs == %s' % user_inputs)
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
                                 for (key, val) in kwargs.items()
                                 if key in user_inputs
@@ -911,8 +925,10 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
         tmp_gdm = gdm if gdm else OrderedDict()
 
+        self.logger.debug('options.selected == %s' % options.selected)
+        self.logger.debug('options.layer == %s' % options.layer)
             
-        gdm = gdm_from_GH_Datatree.make_gdm(get_objs_and_OrderedDicts(
+        gdm = gdm_from_GH_Datatree.make_gdm( get_objs_and_OrderedDicts(
                                                  only_selected = options.selected
                                                 ,layers = options.layer
                                                 ,shp_type = options.shp_type
@@ -1382,7 +1398,6 @@ class DataParser(sDNA_GH_Tool):
         ,suppress_class_overlap_error = False
         )
     spike_isolating_quantile_options = options_manager.namedtuple_from_class(data_cruncher.SpikeIsolatingQuantileOptions)
-    print(spike_isolating_quantile_options)
     options.update(spike_isolating_quantile_options._asdict())
     opts = options_manager.get_dict_of_Classes(metas = {}, options = options)
 
@@ -1896,7 +1911,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                      +(bbox_ymax - bbox_ymin)**2
                                      ) / 2
                 tag_height = max( 1, 0.4 * leg_width / 7)
-                leg_height = options.num_classes * tag_height * 1.04
+                leg_height = min(options.num_classes * tag_height * 1.04, bbox_ymax - bbox_ymin)
                 legend_xmin = bbox_xmax - leg_width
                 legend_ymin = bbox_ymax - leg_height
 
@@ -1909,15 +1924,13 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
             plane = rs.WorldXYPlane()
             leg_frame = rs.AddRectangle( plane
-                                        ,legend_xmax - legend_xmin
-                                        ,legend_ymax - legend_ymin 
+                                        ,leg_width
+                                        ,leg_height 
                                         )
 
-            self.logger.debug('Rectangle width * height == ' 
-                                +str(legend_xmax - legend_xmin)
-                                +' * '
-                                +str(legend_ymax - legend_ymin)
-                                )
+            self.logger.debug('Rectangle width * height == '
+                             +'%s * %s' % (leg_width, leg_height)
+                             )
 
 
             rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])

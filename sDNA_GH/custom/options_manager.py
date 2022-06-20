@@ -333,7 +333,7 @@ def override_namedtuple(nt_lesser
 
         for key, val in override_funcs_dict.items():
             if isinstance(override, key):
-                print('returning val == %s' % val)
+                #print('returning val == %s' % val)
                 return val 
         
         if hasattr(override, 'asdict'):

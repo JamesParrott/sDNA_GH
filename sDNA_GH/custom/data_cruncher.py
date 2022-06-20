@@ -706,11 +706,11 @@ def spike_isolating_quantile(data
             if num_classes - 3 <= 0:
                 extra_classes_a, extra_classes_b = 0, 0
             else:
-                print('n == %s, N_1 == %s, N_2 == %s ' %   (num_classes - 3
+                logger.debug('n == %s, N_1 == %s, N_2 == %s ' %   (num_classes - 3
                                                            ,spike_data_index_a
                                                            ,len(data) - spike_data_index_b - 1
                                                            )
-                     )
+                            )
                 extra_classes_a, extra_classes_b = pro_rata(num_classes - 3
                                                            ,spike_data_index_a
                                                            ,len(data) - spike_data_index_b - 1
