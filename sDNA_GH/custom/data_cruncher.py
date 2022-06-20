@@ -302,7 +302,7 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
             # stick with first if equal
             interval = InclusiveInterval() 
             
-    if interval.num_data_points >= minimum_num:
+    if interval.num_data_points > minimum_num:
         return interval
     return None
         
@@ -469,7 +469,7 @@ def quantile_l_to_r(data
         
         # When we're considering dividing the remainder into new classes, we
         # only count classes to the left of inter-class bounds in class_bounds
-        logger.debug(num_classes_left)
+        #logger.debug(num_classes_left)
 
 
         if num_classes_left == num_classes_wanted:

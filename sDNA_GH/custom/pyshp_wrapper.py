@@ -89,7 +89,7 @@ class ShpOptions(object):
     uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
     num_dp = 10 # decimal places
     min_sizes = True
-    encoding = 'utf8' # also used by get_fields_recs_and_shapes
+    encoding = 'utf-8' # also used by get_fields_recs_and_shapes
 
 
 ###################################################################
@@ -287,7 +287,7 @@ def coerce_and_get_code(x, options = ShpOptions):
                 
             return x if options.keep_floats else y, shp_field_codes['float']  
                     # Tuple , binds to result of ternary operator
-        except ValueError:
+        except (dec.InvalidOperation, ValueError):
             if isinstance(x, date):
                 return x, shp_field_codes['date']   # i.e. 'D'   
 

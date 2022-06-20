@@ -209,7 +209,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #System
     #
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
-    encoding = 'utf-8' # used by .custom.pyshp_wrapper
+    encoding = 'utf-8' # For shapefiles only, not toml files or names.csv.
+                       # Used by .custom.pyshp_wrapper
                        # get_fields_recs_and_shapes and write_iterable_to_shp
     package_name = os.path.basename(os.path.dirname(__file__))
     sub_module_name = os.path.basename(__file__).rpartition('.')[0]
@@ -965,7 +966,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug('self.script started... \n')
         #logger.debug(kwargs)
 
-        go = data_cruncher.first_item_if_seq(kwargs.pop('go', False), False) 
+        go = smart_comp.first_item_if_seq(kwargs.pop('go', False), False) 
              # Input Params set 
              # to list acess so
              # strip away outer 
@@ -974,22 +975,22 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         Geom = kwargs.pop('Geom', None)
 
         if 'file' in kwargs:
-            kwargs['f_name'] = data_cruncher.first_item_if_seq(kwargs['file'], '')
+            kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['file'], '')
         # elif 'f_name' not in kwargs:
         #     kwargs['f_name'] = ''
         # else:
         #     kwargs['f_name'] = funcs.first_item_if_seq(kwargs['f_name'], '')
 
-        external_opts = data_cruncher.first_item_if_seq(kwargs.pop('opts', {}), {})
+        external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 
-        external_local_metas = data_cruncher.first_item_if_seq(kwargs.pop('local_metas'
+        external_local_metas = smart_comp.first_item_if_seq(kwargs.pop('local_metas'
                                                                  ,empty_NT
                                                                  )
                                                       ,empty_NT
                                                       )
         logger.debug(external_opts)
 
-        gdm = data_cruncher.first_item_if_seq(kwargs.get('gdm', {}))
+        gdm = smart_comp.first_item_if_seq(kwargs.get('gdm', {}))
 
         logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         

@@ -216,8 +216,8 @@ def sDNA_key(opts):
         Returns a string so the key can be loaded from a toml file.
     """
     metas = opts['metas']
-    sDNA = (metas.sDNAUISpec.partition['.'][0]
-           ,metas.runsdnacommand.partition['.'][0]
+    sDNA = (metas.sDNAUISpec.partition('.')[0]
+           ,metas.runsdnacommand.partition('.')[0]
            )
     return sDNA_fmt_str.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
@@ -465,8 +465,8 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                 )
 
 
-    requested_sDNA = (metas.sDNAUISpec.partition['.'][0]
-                     ,metas.runsdnacommand.partition['.'][0]) # get rid of .py
+    requested_sDNA = (metas.sDNAUISpec.partition('.')[0]
+                     ,metas.runsdnacommand.partition('.')[0]) # get rid of .py
 
     # To load new sDNA modules, specify the new module names in
     # metas.sDNAUISpec and metas.runsdnacommand
@@ -546,7 +546,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
                                              )
                               )
-    opts['metas]']
 
     def update_tool_opts_and_syntax(self, opts = None):
         if opts is None:
@@ -1225,7 +1224,9 @@ class ShapefileReader(sDNA_GH_Tool):
 # sDNA writes this file in simple 'w' mode, 
 # Line 469
 # https://github.com/fiftysevendegreesofrad/sdna_open/blob/master/arcscripts/sdna_environment.py
-            with open(csv_f_name, 'r') as f:  
+            with open(csv_f_name, 'r') as f:   # In Python 2 there's no encoding argument
+                #https://docs.python.org/2.7/library/functions.html#open
+                #
                 #sDNA_fields = [OrderedDict( line.split(',') for line in f )]
                 abbrevs = [line.split(',')[0] for line in f ]
             if not options.strict_no_del:
@@ -1355,32 +1356,35 @@ class DataParser(sDNA_GH_Tool):
                            ,quantile = data_cruncher.spike_isolating_quantile
                            )
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
-                              ,options = dict(
-                                     field = 'BtEn'
-                                    ,plot_min = options_manager.Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
-                                    ,plot_max = options_manager.Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
-                                    ,re_normaliser = 'linear'
-                                    ,sort_data = False
-                                    ,num_classes = 8
-                                    ,class_bounds = [options_manager.Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
-                                    # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-                                    ,class_spacing = 'quantile'
-                                    ,_valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
-                                    ,base = 10 # for Log and exp
-                                    ,colour_as_class = False
-                                    ,locale = '' # '' => User's own settings.  Also in DataParser
-                                    # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-                                    ,num_format = '{:.5n}'
-                                    ,first_leg_tag_str = 'below {upper}'
-                                    ,gen_leg_tag_str = '{lower} - {upper}'
-                                    ,last_leg_tag_str = 'above {lower}'
-                                    ,exclude = False
-                                    ,remove_overlaps = True
-                                    ,suppress_small_classes_error = False
-                                    ,suppress_class_overlap_error = False
-                                    )
-                              )
+
+    options = dict(
+         field = 'BtEn'
+        ,plot_min = options_manager.Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
+        ,plot_max = options_manager.Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
+        ,re_normaliser = 'linear'
+        ,sort_data = False
+        ,num_classes = 8
+        ,class_bounds = [options_manager.Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
+        # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
+        ,class_spacing = 'quantile'
+        ,_valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
+        ,base = 10 # for Log and exp
+        ,colour_as_class = False
+        ,locale = '' # '' => User's own settings.  Also in DataParser
+        # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+        ,num_format = '{:.5n}'
+        ,first_leg_tag_str = 'below {upper}'
+        ,gen_leg_tag_str = '{lower} - {upper}'
+        ,last_leg_tag_str = 'above {lower}'
+        ,exclude = False
+        ,remove_overlaps = True
+        ,suppress_small_classes_error = False
+        ,suppress_class_overlap_error = False
+        )
+    spike_isolating_quantile_options = options_manager.namedtuple_from_class(data_cruncher.SpikeIsolatingQuantileOptions)
+    print(spike_isolating_quantile_options)
+    options.update(spike_isolating_quantile_options._asdict())
+    opts = options_manager.get_dict_of_Classes(metas = {}, options = options)
 
     assert opts['options'].re_normaliser in data_cruncher.valid_re_normalisers
     assert opts['options'].class_spacing in quantile_methods
@@ -1438,11 +1442,11 @@ class DataParser(sDNA_GH_Tool):
         # overridden, the user must set them to an invalid override 
         # (e.g. max <= min) to go back to auto-calculation.
 
-        self.logger.debug('data.values() == ' 
-                         +str(data.values()[:3]) 
-                         +' ... ' 
-                         +str(data.values()[-3:])
-                         )
+        self.logger.debug('data.values() == %s, ... ,%s' % (tuple(data.values()[:3])
+                                                           ,tuple(data.values()[-3:])
+                                                           )
+                         ) 
+
 
 
 
@@ -1455,7 +1459,7 @@ class DataParser(sDNA_GH_Tool):
 
         if options.sort_data or (
            not use_manual_classes 
-           and options.class_spacing in ('quantile', 'max_deltas', 'combo')  ):
+           and options.class_spacing in self.quantile_methods ):
             # 
             data = OrderedDict( sorted(data.items()
                                       ,key = lambda tupl : tupl[1]
@@ -1465,11 +1469,12 @@ class DataParser(sDNA_GH_Tool):
         param={}
         param['exponential'] = param['logarithmic'] = options.base
 
-        m = options.num_classes
         n = len(data)
+        m = min(n, options.num_classes)
+
         class_size = n // m
-        if class_size < 2:
-            msg = 'Class size == %s  is less than 2 ' % class_size
+        if class_size < 1:
+            msg = 'Class size == %s  is less than 1 ' % class_size
             if options.suppress_small_classes_error:
                 self.logger.warning(msg)
                 warnings.showwarning(message = msg

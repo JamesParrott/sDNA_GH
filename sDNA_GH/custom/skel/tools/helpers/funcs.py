@@ -49,7 +49,7 @@ def windows_installation_paths(name):
                      ] 
         and any paths on the system path with name as a substring. 
     """
-    paths = os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)# r'C:\' + name
+    paths = [os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)]# r'C:\' + name
     paths += [os.path.join(os.getenv('PROGRAMFILES'), name)]
     paths += [os.path.join(os.getenv('PROGRAMFILES(X86)'), name)]
     paths += [os.path.join(os.getenv('APPDATA'),name)]

@@ -257,11 +257,13 @@ def override_namedtuple_with_namedtuple(nt_lesser
 
 toml_types = [bool, basestring, Number, tuple, list, dict]
 
+
 def save_toml_file(file_name, d):
     #type(str, dict) -> None
-    """ Saves a dictionary to a toml file.  """
+    """ Saves a dictionary to a toml file.  Toml specifies the utf-8 encoding."""
     with open(file_name, 'w') as f:
         toml.dump(d, f)
+
 
 def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
                   ,**kwargs

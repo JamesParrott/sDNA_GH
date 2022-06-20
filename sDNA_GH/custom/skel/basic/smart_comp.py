@@ -55,10 +55,11 @@ __version__ = '0.02'
 import logging
 import inspect
 import collections
-if hasattr(collections, 'abc'):
-    collections.abc = collections # Python 2
+if hasattr(collections, 'Sequence'):
+    Sequence, Callable = collections.Sequence, collections.Callable
 else:
-    import collections.abc   #Python 3
+    import collections.abc  
+    Sequence, Callable = collections.abc.Sequence, collections.abc.Callable
 import abc
 
 if hasattr(abc, 'ABC'):
@@ -96,7 +97,7 @@ def first_item_if_seq(l, null_container = {}):
     if not l:
         return null_container        
 
-    if isinstance(l, collections.abc.Sequence) and not isinstance(l, str):
+    if isinstance(l, Sequence) and not isinstance(l, str):
         l = l[0]
     
     return l
@@ -104,7 +105,7 @@ def first_item_if_seq(l, null_container = {}):
 
 
 def get_args_spec(callable):
-    if not isinstance(callable, collections.abc.Callable):
+    if not isinstance(callable, Callable):
         raise TypeError('Argument is not callable, therefore has no args')
     # assert hasattr(callable, '__call__')
     try:
