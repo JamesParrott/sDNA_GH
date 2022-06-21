@@ -450,9 +450,9 @@ def update_opts(current_opts
             logger.debug('Creating node with this_level_override_data == %s & key == %s' % (this_level_override_data, key))
 
             current_opts[key] = make_new_data_node(this_level_override_data
-                                                    ,key # NamedTuple type name
-                                                    ,**metas._asdict()
-                                                    )  
+                                                  ,key # NamedTuple type name
+                                                  ,**metas._asdict()
+                                                  )  
         
 
 
@@ -2081,7 +2081,7 @@ class ConfigManager(sDNA_GH_Tool):
         #                                             )
         #           )
 
-        if save_to is None:
+        if save_to in (None, 'config.toml'):
             if not os.path.isfile(self.save_to): 
                                 # Don't overwrite an existing installation 
                                 # wide config.toml file
@@ -2095,6 +2095,12 @@ class ConfigManager(sDNA_GH_Tool):
                                                 # config file's options
                 del parsed_dict['options']['working_folder']
                 parsed_dict['options']['message'] = 'Installation wide user options file. '
+            else:
+                msg = "There already is an installation wide options file"
+                msg += "  Specify save_to == 'config.toml' to overwrite it)."
+                self.error(msg)            
+                raise ValueError(msg)
+
         else:
             parsed_dict['options']['message'] = 'Project specific user options file. '
 
@@ -2102,8 +2108,8 @@ class ConfigManager(sDNA_GH_Tool):
             
         if not isinstance(save_to, basestring):
             msg = 'File path to save to: %s needs to be a string' % save_to
-            self.error(msg)
-            raise TypeError(msg)            
+            self.error(msg)            
+            raise TypeError(msg)
         if not save_to.endswith('.toml'):
             msg = 'File path to save to: %s needs to end in .toml' % save_to
             self.error(msg)

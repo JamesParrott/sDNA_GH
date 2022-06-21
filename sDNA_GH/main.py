@@ -574,7 +574,8 @@ def override_all_opts(args_dict
                          ,override = override
                          ,metas = dict_to_update['metas']
                          )
-        output.debug('dict_to_update.keys() == %s' % dict_to_update.keys())
+        print('override.keys() == %s' % override.keys())
+        print('dict_to_update.keys() == %s' % dict_to_update.keys())
         #output.debug('override == %s' % override)
 
 
@@ -592,7 +593,7 @@ def override_all_opts(args_dict
 
 if os.path.isfile(default_metas.config):
     #logger.debug('Before override: message == '+opts['options'].message)
-    override_all_opts(args_dict = default_metas._asdict() 
+    override_all_opts(args_dict = dict(config = default_metas.config)
                      # to get installation config.toml only once, for this call
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
