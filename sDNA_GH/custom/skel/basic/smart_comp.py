@@ -408,10 +408,3 @@ SmartComponent = custom_inputs_class_deco(MyComponentWithMainABC)
 SmartComponent.component_Outputs = component_Outputs
 
 
-
-# def old_smart_RunScript(self, *args):
-#     args_dict = {key.Name : val for key, val in zip(self.Params.Input, args) } # .Input[4:] type: ignore
-#     logger.debug(args)
-#     ret_vals_dict = self.script(**args_dict)
-#     go = args_dict.get('go', False)
-

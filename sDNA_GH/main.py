@@ -75,7 +75,8 @@ output = launcher.Output()
 
 # Pre Python 3.6 the order of an OrderedDict isn't necessarily that of the 
 # arguments in its constructor so we build our options and metas namedtuples
-# from a class, to avoid re-stating the order of the keys.
+# from a class, to avoid re-stating the order of the keys, and to run other
+# code too (e.g. checks, validations and assertions).
 
 default_name_map = dict(Read_Geom = 'get_Geom'
                        ,Read_Usertext = 'read_Usertext'
@@ -583,13 +584,11 @@ def override_all_opts(args_dict
 
     return local_metas
 
-
-# First options options_manager.override (3), 
-# user's installation specific options over (4), 
-# hardcoded defaults above
+##############################################################################
+# First options options_manager.override, reading the
+# user's installation wide options stored in the
+# hardcoded defaults above under config.
 #
-# Use the above function to load the user's installation wide defaults by using
-#  the primary meta from the hardcoded defaults.
 
 if os.path.isfile(default_metas.config):
     #logger.debug('Before override: message == '+opts['options'].message)

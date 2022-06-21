@@ -154,11 +154,76 @@ Write user text to Rhino objects using a customisable pattern for the keys.
 
 #### sDNA Tools
 ##### Analysis tools
-By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set the *meta* `show_all` = false.  **WARNING!  All sDNA tools will delete the shapefile after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**
+All the sDNA tools are run from the command line, using the Python interpreter in `python`.  
+By default an sDNA tool component will show all the possible inputs on its Input Parms.  To show only the essential ones instead (and make the components a lot smaller) set `show_all` = false.  If run with all `auto_` options on, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis, read in the output shapefile, and recolour the Rhino polylines.  Otherwise, sDNA tools that require input must have the path to the shapefile you wish to run the analysis on specified in `file` or `input`. **WARNING!  All sDNA tools will delete the shapefile after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**  
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):
 
 ###### [sDNA_Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-analysis) (sDNAIntegral)
 sDNA Integral wrapper.  This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding `auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
+
+**[Advanced config options for sDNA Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)**
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+Option 	Default 	Description
+startelev= 	  	Name of field to read start elevation from
+endelev= 	  	Name of field to read end elevation from
+metric= 	angular 	Metric – angular, euclidean, custom or one of the presets
+radius= 	n 	List of radii separated by commas
+startelev= 	  	Name of field to read start elevation from
+endelev= 	  	Name of field to read end elevation from
+origweight= 	  	Name of field to read origin weight from
+destweight= 	  	Name of field to read destination weight from
+origweightformula= 	  	Expression for origin weight (overrides origweight)
+destweightformula= 	  	Expression for destination weight (overrides destweight)
+weight= 	  	Name of field to read weight from. Applies weight field to both origins and destinations.
+zonesums= 	  	Expressions to sum over zones (see zone sums below)
+lenwt 	  	Specifies that weight field is per unit length
+custommetric= 	  	Specified field name to read custom metric from
+xytol= 	  	Manual override xy tolerance for fixing endpoint connectivity.
+ztol= 	  	Manual override z tolerance for fixing endpoint connectivity.
+outputgeodesics 	  	Output geometry of all pairwise geodesics in analysis (careful – this can create a lot of data)
+outputdestinations 	  	Output geometry of all pairwise destinations in analysis (careful – this can create a lot of data). Useful in combination with origins for creating a map of distance/metric from a given origin.
+outputhulls 	  	Output geometry of all convex hulls in analysis
+outputnetradii 	  	Output geometry of all network radii in analysis
+origins= 	  	Only compute selected origins (provide feature IDs as comma separated list). Useful in conjunction with outputgeodesicsm, outputdestinations, outputhulls, outputnetradii.
+destinations= 	  	Only compute selected destinations (ditto)
+nonetdata 	  	Don’t output any network data (used in conjunction with geometry outputs)
+pre= 	  	Prefix text of your choice to output column names
+post= 	  	Postfix text of your choice to output column names
+nobetweenness 	  	Don’t calculate betweenness (saves a lot of time)
+nojunctions 	  	Don’t calculate junction measures (saves time)
+nohull 	  	Don’t calculate convex hull measures (saves time)
+linkonly 	  	Only calculate individual link measures.
+outputsums 	  	Output sum measures SAD, SCF etc as well as means MAD, MCF etc.
+probroutes 	  	Output measures of problem routes – routes which exceed the length of the radius
+forcecontorigin 	  	Force origin link to be handled in continuous space, even in a discrete analysis. Prevents odd results on very long links.
+nqpdn= 	1 	Custom numerator power for NQPD equation
+nqpdd= 	1 	Custom denominator power for NQPD equation
+skipzeroweightorigins 	  	Skips calculation of any output measures for origins with zero weight. Saves a lot of time if many such origins exist.
+skipzeroweightdestinations 	1 	Zero weight destinations are skipped by default. Note this will exclude them from geometry outputs; if this is not desired behaviour then set skipzeroweightdestinations=0
+skiporiginifzero= 	  	Specified field name. If this field is zero, the origin will be skipped. Allows full customization of skipping origins.
+skipfraction= 	1 	Set to value n, skips calculation for (n-1)/n origins. Effectively the increment value when looping over origins.
+skipmod= 	0 	Chooses which origins are calculated if skipfraction?1. Effectively the initial value when looping over origins: every skipfractionth origin is computed starting with the skipmodth one.
+nostrictnetworkcut 	  	Don’t constrain geodesics to stay within radius. This will create a lot more ‘problem routes’. Only alters behaviour of betweenness measures (not closeness).
+probrouteaction= 	ignore 	Take special action for problem routes that exceed the radius by a factor greater than probroutethreshold. Can be set to ignore, discard or reroute. Reroute changes geodesic to shortest Euclidean path. Only alters betweenness output, not closeness.
+probroutethreshold= 	1.2 	Threshold over which probrouteaction is taken. Note this does not affect computation of probroutes measures, which report on all routes which exceed the radius length regardless of this setting.
+outputdecomposableonly 	  	output only measures which are decomposable i.e. can be summed over different origins (useful for parallelization)
+linkcentretype= 	Angular for angular analysis, Euclidean otherwise 	Override link centre types – angular or Euclidean
+lineformula= 	  	Formula for line metric in hybrid analysis (see below)
+juncformula= 	0 	Formula for junction turn metric in hybrid analysis (see below)
+bidir 	  	Output betweenness for each direction separately
+oneway= 	  	Specified field name to read one way data from (see note 1 below)
+vertoneway= 	  	Specified field name to read vertical one way data from (see note 1 below)
+oversample= 	1 	Number of times to run the analysis; results given are the mean of all runs. Useful for sampling hybrid metrics with random components.
+odmatrix 	  	Read OD matrix from input tables (a 2d table must be present)
+zonedist= 	euc 	Set expression to determine how zone weights are distributed over links in each zone, or 0 to skip distribution (all lines receive entire zone weight)
+intermediates= 	  	Set expression for intermediate link filter. Geodesics are discarded unless they pass through link where expression is nonzero.
+disable= 	  	Set expression to switch off links (links switched off when expression evaluates nonzero)
+outputskim 	  	Output skim matrix file
+skimorigzone 	  	Origin zone field (must be text) for skim matrix
+skimdestzone 	  	Destination zone field (must be text) for skim matrix
+skimzone 	  	Skim matrix zone field for both origin and destination (sets both skimorigzone and skimdestzone)
+bandedradii 	  	Divide radius into bands: for each radius only include links outside the previous radius
+datatokeep= 	  	List of field names for data to copy to output
 
 ###### [sDNA_Skim](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix) (sDNASkim)
 Skim Matrix.  Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
@@ -171,6 +236,9 @@ The file must be formatted correctly, see Creating a zone table or matrix file. 
 Outputs accessibility maps for specific origins.
 The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.
 If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
+**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+sDNA Accessibility Map is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
 
 ##### Preparation tools
 ###### [sDNA_Prepare](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#prepare-network) (sDNAPrepare)
@@ -183,6 +251,23 @@ The errors fixed by sDNA Prepare are:
 - split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
 - isolated systems. 
 
+**[Advanced config options for sDNA Prepare](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-prepare)**
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`. 
+
+Option 	Description
+startelev= 	Name of field to read start elevation from
+endelev= 	Name of field to read end elevation from
+island= 	Name of field to read traffic island information from. Anything other than zero will be treated as traffic island
+islandfieldstozero= 	Specifies additional data fields to set to zero when fixing traffic islands (used for e.g. origin or destination weights)
+data_unitlength= 	Specifies numeric data to be preserved by sDNA prepare (preserves values per unit length, averages when merging links)
+data_absolute= 	Specifies numeric data to be preserved by sDNA prepare (preserves absolute values, sums when merging links)
+data_text= 	Specifies text data to be preserved (merges if identical, concatenates with semicolon otherwise)
+xytol= 	Manual override xy tolerance for fixing endpoint connectivity
+ztol= 	Manual override z tolerance for fixing endpoint connectivity
+merge_if_identical= 	Specifies data fields which can only be merged if identical, i.e. split links will not be fixed if they differ (similar to ‘dissolve’ GIS operation)
+
+xytol and ztol are manual overrides for tolerance. sDNA, running on geodatabases from command line or ArcGIS, will read tolerance values from each feature class as appropriate. sDNA running in QGIS or on shapefiles will use a default tolerance of 0, as shapefiles do not store tolerance information:- manual override is necessary to fix tolerance on shapefiles.
+
 ###### [sDNA_Line_Measures](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#individual-line-measures) (sDNALineMeasures)
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
 This tool can be useful for checking and debugging spatial networks. In particular, connectivity output can reveal geometry errors.
@@ -191,14 +276,24 @@ This tool can be useful for checking and debugging spatial networks. In particul
 ###### [sDNA_Geodesics](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#geodesics) (sDNAGeodesics)
 Outputs the geodesics (shortest paths) used by Integral Analysis. 
 The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
+**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+sDNA Geodesics is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+
 
 ###### [sDNA_Hulls](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#convex-hulls) (sDNAHulls)
 Outputs the convex hulls of network radii used in Integral Analysis. 
 The convex hulls tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output hulls for all origins.
+**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+sDNA Convex Hulls is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
 
 ###### [sDNA_Net_Radii](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#network-radii) (sDNANetRadii)
 Outputs the network radii used in Integral Analysis. 
 The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
+**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+sDNA Network Radii is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
 
 ##### Calibration tools
 ###### [sDNA_Learn](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#learn) (sDNALearn)
@@ -236,18 +331,15 @@ The next sDNA_GH component to run will then reload the package and installation-
 ###### sDNA_general
 Run any other component by feeding the name of it into the "tool" input param. A "Swiss army knife" component.
 
-###### Comp_Names
-Output the names of all the sDNA tool classes for the sDNA installation provided in opts, as well as all the sDNA_GH support tool names.  
-
-###### Self_test
+<!--###### Self_test
 Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will
-cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests to the functions in the launcher, can also be added to the launcher code.
+cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests to the functions in the launcher, can also be added to the launcher code. -->
 
 ###### Build_components 
 Easily build all the other components for the sDNA installation provided.  User Objects still need to be built manually, but components are all the same launcher code in a Gh_Python component, but with different names.  Functionality is provided by main.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
 
   
-
+<!--
 ### Example Grasshopper definitions.
 #### Running sDNA Integral on a random grid read from Rhino.
 ##### Selecting and specifying an sDNA Results field.
@@ -263,7 +355,7 @@ Easily build all the other components for the sDNA installation provided.  User 
 #### Reading in polylines and data from shapefiles.
 #### Writing Usertext.
 #### Reading Usertext for sDNA (e.g. User weights).
-#### Baking (saving Grasshopper objects to a Rhino document) with Usertext.
+#### Baking (saving Grasshopper objects to a Rhino document) with Usertext. -->
 
 
 
@@ -301,7 +393,7 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 11. Ensure both the Name and Nickname are the same as the automatically created component name (as some versions of Rhino 7 read their component names from the descriptive human-readable name).  Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the main.py meta option categories.  Description text
 can be used from the tool's description in this readme file itself (above).
 12. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH` in the main repo, next to config.toml
-13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory.  
+13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs).  
 14. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
 15. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
   

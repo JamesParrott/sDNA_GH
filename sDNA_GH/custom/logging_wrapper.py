@@ -176,19 +176,21 @@ def class_logger_factory(logger = None, module_name = None):
 
 ####################################################################################
 #
-# A single callable wrapper with a cache.  Saves logging messages from before the
-# logger system is setup until they can be flushed into the logger, and provides
-# a central point to redirect all log messaging calls through, (e.g. if the logger
-# itself needs debugging, providing the perfect place to temporarily use logger.debug)
+
 #
 #
 class Output(object): 
-    """   Wrapper class for logger, logging, logger.debug, with a cache.  Example setup:
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.addHandler(logging.NullHandler())
-    cache = []
-    output = Output(cache, logger)
+    """ A single callable wrapper with a cache.  Saves logging messages from before the
+        logger system is setup until they can be flushed into the logger, and provides
+        a central point to redirect all log messaging calls through, (e.g. if the logger
+        itself needs debugging, providing the perfect place to temporarily use logger.debug)
+
+        Wrapper class for logger, logging, logger.debug, with a cache.  Example setup:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.addHandler(logging.NullHandler())
+        cache = []
+        output = Output(cache, logger)
     """
     def set_logger(self, logger, flush = True):
         self.logger = logger
@@ -242,13 +244,7 @@ class Output(object):
 #
 ##############################################################################
 #
-# Supplements an instance of the above Class by adding in the names found
-# for a variable
-# to a debug message (as well as its value) just by calling:.
-#
-#  debug(variable)
-#
-# Python 3 only, to get in inspect.currentframe() to work as intended
+
 #
 #
 class Debugger(object):
@@ -261,6 +257,14 @@ class Debugger(object):
     cache = []
     output = Output(cache, logger)
     debug = Debugger(output)
+
+    Supplements an instance of the above Output Class by adding in the names found
+    for a variable
+    to a debug message (as well as its value) just by calling:.
+
+    debug(variable)
+
+    Python 3 only, to get in inspect.currentframe() to work as intended
     """
     def __init__(self, output = None):
         #type(type[any], function) -> None  # callable object

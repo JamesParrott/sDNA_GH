@@ -526,10 +526,7 @@ def write_iterable_to_shp(my_iterable
     shapefile_path = get_filename(shp_file_path
                                  ,options
                                  )
-    # wrapper_pyshp can work outside of rhino and grasshopper, so we don't know the name of the Rhino .3dm file.
-    # Instead we'll wrap this wrapper function again in the Rhino / GH process in sDNA_GH.py to supply this inner 
-    # function it as a normal parameter value for shp_file_path.
-        
+       
 
 
 
@@ -588,20 +585,6 @@ def objs_maker_factory(
     return rhino_obj_maker
     # e.g. rhino_obj_maker = rs.AddPolyline
 
-    #def g(obj, rec):  # The shape from pyshp is a list of polylines, 
-                      # even if there is only 1 polyline
-    #    return rhino_obj_maker(obj)
-        #objs_list = [rhino_obj_maker(points_list) for points_list in obj] 
-    # Creates not necessarily returned Rhino object as intentional side effect
-        #if len(objs_list) > 1:
-        #    new_group_name = make_new_group()
-        #    add_objects_to_group(objs_list, new_group_name)
-        #    return new_group_name
-        #elif len(objs_list)==1:  #The normal case
-        #    return objs_list[0]
-        #else: 
-        #    return None
-    #return g
 
 
 

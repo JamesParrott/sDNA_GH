@@ -55,11 +55,12 @@ tools_dict = OrderedDict()
 
 
 class RunnableTool(ABC):    
-                    #Template for tools that can be run by run_tools()
-                    # Subclass of this is only enforced if enforceABC is True,
-                    # to permit running of regular
-                    # functions with attributes via ducktyping check
-                    # in quacks_like
+    """ Template for tools that can be run by run_tools()
+    Subclass of this is only enforced if enforceABC is True,
+    to permit running of regular
+    functions with attributes via ducktyping check
+    in quacks_like
+    """
 
     @abstractmethod
     def __call__(self, *args):
@@ -72,10 +73,12 @@ class RunnableTool(ABC):
     @abstractmethod
     def retvals(self): 
         return ('retcode',) 
-                 # strings of variable names inside __call__, to be used 
-                 # keys in vals_dict.  show['Outputs'] defines the required 
-                 # output Param names on the 
-                 # GH component
+    # strings of variable names inside __call__, will be used 
+    # keys in vals_dict.  ToolwithParamsABC.output_params
+    # defines the corresponding 
+    # output Param names on the 
+    # GH component (not necessarily the same, e.g. file is a 
+    # reserved name, so we use it as an alias for f_name)
 
 
 
@@ -110,14 +113,6 @@ def run_tools(tools
         logger.debug(tool)
 
 
-        #inputs = [vals_dict.get(input, None) for input in tool.args]
-        #retvals = tool( *inputs)
-
-
-
-        # inputs = {input : vals_dict[input] for input in tool.args 
-        #                                    if input in vals_dict
-        #          }
 
         anon_pos_args = getattr(tool, 'anon_pos_args', [])
         anon_kwargs = getattr(tool, 'anon_kwargs', [])

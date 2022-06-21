@@ -84,7 +84,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
         metas = opts['metas']
         
-        main.import_sDNA(opts)
+        tools.import_sDNA(opts)
         sDNAUISpec = opts['options'].sDNAUISpec
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False

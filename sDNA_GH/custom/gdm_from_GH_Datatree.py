@@ -65,6 +65,7 @@ def make_gdm(main_iterable):
 
     return gdm
     
+
 def dict_from_key_val_lists(key_val_lists):
     #type(list(list(keys), list(values))) -> dict / list
     if len(key_val_lists)>=2:
@@ -77,11 +78,6 @@ def dict_from_key_val_lists(key_val_lists):
         return OrderedDict(zip(key_val_lists[:2]))
     else:
         return key_val_lists
-
-
-
-
-
 
 
 def dict_from_DataTree_and_lists(nested_dict):
@@ -128,17 +124,6 @@ def override_gdm(lesser, override, merge_subdicts = True):
     return lesser
 
 
-
-
-
-
-
-
-
-
-
-##########################################################################################################
-
 def gdm_from_DataTree_and_list(Geom, Data):
     # type (type[any], list, dict)-> dict
     
@@ -160,16 +145,8 @@ def gdm_from_DataTree_and_list(Geom, Data):
                            )
         Geom = Geom[0]
 
-    # This check won't allow legend tags through so is too strong for
-    # this stage.  Let later functions and checks handle invalid geometry
-    #if  any( not is_an_obj_in_GH_or_Rhino(x) 
-    #         and not is_a_group_in_GH_or_Rhino(x) 
-    #                                for x in Geom ):
-    #    raise ValueError(logger.exception( 'Invalid obj in Geom:  ' 
-    #           +' '.join([str(x) for x in Geom if not is_an_obj_in_GH_or_Rhino(x)
-    #                                          and not is_a_group_in_GH_or_Rhino(x)]) 
-    #           ,'ERROR'))
-
+    # This check won't allows legend tags through. Later functions 
+    # must handle invalid geometry
     # 
     logger.debug(str(Data))
     if (Data in [[], None, [None]] or
@@ -229,16 +206,8 @@ def gdm_from_DataTree_and_list(Geom, Data):
 
 
 
-
-
-    #component_inputs_gen_exp =  izip(Geom, Data)
-
-
-
     geom_data_map = make_gdm(component_inputs_gen_exp  
                             )
-
-    #geom_data_map = make_gdm( izip(Geom, imap( izip, key_lists, val_lists)), make_obj_key)
 
 
     return geom_data_map

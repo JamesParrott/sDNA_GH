@@ -42,8 +42,10 @@ from ...basic.ghdoc import ghdoc
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+
 class NullPathError(Exception):
     pass
+
 
 def get_path(fallback = None, inst = None):
     #type(dict, type[any]) -> str
@@ -96,6 +98,7 @@ def change_line_thickness(obj, width, rel_or_abs = False):
     x.Attributes.PlotWeight = width
     x.CommitChanges()
 
+
 def multi_context_checker(is_thing):
     #type(function, function) -> function
     def get_sc_doc_of_thing(x):
@@ -116,36 +119,27 @@ def get_sc_doc_of_obj(x):
     #type(str) -> bool
     return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False 
 
-    #return rs.IsObject(x) if x else False
-    #return bool(sc.doc.Objects.FindGeometry(x)) if x else False 
-    #return bool(sc.doc.Objects.FindGeometry(System.Guid(x))) if x else False 
-    #logger.debug(str(x))
-    # logger.debug('str(x): %s ' % x))
-    # logger.debug('System.Guid(x): ')
-    # logger.debug(System.Guid(x))
-    # logger.debug('x.ToString(): ')
-    # logger.debug(x.ToString())
-    # logger.debug('To Guid')
-    # logger.debug(System.Guid(x.ToString()))
-    # logger.debug('Check: ')
-    # return bool(sc.doc.Objects.FindGeometry(System.Guid(x.ToString()))) if x else False 
 
 @multi_context_checker
 def get_sc_doc_of_curve(x):
     #type(str) -> bool
     return rs.IsCurve(x) if x else False
+ 
 
 def get_obj_keys(obj):
     # type(str) -> list
     return rs.GetUserText(obj)
 
+
 def get_obj_val(obj, key):
     # type(str, str) -> str
     return rs.GetUserText(obj, key)
 
+
 def write_obj_val(obj, key, val):
     # type(str, str) -> str
     return rs.SetUserText(obj, key, val, False)
+
 
 def get_val_list(val_getter = get_obj_val):
     # type(function) -> function
@@ -154,6 +148,7 @@ def get_val_list(val_getter = get_obj_val):
 
         return [val_getter(obj, key) for key in keys]
     return f
+
 
 def get_OrderedDict( keys_getter = get_obj_keys
                     ,val_getter = get_obj_val):
@@ -173,26 +168,19 @@ def get_OrderedDict( keys_getter = get_obj_keys
         return OrderedDict( [  (key, name_val_map.Get(key)) 
                                     for key in name_val_map.AllKeys  ] )
     return g
-    def f(obj):
-        # type(str, list) -> list
-        #if is_a_curve_in_GH_or_Rhino(obj):
-        target_doc = get_sc_doc_of_obj(obj)    
-        if target_doc:
-            sc.doc = target_doc        
-            keys = keys_getter(obj)
-            return OrderedDict( (key, val_getter(obj, key)) for key in keys)
-        else:
-            return OrderedDict()
-    return f
+
+
 
 @multi_context_checker
 def get_sc_doc_of_group(x):
     #type( str ) -> boolean
     return rs.IsGroup(x) if x else False
 
+
 def get_all_groups():
     #type( None ) -> list
     return rs.GroupNames()
+
 
 def get_members_of_a_group(group):
     #type(str) -> list

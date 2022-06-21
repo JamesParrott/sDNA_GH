@@ -203,9 +203,9 @@ def has_keywords(nick_name, keywords = ('prepare',)):
               )
 
 sDNA_fmt_str = '{sDNAUISPec}_and_{runsdnacommand}' 
-# extra quotes make it a quoted key string for toml, 
-# which supports an extended character set than ascii
-# but mean we can't use this string in a NamedTuple class name
+# extra quotes would make it a quoted key string in .toml, 
+# which supports an extended character set than ascii (normal keys). 
+# But then this string coudln't be used in a NamedTuple class name
 
 
 def sDNA_key(opts):
@@ -555,12 +555,14 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
 
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
-    # In addition to the 
-    # other necessary attributes of sDNA_GH_Tool, instances know their own name
-    # and nick name, in self.nick_name
-    # self.tool_name.  When the instance is called, the version of sDNA
-    # is looked up in opts['metas'], from its args.
-    # 
+    """ Main sDNA_GH tool class for running sDNA tools externally.
+    
+    In addition to the 
+    other necessary attributes of sDNA_GH_Tool, instances know their own name
+    and nick name, in self.nick_name
+    self.tool_name.  When the instance is called, the version of sDNA
+    is looked up in opts['metas'], from its args. """
+    
     metas = dict(sDNA = None
                 ,show_all = True
                 #,strict 
@@ -634,18 +636,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                                            ) in self.input_spec  
                                    )         
 
-        # tool_opts = get_tool_opts(self.nick_name, opts, self.tool_name)
-        # if sDNA in tool_opts:
-        #     tool_opts_dict = defaults_dict.update( tool_opts[sDNA]._asdict() ) 
-        # else:
-        #     tool_opts_dict = defaults_dict
 
-        # namedtuple_class_name = (nick_name + '_'
-        #                         +(self.tool_name if self.tool_name != nick_name
-        #                                          else '') + '_'
-        #                         +os.path.basename(sDNAUISpec.__file__).rpartition('.')[0]
-        #                         )
-        # self.logger.debug('Making tool opts namedtuple called %s ' % namedtuple_class_name)
 
         default_tool_opts = {}
         get_tool_opts(nick_name
@@ -661,14 +652,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                    ,override = default_tool_opts
                    )
 
-        # tool_opts[sDNA] = options_manager.namedtuple_from_dict(
-        #                                        tool_opts_dict
-        #                                       ,namedtuple_class_name
-        #                                       ,strict = True
-        #                                       ) 
+
         self.logger.debug('\n\n'.join(map(str, opts.items())))
-        # self.tool_opts = tool_opts
-        # self.opts = opts
+
         self.sDNA = sDNA
 
 
@@ -1239,20 +1225,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
             shapes_to_output = list(gdm.keys()) # Dict view in Python 3
 
-        # else:
-        #     # Unsupported until can round trip uuid through sDNA 
-        #     # objs_maker = get_shape_file_rec_ID(options.uuid_field) 
-        #     # # key_val_tuples
-        #     # i.e. if options.uuid_field in fields but also otherwise
-        #     msg =   ('Geom data map and shapefile have unequal'
-        #             +' lengths len(gdm) == %s ' % len(gdm))
-        #             +' len(recs) == %s ' % len(recs))
-        #             +' (or invalid gdm), and bool(new_geom)'
-        #             +' != True'
-        #             )
-        #     self.logger.error(msg)
-        #     raise ValueError(msg)
-   
+
 
         shp_file_gen_exp  = itertools.izip(shapes_to_output
                                           ,(rec.as_dict() for rec in recs)

@@ -164,23 +164,7 @@ def already_inserted(up_or_downstream
                     # tools_dict is keyed on all present nick names 
                     # as well as names of tools defined in this module
     logger.debug('already_have_tool == %s ' % already_have_tool)
-    #logger.debug(tools_dict)
-    #if (  not are_GhPython_components_in_GH(compnt, already_have_tool) and
 
-    #logger.debug(name_map)
-    #logger.debug(tool_name(tool_to_insert))
-
-    #nick_names = nick_names_that_map_to(tool_name(tool_to_insert), name_map)
-    #nick_names += already_have_tool
-    #logger.debug('nick_names == '+ str(nick_names))
-
-
-
-    # tool_in_other_components = 
-
-    # logger.debug('tool_in_other_components == ' 
-    #         + str(not tool_in_other_components) 
-    #         )
 
     return are_any_GhPython_comps(up_or_downstream
                                  ,already_have_tool
