@@ -169,11 +169,11 @@ class InvalidArgsError(Exception):
         super(Exception, self).__init__(message)    
 
 
-class ModuleNameError(Exception):
+class ModuleNameError(InvalidArgsError):
     message_fmt = 'Invalid module name: %s'
 
 
-class FilePathError(Exception):
+class FilePathError(InvalidArgsError):
     message_fmt = 'Invalid path to import module from: %s'
 
 
@@ -238,7 +238,7 @@ def strict_import(module_name = ''
     return module       
 
 
-class ModulesNotFoundError(Exception):
+class ModulesNotFoundError(InvalidArgsError):
     message_fmt = 'Modules not found in any location %s'
 
 
@@ -254,7 +254,7 @@ def load_modules(m_names
         module.
 
         Returns a tuple of all the modules and the path they were found in.  Else 
-        raises a ModuleNotFoundError.
+        raises a ModulesNotFoundError.
     """
     if not m_names or any( not isinstance(m_name, basestring) 
                                for m_name in m_names ):
@@ -298,11 +298,11 @@ def load_modules(m_names
                             for name in m_names
                         ) + (folder,)
             # tuple of modules, followed by the path to them
-    raise ModuleNotFoundError(message_fmt = modules_not_found_msg
-                             ,m_names = m_names
-                             ,folders = folders
-                             ,logger = logger
-                             )
+    raise ModulesNotFoundError(message_fmt = modules_not_found_msg
+                              ,m_names = m_names
+                              ,folders = folders
+                              ,logger = logger
+                              )
 
 
 
@@ -329,33 +329,27 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     output.debug(sDNA_GH_search_paths)
 
-    ModuleNameError
-
-    class sDNA_GH_Installation_Path_Error(FilePathError):
-        message_fmt = ''
-
     class sDNA_GH(object):
         pass
 
     error_message = 1
-    sDNA_GH.main, _ = load_modules(sDNA_GH_package + '.main'
-                                   ,sDNA_GH_search_paths
-                                   ,folders_error_msg = 'Please ensure a folder called %s' % sDNA_GH_package 
+    sDNA_GH.main, _ = load_modules(m_names = sDNA_GH_package + '.main'
+                                  ,folders = sDNA_GH_search_paths
+                                  ,folders_error_msg = 'Please ensure a folder called %s' % sDNA_GH_package 
                                                         +' is created in '
                                                         +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
                                                         +', containing main.py and all sDNA_GH python' 
                                                         +' files and subfolders. ' 
-                                   ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  Please copy'
-                                                            +' sDNA_GH.zip into: '
-                                                            +Grasshopper.Folders.DefaultUserObjectFolder
-                                                            +', Unblock it if necessary, and then right click'
-                                                            +' it and select Extract All... in that location. '
-                                                            +' Ensure that main.py and all sDNA_GH python' 
-                                                            +' files and subfolders are inside: '
-                                                            +os.path.join(
-                                                                 Grasshopper.Folders.DefaultUserObjectFolder
-                                                                ,sDNA_GH_package
-                                                                )
+                                  ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  Please copy'
+                                                          +' sDNA_GH.zip into: '
+                                                          +Grasshopper.Folders.DefaultUserObjectFolder
+                                                          +', Unblock it if necessary, and then right click'
+                                                          +' it and select Extract All... in that location. '
+                                                          +' Ensure that main.py and all sDNA_GH python' 
+                                                          +' files and subfolders are inside: '
+                                                          +os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                                                       ,sDNA_GH_package
+                                                                       )
                                    )         
 
 

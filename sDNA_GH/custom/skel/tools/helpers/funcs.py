@@ -37,8 +37,8 @@ def is_uuid(val):
 #https://stackoverflow.com/questions/19989481/how-to-determine-if-a-string-is-a-valid-v4-uuid
 
 
-def windows_installation_paths(name):
-    #type(str) -> list(str)
+def windows_installation_paths(names):
+    #type(str/Sequence(str)) -> list(str)
     """ Constructs a list of possible installation paths on Windows for an 
         unlocated app named name.
 
@@ -49,13 +49,17 @@ def windows_installation_paths(name):
                      ] 
         and any paths on the system path with name as a substring. 
     """
-    paths = [os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)]# r'C:\' + name
-    paths += [os.path.join(os.getenv('PROGRAMFILES'), name)]
-    paths += [os.path.join(os.getenv('PROGRAMFILES(X86)'), name)]
-    paths += [os.path.join(os.getenv('APPDATA'),name)]
-    paths += list(path 
-                  for path in os.getenv('PATH').split(';')
-                  if name in path 
-                 )   
+    if isinstance(names, str):
+        names = [names]
+    paths = []
+    for name in names:
+        paths += [os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)]# r'C:\' + name
+        paths += [os.path.join(os.getenv('PROGRAMFILES'), name)]
+        paths += [os.path.join(os.getenv('PROGRAMFILES(X86)'), name)]
+        paths += [os.path.join(os.getenv('APPDATA'),name)]
+        paths += list(path 
+                    for path in os.getenv('PATH').split(';')
+                    if name in path 
+                    )   
     return paths         
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables

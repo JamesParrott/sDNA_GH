@@ -270,17 +270,25 @@ sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 class PythonOptions(object):
     """All options needed to specify a Python interpreter, or search for one. """
 
-    python_paths = funcs.windows_installation_paths('Python27')
+    python_paths = funcs.windows_installation_paths(('Python27'
+                                                    ,'Python_27'
+                                                    ,'Python_2.7'
+                                                    ,'Python2.7'
+                                                    )
+                                                   )
     python_exes = ['python.exe', 'py27.exe']
-    python = r'C:\Python27\python.exe'
+    python = None #r'C:\Python27\python.exe'
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
+class MissingPythonError(Exception):
+    pass
 
 def check_python(opts):
     #type(dict) -> None 
     """ Searches opts['metas'].python_paths, updating opts['metas'].python 
-        until it is a file.  Mutates opts.  Raises ValueError if no file found.
+        until it is a file.  Mutates opts.  Raises MissingPythonError if no
+        valid file found.
     """
 
     folders = opts['metas'].python_paths
@@ -290,22 +298,22 @@ def check_python(opts):
         folders = [folders]
 
     if isinstance(pythons, basestring):
-        pythons = pythons
+        pythons = [pythons]
 
     possible_pythons = (os.path.join(folder, python) for folder in folders 
                                                      for python in pythons
                        )
-
-    while not opts['metas'].python or not os.path.isfile(opts['metas'].python):
-        opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
-
-    if not os.path.isfile(opts['metas'].python):
+    try:
+        while not opts['metas'].python or not os.path.isfile(opts['metas'].python):
+            opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
+    except StopIteration:
         msg = ('No Python interpreter file found.  Please specify a valid '
-              +'python interpreter in metas.python.  ' % opts['metas'].python
+              +'python 2.7 interpreter in python (invalid: %s) ' % opts['metas'].python
               +'or a range of python intepreter names and folder names to '
-              +'search for one in metas.python_exes and metas.python_paths.')
+              +'search for one in python_exes and python_paths.'
+              )
         logger.error(msg)
-        raise ValueError(msg)
+        raise MissingPythonError(msg)
 
 
 def is_data_key(key
@@ -495,33 +503,50 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                     ,options.run_sDNA.__name__) != requested_sDNA ):
         #
         # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
-        sDNAUISpec, run_sDNA, _ = load_modules(m_names = requested_sDNA
-                                              ,folders = metas.sDNA_paths
-                                              ,logger = logger
-                                              ,module_name_error_msg = "Invalid file names.  "
-                                                                       +"Please supply valid names of 'sDNAUISpec.py' "
-                                                                       +"and 'runsdnacommand.py' files in "
-                                                                       +"metas.sDNAUISpec and metas.runsdnacommand "
-                                                                       +"respectively. " # names not strings error
-                                              ,folders_error_msg = "sDNA_GH could not find sDNA.  Please supply the "
-                                                                  +"correct name of the path to the sDNA folder you "
-                                                                  +"wish to use with sDNA_GH, in "
-                                                                  +"metas.sDNA_paths.  This folder should "
-                                                                  +"contain both a valid "
-                                                                  +"'sDNAUISpec.py' and a valid 'runsdnacommand.py' "
-                                                                  +"(or equivalent files as named in "
-                                                                  +"metas.sDNAUISpec and metas.runsdnacommand "
-                                                                  +"respectively). " # not existing folders error
-                                              ,modules_not_found_msg = "sDNA_GH failed to import sDNA.  Please ensure a "
-                                                                      +"folder in "
-                                                                      +"metas.sDNA_paths contains both the valid "
-                                                                      +"'sDNAUISpec.py' "
-                                                                      +"and the valid 'runsdnacommand.py' for your "
-                                                                      +"chosen sDNA installation (or equivalent "
-                                                                      +"files, as named in "
-                                                                      +"metas.sDNAUISpec and metas.runsdnacommand "
-                                                                      +"respectively). "
-                                              )
+        try:
+            sDNAUISpec, run_sDNA, _ = load_modules(m_names = requested_sDNA
+                                                ,folders = metas.sDNA_paths
+                                                ,logger = logger
+                                                ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
+                                                                        +"Please supply valid names of 'sDNAUISpec.py' "
+                                                                        +"and 'runsdnacommand.py' files in "
+                                                                        +"sDNAUISpec and runsdnacommand "
+                                                                        +"respectively. " # names not strings error
+                                                ,folders_error_msg = "sDNA_GH could not find a valid folder to look for sDNA in. " 
+                                                                    +"Please supply the "
+                                                                    +"correct name of the path to the sDNA folder you "
+                                                                    +"wish to use with sDNA_GH, in "
+                                                                    +"sDNA_paths.  This folder should contain the files named in "
+                                                                    +"sDNAUISpec: %s.py and runsdnacommand: %s.py. " % requested_sDNA
+                                                                    # not existing folders error
+                                                ,modules_not_found_msg = "sDNA_GH failed to find an sDNA file specified in "
+                                                                        +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+                                                                        +" in any of the folders in sDNA_paths. "
+                                                                        +" Please either ensure a folder in "
+                                                                        +" sDNA_paths contains both the valid "
+                                                                        +"'sDNAUISpec.py' named %s and " % requested_sDNA[0]
+                                                                        +"'runsdnacommand.py' named %s " % requested_sDNA[0]
+                                                                        +"from your chosen sDNA installation, or adjust the "
+                                                                        +" file names specified in sDNAUISpec and runsdnacommand"
+                                                                        +" to their equivalent files in it (to use more than "
+                                                                        +" one sDNA you must rename these files in any extra). "
+                                                )
+        except launcher.InvalidArgsError as e:
+            raise e
+        except:
+            msg = ("sDNA_GH failed to import the sDNA files specified in "
+                  +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+                  +" from any of the folders in sDNA_paths."
+                  +" Please either ensure a folder in"
+                  +" sDNA_paths contains the two corresponding valid files"
+                  +" from your chosen sDNA installation, or adjust the"
+                  +" file names specified in sDNAUISpec and runsdnacommand"
+                  +" to their equivalent files in it (to import a second"
+                  +" or third sDNA etc. you must rename these files to different"
+                  +" names than in the first). "
+                  )
+            logger.error(msg)
+            raise ImportError(msg)
         opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
                                                   ,run_sDNA = run_sDNA 
                                                   ) 
@@ -985,8 +1010,11 @@ class UsertextReader(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
         for obj in gdm:
-            keys = rs.GetUserText(obj)
-            gdm[obj].update( (key, rs.GetUserText(obj, key)) for key in keys )
+            try:
+                keys = rs.GetUserText(obj)
+                gdm[obj].update( (key, rs.GetUserText(obj, key)) for key in keys )
+            except ValueError:
+                pass
 
         # read_Usertext_as_tuples = checkers.get_OrderedDict()
         # for obj in gdm:
@@ -1310,7 +1338,7 @@ class UsertextWriter(sDNA_GH_Tool):
             #if is_an_obj_in_GH_or_Rhino(rhino_obj):
                 # Checker switches GH/ Rhino context
                  
-            existing_keys = checkers.get_obj_keys(rhino_obj)
+            existing_keys = rs.GetUserText(rhino_obj)
             if options.uuid_field in d:
                 obj = d.pop( options.uuid_field )
             
@@ -1349,7 +1377,10 @@ class UsertextWriter(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
         
         for key, val in gdm.items():
-            write_dict_to_UserText_on_Rhino_obj(val, key)
+            try:
+                write_dict_to_UserText_on_Rhino_obj(val, key)
+            except ValueError:
+                pass
 
         sc.doc = ghdoc  
         
@@ -1834,45 +1865,11 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 try:
                     rs.ObjectColor(obj, new_colour)
                     recoloured_Rhino_objs.append(obj)
-                except TypeError:
+                except ValueError:
                     GH_objs_to_recolour[obj] = new_colour 
                     
         sc.doc = ghdoc
             
-            # if is_uuid(obj): 
-            #     target_doc = get_sc_doc_of_obj(obj)    
-
-            #     if target_doc:
-            #         sc.doc = target_doc
-            #         if target_doc == ghdoc:
-            #             GH_objs_to_recolour[obj] = new_colour 
-            #         #elif target_doc == Rhino.RhinoDoc.ActiveDoc:
-            #         else:
-            #             rs.ObjectColor(obj, new_colour)
-            #             Rhino_objs_to_recolour.append(obj)
-
-            #     else:
-
-            #         msg =   ('sc.doc == %s ' % sc.doc) 
-            #                 +' i.e. neither Rhinodoc.ActiveDoc '
-            #                 +'nor ghdoc'
-            #                 )
-            #         self.logger.error(msg)
-            #         raise ValueError(msg)
-
-            # elif any(  bool(re.match(pattern, str(obj)))
-            #             for pattern in legend_tag_patterns ):
-            #     sc.doc = ghdoc
-            #     legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe
-            # else:
-            #     self.logger.debug(obj)
-            #     self.logger.debug('is_uuid(obj) == %s ' % is_uuid(obj)))
-            #     msg = 'Valid colour in Data but no geom obj or legend tag.'
-            #     self.logger.error(msg)
-            #     raise NotImplementedError(msg)
-
-        sc.doc = ghdoc
-
 
 
         keys = recoloured_Rhino_objs

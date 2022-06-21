@@ -1111,7 +1111,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
 
-            logger.debug('type(geom_data_map) == %s ' % geom_data_map)
+            logger.debug('type(geom_data_map) == %s ' % type(geom_data_map))
             
             logger.debug('Before merge gdm[:3] == %s ' % gdm.items()[:3])
 
