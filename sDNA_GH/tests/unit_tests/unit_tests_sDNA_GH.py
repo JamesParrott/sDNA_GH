@@ -33,7 +33,7 @@ __version__ = '0.02'
 
 
 import unittest
-from os.path import dirname, join
+import os.path
 from time import asctime    
 from itertools import repeat, izip
 from collections import OrderedDict
@@ -51,6 +51,7 @@ from ...custom.skel.basic.ghdoc import ghdoc
 
 from ... import main
 from ...custom import tools
+from ...custom.skel.tools.helpers import checkers
                             
 
 
@@ -193,7 +194,7 @@ TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 def run_launcher_tests(self,*args):
     import sys
     tests_log_file_suffix = '_test_results'
-    test_log_file_path = (    self.ghdoc.Path.rpartition('.')[0]  #type: ignore
+    test_log_file_path = (    ghdoc.Path.rpartition('.')[0]  #type: ignore
                             + tests_log_file_suffix
                             + '.log' )
     test_log_file = open(test_log_file_path,'at')
@@ -203,10 +204,11 @@ def run_launcher_tests(self,*args):
                                 +' ... \n\n')
     with output_double_stream as o:
         #suite = unittest.TestLoader().loadTestsFromTestCase(TestStringMethods)
-        path = self.sDNA_GH_path
+        fallback = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        path = checkers.get_path(fallback = fallback)
         discovered_suite = unittest.TestLoader().discover( path 
-                                                        ,'*test*.py'
-                                                        )
+                                                         ,'*test*.py'
+                                                         )
         #unittest.TextTestRunner(o, verbosity=2).run(suite)
         unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
         
