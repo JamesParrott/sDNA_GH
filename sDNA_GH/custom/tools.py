@@ -1269,7 +1269,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
     retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox'
-    component_outputs = ('Geom', 'Data') + retvals[1:]
+    component_outputs = ('Geom', 'Data') + retvals[2:]
                
 
 
@@ -1282,7 +1282,7 @@ class UsertextWriter(sDNA_GH_Tool):
                                        ,output_key_str = 'sDNA output={name} run time={datetime}'
                                        ,overwrite_UserText = True
                                        ,max_new_keys = 10
-                                       ,dupe_key_suffix = ''
+                                       ,dupe_key_suffix = '_{}'
                                        ,suppress_overwrite_warning = False
                                        )
                         )
@@ -1513,7 +1513,10 @@ class DataParser(sDNA_GH_Tool):
                             +' inter-class boundaries. '
                             )
         elif options.class_spacing in self.quantile_methods:
-            class_bounds = self.quantile_methods[options.class_spacing](data.values(), m)
+            class_bounds = self.quantile_methods[options.class_spacing](data = data.values()
+                                                                       ,num_classes = m
+                                                                       ,options = options
+                                                                       )
 
         else: 
             class_bounds = [data_cruncher.splines[options.class_spacing](i
@@ -1676,7 +1679,7 @@ class DataParser(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     retvals = 'plot_min', 'plot_max', 'gdm'
-    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[2:]
+    component_outputs = retvals[:2] + ('Data', 'Geom')
 
 
 
@@ -1726,10 +1729,12 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         
         field = options.field
         objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
-                                   if isinstance(v, dict) and field in v    
+                                    if isinstance(v, dict) and field in v    
                                    )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse or plot_min is None or plot_max is None:
-            x_min, x_max, gdm_in = self.parse_data(objs_to_parse, opts)
+            x_min, x_max, gdm_in = self.parse_data(gdm = objs_to_parse
+                                                  ,opts = opts
+                                                  )
                                                                             
         else:
             self.debug('Skipping parsing')
@@ -1755,7 +1760,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
                 linearly_interpolate = data_cruncher.enforce_bounds(data_cruncher.linearly_interpolate)
-                return grad().ColourAt(linearly_interpolate( x
+                return grad().ColourAt( linearly_interpolate(x
                                                             ,x_min
                                                             ,None
                                                             ,x_max

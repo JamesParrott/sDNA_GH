@@ -111,7 +111,7 @@ def linearly_interpolate(x, x_min, x_mid, x_max, y_min, y_max):
     return y_min + ( (y_max - y_min) * (x - x_min) / (x_max - x_min) )
 
 
-def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = 0):
+def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = TOL/20):
     #type(Number, Number, str, str) -> None
     """ A simple validation function, e.g. avoid dividing by zero.  
         To check for floating point errors, tol can be set slightly 
@@ -224,7 +224,6 @@ def map_f_to_three_tuples(f
 
 def class_bounds_at_max_deltas(data
                               ,num_classes
-                              ,tol = TOL
                               ,options = None):
     #type(Iterable[Number], int, float, NamedTuple) -> list
     """ Calculates inter-class boundaries for a legend or histogram,
@@ -234,6 +233,8 @@ def class_bounds_at_max_deltas(data
         This method is prone to over-classify extreme 
         outlying values. 
     """
+    if options is None:
+        options = SpikeIsolatingQuantileOptions
     deltas = [(i, b - a )
               for i, (b, a) in enumerate(itertools.pairwise(data))
              ]
@@ -241,7 +242,7 @@ def class_bounds_at_max_deltas(data
     for _ in range(num_classes - 1):
         max_delta = max(deltas)
         for index, delta in deltas: 
-            if math.abs(max_delta - delta) < tol:
+            if math.abs(max_delta - delta) < options.tol:
                 max_index = index
                 break
         deltas.remove(deltas[max_index])
@@ -427,7 +428,6 @@ def simple_quantile(data_vals, m):
 
 def quantile_l_to_r(data
                    ,num_classes_wanted
-                   ,tol = TOL
                    ,options = None
                    ):
     #type(Sequence[Number], int, float, NamedTuple) -> list
@@ -454,6 +454,10 @@ def quantile_l_to_r(data
         the bin having the same value, the bound is moved to the lowest upper 
         bound of the repeated data values.  
     """
+    if options is None:
+        options = SpikeIsolatingQuantileOptions
+
+
     # n-1 is number of gaps between data points. max num of bounds
     class_bounds = []
 
@@ -492,16 +496,17 @@ def quantile_l_to_r(data
                                                          ,data_point_below_index
                                                          )
 
-        if data_point_above - candidate_bound < tol:
+        if data_point_above - candidate_bound < options.tol:
             # data is sorted so we don't need abs() < tol
             # data_point_below is in the class for this candidate bound
             # so we don't need to test it against candidate_bound
-            if previous_bound is None or data_point_below - previous_bound < tol:
+            if previous_bound is None or data_point_below - previous_bound < options.tol:
                 # the data point just below candidate_bound, not the one just
                 # below previous_bound
                 success, lub, lub_index = indexed_lowest_strict_UB(data_point_below
                                                                   ,data
                                                                   ,data_point_below_index
+                                                                  ,tol = options.tol
                                                                   )
                 if not success:
                     # all further items are the same (tol - indistinguishable) 
@@ -536,6 +541,7 @@ def quantile_l_to_r(data
                 success, hlb, hlb_index = indexed_highest_strict_LB(data_point_below
                                                                    ,data
                                                                    ,data_point_below_index
+                                                                   ,tol = options.tol
                                                                    )
                 if not success or ( previous_bound is not None 
                                     and hlb <= previous_bound ):
@@ -546,7 +552,7 @@ def quantile_l_to_r(data
                           +' data_point_below - previous_bound == '
                           + str(data_point_below - previous_bound)
                           +' and tol == '
-                          + str(tol)
+                          + str(options.tol)
                           )
                     logger.error(msg)
                     raise NotImplementedError(msg)
@@ -650,12 +656,12 @@ def pro_rata(n, N_1, N_2, tol = TOL):
 class SpikeIsolatingQuantileOptions(object):
     max_width = 200 * TOL
     min_num = None
+    tol = TOL
+
 
 def spike_isolating_quantile(data
                             ,num_classes
-                            ,min_num = None
                             ,ordered_counter = None
-                            ,tol = TOL
                             ,options = SpikeIsolatingQuantileOptions
                             ):
     #type(Sequence[Number], int, float, NamedTuple) -> list
@@ -681,7 +687,7 @@ def spike_isolating_quantile(data
     if num_inter_class_bounds <= 0:
         return []
     if num_inter_class_bounds == 1:
-        return quantile_l_to_r(data, num_inter_class_bounds + 1, tol, options)
+        return quantile_l_to_r(data, num_inter_class_bounds + 1, options)
     inter_class_bounds = []
     if num_inter_class_bounds >= 2:
         if min_num is None:
@@ -692,7 +698,7 @@ def spike_isolating_quantile(data
         logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
         spike_interval = max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
-                                                                      ,options.max_width
+                                                                      ,w = options.max_width
                                                                       )
         if spike_interval:
             logger.debug(num_classes - 1)
@@ -714,6 +720,7 @@ def spike_isolating_quantile(data
                 extra_classes_a, extra_classes_b = pro_rata(num_classes - 3
                                                            ,spike_data_index_a
                                                            ,len(data) - spike_data_index_b - 1
+                                                           ,tol = options.tol
                                                            )
             _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
                                                               ,spike_data_index_a - 1
@@ -725,19 +732,15 @@ def spike_isolating_quantile(data
 
             inter_class_bounds = spike_isolating_quantile(data[:spike_data_index_a]
                                                          ,extra_classes_a + 1
-                                                         ,min_num = min_num
-                                                         ,tol = tol
                                                          ,options = options
                                                          )                                  
             inter_class_bounds += [midpoint_i_a, midpoint_i_b]
             inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
                                                           ,extra_classes_b + 1
-                                                          ,min_num = min_num
-                                                          ,tol = tol
                                                           ,options = options
                                                           )
         else:
-            inter_class_bounds = quantile_l_to_r(data, num_classes, tol, options)
+            inter_class_bounds = quantile_l_to_r(data, num_classes, options)
     return inter_class_bounds
     
             
