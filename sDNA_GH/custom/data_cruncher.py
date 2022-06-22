@@ -690,11 +690,10 @@ def spike_isolating_quantile(data
         return quantile_l_to_r(data, num_inter_class_bounds + 1, options)
     inter_class_bounds = []
     if num_inter_class_bounds >= 2:
-        if min_num is None:
-            if options.min_num is None:
-                min_num = len(data) // num_classes
-            else:
-                min_num = options.min_num
+        if options.min_num is None:
+            min_num = len(data) // num_classes
+        else:
+            min_num = options.min_num
         logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
         spike_interval = max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
