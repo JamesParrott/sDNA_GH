@@ -191,8 +191,9 @@ def custom_retvals(retval_names
 ##############################################################################
 
 def component_Outputs(self, sources):
-    
-    return custom_retvals([param.NickName for param in self.Params.Output]
+    names = [param.NickName for param in self.Params.Output]
+    print(names)
+    return custom_retvals([param.NickName for param in self.Params.Output] # param.NickName
                          ,sources
                          ,return_locals = True
                          ,frames_back = 2

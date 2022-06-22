@@ -336,10 +336,10 @@ def override_namedtuple(nt_lesser
                 #print('returning val == %s' % val)
                 return val 
         
-        if hasattr(override, 'asdict'):
+        if hasattr(override, '_asdict'):
             logging.warning('Ducktyping override as namedtuple.  Calling' 
-                           +type(override).__name__ + '.asdict' 
-                           +' to coerce to dict.' 
+                           +type(override).__name__ + '._asdict' 
+                           +' to coerce to ordered dict.' 
                            )
             return override_namedtuple_with_namedtuple  
 
