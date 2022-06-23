@@ -82,7 +82,6 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         
         logger.debug('opts.keys() == %s ' % opts.keys())
 
-        metas = opts['metas']
         
         tools.import_sDNA(opts)
         sDNAUISpec = opts['options'].sDNAUISpec
@@ -94,6 +93,9 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                                   ,auto_plot_data = False
                                                   )
 
+        opts['metas'] = opts['metas']._replace(show_all = False)
+        
+        metas = opts['metas']
 
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
         categories.update(metas.categories)

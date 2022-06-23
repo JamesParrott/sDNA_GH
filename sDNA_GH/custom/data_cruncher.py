@@ -474,7 +474,7 @@ def quantile_l_to_r(data
         # When we're considering dividing the remainder into new classes, we
         # only count classes to the left of inter-class bounds in class_bounds
         #logger.debug(num_classes_left)
-        print('class_bounds == %s' % class_bounds)
+        logger.debug('class_bounds == %s' % class_bounds)
 
         if num_classes_left == num_classes_wanted:
             # Initialised correctly, so nothing with to do with 'old val'
@@ -495,7 +495,7 @@ def quantile_l_to_r(data
         ,data_point_above) = data_point_midpoint_and_next(data
                                                          ,data_point_below_index
                                                          )
-        print('candidate_bound == %s' % candidate_bound)
+        logger.debug('candidate_bound == %s' % candidate_bound)
 
         if data_point_above - candidate_bound < options.tol:
             # data is sorted so we don't need abs() < tol
@@ -566,7 +566,7 @@ def quantile_l_to_r(data
                 ,data_point_above) = data_point_midpoint_and_next(data
                                                                  ,hlb_index
                                                                  )
-                print('new candidate_bound past highest lower bound == %s' % candidate_bound)
+                logger.debug('new candidate_bound past highest lower bound == %s' % candidate_bound)
                 data_point_below_index = hlb_index
                 # Need this to update num_data_points_left in next iteration.
                 #
@@ -645,10 +645,11 @@ def pro_rata(n, N_1, N_2, tol = TOL):
         return n-1, 1
     logger.debug('r_1 / n_1 == %s, r_2 / n_2 == %s' % (r_1 / n_1, r_2 / n_2))
     if (r_1 / n_1) >= (r_2 / n_2):
-        return n - int(n_2), int(n_2)
+        retvals = n - int(n_2), int(n_2)
     else:
-        return int(n_1), n - int(n_1)
-
+        retvals = int(n_1), n - int(n_1)
+    logger.debug('pro_rata retvals (n_1, n_2) == %s, %s' % retvals)
+    return retvals
 
 
 
@@ -695,20 +696,23 @@ def spike_isolating_quantile(data
             min_num = len(data) // num_classes
         else:
             min_num = options.min_num
-        logger.debug('min_num == %s, max_width == %s ' % (min_num, options.max_width))
+        logger.debug('min_num == %s' % min_num)
+        logger.debug('max_width == %s ' % options.max_width)
+        logger.debug('data == %s,...,%s' % (tuple(data[:4]), tuple(data[-4:])))
+        logger.debug('len(data) == %s ' % len(data))
         spike_interval = max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                                       ,min_num
                                                                       ,w = options.max_width
                                                                       )
         if spike_interval:
-            logger.debug(num_classes - 1)
-            logger.debug(spike_interval.index_a)
-            logger.debug(spike_interval.index_b)
+            logger.debug('num_classes - 1 == %s' % (num_classes - 1))
+            logger.debug('index_a (in OrderedCounter)== %s' % spike_interval.index_a)
+            logger.debug('index_b (in OrderedCounter) == %s' % spike_interval.index_b)
             spike_data_index_a = data.index(ordered_counter.keys()[spike_interval.index_a])
             spike_data_index_b = tuple(reversed(data)).index(ordered_counter.keys()[spike_interval.index_b])
             spike_data_index_b = len(data) - 1 - spike_data_index_b
-            logger.debug(spike_data_index_a)
-            logger.debug(spike_data_index_b)
+            logger.debug('spike_data_index_a == %s' % spike_data_index_a)
+            logger.debug('spike_data_index_b == %s' % spike_data_index_b)
             if num_classes - 3 <= 0:
                 extra_classes_a, extra_classes_b = 0, 0
             else:
@@ -722,23 +726,29 @@ def spike_isolating_quantile(data
                                                            ,len(data) - spike_data_index_b - 1
                                                            ,tol = options.tol
                                                            )
-            _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_data_index_a - 1
-                                                              )
-            _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
-                                                              ,spike_data_index_b
+            inter_class_bounds = []
+            if spike_data_index_a >= 1:
+                _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
+                                                                  ,spike_data_index_a - 1
+                                                                  )
+                inter_class_bounds += spike_isolating_quantile(data[:spike_data_index_a]
+                                                              ,extra_classes_a + 1
+                                                              ,options = options
+                                                              ) 
+                inter_class_bounds += [midpoint_i_a]
+            if spike_data_index_b <= len(data) - 2:
+
+                _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
+                                                                  ,spike_data_index_b
+                                                                  )
+                inter_class_bounds += [midpoint_i_b]
+                inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
+                                                              ,extra_classes_b + 1
+                                                              ,options = options
                                                               )
 
 
-            inter_class_bounds = spike_isolating_quantile(data[:spike_data_index_a]
-                                                         ,extra_classes_a + 1
-                                                         ,options = options
-                                                         )                                  
-            inter_class_bounds += [midpoint_i_a, midpoint_i_b]
-            inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
-                                                          ,extra_classes_b + 1
-                                                          ,options = options
-                                                          )
+
         else:
             inter_class_bounds = quantile_l_to_r(data, num_classes, options)
     return inter_class_bounds

@@ -1392,7 +1392,7 @@ class DataParser(sDNA_GH_Tool):
         ,colour_as_class = False
         ,locale = '' # '' => User's own settings.  Also in DataParser
         # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-        ,num_format = '{:.5n}'
+        ,num_format = '{:.5n}'  #n is a number referring to the current locale setting
         ,first_leg_tag_str = 'below {upper}'
         ,gen_leg_tag_str = '{lower} - {upper}'
         ,last_leg_tag_str = 'above {lower}'
@@ -1480,10 +1480,15 @@ class DataParser(sDNA_GH_Tool):
            not use_manual_classes 
            and options.class_spacing in self.quantile_methods ):
             # 
+            self.info('Sorting data... ')
             data = OrderedDict( sorted(data.items()
                                       ,key = lambda tupl : tupl[1]
                                       ) 
                               )
+            self.logger.debug('data.values() == %s, ... ,%s' % (tuple(data.values()[:3])
+                                                               ,tuple(data.values()[-3:])
+                                                               )
+                             ) 
 
         param={}
         param['exponential'] = param['logarithmic'] = options.base
@@ -1568,7 +1573,10 @@ class DataParser(sDNA_GH_Tool):
                     )
         self.logger.debug('m == %s' % m)
         self.logger.debug('n == %s' % n)
-        assert len(class_bounds) + 1 == m
+        if len(class_bounds) + 1 < m:
+            logger.warning('It has only been possible to classify data into '
+                          +'%s distinct classes, not %s' % (len(class_bounds) + 1, m)
+                          )
 
         msg = 'x_min == %s \n' % x_min
         msg += 'class bounds == %s \n' % class_bounds
@@ -1623,10 +1631,15 @@ class DataParser(sDNA_GH_Tool):
 
         locale.setlocale(locale.LC_ALL,  options.locale)
 
-        x_min_str = options.num_format.format(x_min) 
-        upper_str = options.num_format.format(min( class_bounds ))
-        mid_pt_str = options.num_format.format( mid_points[0] )
+        def format_number(x, format_str):
+            #type(Number, str) -> str
+            if isinstance(x, int):
+                format_str = '{:d}'
+            return format_str.format(x)
 
+        x_min_str = format_number(x_min, options.num_format) 
+        upper_str = format_number(min( class_bounds ), options.num_format)
+        mid_pt_str = format_number(mid_points[0], options.num_format)
         #e.g. first_leg_tag_str = 'below {upper}'
 
         legend_tags = [options.first_leg_tag_str.format(lower = x_min_str
@@ -1639,9 +1652,9 @@ class DataParser(sDNA_GH_Tool):
                                                       ,class_bounds[1:]  
                                                       ):
             
-            lower_str = options.num_format.format(lower_bound)
-            upper_str = options.num_format.format(upper_bound)
-            mid_pt_str = options.num_format.format(class_mid_point)
+            lower_str = format_number(lower_bound, options.num_format)
+            upper_str = format_number(upper_bound, options.num_format)
+            mid_pt_str = format_number(class_mid_point, options.num_format)
             # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
             legend_tags += [options.gen_leg_tag_str.format(lower = lower_str
                                                           ,upper = upper_str
@@ -1649,9 +1662,9 @@ class DataParser(sDNA_GH_Tool):
                                                           )
                            ]
 
-        lower_str = options.num_format.format(max( class_bounds ))
-        x_max_str = options.num_format.format(x_max)
-        mid_pt_str = options.num_format.format(mid_points[-1])
+        lower_str =  format_number(max( class_bounds ), options.num_format)
+        x_max_str =  format_number(x_max, options.num_format)
+        mid_pt_str =  format_number(mid_points[-1], options.num_format)
 
         # e.g. last_leg_tag_str = 'above {lower}'
         legend_tags += [options.last_leg_tag_str.format(lower = lower_str
@@ -1659,8 +1672,6 @@ class DataParser(sDNA_GH_Tool):
                                                        ,mid_pt = mid_pt_str 
                                                        )        
                        ]                                                       
-
-        assert len(legend_tags) == options.num_classes == len(mid_points)
 
         self.logger.debug(legend_tags)
 
