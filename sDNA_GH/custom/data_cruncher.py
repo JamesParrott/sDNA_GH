@@ -474,7 +474,7 @@ def quantile_l_to_r(data
         # When we're considering dividing the remainder into new classes, we
         # only count classes to the left of inter-class bounds in class_bounds
         #logger.debug(num_classes_left)
-
+        print('class_bounds == %s' % class_bounds)
 
         if num_classes_left == num_classes_wanted:
             # Initialised correctly, so nothing with to do with 'old val'
@@ -495,6 +495,7 @@ def quantile_l_to_r(data
         ,data_point_above) = data_point_midpoint_and_next(data
                                                          ,data_point_below_index
                                                          )
+        print('candidate_bound == %s' % candidate_bound)
 
         if data_point_above - candidate_bound < options.tol:
             # data is sorted so we don't need abs() < tol
@@ -565,7 +566,7 @@ def quantile_l_to_r(data
                 ,data_point_above) = data_point_midpoint_and_next(data
                                                                  ,hlb_index
                                                                  )
-
+                print('new candidate_bound past highest lower bound == %s' % candidate_bound)
                 data_point_below_index = hlb_index
                 # Need this to update num_data_points_left in next iteration.
                 #
@@ -583,10 +584,10 @@ def quantile_l_to_r(data
                              # extended the previous class, so skip extending 
                              # class_bounds
                 else:
+                    pass
                     # move candidate bound L to highest lower bound of 
                     # data_point_below prev candidate bound
 
-                    class_bounds += [candidate_bound]
 
         class_bounds += [candidate_bound]
         num_classes_left = num_classes_wanted - (len(class_bounds))

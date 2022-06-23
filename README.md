@@ -399,25 +399,30 @@ Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Lat
 
 
 ### Build instructions.
-1. Open `\dev_tools\sDNA_build_components.gh` in Grasshopper. 
-2. Right click the Path Component and ensure it points to `\sDNA_GH\sDNA_GH_launcher.py`
-3. Ensure the File Reader Component (that the Path Component is connected to) is set to read the whole file, and also is connected to the _launcher code_ input Param on the Build_components GhPython component.  Set the plug-in name on _plug in name_.
-4. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays comoponent names instead).
-5. Change the Boolean toggle to True, and connect it to the `go` input Param of Build_components.
-6. A slight delay may occur as sDNA_GH/main.py is imported, and the 23 or so components are created.
-7. Turn the Boolean toggle to False (connected to the go input Param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The components are disabled, otherwise the next update will makes each one ask Grasshopper what its name is, connect to sDNA_GH.main.py, and update its own Input and Output params.
-8. Click the pull down menu *Solution* and select *Disable Solver*.  
-9. Right click each new component (on its name not its Params) and select Enable. 
+1. If sDNA_GH has not automatically found the sDNA installation you wish to build components for, place a Config component (the one with a lightbulb icon) and add its path to `sDNA_paths`.
+2. Open `\dev\sDNA_build_components.gh` in Grasshopper. The Build_components component automatically sets all the `auto_` rules to false.
+3. Right click the Path Component and ensure it points to `\sDNA_GH\sDNA_GH_launcher.py`
+4. Ensure the File Reader Component (that the Path Component is connected to) is set to read the whole file, and also is connected to the _launcher code_ input Param on the Build_components component (or simply copy and paste it into the text panel, and connect that).  
+Set the plug-in name on _plug in name_.
+5. In the main Grasshopper Display pull down menu, ensure Draw Icons is turned off (this displays component names instead).
+6. Change the Boolean toggle to True, and connect it to the `go` input Param of Build_components.
+7. A slight delay may occur as sDNA_GH/main.py is imported, and the 23 or so components are created.
+8. Turn the Boolean toggle to False (connected to the go input Param of Build_components).  This ensures no further components are created (unnecessary duplicates).  The newly created components are disabled, otherwise the next update will make each one ask Grasshopper what its name is, connect to sDNA_GH.main.py, and update its own Input and Output params.  
+9. Right click the first new component (click on its name not its Params) and select Enable. The component will update its Params.
 <!-- Click through all the warnings (as we cleared all Params from each component).  
 9. The red error on read shp and write shp can be toggling _Show output "out"_ parameter (or building them from components that already have an 'OK' Param and a 'go' input Param (set to list acess) ) -->
-10. Select each component one at a time, and go to the main Grasshopper File pull down menu, and select _Create User Object ..._
-11. Ensure both the Name and Nickname are the same as the automatically created component name (as some versions of Rhino 7 read their component names from the descriptive human-readable name).  Ensure the main category is sDNA_GH or sDNA.  Look up the sub category in the main.py meta option categories.  Description text
-can be used from the tool's description in this readme file itself (above).
-12. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH` in the main repo, next to config.toml
-13. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with this extension: (print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs).  
-14. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
-15. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious step, number 10.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`
+10. Select the component, and go to the main Grasshopper File pull down menu, and select _Create User Object ..._
+11. Ensure both the Name and Nickname are the same as the automatically created component name (as some versions of Rhino 7 read their component names from the descriptive human-readable name).  Ensure the main category is sDNA_GH or sDNA.  Look up the sub category and description text
+in the tool's description in this readme file itself (above).
+12. Select an Icon from the Icon library or a .ico file and click on OK.
+13.  Repeat steps 9 to 12 for each component you wish to include in the Plug-in release.
+14. From `%appdata%\Grasshopper\UserObjects` or the Grasshopper User objects folder, copy (or move) all the .ghuser files just created into `\sDNA_GH\components` in the main repo.
+15. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: (print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
+16. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
+17. Note:  The components are only GhPython launchers with different names, so steps 1 - 12 above (in particular, the most laborious steps10 to 13.) only need to be repeated if the code in `\sDNA_GH\sDNA_GH_launcher.py` has been changed, or if new components need to be built e.g. for new tools .  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`.
   
+#### To build new sDNA components.
+1. Follow steps 1. to 8. above, and steps 9. to 12. for each new sDNA component you wish to build.  If `launcher.py` has not changed (or if only the path it attempts to import `\sDNA_GH\main.py` from has not changed) there is no need to rebuild every single component anew - sDNA_GH is designed to work with the ones from previous releases (as the vast majority of the code is in the Python package the components import).  Move or copy the new component's `.ghuser` file from `%appdata%\Grasshopper\UserObjects` to `\sDNA_GH\components` where the others are.  Then run `create_release_sDNA_GH_zip.bat` to make a new zip file of the new release of the plug-in with the new components.
 
 ### Misc
 To compile C# code to a grasshopper assembly (.gha file):

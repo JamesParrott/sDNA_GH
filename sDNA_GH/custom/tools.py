@@ -1513,6 +1513,7 @@ class DataParser(sDNA_GH_Tool):
                             +' inter-class boundaries. '
                             )
         elif options.class_spacing in self.quantile_methods:
+            self.logger.debug('Using: %s class calculation method.' % options.class_spacing)
             class_bounds = self.quantile_methods[options.class_spacing](data = data.values()
                                                                        ,num_classes = m
                                                                        ,options = options
@@ -1538,14 +1539,11 @@ class DataParser(sDNA_GH_Tool):
                          ]
 
         if class_overlaps:
-            msg = 'Class overlaps at: ' + ' '.join(class_overlaps)
+            msg = 'Class overlaps at: ' + ' '.join(map(str, class_overlaps))
             if options.remove_overlaps:
                 for overlap in class_overlaps:
                     class_bounds.remove(overlap)
-            msg += (' Maybe try a) fewer classes,'
-                    +' b) class_spacing == combo, or'
-                    +' c) class_spacing == max_deltas'
-                    )
+
             if options.suppress_class_overlap_error:
                 self.logger.warning(msg)
                 warnings.showwarning(message = msg
