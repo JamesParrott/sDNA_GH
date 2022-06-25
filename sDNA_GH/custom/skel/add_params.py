@@ -279,31 +279,39 @@ class ParamsToolAdder(object):
         
         logger.debug('self.current_inputs == %s ' % self.current_inputs)
 
+        output_tools = list(reversed(tools[:]))
+        input_tools = tools[:]
+
+        if wrapper:
+            output_tools = [wrapper] + output_tools
+            input_tools = [wrapper] + input_tools
+
         self.needed_outputs = [output['NickName'] 
-                               for tool in reversed(tools) 
+                               for tool in output_tools
                                for output in tool.output_params() 
                               ]
         self.needed_inputs = [input['NickName'] 
-                              for tool in tools 
+                              for tool in input_tools 
                               for input in tool.input_params() 
                              ]
 
 
-        missing_output_params = [ output for tool in reversed(tools)
+
+        missing_output_params = [ output for tool in reversed(output_tools)
                                  for output in tool.output_params() 
                                  if output['NickName'] not in self.current_outputs]
 
-        missing_input_params = [ input for tool in tools 
+        missing_input_params = [ input for tool in input_tools 
                                 for input in tool.input_params() 
                                 if input['NickName'] not in self.current_inputs ]
                             
-        if wrapper:
-            for output in reversed(wrapper.output_params()):
-                if output['NickName'] not in self.current_outputs:
-                    missing_output_params = [output] + missing_output_params
-            for input in reversed(wrapper.input_params()):
-                if input['NickName'] not in self.current_inputs:
-                    missing_input_params = [input] + missing_input_params
+        # if wrapper:
+        #     for output in reversed(wrapper.output_params()):
+        #         if output['NickName'] not in self.current_outputs:
+        #             missing_output_params = [output] + missing_output_params
+        #     for input in reversed(wrapper.input_params()):
+        #         if input['NickName'] not in self.current_inputs:
+        #             missing_input_params = [input] + missing_input_params
 
 
 
@@ -336,6 +344,8 @@ class ParamsToolAdder(object):
 
         Params.Sync(ParamsSyncObj)
         Params.RepairParamAssociations()
+
+        logger.debug('tools == %s' % tools)
 
 
         return 'Tried to add extra Params. '

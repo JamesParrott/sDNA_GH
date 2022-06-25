@@ -1068,7 +1068,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     tool.update_tool_opts_and_syntax(opts = self.opts)
                     # This isn't necessary just to run these tools later.
                     # They're just being updated now so they can get their 
-                    # inputs from sDNAUISpec, and so the component's input 
+                    # inputs from sDNAUISpec the next run, and so the 
+                    # component's input 
                     # Params can be updated to reflect the new sDNA
 
             if has_any_sDNA_tools:

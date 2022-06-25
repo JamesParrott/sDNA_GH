@@ -27,29 +27,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+""" Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  """
 
 __author__ = 'James Parrott'
 __version__ = '0.00'
 
-import sys
 
 from ghpythonlib.componentbase import executingcomponent as component
-import rhinoscriptsyntax as rs
 
 class MyComponent(component):
     
     def RunScript(self, unload, update):
+        import sys  #Imported here to avoid weird bug 
+                    # (unloading/forgetting of sys - IronPython only?)
+        #https://discourse.mcneel.com/t/failed-import-of-sys-library-in-ghpython/98696
 
-        #print('\n'.join([key for key in sys.modules if 'sDNA' in key]))
-        #print('functools' in sys.modules)
+
         print('sDNA_GH packages and modules in sys.modules:')
-        print('\n'.join([key for key in sys.modules if 'sdna' in key.lower()]))# and not '.' in key]))
-        #print os.getenv('APPDATA')
-        #print ghdoc.Path
-        #print Grasshopper.Folders.DefaultAssemblyFolder
-        #print Grasshopper.Folders.AppDataFolder
-        #print sys.argv[0]
-        #print("Classmethod found == " + str('classmethod' in __builtins__))
+        print('\n'.join([key for key in sys.modules if 'sdna' in key.lower()]))
         def is_imported(s):
             return s in sys.modules
         if unload is True:
@@ -57,7 +52,7 @@ class MyComponent(component):
                 sys.modules['logging'].shutdown()
             shared_cached_modules_etc = sys.modules.copy().keys()
             for y in shared_cached_modules_etc:
-                if 'sDNA' in y or y == 'runsdnacommand':
+                if 'sdna' in y.lower():
                     del sys.modules[y]
         
         
@@ -66,15 +61,6 @@ class MyComponent(component):
         print('sDNA_GH.tools imported == %s' % is_imported('sDNA_GH.tools'))
         print('sDNAUISpec imported == %s' % is_imported('sDNAUISpec'))
         print('runsdnacommand == %s' % is_imported('runsdnacommand'))
-        if False: #is_imported('sDNA_GH'):
-            print(sys.modules['sDNA_GH'].__all__)
-            print(dir(sys.modules['sDNA_GH']))
-            if is_imported('sDNA_GH.tools'):
-                print( dir(sys.modules['sDNA_GH.tools']))
-            if hasattr(sys.modules['sDNA_GH'],'third_party_python_modules'):
-                print(dir(sys.modules['sDNA_GH'].third_party_python_modules))
-        
 
-        #print('\n'.join(dir(sys.modules['sDNA_GH'].third_party_python_modules)))
         
         return 

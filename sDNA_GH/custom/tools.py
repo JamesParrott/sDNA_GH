@@ -627,27 +627,31 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntax = sDNA_Tool.getSyntax
         self.run_sDNA_command = run_sDNA_command     
 
-        defaults_dict = OrderedDict((varname, default) for (varname
+        self.defaults_dict = OrderedDict((varname, default) for (
+                                                            varname
                                                            ,displayname
                                                            ,datatype
                                                            ,filtr
                                                            ,default
                                                            ,required
                                                            ) in self.input_spec  
-                                   )         
+                                        )         
 
 
 
         default_tool_opts = {}
+
+        # builds the tool opts structure in default_tool_opts,
+        # using nested_set_default
         get_tool_opts(nick_name
                      ,default_tool_opts
                      ,tool_name
                      ,sDNA
-                     ,val = defaults_dict
+                     ,val = self.defaults_dict
                      )
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
-
+        # mutates opts, adding in default_tool_opts
         update_opts(current_opts = opts
                    ,override = default_tool_opts
                    )
@@ -658,17 +662,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.sDNA = sDNA
 
 
-        if metas.show_all:
-            self.component_inputs += tuple(defaults_dict.keys())
 
-            if 'advanced' not in defaults_dict:
-                msg = "'advanced' not in defaults_dict"
-                self.logger.warning(msg)
-                warnings.showwarning(message = msg
-                    ,category = UserWarning
-                    ,filename = __file__ + self.__class__.__name__
-                    ,lineno = 253
-                    )
 
 
         if has_keywords(self.nick_name, keywords = ('prepare',)):
@@ -689,13 +683,30 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             opts = self.opts  # the class property, tool default opts
         else:
             opts = component.opts
-        
+        metas = opts['metas']
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name
         self.component = component
         self.import_sDNA = import_sDNA
         self.update_tool_opts_and_syntax(opts)
+
+        if metas.show_all:
+            new_keys = tuple(key 
+                             for key in self.defaults_dict.keys() 
+                             if key not in self.component_inputs
+                            )
+            if new_keys:
+                self.component_inputs += new_keys
+
+            if 'advanced' not in self.defaults_dict:
+                msg = "'advanced' not in defaults_dict"
+                self.logger.warning(msg)
+                warnings.showwarning(message = msg
+                    ,category = UserWarning
+                    ,filename = __file__ + self.__class__.__name__
+                    ,lineno = 253
+                    )
 
 
 
@@ -768,10 +779,15 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         advanced = input_args.get('advanced', None)
         if not advanced:
             user_inputs = self.component.params_adder.user_inputs
+            # We need this reference because some args this tool doesn't 
+            # recognise, may have been added to the component, by another
+            # tool on it.
+
             self.logger.debug('user_inputs == %s' % user_inputs)
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
                                 for (key, val) in kwargs.items()
-                                if key in user_inputs
+                                if (key in user_inputs and 
+                                    key not in self.defaults_dict)
                                )
             input_args['advanced'] = advanced
             self.logger.info('Advanced command string == %s' % advanced)
@@ -803,7 +819,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         except subprocess.CalledProcessError as e:
             self.logger.error('error.output == %s' % e.output)
             self.logger.error('error.returncode == %s' % e.returncode)
-            self.logger.error('error.command == %s' % e.command)
             raise e
 
 
@@ -2025,6 +2040,7 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'auto_write_Shp'
                        ,'auto_read_Shp'
                        ,'auto_plot_data'
+                       ,'show_all'
                        )
 
     def __call__(self

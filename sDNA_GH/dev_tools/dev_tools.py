@@ -31,6 +31,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
+import os
 import logging
 
 from ..custom.skel.tools import name_mapper
@@ -53,8 +54,9 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
         self.component_inputs = ()
 
     def __call__(self, opts):
-        
-        #logger.debug(opts)
+        self.debug('Starting class logger. ')
+
+        #self.logger.debug(opts)
         name_map = opts['metas'].name_map
         
         names = list(runner.tools_dict.keys())
@@ -62,7 +64,7 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
         names += [Tool.__name__ for Tool in sDNAUISpec.get_tools()]
 
         retcode = 0 if name_mapper.validate_name_map(name_map, names) else 1
-        logger.debug('Returning from ReturnComponentNames.  ')
+        self.logger.debug('Returning from ReturnComponentNames.  ')
 
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
@@ -79,8 +81,8 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
     component_inputs = 'launcher_code', 'plug_in_name'
 
     def __call__(self, launcher_code, plug_in_name, opts):
-        
-        logger.debug('opts.keys() == %s ' % opts.keys())
+        self.debug('Starting class logger. ')
+        self.logger.debug('opts.keys() == %s ' % opts.keys())
 
         
         tools.import_sDNA(opts)
@@ -97,29 +99,34 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         
         metas = opts['metas']
 
-        categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
-        categories.update(metas.categories)
+        categories = metas.categories.copy()
+        categories.update({Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()})
 
         name_map = main.default_name_map # metas.name_map
 
         retcode, names = self.get_names(opts)
 
         nicknameless_names = [name for name in names 
-                            if all(name != var and name not in var 
-                                            for var in name_map.values()
+                              if all(name != var and name not in var 
+                                     for var in name_map.values()
                                     )
                              ]
         component_names = list(name_map.keys()) + nicknameless_names
-        logger.debug('list(name_map.keys()) == %s ' % list(name_map.keys()))                         
-        logger.debug('nicknameless_names == %s ' % list(nicknameless_names))                           
+        self.logger.debug('list(name_map.keys()) == %s ' % list(name_map.keys()))                         
+        self.logger.debug('nicknameless_names == %s ' % list(nicknameless_names))                           
 
-        logger.debug('component_names == %s ' % component_names)                           
-        logger.debug('type(component_names) == %s ' % type(component_names))
+        self.logger.debug('component_names == %s ' % component_names)                           
+        self.logger.debug('type(component_names) == %s ' % type(component_names))
         unique_component_names = set(component_names)
-        logger.debug('unique_component_names == %s ' % unique_component_names)
+        self.logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        logger.debug('names == %s ' % names)
+        self.logger.debug('names == %s ' % names)
 
+        README_md = os.path.join(os.path.dirname(os.path.dirname(__file__))
+                                ,'README.md'
+                                )
+
+        self.logger.debug('README_md == %s' % README_md)
 
         if retcode == 0:
             retcode, names_built = self.builder(code = launcher_code
@@ -127,6 +134,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                                ,names = unique_component_names
                                                ,name_map = name_map
                                                ,categories = categories
+                                               ,readme_file = README_md
                                                ,d_h = None
                                                ,w = None
                                                )

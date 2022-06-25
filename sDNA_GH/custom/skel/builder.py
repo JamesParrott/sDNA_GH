@@ -31,7 +31,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.02'
 
-
+import os
 import logging
 import collections
 if hasattr(collections, 'Iterable'):
@@ -39,6 +39,7 @@ if hasattr(collections, 'Iterable'):
 else:
     import collections.abc
     Iterable = collections.abc.Iterable
+import re
 
 import GhPython
 import System.Drawing  # .Net / C# Classes.
@@ -93,6 +94,7 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                 ,names
                 ,name_map
                 ,categories
+                ,readme_file = None
                 ,d_h = None
                 ,w = None
                 ):
@@ -105,11 +107,23 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                and not isinstance(code, str)):
             code = code[0]
 
+        if (readme_file is None or 
+            not isinstance(readme_file, str) or 
+            not os.path.isfile(readme_file)):
+            #
+            readme = ''
+        else:
+            with open(readme_file) as f:
+                readme = f.readlines()
 
-
+        logger.debug('readme[:5] == %s' % readme[:5])
 
 
         names_built = []
+        tool_code = code
+        doc_string_summary_line_pattern = re.compile(r'\"\"\"(.*)\n\n'
+                                                    ,flags = re.DOTALL
+                                                    )
         for i, name in enumerate(names):
             #if name_map.get(name, name) not in categories:
             #   msg =  'No category for ' + name
@@ -119,10 +133,19 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                 i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 subcategory = categories.get(name_map.get(name, name), '')
+                if readme:
+                    tool_summary_pattern = re.compile(r'\"\"\"\(%s\)\n(.*)\n\n\n' % name
+                                                     ,flags = re.DOTALL
+                                                     )
+                    summary = re.search(code, tool_summary_pattern).groups()[0]
+                    tool_code = re.sub(doc_string_summary_line_pattern
+                                      ,summary
+                                      ,code
+                                      )
                 success = make_component(name
                                         ,category = plug_in_name
                                         ,subcategory = subcategory
-                                        ,launcher_code = code
+                                        ,launcher_code = tool_code
                                         ,position = position
                                         )
                 if success:
