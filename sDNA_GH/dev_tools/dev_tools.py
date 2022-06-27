@@ -38,6 +38,7 @@ from ..custom.skel.tools import name_mapper
 from ..custom import tools
 from ..custom.skel.tools import runner
 from .. import main
+from .. import launcher
 from ..custom.skel import builder
 
 logger = logging.getLogger(__name__)
@@ -80,11 +81,13 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
     get_names = ToolNamesGetter()
     component_inputs = 'launcher_code', 'plug_in_name'
 
-    def __call__(self, launcher_code, plug_in_name, opts):
+    def __call__(self, launcher_code, opts, plug_in_name = None):
         self.debug('Starting class logger. ')
         self.logger.debug('opts.keys() == %s ' % opts.keys())
 
-        
+        if plug_in_name is None:
+            plug_in_name = launcher.sDNA_GH_package
+
         tools.import_sDNA(opts)
         sDNAUISpec = opts['options'].sDNAUISpec
 
@@ -134,6 +137,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                                ,names = unique_component_names
                                                ,name_map = name_map
                                                ,categories = categories
+                                               ,category_abbrevs = metas.category_abbrevs
                                                ,readme_file = README_md
                                                ,d_h = None
                                                ,w = None

@@ -30,7 +30,7 @@
 """ Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  """
 
 __author__ = 'James Parrott'
-__version__ = '0.00'
+__version__ = '0.03'
 
 
 from ghpythonlib.componentbase import executingcomponent as component

@@ -41,6 +41,7 @@ else:
     Iterable = collections.abc.Iterable
 import re
 
+import Grasshopper
 import GhPython
 import System.Drawing  # .Net / C# Classes.
                        # System is in Iron Python.  But System.Drawing is not.
@@ -57,36 +58,45 @@ def make_component(name
                   ,category
                   ,subcategory
                   ,launcher_code
+                  ,description
                   ,position
                   ,SDK_not_script = True
                   ,locked = True
                   ):
     # type(str, str, str, str, list) -> None
     new_comp = GhPython.Component.ZuiPythonComponent()
+    user_object = Grasshopper.Kernel.GH_UserObject()
 
     #new_comp.CopyFrom(this_comp)
     sizeF = System.Drawing.SizeF(*position)
 
     new_comp.Attributes.Pivot = System.Drawing.PointF.Add(new_comp.Attributes.Pivot, sizeF)
-    
-
-    new_comp.Code = launcher_code
-    new_comp.NickName = name
-    new_comp.Name = name
     new_comp.Params.Clear()
+
+    user_object.Icon = new_comp.Icon_24x24    
+    user_object.BaseGuid = new_comp.ComponentGuid
+    new_comp.Code = launcher_code
+    new_comp.Description = user_object.Description.Description = description
+    new_comp.NickName = user_object.Description.NickName = name
+    new_comp.Name = user_object.Description.Name = name
     new_comp.IsAdvancedMode = SDK_not_script
-    new_comp.Category = category 
- 
-    new_comp.SubCategory = subcategory 
-    new_comp.Locked = locked
+    new_comp.SubCategory = user_object.Description.SubCategory = subcategory 
+    new_comp.Category = user_object.Description.Category = category
+    user_object.Exposure = new_comp.Exposure.primary
 
-
+    new_comp.Locked = locked  # Disabled.  Otherwise 22 components will all run.
+       
     GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
     success = GH_doc.AddObject(docObject = new_comp, update = False)
+    
+    user_object.SetDataFromObject(new_comp)
+    user_object.CreateDefaultPath(True)
+    user_object.SaveToFile()
+
     return success
 
 class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool): 
-    component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'd_h', 'w')
+    component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'category_abbrevs', 'd_h', 'w')
 
     def __call__(self
                 ,code
@@ -94,6 +104,7 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                 ,names
                 ,name_map
                 ,categories
+                ,category_abbrevs
                 ,readme_file = None
                 ,d_h = None
                 ,w = None
@@ -139,7 +150,8 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
 
 
         for i, name in enumerate(names):
-            if name_map.get(name, name) not in categories:
+            tool_name = name_map.get(name, name)
+            if tool_name not in categories:
                 msg =  'No category for ' + name
                 logging.error(msg)
                 raise ValueError(msg)
@@ -147,10 +159,12 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
 
                 i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
-                subcategory = categories.get(name_map.get(name, name), '')
+
+                subcategory = categories[tool_name]
+                subcategory = category_abbrevs.get(subcategory, subcategory)
+
                 logger.debug('Building tool with (nick)name = %s' % name)
                 if readme:
-                    tool_name = name_map.get(name, name)
                     logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
                     tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?)(\r?\n){3}' % tool_name
@@ -171,6 +185,7 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                                         ,category = plug_in_name
                                         ,subcategory = subcategory
                                         ,launcher_code = tool_code
+                                        ,description = summary
                                         ,position = position
                                         )
                 if success:

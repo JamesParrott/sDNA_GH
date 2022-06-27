@@ -163,30 +163,20 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                    ,'Predict' : 'sDNAPredict'                   
                    })
                           
-    categories = {'get_Geom'         : 'Support'
+    categories = {'get_Geom'         : 'Extra'
                  ,'read_Usertext'    : 'Data'
                  ,'write_shapefile'  : '.shp'
                  ,'read_shapefile'   : '.shp'
                  ,'write_Usertext'   : 'Data'
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
-                 ,'sDNAIntegral'     : 'Analysis'
-                 ,'sDNASkim'         : 'Analysis'
-                 ,'sDNAIntFromOD'    : 'Analysis'
-                 ,'sDNAGeodesics'    : 'Geometric analysis'
-                 ,'sDNAHulls'        : 'Geometric analysis'
-                 ,'sDNANetRadii'     : 'Geometric analysis'
-                 ,'sDNAAccessMap'    : 'Analysis'
-                 ,'sDNAPrepare'      : 'Prep'
-                 ,'sDNALineMeasures' : 'Prep'
-                 ,'sDNALearn'        : 'Calibration'
-                 ,'sDNAPredict'      : 'Calibration'
                  ,'sDNA_General'     : 'Dev'
                  ,'get_comp_names'   : 'Dev'
-                 ,'Self_test'        : 'Dev'
                  ,'Build_components' : 'Dev' 
-                 ,'config'           : 'Support'
+                 ,'config'           : 'Extra'
                  }
+
+    category_abbrevs = {'Analysis geometry' : 'Geom'}
 
 
 #######################################################################################################################
