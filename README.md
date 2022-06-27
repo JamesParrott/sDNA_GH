@@ -6,7 +6,7 @@ sDNA is able to calculate Betweenness, Closeness, Angular distance, and many oth
 
 ## sDNA_GH functionality
 sDNA_GH: 
- - Reads a network's polyline Geometry from Rhino or Grasshopper, and Data from any Usertext on it. 
+ - Reads a network's polyline Geometry from Rhino or Grasshopper, and Data from any User Text on it. 
  - Writes the network polylines (formed by one or more polylines) and user Data to a Shapefile.  
  - Initiates an sDNA tool that processes that shapefile, and e.g. carries out a network preparation or an analysis.
  - Reads the shapefile produced by the sDNA tool.
@@ -105,51 +105,46 @@ For advanced users, each component with a given NickName in name_map also has it
 **file** Specifies the path of a file to write to, or that was written to.
 **Data** Accepts a data tree of keys and values.
 **Geom** Accepts a list of geometric objects (Rhino or Grasshopper).  Data trees of objects need to be flattened.
-**gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the IDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as UserText.
+**gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the IDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
 **opts** Accepts an options data structure (a nested dictionary of named tuples) from another sDNA_GH component.  Only of use if they are not synced to the global module options.
 **config** Specified the path of a TOML file (e.g. `config.toml`) to be read in (or written to by a Config component) containing sDNA_GH options settings. 
 
 ##### Support tools
 ###### Config (config)
-Loads custom user options and configuration files (`.toml`); saves options to a `.toml` file if go is true.  
+Loads custom user options and configuration files (`.toml`).  Saves options to a `.toml` file if go is true - if a `.toml` file is specified in `save_to`, it is saved to.  Otherwise if `go` is true and `save_to` is unconnected, then an installation wide user options file is created, if one does not already exist (to update an existing one, specify its name in `save_to`, e.g.: `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
 
-If go is true, a `.toml` file named in `save_to` is saved to.  If `save_to` is unconnected, then if an installation wide user options file does not already exist, one is created.  The current options are saved to it (subsequently to overwrite it, its file path must be specified explicitly in `save_to`).  
 
 ###### Read_Geom (get_Geom)
-Reads in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  
+Reads in references to Rhino geometry (polylines) to provide them in the required form for subsequent sDNA_GH tools.  Set the option `selected` to true, to only read selected Rhino objects (of the specified type - polylines).  Similarly, specify `layer` = your_layer_name to only read Rhino objects from the layer named your_layer_name.  To go back to selecting all layers, set `layer` to any value that is not the name of a layer.
 
-Can be merged and override with other supplied geometry and data.  The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  Set the option `selected` to true, to only read selected Rhino objects (of the specified type - polylines.  Similarly, specify `layer` = your_layer_name to only read Rhino objects from the layer named your_layer_name.
+
+The UUIDs of the Rhino objects are converted to strings to preserve the references to them.  
+
 
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
-Writes the DataTree in `Data` and list of `Geom`etric objects (polylines) to a shapefile.  
+Writes the DataTree in `Data` and list of `Geom`etric objects (polylines) to a shapefile.  If not specified in `file`, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Overwrites existing files, or creates new files.  To create a projection (.prj) file for the new shapefile, specify the path of an existing .prj file in `prj`.  If no Data is supplied it will first call read_User Text (unless `auto_read_Usertext` is false).  To work with sDNA, data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field (key name if it originated as User Text) matches the template string specified in `input_key_str`.  To write all data with any key name to the Shapefile, set it to `{all}`.
 
-If not specified in `file`, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Overwrites existing files, or creates new files.  To create a projection (.prj)
-file for the new shapefile, specify the path of an existing .prj file in `prj`.
-If no Data is supplied it will first call read_Usertext (unless `auto_read_Usertext = false`).  To work with sDNA,
-data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field (key name if it originated as Usertext) matches the template string specified in `input_key_str`.  To write all data with any key name to the Shapefile, set it to `{all}`.
 
 ###### Read_Shp (read_shapefile)
-Reads in polylines and associated data records from a shapefile.  Creates new objects unless existing objects are specified in `Geom`.
+Reads in polylines and associated data records from a shapefile.  Creates new objects unless existing objects are specified in `Geom`.  Specify the path of the .shp file to read in `file`.  **WARNING!  Read_Shp automatically deletes the shapefile after reading it in,if `strict_no_del` = true, if either a) the file name matches the pattern in either `output_fmt` or `prepped_fmt`, or b) if `del_after_read` = true.**  If a list of existing geometry is provided in `Geom` that corresponds to (is the same length as) the data records in the shapefile, only the data is read from the shapefile.  Otherwise the shapes in the shapefile are outputted as new Grasshopper Geometry objects.  The bounding box output `bbox` is provided to create a legend frame within Recolour_Objects.  The abbreviations and field names from an sDNA results field file (if a file with the same name ending in .names.csv exists) are also read in, and supplied on `abbrevs` so that a drop-down list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`), Recolour_Objects is called afterwards.  
 
-Specify the path of the .shp file to read in `file`.  **WARNING!  Read_Shp automatically deletes the shapefile after reading it in, if the file names match the pattern of the automatically created sDNA output files or if `del_after_read` = true (as long as `strict_no_del` = false - both are these values by default).**  If a list of existing geometry is provided in `Geom` that corresponds to (is the same length as) the data records in the shapefile, only the data is read from the shapefile.  Otherwise the shapes in the shapefile are outputted as new Grasshopper Geometry objects.  The bounding box output `bbox` is provided to create a legend frame within Recolour_Objects.  The abbreviations and field names from an sDNA results field file (if a file with the same name ending in .names.csv exists) are also read in, and supplied on the output Params so that a drop-down list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`), Recolour_Objects is called afterwards.  
 
 ##### Plotting tools
 ###### Parse_Data (parse_data)
-Parse the data in a Data Tree of numerical data (in `Data`) from a specified `field`, for subsequent colouring and plotting.  
-
-Be sure to supply the list of the data's associated geometric objects (in `Geom`), as some classifiers sort the data into ascending order (if supplied, the geometry objects will then be reordered too, preserving their correspondence), and legend tags and parsed values are appended to the output `Data` list and `Geom` list.  To force sorting of the `Data` and `Geom` according to `field` regardless, set `sort_data` to true.  To assign each parsed data point, the renormalised data value (and subsequently the same colour) as its class midpoint, set `colour_as_class` to true. Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden (in `plot_max` and `plot_min`), else they are calculated on the whole data range.  
+Parse the data in a Data Tree of numerical data (in `Data`) from a specified `field`, for subsequent colouring and plotting.  Be sure to supply the list of the data's associated geometric objects (in `Geom`), as legend tags and parsed values are appended to the output `Data` list and `Geom` list.  Some classifiers sort the data into ascending order (if supplied, the geometry objects will then be reordered too, preserving their correspondence).  To force a sort, according to `field` regardless, set `sort_data` to true.  To make each parsed data point, take the same value as its class midpoint, set `colour_as_class` to true.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden (in `plot_max` and `plot_min`).  
 **WARNING!  Parsing is for the purpose of colourisation, e.g. in order to produce the desired result from Recolour_Objects.  Therefore, although the inputted Data is not changed, the Data outputted almost certainly will be changed, so should be assumed to be false.**  
-After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if objects are coloured according only to the midpoint of the bin / class they are in, the parsed data will take far fewer distinct values than the number of polylines in a large network.  To parse numerical data from strings/text from an international source, that uses a numerical format different to your system's normal setting (e.g. with a different radix character or thousands separator), set `locale` to the corresponding IETF RFC1766,  ISO 3166 Alpha-2 code (e.g. `fr`, `cn`, `pl`).
+After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if `colour_as_class` = true, the parsed data will take far fewer distinct values than the number of polylines in a large network.  To parse numerical data that uses a numerical format different to your system's normal setting (e.g. with a different radix character ',' or '.' or thousands separator ',' or '_'), set `locale` to the corresponding IETF RFC1766,  ISO 3166 Alpha-2 code (e.g. `fr`, `cn`, `pl`).  See the readme for  further details.
+
 
 **Data Tree**
-A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from Usertext or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.  
+A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.  
 
 **Field to plot**
-Specify the actual numeric data values to be parsed from all the provided 'Usertext values' by setting `field` to the name of the corresponding 'Usertext key'.  
+Specify the actual numeric data values to be parsed from all the provided 'User Text values' by setting `field` to the name of the corresponding 'User Text key'.  
 
 **Bounds**
-The domain this data is parsed against can be customised by setting the options `plot_min`, `plot_max`, shifting it, widening it or narrowing it, e.g. to exclude erroneous outliers.  If `plot_min`, `plot_max` are both numbers and `plot_min` < `plot_max`, their values will be used; otherwise the max and min are automatically calculated from the list of values in the 'Usertext values' of Data corresponding to the 'Usertext key' named in `field`.  To go back to automatic calculation after an override, choose invalid values that satisfy `plot_min` >= `plot_max`.  Set `exclude` to True to exclude data points lower than `plot_min` or higher than `plot_max` from the output altogether (and their corresponding objects from Geom).  If `exclude = false` the `plot_min`, `plot_max` will be applied to limit the values of outlying data points (cap and collar).
+The domain this data is parsed against can be customised by setting the options `plot_min`, `plot_max`, shifting it, widening it or narrowing it, e.g. to exclude erroneous outliers.  If `plot_min`, `plot_max` are both numbers and `plot_min` < `plot_max`, their values will be used; otherwise the max and min are automatically calculated from the list of values in the 'User Text values' of Data corresponding to the 'User Text key' named in `field`.  To go back to automatic calculation after an override, choose invalid values that satisfy `plot_min` >= `plot_max`.  Set `exclude` to True to exclude data points lower than `plot_min` or higher than `plot_max` from the output altogether (and their corresponding objects from Geom).  If `exclude = false` the `plot_min`, `plot_max` will be applied to limit the values of outlying data points (cap and collar).
 
 **Classes (bins / categories for the legend)**
 Either, specify the number of classes desired in the legend in `num_classes` (the default is 7), or specify a list of the actual class boundaries desired in `class_bounds` manually.  Note these are the inter-class bounds.  Use `plot_min` for the lower bound of the bottom class and `plot_max` for the upper bound of the top class.  There should be n-1 inter-class bounds, n classes and n+1 class bounds including the `plot_max` and `plot_min`.  
@@ -172,39 +167,43 @@ If after one of the above classification methods (especially `simple`), inter cl
 Finally, the errors raised if there are small classes or class overlaps can be suppressed by setting `suppress_small_classes_error` or `suppress_class_overlap_error` to true respectively.
 
 ###### Recolour_Objects (recolour_objects)
-Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (as RGB triples).  
+Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (as RGB triples).  If unparsed data is inputted, Parse_Data is first called.  Custom colour curves are supported using a 3D quadratic spline between the triples of numbers: `rgb_min`, `rgb_mid` and `rgb_max`.  Otherwise, use the Grasshopper Colour Gradient internally (via Node In Code) by setting `Col_Grad` to true and picking a setting from 0 to 7 for `Col_Grad_num` (0 : 'EarthlyBrown', 1 : 'Forest', 2 : 'GreyScale', 3 : 'Heat', 4 : 'Pink', 5 : 'Spectrum', 6 : 'Traffic', 7 : 'Zebra').  Set `line_width` to control the width of the line of Rhino geom objects  (the default is 4).
 
-If unparsed data is inputted, Parse_Data is first called.  Custom colour calculation is possible using a 3D quadratic spline between the triples of numbers `rgb_min`, `rgb_mid` and `rgb_max`. as is the Grasshopper Colour Gradient internally via Node In Code, by setting `Col_Grad` to true and picking a setting from 0 to 7 for `Col_Grad_num` (0 : 'EarthlyBrown', 1 : 'Forest', 2 : 'GreyScale', 3 : 'Heat', 4 : 'Pink', 5 : 'Spectrum', 6 : 'Traffic', 7 : 'Zebra').  The width of the lines plotted of recoloured Rhino geom objects is made a little higher than the default wireframe mode, for clearer viewing of results.  Set `line_width` to control this width (the default is 4).
+Create a legend by connecting `leg_cols`, `leg_tags` and `leg_frame` to a Grasshopper Legend component.  The coordinates of the corners of the Rectangle provided in `leg_frame` may be overridden by specifying `leg_extent` (xmin, ymin, xmax, ymax); alternatively any rectangle object can be passed into `leg_frame` on the GH Legend component itself.  Custom legend tag templates and class boundaries are supported via four format strings (`first_leg_tag_str`, `gen_leg_tag_str`, `last_leg_tag_str` and `num_format`) as per Parse_Data.  
 
-Create a legend by connecting `leg_cols`, `leg_tags` and `leg_frame` to a Grasshopper Legend component.  Custom legend tag templates and class boundaries are supported via four format strings (`first_leg_tag_str`, `gen_leg_tag_str`, `last_leg_tag_str` and `num_format`) as per Parse_Data.  Any rectangle object can be passed into `leg_frame` on the legend component itself.  Or alternatively, the coordinates of the corners of the one the Recolour_Objects component creates may be overridden by specifying `leg_extent` (xmin, ymin, xmax, ymax).  
+To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects), connect the `Data` and `Geom` outputs to a Grasshopper Custom Preview component (line widths of GH objects cannot be increased).  
 
-Recolouring unbaked Grasshopper geometry instead of Rhino Geometry requires the `Data` and `Geom` outputs to be connected to a Grasshopper Custom Preview component.  
 
-##### Usertext tools    
+##### User Text tools    
 ##### Data tools
-###### Read_Usertext (read_Usertext)
-Reads all User Text from the provided Rhino objects.  
+###### Read_User Text (read_User Text)
+Reads all User Text from the provided Rhino objects.  If no Geometry is provided in `Geom`, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
-If no Geometry is provided in `Geom`, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
-###### Write_Usertext (write_Usertext)
-Writes User Text to Rhino objects, using a specified pattern for the keys.  
+###### Write_User Text (write_User Text)
+Writes User Text to Rhino objects, using a specified pattern for the keys.  Specify the data tree to write in `Data`, and the list of Rhino objects to write to in `Geom`.  The format of the User Text key can be customised in the Python format string `output_key_str`, accepting two named fields (e.g. = `sDNA output={name} run time={datetime}`).  
 
-Specify the data tree to write in `Data`, and the list of Rhino objects to write to in `Geom`.  The format of the UserText key can be customised in the Python format string `output_key_str`, accepting two named fields (e.g. = `sDNA output={name} run time={datetime}`).  A field specifying an originating Rhino object's UUID `uuid_field` will be omitted.  If a key of that name already exists, it will be overwritten if `overwrite_UserText` is true.  Otherwise a suffix will be appended to it, based on an integer counter and the format string in `dupe_key_suffix`, until a unique key name is found, up to a limit of `max_new_keys` (overwrite warnings can be suppressed by setting `suppress_overwrite_warning` to true).
+
+A field specifying an originating Rhino object's UUID `uuid_field` will be omitted.  If a key of that name already exists, it will be overwritten if `overwrite_UserText` is true.  Otherwise a suffix will be appended to it, based on an integer counter and the format string in `dupe_key_suffix`, until a unique key name is found, up to a limit of `max_new_keys` (overwrite warnings can be suppressed by setting `suppress_overwrite_warning` to true).
 
 #### sDNA Tools
 ##### Analysis tools
 All the sDNA tools are run from the command line, using the Python interpreter in `python`.  
-By default an sDNA tool component will show all the possible inputs on its input Params.  To show only the essential ones instead (and make the components a lot smaller) set `show_all` = false.  If run with all `auto_` options on, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis, read in the output shapefile, and recolour the Rhino polylines.  Otherwise, sDNA tools that require input must have the path to the shapefile you wish to run the analysis on specified in `file` or `input`. **WARNING!  All sDNA tools will delete the shapefile after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**  
+By default an sDNA tool component will show all the possible inputs on its input Params.  To show only the essential ones instead (and make the components a lot smaller) set `show_all` = false.  
+All sDNA_GH components attempt to check, e.g. if any Write_User Text or Read_User Text components are already connected to its inputs (upstream) or outputs (downstream), before running extra tools.  But if it is unconnected and run with all `auto_` options on, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis, read in the output shapefile, and recolour the Rhino polylines.  Otherwise, sDNA tools that require input must have the path to the shapefile you wish to run the analysis on specified in `file` or `input`. **WARNING!  All sDNA tools will delete the shapefile named in input after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**  
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):
 
 ###### [sDNA_Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-analysis) (sDNAIntegral)
 sDNA Integral is the core analysis tool of sDNA. It computes several flow, accessibility, severance and efficiency measures on networks. 
 
-This and all sDNA tools below, automatically calls other support tools, handling the normal Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   To analyse Grasshopper Geometry and to customise work flows between sDNA_GH components, e.g. using a Grasshopper Colour Gradient component, set the corresponding `auto_` option to false in `config.toml`.  Connect a Grasshopper Legend component to plot a legend. The component attempts to check if any Write_Usertext or Read_Usertext components are already connected to its inputs (upstream) or to its outputs (downstream), before running the extra tools before or afterwards respectively. 
+This automatically calls other support tools, handling an entire Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   **WARNING!  All sDNA tools will delete the shapefile named in input after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**  
+
+To add or remove existing `Geom`etry before the results file is read in (to control creation of new geometry objects), set `auto_read_Shp` = false and connect a Read_Shp component.  To analyse a network of Grasshopper Geometry set `auto_get_Geom` and `auto_read_Usertext` to false.  To access the data and geom objects before parsing and recolouring, `auto_plot_data` = false (and connect Parse_Data and Recolour_Objects components).  This allows picking a results field from `abbrevs` to parse without repeating the whole analysis, and using a Grasshopper Colour Gradient component on the canvas to generate colours.  Connect a Grasshopper Legend component to plot a legend. To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects), connect the `Data` and `Geom` outputs to a Grasshopper Custom Preview component.
+
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it); the `advanced` config string can then be saved to a `config.toml` file with an sDNA_GH Config component).  Alternatively create an `advanced` config string manually.  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the and connect it to `advanced`.  See the readme for the list of supported advanced config options.
+
 
 **[Advanced config options for sDNA Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)**
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
 Option 	Default 	Description
 startelev= 	  	Name of field to read start elevation from
 endelev= 	  	Name of field to read end elevation from
@@ -270,19 +269,21 @@ datatokeep= 	  	List of field names for data to copy to output
 ###### [sDNA_Skim](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix) (sDNASkim)
 Skim Matrix outputs a table of inter-zonal mean distance (as defined by whichever sDNA Metric is chosen), allowing high spatial resolution sDNA models of accessibility to be fed into existing zone-base transport models.
 
+
 ###### [sDNA_Int_From_OD](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-from-od-matrix-assignment-model) (sDNAIntegralFromOD)
 A simplified version of sDNA Integral geared towards use of an external Origin Destination matrix. Note that several other tools (including Integral) allow Origin Destination matrix input as well.  
 
 The file must be formatted correctly, see Creating a zone table or matrix file. All geodesic and destination weights are replaced by values read from the matrix. The matrix is defined between sets of zones; polylines must contain text fields to indicate their zone.
 
+
 ###### [sDNA_Access_Map](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#specific-origin-accessibility-maps) (sDNAAccessibilityMap)
 Outputs accessibility maps for specific origins, including metric between each origin-destination, Euclidean path length and absolute diversion (difference between Euclidean path length and crow flight path length, similar to circuity, notated here as ‘Div’).
 
-The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.
-If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
-**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.  If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
+
 sDNA Accessibility Map is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.  See the readme for the list of supported advanced config options.
+
 
 ##### Preparation tools
 ###### [sDNA_Prepare](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#prepare-network) (sDNAPrepare)
@@ -295,8 +296,10 @@ The errors fixed by sDNA Prepare are:
 - split links. Note that fixing split links is no longer necessary as of sDNA 3.0 so this is not done by default. 
 - isolated systems. 
 
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`. See the readme for the list of supported advanced config options.
+
+
 **[Advanced config options for sDNA Prepare](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-prepare)**
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`. 
 
 Option 	Description
 startelev= 	Name of field to read start elevation from
@@ -310,37 +313,41 @@ xytol= 	Manual override xy tolerance for fixing endpoint connectivity
 ztol= 	Manual override z tolerance for fixing endpoint connectivity
 merge_if_identical= 	Specifies data fields which can only be merged if identical, i.e. split links will not be fixed if they differ (similar to ‘dissolve’ GIS operation)
 
-xytol and ztol are manual overrides for tolerance. sDNA, running on geodatabases from command line or ArcGIS, will read tolerance values from each feature class as appropriate. sDNA running in QGIS or on shapefiles will use a default tolerance of 0, as shapefiles do not store tolerance information:- manual override is necessary to fix tolerance on shapefiles.
-
 ###### [sDNA_Line_Measures](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#individual-line-measures) (sDNALineMeasures)
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
 This tool can be useful for checking and debugging spatial networks. In particular, connectivity output can reveal geometry errors.
+
 
 ##### Geometric analysis tools
 ###### [sDNA_Geodesics](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#geodesics) (sDNAGeodesics)
 Outputs the geodesics (shortest paths) used by Integral Analysis. 
 
 The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
-**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+
 sDNA Geodesics is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.  See the readme for the list of supported advanced config options.
 
 
 ###### [sDNA_Hulls](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#convex-hulls) (sDNAHulls)
 Outputs the convex hulls of network radii used in Integral Analysis. 
 
 The convex hulls tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output hulls for all origins.
-**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+
 sDNA Convex Hulls is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.  See the readme for the list of supported advanced config options.
+
 
 ###### [sDNA_Net_Radii](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#network-radii) (sDNANetRadii)
 Outputs the network radii used in Integral Analysis. 
 
 The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
-**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+
 sDNA Network Radii is a different interface applied to sDNA Integral, so will in some cases accept its advanced config options as well.
-To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.
+To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it).  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the `advanced` config string manually and connect it to `advanced`.  See the readme for the list of supported advanced config options.
+
+
+**[Advanced config options for sDNA geometry tools](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+
 
 ##### Calibration tools
 ###### [sDNA_Learn](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#learn) (sDNALearn)
@@ -361,6 +368,7 @@ Ridge and Lasso regression can cope with multicollinear predictor variables, as 
 
 *Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inspect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 
+
 ###### [sDNA_Predict](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#predict) (sDNAPredict)
 Predict takes an output model file from sDNA Learn, and applies it to fresh data. 
 
@@ -370,11 +378,13 @@ For example, suppose we wish to calibrate a traffic model, using measured traffi
 - Run Learn on the joined data to select the best variable for predicting flows (where measured). 
 - Run Predict on the output of Integral to estimate traffic flow for all unmeasured polylines. 
 
+
 ##### Dev tool(s)
 ###### Unload_sDNA_GH
 Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  
 
-The next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified options including a project options config.toml, without otherwise having to restart Rhino to clear its cache.
+The next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified options including a project specific config.toml, without otherwise having to restart Rhino to clear its cache.
+
 
 ###### sDNA_general
 Run any other component by feeding the name of it into the "tool" input param.
@@ -403,9 +413,9 @@ Functionality is provided by main.py in the sDNA_GH Python package, so new compo
 ##### Recolouring the arcs instead of polylines.
 #### Writing polylines and data to shapefiles.
 #### Reading in polylines and data from shapefiles.
-#### Writing Usertext.
-#### Reading Usertext for sDNA (e.g. User weights).
-#### Baking (saving Grasshopper objects to a Rhino document) with Usertext. -->
+#### Writing User Text.
+#### Reading User Text for sDNA (e.g. User weights).
+#### Baking (saving Grasshopper objects to a Rhino document) with User Text. -->
 
 
 

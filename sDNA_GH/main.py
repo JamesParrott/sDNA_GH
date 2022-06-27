@@ -168,7 +168,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'write_shapefile'  : '.shp'
                  ,'read_shapefile'   : '.shp'
                  ,'write_Usertext'   : 'Data'
-                 # ,'bake_Usertext'    : 'Usertext'
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
                  ,'sDNAIntegral'     : 'Analysis'
@@ -186,7 +185,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'get_comp_names'   : 'Dev'
                  ,'Self_test'        : 'Dev'
                  ,'Build_components' : 'Dev' 
-                 ,'Config'      : 'Support'
+                 ,'config'           : 'Support'
                  }
 
 
@@ -1030,7 +1029,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         
         synced = self.local_metas.synced
         #######################################################################
-        logger.debug('kwargs == %s ' % kwargs)
+        logger.debug('kwargs.keys() == %s ' % kwargs.keys())
         self.local_metas = override_all_opts(
                                  args_dict = kwargs
                                 ,local_opts = self.opts # mutated

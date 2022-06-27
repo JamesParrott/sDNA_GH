@@ -29,38 +29,37 @@
 
 
 
-""" Main entry point to launch sDNA_GH if run as a script from an sDNA_GH 
-GhPython component.
+""" Main entry point to launch sDNA_GH if run as a script from an sDNA_GH GhPython component.
 
-Imports the python package sDNA_GH and (re)defining the MyComponent(component) 
-class.  Grasshopper instantiates this class in each such component, then 
-calls its RunScript method 
-(and recalls it on each Param update / recalculation).
+    Imports the python package sDNA_GH and (re)defining the MyComponent(component) 
+    class.  Grasshopper instantiates this class in each such component, then 
+    calls its RunScript method 
+    (and recalls it on each Param update / recalculation).
 
-There may be multiple components, all running this same launcher code.
-Therefore we want the root logger to live in the sDNA_GH.main module
-that they each import.  The logging system is configurable by the user,
-but only through the options that are read in during the main package
-import, and we want to create logs before this too, in this module.  So 
-before a component has imported sDNA_GH.main, logging is routed through output, 
-a callable instance of Output, with a cache, defined below.  After a logger has 
-been set up according to the user's configuration, after the main package import,
-output's cache is flushed through the normal logging system, 
+    There may be multiple components, all running this same launcher code.
+    Therefore we want the root logger to live in the sDNA_GH.main module
+    that they each import.  The logging system is configurable by the user,
+    but only through the options that are read in during the main package
+    import, and we want to create logs before this too, in this module.  So 
+    before a component has imported sDNA_GH.main, logging is routed through output, 
+    a callable instance of Output, with a cache, defined below.  After a logger has 
+    been set up according to the user's configuration, after the main package import,
+    output's cache is flushed through the normal logging system, 
 
-Also, the Output class is used to define two Classes from this single 
-code definition.  Python scripts can happily import themselves, but here
-this is because launcher.py is itself part of the imported sDNA_GH python
-package, imported by launcher.py in a GhPythoncomponent.  To achieve this, the 
-code in this file needs to be copied into the sDNA_GH GhPython components 
-during building of the components (e.g. via the code input Param), 
+    Also, the Output class is used to define two Classes from this single 
+    code definition.  Python scripts can happily import themselves, but here
+    this is because launcher.py is itself part of the imported sDNA_GH python
+    package, imported by launcher.py in a GhPythoncomponent.  To achieve this, the 
+    code in this file needs to be copied into the sDNA_GH GhPython components 
+    during building of the components (e.g. via the code input Param), 
 
-The behaviours can be different of course if changes are made to one and not
-the other. e.g. if updated code is forgotten to be copied into the component.
+    The behaviours can be different of course if changes are made to one and not
+    the other. e.g. if updated code is forgotten to be copied into the component.
 
-A dummy MyComponent(component) class is defined in the script to appease
-GhPython's parser, even though the definition we use is imported from the package
+    A dummy MyComponent(component) class is defined in the script to appease
+    GhPython's parser, even though the definition we use is imported from the package
 
-launcher.py can also run unittests in a component named "selftest" 
+    launcher.py can also run unittests in a component named "selftest" 
 """
 
 __author__ = 'James Parrott'

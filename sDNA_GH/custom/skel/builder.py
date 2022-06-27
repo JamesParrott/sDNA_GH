@@ -113,35 +113,60 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
             #
             readme = ''
         else:
-            with open(readme_file) as f:
-                readme = f.readlines()
+            with open(readme_file, 'r') as f:
+                readme = ''.join(f.readlines())
 
-        logger.debug('readme[:5] == %s' % readme[:5])
+        logger.debug('readme[:20] == %s' % readme[:20])
 
 
         names_built = []
         tool_code = code
-        doc_string_summary_line_pattern = re.compile(r'\"\"\"(.*)\n\n'
+        doc_string_summary_line_pattern = re.compile(r'"""(.*?)\r?\n"""'
                                                     ,flags = re.DOTALL
                                                     )
+        # code comes from a Grasshopper file reader component, so in windows
+        # line endings include '\r\n' - '\r' is not removed, unlike open(..., 'r')
+
+        doc_string_start_match = doc_string_summary_line_pattern.search( code )
+        if doc_string_start_match:
+            old_doc_string_start = doc_string_start_match.groups()[0]
+            logger.debug('old_doc_string_start == %s' % old_doc_string_start)
+            doc_string_start = doc_string_start_match.group()
+            logger.debug('doc_string_match == %s' % doc_string_start)
+        else:
+            logger.debug('No regex match found for docstring in launcher code.')
+        #raise Exception('Break point')
+
+
         for i, name in enumerate(names):
-            #if name_map.get(name, name) not in categories:
-            #   msg =  'No category for ' + name
-            #   logging.error(msg)
-            #   raise ValueError(msg)
-            #else:
+            if name_map.get(name, name) not in categories:
+                msg =  'No category for ' + name
+                logging.error(msg)
+                raise ValueError(msg)
+            else:
+
                 i *= d_h
                 position = [200 + (i % w), 550 + 220*(i // w)]
                 subcategory = categories.get(name_map.get(name, name), '')
+                logger.debug('Building tool with (nick)name = %s' % name)
                 if readme:
-                    tool_summary_pattern = re.compile(r'\"\"\"\(%s\)\n(.*)\n\n\n' % name
+                    tool_name = name_map.get(name, name)
+                    logger.debug('Looking in readme for tool with name = %s' % tool_name)
+
+                    tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?)(\r?\n){3}' % tool_name
                                                      ,flags = re.DOTALL
                                                      )
-                    summary = re.search(code, tool_summary_pattern).groups()[0]
-                    tool_code = re.sub(doc_string_summary_line_pattern
-                                      ,summary
-                                      ,code
-                                      )
+                    logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
+
+                    summary_match = tool_summary_pattern.search( readme )
+                    if summary_match:
+                        summary = summary_match.groups()[0]
+                        logger.debug('summary == %s' % summary)
+                        tool_code = code.replace(old_doc_string_start, summary)
+                        logger.debug('tool_code[:2400] == %s' % tool_code[:2400])
+                    else:
+                        tool_code = code
+                        logger.debug('tool_code unchanged.')
                 success = make_component(name
                                         ,category = plug_in_name
                                         ,subcategory = subcategory

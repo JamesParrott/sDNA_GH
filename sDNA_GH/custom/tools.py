@@ -442,13 +442,13 @@ def update_opts(current_opts
         this_level_override_data = OrderedDict((key, override[key]) 
                                                 for key in data_field_keys
                                                 )
-        logger.debug('this_level_override_data == %s' % this_level_override_data)
+        #logger.debug('this_level_override_data == %s' % this_level_override_data)
 
         if key in current_opts:
             overrides = [this_level_override_data]
             if key in override:
                 overrides += [override[key]]
-            logger.debug('Updating current_opts with overrides == %s & key == %s' % (overrides, key))
+            #logger.debug('Updating current_opts with overrides == %s & key == %s' % (overrides, key))
             current_opts[key] = update_data_node(current_opts[key]
                                                 ,overrides
                                                 ,**metas._asdict()
@@ -1004,9 +1004,11 @@ class UsertextReader(sDNA_GH_Tool):
     def __call__(self, gdm):
         #type(str, dict, dict) -> int, str, dict, list
 
-        self.debug('Starting read_Usertext..  Creating Class logger. ')
+        self.debug('Starting read_Usertext...  Creating Class logger. ')
         self.debug('type(gdm) == %s ' % type(gdm))
         self.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
+
+        gdm = gdm.copy()
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
 
@@ -1161,7 +1163,8 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
+    opts = options_manager.get_dict_of_Classes(
+                         metas = {}
                         ,options = dict(new_geom = True
                                        ,uuid_field = 'Rhino3D_'
                                        ,sDNA_names_fmt = '{name}.shp.names.csv'
