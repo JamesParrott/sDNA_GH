@@ -53,7 +53,7 @@ sDNA_GH:
 ##### Automatic multi-tools.
 Each sDNA tool has its own a Grasshopper component.  To run a tool, a True value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows (unless an `auto_` option is set not to) some tools by default also automatically run other tools before or after they run themselves.  For example, this allows an entire sDNA process to be run on Rhino Geometry, with the results from the sDNA calculation being used to recolour the Rhino geometry, from one single sDNA tool component.  When placed on the canvas, each component adds in Params for all its required Input and Output arguments (if the Params are not already present), including those of any extra automatically added tools.  Extra customisation can be carried out by adding in extra Params too.  Such extra user added Params are not removed.  This can make the components quite large, but any Params not being specified can be removed.  Another way to make the components smaller, that also allows any other custom work to be carried out in between individual tools, is to set the `auto_` options for that component to `false`.  A newly placed component will then only add in the Params for that component's own tool.
 
-[note] All except the Config tool which always loads its options when placed or its Inputs are updated (saving options when `go` is true), and Unload_sDNA_GH on which `unload` does the same thing as `go`.
+[note] All except the Config tool which always loads its options when placed or its Inputs are updated (saving options when `go` is true), and Unload_sDNA on which `unload` does the same thing as `go`.
 
 ##### Running individual tools.  
 Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.
@@ -127,7 +127,7 @@ Writes the DataTree in `Data` and list of `Geom`etric objects (polylines) to a s
 
 
 ###### Read_Shp (read_shapefile)
-Reads in polylines and associated data records from a shapefile.  Creates new objects unless existing objects are specified in `Geom`.  Specify the path of the .shp file to read in `file`.  **WARNING!  Read_Shp automatically deletes the shapefile after reading it in,if `strict_no_del` = true, if either a) the file name matches the pattern in either `output_fmt` or `prepped_fmt`, or b) if `del_after_read` = true.**  If a list of existing geometry is provided in `Geom` that corresponds to (is the same length as) the data records in the shapefile, only the data is read from the shapefile.  Otherwise the shapes in the shapefile are outputted as new Grasshopper Geometry objects.  The bounding box output `bbox` is provided to create a legend frame within Recolour_Objects.  The abbreviations and field names from an sDNA results field file (if a file with the same name ending in .names.csv exists) are also read in, and supplied on `abbrevs` so that a drop-down list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`), Recolour_Objects is called afterwards.  
+Reads in polylines and associated data records from a shapefile.  Creates new objects unless existing objects are specified in `Geom`.  Specify the path of the .shp file to read in `file`.  **WARNING!  Read_Shp automatically deletes the shapefile after reading it in,if `strict_no_del` = false, if either a) the file name matches the pattern in either `output_fmt` or `prepped_fmt`, or b) if `del_after_read` = true.**  If a list of existing geometry is provided in `Geom` that corresponds to (is the same length as) the data records in the shapefile, only the data is read from the shapefile.  Otherwise the shapes in the shapefile are outputted as new Grasshopper Geometry objects.  The bounding box output `bbox` is provided to create a legend frame within Recolour_Objects.  The abbreviations and field names from an sDNA results field file (if a file with the same name ending in .names.csv exists) are also read in, and supplied on `abbrevs` so that a drop-down list may be created, for easy selection of the data field for subsequent parsing and plotting.  If no separate Recolour_Objects Component is detected connected to the component's outputs downstream (unless `auto_plot_data = false`), Recolour_Objects is called afterwards.  
 
 
 ##### Plotting tools
@@ -380,14 +380,15 @@ For example, suppose we wish to calibrate a traffic model, using measured traffi
 
 
 ##### Dev tool(s)
-###### Unload_sDNA_GH
+###### Unload_sDNA (Unload_sDNA)
 Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  
 
 The next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified options including a project specific config.toml, without otherwise having to restart Rhino to clear its cache.
 
 
-###### sDNA_general
+###### sDNA_General (sDNA_General)
 Run any other component by feeding the name of it into the "tool" input param.
+
 
 <!--###### Self_test
 Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will
@@ -398,7 +399,11 @@ Easily build all the other components for the sDNA installation provided.  User 
 
 Functionality is provided by main.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
 
-  
+
+###### Component_Names Get (component_names)
+Returns a list of the names of all the components sDNA_GH currently knows how to build, including sDNA tool.  Searches the keys in the tools dict and all the classes returned by `sDNAUISpec.get_tools()`, and validates all the nick_names in the `name_map`.
+
+
 <!--
 ### Example Grasshopper definitions.
 #### Running sDNA Integral on a random grid read from Rhino.

@@ -32,6 +32,7 @@ __author__ = 'James Parrott'
 __version__ = '0.02'
 
 import os
+import shutil
 import logging
 import collections
 if hasattr(collections, 'Iterable'):
@@ -43,9 +44,8 @@ import re
 
 import Grasshopper
 import GhPython
-import System.Drawing  # .Net / C# Classes.
-                       # System is in Iron Python.  But System.Drawing is not.
-
+import System.Drawing  # .Net / C# Classes, System is in Iron Python.  But 
+                       # System.Drawing is not.  Needs Iron pip?
 from .basic.ghdoc import ghdoc
 from .tools import runner
 from . import add_params
@@ -54,26 +54,50 @@ from . import add_params
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def make_component(name
-                  ,category
-                  ,subcategory
-                  ,launcher_code
-                  ,description
-                  ,position
-                  ,SDK_not_script = True
-                  ,locked = True
-                  ):
-    # type(str, str, str, str, list) -> None
-    new_comp = GhPython.Component.ZuiPythonComponent()
+
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+
+
+def make_comp_and_user_obj(name
+                          ,tool_name
+                          ,plug_in_name
+                          ,subcategory
+                          ,launcher_code
+                          ,description
+                          ,position
+                          ,components_path = None
+                          ,locked = True
+                          ,SDK_not_script = True
+                          ,ComponentClass = None
+                          ):
+    # type(str, str, str, str, str, str, list, str, bool, bool, type[any]) -> int
+
+    if components_path is None:
+        components_path = os.path.join(os.path.dirname(os.path.dirname(ghdoc.Path))
+                           ,plug_in_name
+                           ,'components'
+                           )
+
+    if ComponentClass is None:
+        ComponentClass = GhPython.Component.ZuiPythonComponent 
+
+    new_comp = ComponentClass()
     user_object = Grasshopper.Kernel.GH_UserObject()
 
-    #new_comp.CopyFrom(this_comp)
     sizeF = System.Drawing.SizeF(*position)
 
     new_comp.Attributes.Pivot = System.Drawing.PointF.Add(new_comp.Attributes.Pivot, sizeF)
     new_comp.Params.Clear()
 
-    user_object.Icon = new_comp.Icon_24x24    
+
+    icon_path = os.path.join(components_path
+                            ,'icons'
+                            ,tool_name + '.png'
+                            )
+    user_object.Icon = System.Drawing.Bitmap(icon_path)
     user_object.BaseGuid = new_comp.ComponentGuid
     new_comp.Code = launcher_code
     new_comp.Description = user_object.Description.Description = description
@@ -81,93 +105,126 @@ def make_component(name
     new_comp.Name = user_object.Description.Name = name
     new_comp.IsAdvancedMode = SDK_not_script
     new_comp.SubCategory = user_object.Description.SubCategory = subcategory 
-    new_comp.Category = user_object.Description.Category = category
+    new_comp.Category = user_object.Description.Category = plug_in_name
     user_object.Exposure = new_comp.Exposure.primary
 
-    new_comp.Locked = locked  # Disabled.  Otherwise 22 components will all run.
+    new_comp.Locked = locked 
        
     GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
-    success = GH_doc.AddObject(docObject = new_comp, update = False)
+    success = GH_doc.AddObject(docObject = new_comp, update = True)
     
     user_object.SetDataFromObject(new_comp)
-    user_object.CreateDefaultPath(True)
+    user_object.Path = os.path.join(components_path, name + '.ghuser')
     user_object.SaveToFile()
+
 
     return success
 
+def text_file_to_str(file, extra_new_line_char = '', encoding = 'utf-8'):
+    #type(str, str) -> str
+    """ A simple text file reader.  """
+    if file is None or not isinstance(file, basestring):
+        msg = 'file == %s is not a string' % file
+        logger.error(msg)
+        raise TypeError(msg)
+    elif not os.path.isfile(file):
+        msg = 'file == %s is not a file path' % file
+        logger.error(msg)
+        raise ValueError(msg)
+    else:
+        with open(file, 'rb') as f:
+            file_contents = extra_new_line_char.join(line.decode(encoding)
+                                                     for line in f
+                                                    )
+    return file_contents
+
+
+class DocStringParser(object):
+    
+    doc_string_summary_line_pattern = re.compile(r'"""(.*?)"""'
+                                                ,flags = re.DOTALL
+                                                )
+    def __call__(self, code):
+        #type(str)-> str, str
+        doc_string_match = self.doc_string_summary_line_pattern.search( code )
+
+        if not doc_string_match:
+            msg = 'No regex match found for docstring in launcher code.'
+            logger.error(msg)
+            raise ValueError(msg)
+
+        doc_string_content = doc_string_match.groups()[0]
+        logger.debug('doc_string_content == %s' % doc_string_content)
+
+        doc_string = doc_string_match.group()
+        logger.debug('doc_string_match == %s' % doc_string)
+
+        return doc_string_content, doc_string
+
+
+
 class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool): 
-    component_inputs = ('code','plug_in', 'component_names', 'name_map', 'categories', 'category_abbrevs', 'd_h', 'w')
+    component_inputs = ('default_path', 'path_dict', 'plug_in_name', 'component_names', 'name_map', 'categories', 'category_abbrevs', 'd_h', 'w')
 
     def __call__(self
-                ,code
+                ,default_path
+                ,path_dict
                 ,plug_in_name
-                ,names
+                ,component_names
                 ,name_map
                 ,categories
                 ,category_abbrevs
                 ,readme_file = None
-                ,d_h = None
-                ,w = None
+                ,row_height = None
+                ,row_width = None
                 ):
-        #type(str, dict) -> None
+        #type(str, dict, str, list, dict, dict, dict, str, int, int) -> int, list
         # = (kwargs[k] for k in self.args)
-        d_h = 175 if d_h is None else d_h
-        w = 800 if w is None else w
-        
-        while (isinstance(code, Iterable) 
-               and not isinstance(code, str)):
-            code = code[0]
+        row_height = 175 if row_height is None else row_height
+        row_width = 800 if row_width is None else row_width
 
-        if (readme_file is None or 
-            not isinstance(readme_file, str) or 
-            not os.path.isfile(readme_file)):
-            #
-            readme = ''
-        else:
-            with open(readme_file, 'r') as f:
-                readme = ''.join(f.readlines())
+        
+        while (isinstance(default_path, Iterable) 
+               and not isinstance(default_path, str)):
+            default_path = default_path[0]
+
+
+
+        readme = text_file_to_str(readme_file)
 
         logger.debug('readme[:20] == %s' % readme[:20])
 
 
-        names_built = []
-        tool_code = code
-        doc_string_summary_line_pattern = re.compile(r'"""(.*?)\r?\n"""'
-                                                    ,flags = re.DOTALL
-                                                    )
-        # code comes from a Grasshopper file reader component, so in windows
-        # line endings include '\r\n' - '\r' is not removed, unlike open(..., 'r')
 
-        doc_string_start_match = doc_string_summary_line_pattern.search( code )
-        if doc_string_start_match:
-            old_doc_string_start = doc_string_start_match.groups()[0]
-            logger.debug('old_doc_string_start == %s' % old_doc_string_start)
-            doc_string_start = doc_string_start_match.group()
-            logger.debug('doc_string_match == %s' % doc_string_start)
-        else:
-            logger.debug('No regex match found for docstring in launcher code.')
+        names_built = []
+ 
         #raise Exception('Break point')
 
+        get_doc_string = DocStringParser()
 
-        for i, name in enumerate(names):
-            tool_name = name_map.get(name, name)
+        for i, nick_name in enumerate(component_names):
+            tool_name = name_map.get(nick_name, nick_name)
+            tool_code_path = path_dict.get(tool_name, default_path)
+            tool_code = text_file_to_str(tool_code_path)
+
+            doc_string_content, _ = get_doc_string(tool_code)
+
             if tool_name not in categories:
-                msg =  'No category for ' + name
+                msg =  'No category for ' + nick_name
                 logging.error(msg)
                 raise ValueError(msg)
             else:
 
-                i *= d_h
-                position = [200 + (i % w), 550 + 220*(i // w)]
+
 
                 subcategory = categories[tool_name]
                 subcategory = category_abbrevs.get(subcategory, subcategory)
 
-                logger.debug('Building tool with (nick)name = %s' % name)
+                logger.debug('Building tool with (nick)name = %s' % nick_name)
                 if readme:
                     logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
-                    tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?)(\r?\n){3}' % tool_name
+                    tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
                                                      ,flags = re.DOTALL
                                                      )
                     logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
@@ -176,20 +233,29 @@ class ComponentsBuilder(add_params.ToolWithParams, runner.RunnableTool):
                     if summary_match:
                         summary = summary_match.groups()[0]
                         logger.debug('summary == %s' % summary)
-                        tool_code = code.replace(old_doc_string_start, summary)
+                        tool_code = tool_code.replace(doc_string_content, summary)
                         logger.debug('tool_code[:2400] == %s' % tool_code[:2400])
                     else:
-                        tool_code = code
                         logger.debug('tool_code unchanged.')
-                success = make_component(name
-                                        ,category = plug_in_name
+
+                l = i * row_height
+                x = 200 + (l % row_width)
+                y = 550 + 220 * (l // row_width)
+                position = [x, y]
+
+                success = make_comp_and_user_obj(name = nick_name
+                                        ,tool_name = tool_name
+                                        ,plug_in_name = plug_in_name
                                         ,subcategory = subcategory
                                         ,launcher_code = tool_code
                                         ,description = summary
                                         ,position = position
+                                        ,components_path = None
+                                        ,locked = False  # all new compnts run
+                                        ,SDK_not_script = True
                                         )
                 if success:
-                    names_built += [name]
+                    names_built += [nick_name]
 
         retcode = 0
         locs = locals().copy()

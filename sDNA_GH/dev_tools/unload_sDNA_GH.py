@@ -27,7 +27,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-""" Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  """
+""" Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  The 
+    next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified 
+    options including a project specific config.toml, without otherwise having to restart Rhino to clear its cache.
+"""
 
 __author__ = 'James Parrott'
 __version__ = '0.03'

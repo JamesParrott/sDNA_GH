@@ -319,9 +319,16 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     # e.g. for testing
 
 
-    sDNA_GH_search_paths = [ Grasshopper.Folders.DefaultUserObjectFolder ]
 
     nick_name = ghenv.Component.NickName #type: ignore
+
+    if nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents':
+        sDNA_GH_search_paths = os.path.dirname( os.path.dirname(ghdoc.Path) ) #type: ignore
+        # builder can only load sDNA_GH from its parent directory, 
+        # e.g. if in a dir one level up in the main repo
+        # such as sDNA_build_components.gh.
+    else:
+        sDNA_GH_search_paths = [ Grasshopper.Folders.DefaultUserObjectFolder ]
 
 
     sc.doc = ghdoc #type: ignore

@@ -88,7 +88,7 @@ default_name_map = dict(Read_Geom = 'get_Geom'
                        ,Recolour_Objects = 'recolour_objects'
                        ,Recolor_Objects = 'recolour_objects'
                        ,Config = 'config'
-                       ,Comp_Names = 'get_comp_names'
+                       ,Component_Names = 'component_names'
                        #
                        ,sDNA_Integral = 'sDNAIntegral'
                        ,sDNA_Skim = 'sDNASkim'
@@ -148,7 +148,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                    ,'Parse data' : 'parse_data'
                    ,'Recolour objects' : 'recolour_objects'
                    ,'Recolor objects' : 'recolour_objects'
-                   ,'Get component names' : 'get_comp_names'
+                   ,'Component Names' : 'component_names'
                    #
                    ,'Integral Analysis' : 'sDNAIntegral'
                    ,'Skim Matrix' : 'sDNASkim'
@@ -171,8 +171,8 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
-                 ,'get_comp_names'   : 'Dev'
-                 ,'Build_components' : 'Dev' 
+                 ,'component_names'   : 'Dev'
+                 ,'Unload_sDNA' : 'Dev'
                  ,'config'           : 'Extra'
                  }
 
@@ -658,10 +658,9 @@ read_Usertext = tools.UsertextReader()
 write_shapefile = tools.ShapefileWriter()
 read_shapefile = tools.ShapefileReader()
 write_Usertext = tools.UsertextWriter()
-# bake_Usertext = UsertextBaker()
 parse_data = tools.DataParser()
 recolour_objects = tools.ObjectsRecolourer()
-get_tool_names = dev_tools.ToolNamesGetter()
+component_names = dev_tools.ToolNamesGetter()
 build_components = dev_tools.sDNA_GH_Builder()
 sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
 config = tools.ConfigManager()
@@ -671,10 +670,9 @@ runner.tools_dict.update(get_Geom = get_Geom
                         ,write_shapefile = write_shapefile
                         ,read_shapefile = read_shapefile
                         ,write_Usertext = write_Usertext
-                        #  ,bake_Usertext = bake_Usertext
                         ,parse_data = parse_data
                         ,recolour_objects = recolour_objects 
-                        ,get_comp_names = get_tool_names
+                        ,component_names = component_names
                         ,Build_components = build_components
                         ,sDNA_General = sDNA_General_dummy_tool
                         ,config = config
@@ -1179,6 +1177,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                              )
         return ret_args
     script.input_params = lambda : tools.sDNA_GH_Tool.params_list(['go', 'opts'])
-    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['OK', 'opts'])
+    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['out', 'OK', 'opts'])
 
 

@@ -80,6 +80,7 @@ from .skel.tools.helpers import checkers
 from .skel.tools.helpers import funcs
 from .skel.tools import runner                                       
 from .skel import add_params
+from .skel import builder
 from . import options_manager
 from . import pyshp_wrapper
 from . import logging_wrapper
@@ -552,6 +553,28 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                                                   ) 
         # we want to mutate the value in the original dict 
         # - so we can't use options for this assignment.  Latter for clarity.
+        raise Exception('Work on this today!! ')
+        tools = sDNAUISpec.get_tools()
+        new_tools = []
+        for tool in tools:
+            if (tool not in RIBBON or 
+                not os.path.isfile(os.path.join(PATH
+                                               ,'components'
+                                               ,tool.__name__ + '.py'
+                                               )
+                                  )):
+                new_tool = cache_sDNA_tool(tool)
+                tools_dict[tool.__name__] = new_tool
+                # if the same tool wants to use a different sDNA, that's fine, 
+                # it just checks the opts it was called with???
+                new_tools += [tool]
+                new_component = builder.MAKE_NEW_COMPONENT
+                builder.MAKE_USER_OBJECT(new_tool, new_component, OTHER_STUFF )
+        if new_tools:
+            ghdoc.PING.UPDATE.SHOWMYNICENEWUSEROBJECTSINTHERIBBON
+            # Or just add them to the default location, then move them afterwards?
+            
+
 
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
