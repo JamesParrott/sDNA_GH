@@ -52,6 +52,7 @@ import shutil
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
+import Grasshopper
 import GhPython
 import System
 from System.Drawing import Color as Colour #.Net / C# Class
@@ -213,7 +214,7 @@ def sDNA_key(opts):
     #type(tuple[str]) -> str
     """ Defines the sub-dict key for each sDNA version, from the tuple
         of module names.
-        e.g. ('sDNAUISpec','runsdnacommand') -> sDNAUISpec. 
+        e.g. ('sDNAUISpec','runsdnacommand') -> sDNAUISpec_and_runsdnacommand. 
         Returns a string so the key can be loaded from a toml file.
     """
     metas = opts['metas']
@@ -221,6 +222,7 @@ def sDNA_key(opts):
            ,metas.runsdnacommand.partition('.')[0]
            )
     return sDNA_fmt_str.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
+
 
 def nested_set_default(d, keys, last_default = None):
     #type(dict, Sequence(Hashable), type[any])
@@ -464,10 +466,68 @@ def update_opts(current_opts
                                                   )  
         
 
+def build_sDNA_GH_components(component_names
+                            ,name_map
+                            ,categories
+                            ,category_abbrevs
+                            ,user_objects_location
+                            ,plug_in_name = None
+                            ):
+    #type(list, dict, dict, dict, str, str)
+    
+    if isinstance(component_names, basestring):
+        component_names = [component_names]
+    
+    
+    if plug_in_name is None:
+        plug_in_name = launcher.package_name
 
 
-def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
-    #type(dict, function, type[any]) -> tuple(str)
+    sDNA_GH_path = os.path.dirname(user_objects_location)
+
+    README_md_path = os.path.join(sDNA_GH_path, 'README.md')
+    if not os.path.isfile(README_md_path):
+        README_md_path = os.path.join(os.path.dirname(sDNA_GH_path), 'README.md')
+        # Readme.md is a level higher in the repo than in the sDNA_GH
+        # folder in a user installation - it is moved intentionally
+        # by create_release_sDNA_GH_zip.bat 
+
+
+
+    logger.debug('README_md_path == %s' % README_md_path)
+
+
+    launcher_path = os.path.join(sDNA_GH_path, 'launcher.py')
+
+    unloader_path = os.path.join(sDNA_GH_path, 'dev_tools', 'unload_sDNA_GH.py')
+
+    return builder.build_comps_with_docstring_from_readme(
+                                 default_path = launcher_path
+                                ,path_dict = {'Unload_sDNA' : unloader_path}
+                                ,plug_in_name = plug_in_name # needed for Ribbon
+                                ,component_names = component_names
+                                ,name_map = name_map
+                                ,categories = categories
+                                ,category_abbrevs = category_abbrevs
+                                ,readme_path = README_md_path
+                                ,user_objects_location = user_objects_location
+                                ,row_height = None
+                                ,row_width = None
+                                )
+
+
+sDNA_GH_ghuser_folder = 'components'
+
+def import_sDNA(opts 
+               ,user_objects_location = os.path.join(launcher.user_install_folder
+                                                    ,launcher.package_name
+                                                    ,sDNA_GH_ghuser_folder
+                                                    )
+               ,load_modules = launcher.load_modules
+               ,logger = logger
+               ,overwrite = False
+               ):
+    #type(dict, str, function, type[any]) -> tuple(str)
     """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
         opt['options'], when a new
         module name is specified in opts['metas'].sDNAUISpec or 
@@ -505,7 +565,8 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
         #
         # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
         try:
-            sDNAUISpec, run_sDNA, _ = load_modules(m_names = requested_sDNA
+            sDNAUISpec, run_sDNA, _ = load_modules(
+                                                 m_names = requested_sDNA
                                                 ,folders = metas.sDNA_paths
                                                 ,logger = logger
                                                 ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
@@ -553,26 +614,29 @@ def import_sDNA(opts, load_modules = launcher.load_modules, logger = logger):
                                                   ) 
         # we want to mutate the value in the original dict 
         # - so we can't use options for this assignment.  Latter for clarity.
-        raise Exception('Work on this today!! ')
-        tools = sDNAUISpec.get_tools()
-        new_tools = []
-        for tool in tools:
-            if (tool not in RIBBON or 
-                not os.path.isfile(os.path.join(PATH
-                                               ,'components'
-                                               ,tool.__name__ + '.py'
-                                               )
-                                  )):
-                new_tool = cache_sDNA_tool(tool)
-                tools_dict[tool.__name__] = new_tool
-                # if the same tool wants to use a different sDNA, that's fine, 
-                # it just checks the opts it was called with???
-                new_tools += [tool]
-                new_component = builder.MAKE_NEW_COMPONENT
-                builder.MAKE_USER_OBJECT(new_tool, new_component, OTHER_STUFF )
-        if new_tools:
-            ghdoc.PING.UPDATE.SHOWMYNICENEWUSEROBJECTSINTHERIBBON
-            # Or just add them to the default location, then move them afterwards?
+
+        metas = opts['metas']
+
+        categories = metas.categories.copy()
+
+        missing_tools = []
+        for Tool in sDNAUISpec.get_tools():
+            ghuser_file = os.path.join(user_objects_location, Tool.__name__ + '.ghuser')              
+            if overwrite or not os.path.isfile(ghuser_file):
+                missing_tools += [Tool.__name__]
+                categories[Tool.__name__] = Tool.category
+        
+        if missing_tools:
+            build_sDNA_GH_components(component_names = missing_tools
+                                    ,name_map = {} 
+                                    # the whole point of the extra call here is
+                                    # to overwrite or build missing single tool 
+                                    # components without nicknames
+                                    ,categories = categories
+                                    ,category_abbrevs = metas.category_abbrevs
+                                    ,user_objects_location = user_objects_location
+                                    )
+            Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
             
 
 
@@ -762,6 +826,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if self.sDNA != sDNA:  # last sDNA this tool has seen != metas.sDNA
             outcome = self.update_tool_opts_and_syntax(opts)
+
+            # If sDNA has changed, the component really needs to be called again.
+            # The script method in main currently handles this, but if this tool
+            # is called from elsewhere this needs checking.  
+            # Return or raise Params update error / warning?
+
             if outcome.lower().startswith('fail'):
                 msg = ('Tried to run tool with out of date sDNA tool options. '
                       +'Tool opts and syntax require update, and sDNA modules'

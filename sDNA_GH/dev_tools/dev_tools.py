@@ -46,6 +46,10 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 #logger = logging.getLogger(__name__)
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
 
 class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = None): 
@@ -74,20 +78,29 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
     retvals = 'retcode', 'names'
 
     component_outputs = retvals[1:]
-               
+
+
 
 
 class sDNA_GH_Builder(tools.sDNA_GH_Tool):
-    builder = builder.ComponentsBuilder()
-    get_names = ToolNamesGetter()
+
 
     def __call__(self, opts):
         self.debug('Starting class logger. ')
         self.logger.debug('opts.keys() == %s ' % opts.keys())
 
-        plug_in_name = launcher.sDNA_GH_package
+        user_objects_location = os.path.join(launcher.repository_folder
+                                            ,launcher.package_name
+                                            ,tools.sDNA_GH_ghuser_folder
+                                            )
 
-        tools.import_sDNA(opts)
+
+        tools.import_sDNA(opts
+                         ,user_objects_location = user_objects_location
+                         ,logger = self.logger
+                         ,overwrite = True
+                         ) 
+                         # This will build sDNA tools
         sDNAUISpec = opts['options'].sDNAUISpec
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False
@@ -102,61 +115,34 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         metas = opts['metas']
 
         categories = metas.categories.copy()
-        categories.update({Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()})
 
         name_map = main.default_name_map # metas.name_map
 
-        retcode, names = self.get_names(opts) # tools_dict keys and sDNAUISpec.get_tools
+        names = list(runner.tools_dict.keys()) # Non sDNA tools.
+        self.logger.debug('names == %s ' % names)
 
         nicknameless_names = [name 
                               for name in names 
-                              if all(name != var and name not in var 
-                                     for var in name_map.values()
-                                    )
+                              if name not in name_map.values()
                              ]
         component_names = list(name_map.keys()) + nicknameless_names
-        self.logger.debug('list(name_map.keys()) == %s ' % list(name_map.keys()))                         
-        self.logger.debug('nicknameless_names == %s ' % list(nicknameless_names))                           
 
-        self.logger.debug('component_names == %s ' % component_names)                           
-        self.logger.debug('type(component_names) == %s ' % type(component_names))
         unique_component_names = set(component_names + ['Unload_sDNA'])
         if 'Build_components' in unique_component_names:
             unique_component_names.remove('Build_components')
+            # Build components (and any instance of this class) assumes it is 
+            # in the project repo, not in a user install.
+
         self.logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        self.logger.debug('names == %s ' % names)
+        tools.build_sDNA_GH_components(names = unique_component_names
+                                      ,name_map = name_map
+                                      ,categories = categories
+                                      ,category_abbrevs = metas.category_abbrevs
+                                      ,user_objects_location = user_objects_location
+                                      )
 
-        README_md = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                                ,'README.md'
-                                )
-
-        self.logger.debug('README_md == %s' % README_md)
-
-
-        launcher_path = os.path.join(os.path.dirname(os.path.dirname(ghdoc.Path))
-                                    ,'sDNA_GH'
-                                    ,'launcher.py'
-                                    )
-
-        unloader_path = os.path.join(os.path.dirname(os.path.dirname(ghdoc.Path))
-                                    ,'sDNA_GH'
-                                    ,'dev_tools'        
-                                    ,'unload_sDNA_GH.py'
-                                    )
-
-        if retcode == 0:
-            retcode, names_built = self.builder(default_path = launcher_path
-                                               ,path_dict = {'Unload_sDNA' : unloader_path}
-                                               ,plug_in_name = plug_in_name
-                                               ,component_names = unique_component_names
-                                               ,name_map = name_map
-                                               ,categories = categories
-                                               ,category_abbrevs = metas.category_abbrevs
-                                               ,readme_file = README_md
-                                               ,row_height = None
-                                               ,row_width = None
-                                               )
+        retcode = 0
 
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)

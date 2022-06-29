@@ -1,6 +1,6 @@
 #! /usr/bin/awk NR==3
 # -*- coding: utf-8 -*-
-# This module can be imported by Python but requires Grasshopper (Rhino3D) to run as a script
+# This module requires Grasshopper Python (Rhino3D)
 
 # MIT License
 
@@ -72,6 +72,10 @@ import os
 import functools
 import importlib
 
+from ghpythonlib.componentbase import executingcomponent as component
+import Grasshopper
+import scriptcontext as sc
+
 
 import_module = importlib.import_module
 try:
@@ -84,9 +88,10 @@ try:
 except NameError:
     basestring = str
 
-sDNA_GH_package = 'sDNA_GH'               
+package_name = 'sDNA_GH'               
 reload_already_imported = False
-
+repository_folder = os.path.dirname( os.path.dirname(ghdoc.Path) )#type: ignore
+user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder
 
 
 
@@ -305,30 +310,22 @@ def load_modules(m_names
 
 
 
+
 if __name__ == '__main__': # False in a compiled component.  But then the user
                            # can't add or remove Params to the component.  
     
     # Grasshopper will look for class MyComponent(component) in global scope
     # so a main function is a little tricky to define.
 
-    from ghpythonlib.componentbase import executingcomponent as component
-    import Grasshopper
-    import scriptcontext as sc
-    # The Grasshopper API imports are done here separately to
-    # let the above functions be imported outside the GhPython
-    # e.g. for testing
-
-
-
     nick_name = ghenv.Component.NickName #type: ignore
 
     if nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents':
-        sDNA_GH_search_paths = os.path.dirname( os.path.dirname(ghdoc.Path) ) #type: ignore
+        sDNA_GH_search_paths = repository_folder 
         # builder can only load sDNA_GH from its parent directory, 
         # e.g. if in a dir one level up in the main repo
         # such as sDNA_build_components.gh.
     else:
-        sDNA_GH_search_paths = [ Grasshopper.Folders.DefaultUserObjectFolder ]
+        sDNA_GH_search_paths = user_install_folder
 
 
     sc.doc = ghdoc #type: ignore
@@ -338,25 +335,27 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     class sDNA_GH(object):
         pass
 
-    error_message = 1
-    sDNA_GH.main, _ = load_modules(m_names = sDNA_GH_package + '.main'
-                                  ,folders = sDNA_GH_search_paths
-                                  ,folders_error_msg = 'Please ensure a folder called %s' % sDNA_GH_package 
-                                                        +' is created in '
-                                                        +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
-                                                        +', containing main.py and all sDNA_GH python' 
-                                                        +' files and subfolders. ' 
-                                  ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  Please copy'
-                                                          +' sDNA_GH.zip into: '
-                                                          +Grasshopper.Folders.DefaultUserObjectFolder
-                                                          +', Unblock it if necessary, and then right click'
-                                                          +' it and select Extract All... in that location. '
-                                                          +' Ensure that main.py and all sDNA_GH python' 
-                                                          +' files and subfolders are inside: '
-                                                          +os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
-                                                                       ,sDNA_GH_package
-                                                                       )
-                                   )         
+    if 'sDNA_GH.main' in sys.modules:
+        sDNA_GH.main = sys.modules['sDNA_GH.main']
+    else:
+        sDNA_GH.main, _ = load_modules(m_names = package_name + '.main'
+                                      ,folders = sDNA_GH_search_paths
+                                      ,folders_error_msg = 'Please ensure a folder called %s' % package_name 
+                                                          +' is created in '
+                                                          +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
+                                                          +', containing main.py and all sDNA_GH python' 
+                                                          +' files and subfolders. ' 
+                                      ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  Please copy'
+                                                              +' sDNA_GH.zip into: '
+                                                              +Grasshopper.Folders.DefaultUserObjectFolder
+                                                              +', Unblock it if necessary, and then right click'
+                                                              +' it and select Extract All... in that location. '
+                                                              +' Ensure that main.py and all sDNA_GH python' 
+                                                              +' files and subfolders are inside: '
+                                                              +os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                                                           ,package_name
+                                                                           )
+                                      )         
 
 
     logger = sDNA_GH.main.logger.getChild('launcher')
@@ -375,7 +374,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
 
-        if sys.argv[0].endswith(os.path.join(sDNA_GH_package,'__main__.py')):   
+        if sys.argv[0].endswith(os.path.join(package_name,'__main__.py')):   
             from .tests.unit_tests import unit_tests_sDNA_GH
         else:
             unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'

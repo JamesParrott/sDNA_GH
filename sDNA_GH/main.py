@@ -1048,6 +1048,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     #
 
         if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:
+            # If new sDNA module names are specified
             has_any_sDNA_tools = False
             for tool in self.tools:
                 if isinstance(tool, tools.sDNA_ToolWrapper):
