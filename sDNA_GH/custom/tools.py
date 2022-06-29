@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 import os
 import logging
@@ -499,11 +499,10 @@ def build_sDNA_GH_components(component_names
 
     launcher_path = os.path.join(sDNA_GH_path, 'launcher.py')
 
-    unloader_path = os.path.join(sDNA_GH_path, 'dev_tools', 'unload_sDNA_GH.py')
 
     return builder.build_comps_with_docstring_from_readme(
                                  default_path = launcher_path
-                                ,path_dict = {'Unload_sDNA' : unloader_path}
+                                ,path_dict = {}
                                 ,plug_in_name = plug_in_name # needed for Ribbon
                                 ,component_names = component_names
                                 ,name_map = name_map
@@ -518,14 +517,13 @@ def build_sDNA_GH_components(component_names
 
 sDNA_GH_ghuser_folder = 'components'
 
+
+
+
+
 def import_sDNA(opts 
-               ,user_objects_location = os.path.join(launcher.user_install_folder
-                                                    ,launcher.package_name
-                                                    ,sDNA_GH_ghuser_folder
-                                                    )
                ,load_modules = launcher.load_modules
                ,logger = logger
-               ,overwrite = False
                ):
     #type(dict, str, function, type[any]) -> tuple(str)
     """ Imports sDNAUISpec.py and runsdnacommand.py and stores them in
@@ -615,28 +613,54 @@ def import_sDNA(opts
         # we want to mutate the value in the original dict 
         # - so we can't use options for this assignment.  Latter for clarity.
 
-        metas = opts['metas']
 
+
+def build_missing_sDNA_components(opts
+                                 ,user_objects_location = os.path.join(
+                                                 launcher.user_install_folder
+                                                ,launcher.package_name
+                                                ,sDNA_GH_ghuser_folder
+                                                )
+                                 ,overwrite = False
+                                 ):
+
+        metas = opts['metas']
         categories = metas.categories.copy()
 
+        sDNAUISpec = opts['options'].sDNAUISpec
+
+
+        def ghuser_file_path(name):
+            #type(str)->str
+            return os.path.join(user_objects_location, name + '.ghuser') 
+
         missing_tools = []
+        names = []
         for Tool in sDNAUISpec.get_tools():
-            ghuser_file = os.path.join(user_objects_location, Tool.__name__ + '.ghuser')              
-            if overwrite or not os.path.isfile(ghuser_file):
-                missing_tools += [Tool.__name__]
+            if not overwrite:
+                names = [nick_name
+                         for (nick_name, tool_name) in metas.name_map.items()
+                         if tool_name == Tool.__name__
+                        ]
+                names.insert(0, Tool.__name__)
+            if overwrite or not any(os.path.isfile(ghuser_file_path(name)) 
+                                    for name in names
+                                   ):
+                missing_tools.append(names[-1] if names else Tool.__name__)
                 categories[Tool.__name__] = Tool.category
         
-        if missing_tools:
-            build_sDNA_GH_components(component_names = missing_tools
-                                    ,name_map = {} 
-                                    # the whole point of the extra call here is
-                                    # to overwrite or build missing single tool 
-                                    # components without nicknames
-                                    ,categories = categories
-                                    ,category_abbrevs = metas.category_abbrevs
-                                    ,user_objects_location = user_objects_location
-                                    )
+        if False: #missing_tools:
+            names_built = build_sDNA_GH_components(component_names = missing_tools
+                                                  ,name_map = {} 
+                                                  # the whole point of the extra call here is
+                                                  # to overwrite or build missing single tool 
+                                                  # components without nicknames
+                                                  ,categories = categories
+                                                  ,category_abbrevs = metas.category_abbrevs
+                                                  ,user_objects_location = user_objects_location
+                                                  )
             Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
+            return names_built
             
 
 
@@ -2132,7 +2156,7 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'python'
                        ,'sDNA_paths'
                        ,'auto_get_Geom' 
-                       ,'auto_read_Usertext'
+                       ,'auto_read_User_Text'
                        ,'auto_write_Shp'
                        ,'auto_read_Shp'
                        ,'auto_plot_data'

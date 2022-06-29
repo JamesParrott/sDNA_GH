@@ -7,7 +7,7 @@
 # Copyright (c) [2021] [Cardiff University, a body incorporated
 # by Royal Charter and a registered charity (number:
 # 1136855) whose administrative offices are at 7th floor 30-
-# 36 Newport Road, UniversityCF24 0DE, Wales, UK]
+# 36 Newport Road, University CF24 0DE, Wales, UK]
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 
 
@@ -76,7 +76,6 @@ from ghpythonlib.componentbase import executingcomponent as component
 import Grasshopper
 import scriptcontext as sc
 
-
 import_module = importlib.import_module
 try:
     reload #type: ignore
@@ -87,6 +86,11 @@ try:
     basestring #type: ignore
 except NameError:
     basestring = str
+
+try:
+    ghdoc #type: ignore
+except NameError:
+    from .custom.skel.basic.ghdoc import ghdoc
 
 package_name = 'sDNA_GH'               
 reload_already_imported = False

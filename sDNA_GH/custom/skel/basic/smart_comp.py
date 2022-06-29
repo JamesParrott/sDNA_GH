@@ -50,7 +50,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 import logging
 import inspect
@@ -192,7 +192,6 @@ def custom_retvals(retval_names
 
 def component_Outputs(self, sources):
     names = [param.NickName for param in self.Params.Output]
-    print(names)
     return custom_retvals([param.NickName for param in self.Params.Output] # param.NickName
                          ,sources
                          ,return_locals = True

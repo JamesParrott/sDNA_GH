@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 import sys
 import os
@@ -79,10 +79,10 @@ output = launcher.Output()
 # code too (e.g. checks, validations and assertions).
 
 default_name_map = dict(Read_Geom = 'get_Geom'
-                       ,Read_Usertext = 'read_Usertext'
+                       ,Read_Usertext = 'read_User_Text'
                        ,Write_Shp = 'write_shapefile'
                        ,Read_Shp = 'read_shapefile'
-                       ,Write_Usertext = 'write_Usertext'
+                       ,Write_Usertext = 'write_User_Text'
                        #,Bake_UserText = 'bake_Usertext'
                        ,Parse_Data = 'parse_data'
                        ,Recolour_Objects = 'recolour_objects'
@@ -140,10 +140,10 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                    # Long names for some Rhino installs that use component Name not Nickname
                    # (these can be removed if the components are all rebuilt s.t. name == nickname) 
     name_map.update({'Read Rhino geometry' : 'get_Geom'
-                   ,'Read user text' : 'read_Usertext'
+                   ,'Read User Text' : 'read_User_Text'
                    ,'Write shapefile' : 'write_shapefile'
                    ,'Read shapefile' : 'read_shapefile'
-                   ,'Write user text' : 'write_Usertext'
+                   ,'Write User Text' : 'write_User_Text'
                    #,Bake_UserText : 'bake_Usertext'
                    ,'Parse data' : 'parse_data'
                    ,'Recolour objects' : 'recolour_objects'
@@ -164,10 +164,10 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                    })
                           
     categories = {'get_Geom'         : 'Extra'
-                 ,'read_Usertext'    : 'Data'
+                 ,'read_User_Text'    : 'Data'
                  ,'write_shapefile'  : '.shp'
                  ,'read_shapefile'   : '.shp'
-                 ,'write_Usertext'   : 'Data'
+                 ,'write_User_Text'   : 'Data'
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
@@ -210,7 +210,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Automatic tool insertion rules ('smart' tools)
     #
     auto_get_Geom = True
-    auto_read_Usertext = True
+    auto_read_User_Text = True
     auto_write_Shp = True
     auto_read_Shp = True
     #auto_parse_data = False  # not used.  ObjectsRecolourer parses if req anyway
@@ -490,7 +490,7 @@ def override_all_opts(args_dict
 
     else:
         msg = 'No config specfied in args_dict'
-        output.debug(msg + ' == %s' % args_dict)
+        output.debug(msg + ' == %s' % args_dict.keys())
         file_ext = msg
 
 
@@ -544,7 +544,7 @@ def override_all_opts(args_dict
                             )
                 ]            
 
-    output.debug('overrides == %s' % overrides)
+    output.debug('overrides == %s' % [override_.keys() for override_ in overrides])
 
 
 
@@ -564,9 +564,8 @@ def override_all_opts(args_dict
                          ,override = override
                          ,metas = dict_to_update['metas']
                          )
-        print('override.keys() == %s' % override.keys())
-        print('dict_to_update.keys() == %s' % dict_to_update.keys())
-        #output.debug('override == %s' % override)
+        output.debug('override.keys() == %s' % override.keys())
+        output.debug('dict_to_update.keys() == %s' % dict_to_update.keys())
 
 
     #output.debug('dict_to_update (opts) == %s' % dict_to_update)
@@ -654,10 +653,10 @@ output.set_logger(logger, flush = True)
 
 
 get_Geom = tools.RhinoObjectsReader()
-read_Usertext = tools.UsertextReader()
+read_User_Text = tools.UsertextReader()
 write_shapefile = tools.ShapefileWriter()
 read_shapefile = tools.ShapefileReader()
-write_Usertext = tools.UsertextWriter()
+write_User_Text = tools.UsertextWriter()
 parse_data = tools.DataParser()
 recolour_objects = tools.ObjectsRecolourer()
 component_names = dev_tools.ToolNamesGetter()
@@ -666,10 +665,10 @@ sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
 config = tools.ConfigManager()
 
 runner.tools_dict.update(get_Geom = get_Geom
-                        ,read_Usertext = read_Usertext
+                        ,read_User_Text = read_User_Text
                         ,write_shapefile = write_shapefile
                         ,read_shapefile = read_shapefile
-                        ,write_Usertext = write_Usertext
+                        ,write_User_Text = write_User_Text
                         ,parse_data = parse_data
                         ,recolour_objects = recolour_objects 
                         ,component_names = component_names
@@ -799,11 +798,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                 ,name_map = name_map
                                 )
 
-        if options.auto_read_Usertext:
+        if options.auto_read_User_Text:
             inserter.insert_tool('before'
                                 ,my_tools
                                 ,Params
-                                ,tool_to_insert = read_Usertext
+                                ,tool_to_insert = read_User_Text
                                 ,is_target = is_class(tools.ShapefileWriter)
                                 ,not_a_target = []
                                 ,tools_dict = runner.tools_dict

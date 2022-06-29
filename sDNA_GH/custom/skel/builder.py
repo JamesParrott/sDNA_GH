@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 import os
 import shutil
@@ -61,73 +61,66 @@ except NameError:
     basestring = str
 
 
-def make_comp_and_user_obj(name
-                          ,tool_name
-                          ,plug_in_name
-                          ,subcategory
-                          ,launcher_code
-                          ,description
-                          ,position
-                          ,user_objects_location = None
-                          ,icons_path = None
-                          ,locked = True
-                          ,SDK_not_script = True
-                          ,add_to_canvas = True
-                          ,ComponentClass = None
-                          ):
-    # type(str, str, str, str, str, str, list, str, str, bool, bool, bool, type[any]) -> int
+def update_compnt_and_make_user_obj(component
+                                   ,name
+                                   ,tool_name
+                                   ,plug_in_name
+                                   ,subcategory
+                                   ,description
+                                   ,position
+                                   ,user_objects_location = None
+                                   ,icons_path = None
+                                   ,locked = True
+                                   ,add_to_canvas = True
+                                   ,update = False
+                                   ):
+    # type(type[any], str, str, str, str, str, list, str, str, bool, bool) -> int
 
     if user_objects_location is None:
         user_objects_location = os.path.join(os.path.dirname(os.path.dirname(ghdoc.Path))
-                                       ,plug_in_name
-                                       ,'components'
-                                       )
+                                            ,plug_in_name
+                                            ,'components'
+                                            )
     
     if not os.path.isdir(user_objects_location):
         os.mkdir(user_objects_location)
 
-    if ComponentClass is None:
-        ComponentClass = GhPython.Component.ZuiPythonComponent 
 
-    new_comp = ComponentClass()
     user_object = Grasshopper.Kernel.GH_UserObject()
 
     sizeF = System.Drawing.SizeF(*position)
 
-    new_comp.Attributes.Pivot = System.Drawing.PointF.Add(new_comp.Attributes.Pivot, sizeF)
-    new_comp.Params.Clear()
+    component.Attributes.Pivot = System.Drawing.PointF.Add(component.Attributes.Pivot, sizeF)
 
     if icons_path is None:
         icons_path = os.path.join(user_objects_location, 'icons')
 
-    if isinstance(tool_name, basestring):
+    if isinstance(tool_name, basestring) and isinstance(icons_path, basestring):
         icon_path = os.path.join(icons_path, tool_name + '.png')
         if os.path.isfile(icon_path):
             user_object.Icon = System.Drawing.Bitmap(icon_path)
 
-    user_object.BaseGuid = new_comp.ComponentGuid
-    new_comp.Code = launcher_code
-    new_comp.Description = user_object.Description.Description = description
+    user_object.BaseGuid = component.ComponentGuid
+    component.Description = user_object.Description.Description = description
     
-    new_comp.IsAdvancedMode = SDK_not_script
-    new_comp.SubCategory = user_object.Description.SubCategory = subcategory 
-    new_comp.Category = user_object.Description.Category = plug_in_name
-    user_object.Exposure = new_comp.Exposure.primary
+    component.SubCategory = user_object.Description.SubCategory = subcategory 
+    component.Category = user_object.Description.Category = plug_in_name
+    user_object.Exposure = component.Exposure.primary
 
-    new_comp.Locked = locked 
+    component.Locked = locked 
 
-    new_comp.NickName = user_object.Description.NickName = name
-    new_comp.Name = name   
+    component.NickName = user_object.Description.NickName = name
+    component.Name = user_object.Description.Name = name   
 
-    user_object.Description.Name = tool_name if isinstance(tool_name, basestring) else name
+    #user_object.Description.Name = tool_name if isinstance(tool_name, basestring) else name
     # this determines the .ghuser filename
 
     if add_to_canvas:
         GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
-        success = GH_doc.AddObject(docObject = new_comp, update = True)
+        success = GH_doc.AddObject(docObject = component, update = update)
     
-    user_object.SetDataFromObject(new_comp)
-    user_object.CreateDefaultPath()
+    user_object.SetDataFromObject(component)
+    user_object.CreateDefaultPath(True)
     user_object.SaveToFile()
     
     if not os.path.isdir(user_objects_location):
@@ -256,22 +249,45 @@ def build_comps_with_docstring_from_readme(default_path
             y = 550 + 220 * (l // row_width)
             position = [x, y]
 
-            success = make_comp_and_user_obj(name = nick_name
+            gh_python_comp = GhPython.Component.ZuiPythonComponent()
+            gh_python_comp.Code = tool_code
+            gh_python_comp.Params.Clear()
+            gh_python_comp.IsAdvancedMode = True
+
+
+            success = update_compnt_and_make_user_obj(
+                                             component = gh_python_comp
+                                            ,name = nick_name
                                             ,tool_name = tool_name
                                             ,plug_in_name = plug_in_name
                                             ,subcategory = subcategory
-                                            ,launcher_code = tool_code
                                             ,description = summary
                                             ,position = position
                                             ,user_objects_location = user_objects_location
                                             ,locked = False  # all new compnts run
-                                            ,SDK_not_script = True
                                             ,add_to_canvas = add_to_canvas
-                                            ,ComponentClass = None # GhPython
                                             )
             if success:
                 names_built += [nick_name]
-    
+
+    readme_ghuser_file = 'Readme.txt.ghuser'
+
+    if not os.path.isfile( os.path.join(user_objects_location, readme_ghuser_file)):
+        readme_component = Grasshopper.Kernel.Special.GH_Panel()
+        readme_component.SetUserText(readme)
+        # success = update_compnt_and_make_user_obj(
+        #                          component = readme_component
+        #                         ,name = readme_ghuser_file.rpartition('.')[0]
+        #                         ,tool_name = readme_ghuser_file.rpartition('.')[0]
+        #                         ,plug_in_name = plug_in_name
+        #                         ,subcategory = 'Extra'
+        #                         ,description = 'Usage and installation info for %s. ' % plug_in_name
+        #                         ,position = [position[0] + row_width, position[1]]
+        #                         ,user_objects_location = user_objects_location
+        #                         ,locked = False  # all new compnts run
+        #                         ,add_to_canvas = add_to_canvas
+        #                         ,update = False # False otherwise a Panel crashes GH
+        #                         )
     return names_built
 
 

@@ -57,7 +57,7 @@ Each sDNA tool has its own a Grasshopper component.  To run a tool, a True value
 
 ##### Running individual tools.  
 Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.
-To work with a Grasshopper Colour Gradient tool, to show fewer Input and Output Params on each component, or to customise sDNA_GH behaviour, e.g. to connect in different inputs and outputs between individual tools running, advanced users may prefer to run only one tool per sDNA_GH component.  To do this, simply 'turn off' the `auto_` options: `auto_get_Geom`, `auto_read_Usertext`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data` by setting them to `false`, e.g. on a Config component.  How to do this is described below in more detail.  
+To work with a Grasshopper Colour Gradient tool, to show fewer Input and Output Params on each component, or to customise sDNA_GH behaviour, e.g. to connect in different inputs and outputs between individual tools running, advanced users may prefer to run only one tool per sDNA_GH component.  To do this, simply 'turn off' the `auto_` options: `auto_get_Geom`, `auto_read_User_Text`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data` by setting them to `false`, e.g. on a Config component.  How to do this is described below in more detail.  
 
 ##### Errors.
 Errors that occurr while the components import the main sDNA_GH Python package  and when they initialise themselves must be cleared by deleting the component and placing a new one.  It may also be necessary to first unload the sDNA_GH package using the unload component, to clear sDNA_GH from GPython's cached modules, and force it to be reimported.  
@@ -123,7 +123,7 @@ The UUIDs of the Rhino objects are converted to strings to preserve the referenc
 
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
-Writes the DataTree in `Data` and list of `Geom`etric objects (polylines) to a shapefile.  If not specified in `file`, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Overwrites existing files, or creates new files.  To create a projection (.prj) file for the new shapefile, specify the path of an existing .prj file in `prj`.  If no Data is supplied it will first call read_User Text (unless `auto_read_Usertext` is false).  To work with sDNA, data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field (key name if it originated as User Text) matches the template string specified in `input_key_str`.  To write all data with any key name to the Shapefile, set it to `{all}`.
+Writes the DataTree in `Data` and list of `Geom`etric objects (polylines) to a shapefile.  If not specified in `file`, a file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  Overwrites existing files, or creates new files.  To create a projection (.prj) file for the new shapefile, specify the path of an existing .prj file in `prj`.  If no Data is supplied it will first call read_User Text (unless `auto_read_User_Text` is false).  To work with sDNA, data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field (key name if it originated as User Text) matches the template string specified in `input_key_str`.  To write all data with any key name to the Shapefile, set it to `{all}`.
 
 
 ###### Read_Shp (read_shapefile)
@@ -176,11 +176,11 @@ To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects
 
 ##### User Text tools    
 ##### Data tools
-###### Read_User Text (read_User Text)
+###### Read_User_Text (read_User_Text)
 Reads all User Text from the provided Rhino objects.  If no Geometry is provided in `Geom`, Read_From_Rhino is first called (unless `auto_get_Geom` = false).
 
 
-###### Write_User Text (write_User Text)
+###### Write_User_Text (write_User_Text)
 Writes User Text to Rhino objects, using a specified pattern for the keys.  Specify the data tree to write in `Data`, and the list of Rhino objects to write to in `Geom`.  The format of the User Text key can be customised in the Python format string `output_key_str`, accepting two named fields (e.g. = `sDNA output={name} run time={datetime}`).  
 
 
@@ -198,7 +198,7 @@ sDNA Integral is the core analysis tool of sDNA. It computes several flow, acces
 
 This automatically calls other support tools, handling an entire Rhino geometry workflow from this one component, additionally running Read_Geom and Write_Shp before the sDNA tool itself, and then Read_Shp and Recolour_Objects afterwards  (unless `auto_write_Shp` = false or `auto_read_Shp` = false respectively).   **WARNING!  All sDNA tools will delete the shapefile named in input after it has been read in, if `del_after_sDNA` = true and `strict_no_del` = false (as they are by default).**  
 
-To add or remove existing `Geom`etry before the results file is read in (to control creation of new geometry objects), set `auto_read_Shp` = false and connect a Read_Shp component.  To analyse a network of Grasshopper Geometry set `auto_get_Geom` and `auto_read_Usertext` to false.  To access the data and geom objects before parsing and recolouring, `auto_plot_data` = false (and connect Parse_Data and Recolour_Objects components).  This allows picking a results field from `abbrevs` to parse without repeating the whole analysis, and using a Grasshopper Colour Gradient component on the canvas to generate colours.  Connect a Grasshopper Legend component to plot a legend. To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects), connect the `Data` and `Geom` outputs to a Grasshopper Custom Preview component.
+To add or remove existing `Geom`etry before the results file is read in (to control creation of new geometry objects), set `auto_read_Shp` = false and connect a Read_Shp component.  To analyse a network of Grasshopper Geometry set `auto_get_Geom` and `auto_read_User_Text` to false.  To access the data and geom objects before parsing and recolouring, `auto_plot_data` = false (and connect Parse_Data and Recolour_Objects components).  This allows picking a results field from `abbrevs` to parse without repeating the whole analysis, and using a Grasshopper Colour Gradient component on the canvas to generate colours.  Connect a Grasshopper Legend component to plot a legend. To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects), connect the `Data` and `Geom` outputs to a Grasshopper Custom Preview component.
 
 To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it); the `advanced` config string can then be saved to a `config.toml` file with an sDNA_GH Config component).  Alternatively create an `advanced` config string manually.  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the and connect it to `advanced`.  See the readme for the list of supported advanced config options.
 
@@ -227,12 +227,12 @@ outputhulls 	  	Output geometry of all convex hulls in analysis
 outputnetradii 	  	Output geometry of all network radii in analysis
 origins= 	  	Only compute selected origins (provide feature IDs as comma separated list). Useful in conjunction with outputgeodesicsm, outputdestinations, outputhulls, outputnetradii.
 destinations= 	  	Only compute selected destinations (ditto)
-nonetdata 	  	Don’t output any network data (used in conjunction with geometry outputs)
+nonetdata 	  	Don't output any network data (used in conjunction with geometry outputs)
 pre= 	  	Prefix text of your choice to output column names
 post= 	  	Postfix text of your choice to output column names
-nobetweenness 	  	Don’t calculate betweenness (saves a lot of time)
-nojunctions 	  	Don’t calculate junction measures (saves time)
-nohull 	  	Don’t calculate convex hull measures (saves time)
+nobetweenness 	  	Don't calculate betweenness (saves a lot of time)
+nojunctions 	  	Don't calculate junction measures (saves time)
+nohull 	  	Don't calculate convex hull measures (saves time)
 linkonly 	  	Only calculate individual link measures.
 outputsums 	  	Output sum measures SAD, SCF etc as well as means MAD, MCF etc.
 probroutes 	  	Output measures of problem routes – routes which exceed the length of the radius
@@ -244,7 +244,7 @@ skipzeroweightdestinations 	1 	Zero weight destinations are skipped by default. 
 skiporiginifzero= 	  	Specified field name. If this field is zero, the origin will be skipped. Allows full customization of skipping origins.
 skipfraction= 	1 	Set to value n, skips calculation for (n-1)/n origins. Effectively the increment value when looping over origins.
 skipmod= 	0 	Chooses which origins are calculated if skipfraction?1. Effectively the initial value when looping over origins: every skipfractionth origin is computed starting with the skipmodth one.
-nostrictnetworkcut 	  	Don’t constrain geodesics to stay within radius. This will create a lot more ‘problem routes’. Only alters behaviour of betweenness measures (not closeness).
+nostrictnetworkcut 	  	Don't constrain geodesics to stay within radius. This will create a lot more 'problem routes'. Only alters behaviour of betweenness measures (not closeness).
 probrouteaction= 	ignore 	Take special action for problem routes that exceed the radius by a factor greater than probroutethreshold. Can be set to ignore, discard or reroute. Reroute changes geodesic to shortest Euclidean path. Only alters betweenness output, not closeness.
 probroutethreshold= 	1.2 	Threshold over which probrouteaction is taken. Note this does not affect computation of probroutes measures, which report on all routes which exceed the radius length regardless of this setting.
 outputdecomposableonly 	  	output only measures which are decomposable i.e. can be summed over different origins (useful for parallelization)
@@ -277,7 +277,7 @@ The file must be formatted correctly, see Creating a zone table or matrix file. 
 
 
 ###### [sDNA_Access_Map](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#specific-origin-accessibility-maps) (sDNAAccessibilityMap)
-Outputs accessibility maps for specific origins, including metric between each origin-destination, Euclidean path length and absolute diversion (difference between Euclidean path length and crow flight path length, similar to circuity, notated here as ‘Div’).
+Outputs accessibility maps for specific origins, including metric between each origin-destination, Euclidean path length and absolute diversion (difference between Euclidean path length and crow flight path length, similar to circuity, notated here as 'Div').
 
 The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.  If outputting “maps” for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
 
@@ -311,7 +311,7 @@ data_absolute= 	Specifies numeric data to be preserved by sDNA prepare (preserve
 data_text= 	Specifies text data to be preserved (merges if identical, concatenates with semicolon otherwise)
 xytol= 	Manual override xy tolerance for fixing endpoint connectivity
 ztol= 	Manual override z tolerance for fixing endpoint connectivity
-merge_if_identical= 	Specifies data fields which can only be merged if identical, i.e. split links will not be fixed if they differ (similar to ‘dissolve’ GIS operation)
+merge_if_identical= 	Specifies data fields which can only be merged if identical, i.e. split links will not be fixed if they differ (similar to 'dissolve' GIS operation)
 
 ###### [sDNA_Line_Measures](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#individual-line-measures) (sDNALineMeasures)
 Individual Line Measures.  Outputs connectivity, bearing, euclidean, angular and hybrid metrics for individual polylines. 
@@ -364,7 +364,7 @@ Box-Cox transformations can be disabled, and the parameters for cross-validation
 
 *Weighting lambda* (`weightlambda`) weights data points by *y<sup>λ-1</sup>*, where *y* is the target variable. Setting to 1 gives unweighted regression. Setting to around 0.7 can encourage selection of a model with better GEH statistic, when used with traffic count data. Setting to 0 is somewhat analogous to using a log link function to handle Poisson distributed residuals, while preserving the model structure as a linear sum of predictors. Depending on what you read, the literature can treat traffic count data as either normally or Poisson distributed, so something in between the two is probably safest.  
 
-Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it’s a machine learning technique that is tuned using cross-validation. The *r²* values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.  
+Ridge and Lasso regression can cope with multicollinear predictor variables, as is common in spatial network models. The techniques can be interpreted as frequentist (adding a penalty term to prevent overfit); Bayesian (imposing a hyperprior on coefficient values); or a mild form of entropy maximization (that limits itself in the case of overspecified models). More generally it's a machine learning technique that is tuned using cross-validation. The *r²* values reported by learn are always cross-validated, giving a built-in test of effectiveness in making predictions.  
 
 *Regularization Lambda* allows manual input of the minimum and maximum values for regularization parameter *λ* in ridge and lasso regression. Enter two values separated by a comma. If this field is left blank, the software attempts to guess a suitable range, but is not always correct. If you are familiar with the theory of regularized regression you may wish to inspect a plot of cross validated *r²* against *λ* to see what is going on. The data to do this is saved with the output model file (if specified), with extension `.regcurve.csv`.
 

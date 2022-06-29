@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.02'
+__version__ = '0.04'
 
 import os
 import logging
@@ -96,15 +96,14 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
 
         tools.import_sDNA(opts
-                         ,user_objects_location = user_objects_location
                          ,logger = self.logger
-                         ,overwrite = True
+
                          ) 
-                         # This will build sDNA tools
+
         sDNAUISpec = opts['options'].sDNAUISpec
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False
-                                                  ,auto_read_Usertext = False
+                                                  ,auto_read_User_Text = False
                                                   ,auto_write_Shp = False
                                                   ,auto_read_Shp = False
                                                   ,auto_plot_data = False
@@ -114,7 +113,8 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         
         metas = opts['metas']
 
-        categories = metas.categories.copy()
+        categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
+        categories.update(metas.categories)
 
         name_map = main.default_name_map # metas.name_map
 
@@ -127,7 +127,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                              ]
         component_names = list(name_map.keys()) + nicknameless_names
 
-        unique_component_names = set(component_names + ['Unload_sDNA'])
+        unique_component_names = set(component_names)
         if 'Build_components' in unique_component_names:
             unique_component_names.remove('Build_components')
             # Build components (and any instance of this class) assumes it is 
@@ -135,12 +135,22 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
         self.logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        tools.build_sDNA_GH_components(names = unique_component_names
+        names_built = tools.build_sDNA_GH_components(
+                                       component_names = unique_component_names
                                       ,name_map = name_map
                                       ,categories = categories
                                       ,category_abbrevs = metas.category_abbrevs
                                       ,user_objects_location = user_objects_location
                                       )
+
+        sDNA_names_built = tools.build_missing_sDNA_components(
+                                            opts                                      
+                                           ,user_objects_location = user_objects_location
+                                           ,overwrite = True
+                                           )
+
+        if sDNA_names_built:
+            names_built += sDNA_names_built
 
         retcode = 0
 
