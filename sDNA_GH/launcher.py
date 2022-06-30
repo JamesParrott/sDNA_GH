@@ -92,7 +92,8 @@ try:
 except NameError:
     from .custom.skel.basic.ghdoc import ghdoc
 
-package_name = 'sDNA_GH'               
+package_name = 'sDNA_GH'
+plug_in_name = 'sDNA'               
 reload_already_imported = False
 repo_folder = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else None
 user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder

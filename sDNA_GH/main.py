@@ -762,6 +762,15 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     #sDNA_GH_package = sDNA_GH_package
     do_not_remove = do_not_remove
     
+    @property
+    def metas(self):
+        return self.opts['metas']
+
+    @property
+    def options(self):
+        return self.opts['options']
+
+
 
     def auto_insert_tools(self, my_tools = None, Params = None):
         #type(type[any], list) -> None
@@ -983,8 +992,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
         result = self.try_to_update_nick_name()
+        nick_name = self.local_metas.nick_name
+
         if result == 'Name updated': # True 1st run after __init__
-            nick_name = self.local_metas.nick_name
             if (nick_name.lower()
                          .replace('_','')
                          .replace(' ','') == 'sdnageneral'
@@ -1031,13 +1041,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug('Opts overridden....    ')
         logger.debug(self.local_metas)
         
-        if (self.opts['metas'].update_path 
-            or not os.path.isfile(self.opts['options'].path) ):
+        if (self.metas.update_path 
+            or not os.path.isfile(self.options.path) ):
 
             path = checkers.get_path(fallback = __file__,  inst = self)
             self.opts['options'] = self.opts['options']._replace(path = path)
 
-        if self.opts['metas'].cmpnts_change: 
+        if self.metas.cmpnts_change: 
             
             if self.local_metas.synced != synced:
                 if self.local_metas.synced:
@@ -1047,7 +1057,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     #
 
         if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:
-            # If new sDNA module names are specified
+            # If new sDNA module names are specified or metas.sDNA is None
             has_any_sDNA_tools = False
             for tool in self.tools:
                 if isinstance(tool, tools.sDNA_ToolWrapper):
@@ -1070,6 +1080,18 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 return (None,) * len(self.Params.Output)
                 # to allow running the component again, with any new inputs
                 # supplied as Params
+            elif nick_name.replace(' ','').replace('_','').lower() == 'config':
+                tools.import_sDNA(opts = self.opts)
+                logger.info('Building missing sDNA components (if any). ')
+                tools.build_missing_sDNA_components(opts = self.opts
+                                                   ,user_objects_location = tools.default_user_objects_location
+                                                   ,add_to_canvas = False
+                                                   ,overwrite = True
+                                                   ,category_abbrevs = self.metas.category_abbrevs
+                                                   ,plug_in_name = dev_tools.plug_in_name #'sDNA'
+                                                   ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
+                                                   )
+
 
 
         logger.debug(go)
@@ -1177,6 +1199,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                              )
         return ret_args
     script.input_params = lambda : tools.sDNA_GH_Tool.params_list(['go', 'opts'])
-    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['out', 'OK', 'opts'])
+    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['OK', 'opts'])
 
 

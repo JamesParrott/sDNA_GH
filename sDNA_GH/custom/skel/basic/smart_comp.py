@@ -300,7 +300,7 @@ def prepare_args(function
             unnamed_pos_args += tuple(params_dict.values())
             logger.debug('Adding all remaining Input Params to unnamed_pos_args')
         else:
-            logger.debug('Unallocated params: %s ' % params_dict)
+            logger.debug('Unallocated param keys: %s ' % params_dict.keys())
 
 
     pos_args_tupl = (tuple(pos_args[arg] for arg in argspec.args if arg in pos_args) 

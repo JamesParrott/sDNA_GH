@@ -468,12 +468,6 @@ def update_opts(current_opts
 
 
 
-sDNA_GH_ghuser_folder = 'components'
-
-
-
-
-
 def import_sDNA(opts 
                ,load_modules = launcher.load_modules
                ,logger = logger
@@ -500,7 +494,7 @@ def import_sDNA(opts
 
 
     requested_sDNA = (metas.sDNAUISpec.partition('.')[0]
-                     ,metas.runsdnacommand.partition('.')[0]) # get rid of .py
+                     ,metas.runsdnacommand.partition('.')[0]) # remove .py s
 
     # To load new sDNA modules, specify the new module names in
     # metas.sDNAUISpec and metas.runsdnacommand
@@ -508,69 +502,77 @@ def import_sDNA(opts
     # If they are loaded successfully the actual corresponding modules are
     # in options.sDNAUISpec and options.run_sDNA
 
-    if ( metas.sDNA is None or
-         isinstance(options.sDNAUISpec, options_manager.Sentinel) or
-         isinstance(options.run_sDNA, options_manager.Sentinel) or
+    if ( metas.sDNA is not None and
+         not isinstance(options.sDNAUISpec, options_manager.Sentinel) and
+         not isinstance(options.run_sDNA, options_manager.Sentinel) and
          (options.sDNAUISpec.__name__
-                    ,options.run_sDNA.__name__) != requested_sDNA ):
+                    ,options.run_sDNA.__name__) == requested_sDNA ):
         #
-        # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
-        try:
-            sDNAUISpec, run_sDNA, _ = load_modules(
-                                                 m_names = requested_sDNA
-                                                ,folders = metas.sDNA_paths
-                                                ,logger = logger
-                                                ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
-                                                                        +"Please supply valid names of 'sDNAUISpec.py' "
-                                                                        +"and 'runsdnacommand.py' files in "
-                                                                        +"sDNAUISpec and runsdnacommand "
-                                                                        +"respectively. " # names not strings error
-                                                ,folders_error_msg = "sDNA_GH could not find a valid folder to look for sDNA in. " 
-                                                                    +"Please supply the "
-                                                                    +"correct name of the path to the sDNA folder you "
-                                                                    +"wish to use with sDNA_GH, in "
-                                                                    +"sDNA_paths.  This folder should contain the files named in "
-                                                                    +"sDNAUISpec: %s.py and runsdnacommand: %s.py. " % requested_sDNA
-                                                                    # not existing folders error
-                                                ,modules_not_found_msg = "sDNA_GH failed to find an sDNA file specified in "
-                                                                        +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
-                                                                        +" in any of the folders in sDNA_paths. "
-                                                                        +" Please either ensure a folder in "
-                                                                        +" sDNA_paths contains both the valid "
-                                                                        +"'sDNAUISpec.py' named %s and " % requested_sDNA[0]
-                                                                        +"'runsdnacommand.py' named %s " % requested_sDNA[0]
-                                                                        +"from your chosen sDNA installation, or adjust the "
-                                                                        +" file names specified in sDNAUISpec and runsdnacommand"
-                                                                        +" to their equivalent files in it (to use more than "
-                                                                        +" one sDNA you must rename these files in any extra). "
-                                                )
-        except launcher.InvalidArgsError as e:
-            raise e
-        except:
-            msg = ("sDNA_GH failed to import the sDNA files specified in "
-                  +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
-                  +" from any of the folders in sDNA_paths."
-                  +" Please either ensure a folder in"
-                  +" sDNA_paths contains the two corresponding valid files"
-                  +" from your chosen sDNA installation, or adjust the"
-                  +" file names specified in sDNAUISpec and runsdnacommand"
-                  +" to their equivalent files in it (to import a second"
-                  +" or third sDNA etc. you must rename these files to different"
-                  +" names than in the first). "
-                  )
-            logger.error(msg)
-            raise ImportError(msg)
-        opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
-                                                  ,run_sDNA = run_sDNA 
-                                                  ) 
-        # we want to mutate the value in the original dict 
-        # - so we can't use options for this assignment.  Latter for clarity.
+        return None
 
+    logger.info('Attempting import of sDNA (sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA)
+    #
+    # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
+    try:
+        sDNAUISpec, run_sDNA, _ = load_modules(
+                                                m_names = requested_sDNA
+                                            ,folders = metas.sDNA_paths
+                                            ,logger = logger
+                                            ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
+                                                                    +"Please supply valid names of 'sDNAUISpec.py' "
+                                                                    +"and 'runsdnacommand.py' files in "
+                                                                    +"sDNAUISpec and runsdnacommand "
+                                                                    +"respectively. " # names not strings error
+                                            ,folders_error_msg = "sDNA_GH could not find a valid folder to look for sDNA in. " 
+                                                                +"Please supply the "
+                                                                +"correct name of the path to the sDNA folder you "
+                                                                +"wish to use with sDNA_GH, in "
+                                                                +"sDNA_paths.  This folder should contain the files named in "
+                                                                +"sDNAUISpec: %s.py and runsdnacommand: %s.py. " % requested_sDNA
+                                                                # not existing folders error
+                                            ,modules_not_found_msg = "sDNA_GH failed to find an sDNA file specified in "
+                                                                    +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+                                                                    +" in any of the folders in sDNA_paths. "
+                                                                    +" Please either ensure a folder in "
+                                                                    +" sDNA_paths contains both the valid "
+                                                                    +"'sDNAUISpec.py' named %s and " % requested_sDNA[0]
+                                                                    +"'runsdnacommand.py' named %s " % requested_sDNA[0]
+                                                                    +"from your chosen sDNA installation, or adjust the "
+                                                                    +" file names specified in sDNAUISpec and runsdnacommand"
+                                                                    +" to their equivalent files in it (to use more than "
+                                                                    +" one sDNA you must rename these files in any extra). "
+                                            )
+    except launcher.InvalidArgsError as e:
+        raise e
+    except:
+        msg = ("sDNA_GH failed to import the sDNA files specified in "
+                +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+                +" from any of the folders in sDNA_paths."
+                +" Please either ensure a folder in"
+                +" sDNA_paths contains the two corresponding valid files"
+                +" from your chosen sDNA installation, or adjust the"
+                +" file names specified in sDNAUISpec and runsdnacommand"
+                +" to their equivalent files in it (to import a second"
+                +" or third sDNA etc. you must rename these files to different"
+                +" names than in the first). "
+                )
+        logger.error(msg)
+        raise ImportError(msg)
+    opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
+                                                ,run_sDNA = run_sDNA 
+                                                ) 
+    # we want to mutate the value in the original dict 
+    # - so we can't use options for this assignment.  Latter for clarity.
+    return None
+
+
+default_user_objects_location = os.path.join(launcher.user_install_folder
+                                            ,launcher.package_name
+                                            ,builder.ghuser_folder
+                                            )
 
 
 def build_sDNA_GH_components(component_names
-                            ,user_objects_location
-                            ,plug_in_name = None
                             ,**kwargs
                             ):
     #type(list, dict, dict, dict, str, str, bool)
@@ -579,11 +581,13 @@ def build_sDNA_GH_components(component_names
         component_names = [component_names]
     
     
-    if plug_in_name is None:
-        plug_in_name = 'sDNA' #launcher.package_name
+    user_objects_location = kwargs.setdefault('user_objects_location'
+                                             ,default_user_objects_location
+                                             )
 
-
-    sDNA_GH_path = os.path.dirname(user_objects_location)
+    sDNA_GH_path = user_objects_location
+    while os.path.basename(sDNA_GH_path) != launcher.package_name:
+        sDNA_GH_path = os.path.dirname(sDNA_GH_path)
 
     README_md_path = os.path.join(sDNA_GH_path, 'README.md')
     if not os.path.isfile(README_md_path):
@@ -603,65 +607,57 @@ def build_sDNA_GH_components(component_names
     return builder.build_comps_with_docstring_from_readme(
                                  default_path = launcher_path
                                 ,path_dict = {}
-                                ,plug_in_name = plug_in_name # needed for Ribbon
                                 ,component_names = component_names
                                 ,readme_path = README_md_path
-                                ,user_objects_location = user_objects_location
                                 ,row_height = None
                                 ,row_width = None
                                 ,**kwargs
                                 )
 
 
-def build_missing_sDNA_components(
-             opts
-            ,user_objects_location = os.path.join(launcher.user_install_folder
-                                                ,launcher.package_name
-                                                ,sDNA_GH_ghuser_folder
-                                                )
-            ,overwrite = False
-            ,**kwargs
-            ):
+def build_missing_sDNA_components(opts
+                                 ,**kwargs
+                                 ):
     #type(dict, str, bool, kwargs) -> list
-        metas = opts['metas']
-        categories = metas.categories.copy()
+    metas = opts['metas']
+    categories = metas.categories.copy()
 
-        sDNAUISpec = opts['options'].sDNAUISpec
+    sDNAUISpec = opts['options'].sDNAUISpec
 
+    overwrite = kwargs.get('overwrite', False)
+    user_objects_location = kwargs.setdefault('user_objects_location'
+                                             ,default_user_objects_location  
+                                             )
 
-        def ghuser_file_path(name):
-            #type(str)->str
-            return os.path.join(user_objects_location, name + '.ghuser') 
+    def ghuser_file_path(name):
+        #type(str)->str
+        return os.path.join(user_objects_location, name + '.ghuser') 
 
-        missing_tools = []
-        names = []
-        for Tool in sDNAUISpec.get_tools():
-            if not overwrite:
-                names = [nick_name
-                         for (nick_name, tool_name) in metas.name_map.items()
-                         if tool_name == Tool.__name__
-                        ]
-                names.insert(0, Tool.__name__)
-            if overwrite or not any(os.path.isfile(ghuser_file_path(name)) 
-                                    for name in names
-                                   ):
-                missing_tools.append(names[-1] if names else Tool.__name__)
-                categories[Tool.__name__] = Tool.category
-        
-        if False: #missing_tools:
-            names_built = build_sDNA_GH_components(component_names = missing_tools
-                                                  ,name_map = {} 
-                                                  # the whole point of the extra call here is
-                                                  # to overwrite or build missing single tool 
-                                                  # components without nicknames
-                                                  ,categories = categories
-                                                  ,category_abbrevs = metas.category_abbrevs
-                                                  ,user_objects_location = user_objects_location
-                                                  ,overwrite = overwrite
-                                                  ,**kwargs
-                                                  )
-            Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
-            return names_built
+    missing_tools = []
+    names = []
+    for Tool in sDNAUISpec.get_tools():
+        names = [nick_name
+                 for (nick_name, tool_name) in metas.name_map.items()
+                 if tool_name == Tool.__name__
+                ]
+        names.insert(0, Tool.__name__)
+        if not any( os.path.isfile(ghuser_file_path(name)) for name in names ):
+            name_to_use = names[-1] if names else Tool.__name__
+            logger.debug('Appending tool name to missing_tools: %s' % name_to_use)
+            missing_tools.append(name_to_use)
+            categories[name_to_use] = Tool.category
+    
+    if missing_tools:
+        names_built = build_sDNA_GH_components(component_names = missing_tools
+                                              ,name_map = {} 
+                                              # the whole point of the extra call here is
+                                              # to overwrite or build missing single tool 
+                                              # components without nicknames
+                                              ,categories = categories
+                                              ,**kwargs
+                                              )
+        Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
+        return names_built
             
 
 

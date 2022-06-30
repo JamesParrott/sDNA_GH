@@ -241,6 +241,23 @@ def add_Params(IO
         else:
             logger.debug('Param in do_not_add == ' + param_name)
 
+
+def delete_Param(Params, name, IO):
+    #type(type[Any], str, str) -> None
+    """ Deletes a Param from a GH component.  
+    
+        WARNING.  Glitches and crashes are likely when calling this function
+        from a component, on its own Params (e.g. that will cause it to run
+        again).  
+    """
+    check_IO(IO)
+    Params_to_delete = [P for P in getattr(Params, IO) if P.NickName == name]
+    for Param in Params_to_delete:
+        {'Input' : Params.UnregisterInputParameter
+        ,'Output' : Params.UnregisterOutputParameter
+        }.get(IO)(Param)
+    
+
 class ParamsToolAdder(object):
 
     def __init__(self, Params):

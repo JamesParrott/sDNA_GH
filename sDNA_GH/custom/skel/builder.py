@@ -60,6 +60,8 @@ try:
 except NameError:
     basestring = str
 
+ghuser_folder = os.path.join('components', 'automatically_built')
+
 
 def update_compnt_and_make_user_obj(component
                                    ,name
@@ -68,6 +70,7 @@ def update_compnt_and_make_user_obj(component
                                    ,subcategory
                                    ,description
                                    ,position
+                                   ,plug_in_sub_folder = None
                                    ,user_objects_location = None
                                    ,icons_path = None
                                    ,locked = True
@@ -77,10 +80,13 @@ def update_compnt_and_make_user_obj(component
                                    ):
     # type(type[any], str, str, str, str, str, list, str, str, bool, bool) -> int
 
+    if plug_in_sub_folder is None:
+        plug_in_sub_folder = plug_in_name
+
     if user_objects_location is None:
-        user_objects_location = os.path.join(os.path.dirname(os.path.dirname(ghdoc.Path))
-                                            ,plug_in_name
-                                            ,'components'
+        user_objects_location = os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                            ,plug_in_sub_folder
+                                            ,ghuser_folder
                                             )
     
     if not os.path.isdir(user_objects_location):
@@ -94,7 +100,7 @@ def update_compnt_and_make_user_obj(component
     component.Attributes.Pivot = System.Drawing.PointF.Add(component.Attributes.Pivot, sizeF)
 
     if icons_path is None:
-        icons_path = os.path.join(user_objects_location, 'icons')
+        icons_path = os.path.join(os.path.dirname(user_objects_location), 'icons')
 
     if isinstance(tool_name, basestring) and isinstance(icons_path, basestring):
         icon_path = os.path.join(icons_path, tool_name + '.png')
@@ -175,10 +181,8 @@ class DocStringParser(object):
             raise ValueError(msg)
 
         doc_string_content = doc_string_match.groups()[0]
-        logger.debug('doc_string_content == %s' % doc_string_content)
 
         doc_string = doc_string_match.group()
-        logger.debug('doc_string_match == %s' % doc_string)
 
         return doc_string_content, doc_string
 
@@ -246,9 +250,8 @@ def build_comps_with_docstring_from_readme(default_path
                 summary_match = tool_summary_pattern.search( readme )
                 if summary_match:
                     summary = summary_match.groups()[0]
-                    logger.debug('summary == %s' % summary)
                     tool_code = tool_code.replace(doc_string_content, summary)
-                    logger.debug('tool_code[:2400] == %s' % tool_code[:2400])
+                    logger.debug('updating tool_code with summary')
                 else:
                     logger.debug('tool_code unchanged.')
                     summary = doc_string_content
@@ -260,8 +263,11 @@ def build_comps_with_docstring_from_readme(default_path
 
             gh_python_comp = GhPython.Component.ZuiPythonComponent()
             gh_python_comp.Code = tool_code
-            gh_python_comp.Params.Clear()
             gh_python_comp.IsAdvancedMode = True
+
+            for name, IO in zip(('a','x','y'),('Output','Input','Input')):
+                add_params.delete_Param(gh_python_comp.Params, name, IO)
+            #gh_python_comp.Params.Clear()
 
 
             success = update_compnt_and_make_user_obj(
