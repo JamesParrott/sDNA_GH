@@ -94,7 +94,7 @@ except NameError:
 
 package_name = 'sDNA_GH'               
 reload_already_imported = False
-repository_folder = os.path.dirname( os.path.dirname(ghdoc.Path) )#type: ignore
+repo_folder = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else None
 user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder
 
 
@@ -323,8 +323,10 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     nick_name = ghenv.Component.NickName #type: ignore
 
-    if nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents':
-        sDNA_GH_search_paths = repository_folder 
+    if (repo_folder and 
+        nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents'):
+        #
+        sDNA_GH_search_paths = repo_folder 
         # builder can only load sDNA_GH from its parent directory, 
         # e.g. if in a dir one level up in the main repo
         # such as sDNA_build_components.gh.

@@ -89,7 +89,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         self.debug('Starting class logger. ')
         self.logger.debug('opts.keys() == %s ' % opts.keys())
 
-        user_objects_location = os.path.join(launcher.repository_folder
+        user_objects_location = os.path.join(launcher.repo_folder
                                             ,launcher.package_name
                                             ,tools.sDNA_GH_ghuser_folder
                                             )
@@ -141,11 +141,14 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                       ,categories = categories
                                       ,category_abbrevs = metas.category_abbrevs
                                       ,user_objects_location = user_objects_location
+                                      ,add_to_canvas = False
+                                      ,overwrite = True
                                       )
 
         sDNA_names_built = tools.build_missing_sDNA_components(
                                             opts                                      
                                            ,user_objects_location = user_objects_location
+                                           ,add_to_canvas = False
                                            ,overwrite = True
                                            )
 

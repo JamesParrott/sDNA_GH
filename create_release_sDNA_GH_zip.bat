@@ -11,6 +11,9 @@ rem     set /a count+=1
 rem     set fileset[!count!]=%%x
 rem )
 rem dir %fileset%
+
+rem start " " build_components.bat
+
 copy README.md sDNA_GH
 copy README.pdf sDNA_GH
 copy license.md sDNA_GH
@@ -20,6 +23,8 @@ tar -caf ..\sDNA_GH.zip *
 del README.md
 del README.pdf
 del license.md
+
+
 REM sDNA_GH\* dev_tools\batch_files\unblock_all_files_powershell.bat
 REM cd ..
 REM tar -uf sDNA_GH.zip dev_tools\batch_files\unblock_all_files_powershell.bat

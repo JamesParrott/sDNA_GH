@@ -72,6 +72,7 @@ def update_compnt_and_make_user_obj(component
                                    ,icons_path = None
                                    ,locked = True
                                    ,add_to_canvas = True
+                                   ,overwrite = False
                                    ,update = False
                                    ):
     # type(type[any], str, str, str, str, str, list, str, str, bool, bool) -> int
@@ -118,6 +119,8 @@ def update_compnt_and_make_user_obj(component
     if add_to_canvas:
         GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
         success = GH_doc.AddObject(docObject = component, update = update)
+    else:
+        success = True  # could improve this.
     
     user_object.SetDataFromObject(component)
     user_object.CreateDefaultPath(True)
@@ -125,6 +128,14 @@ def update_compnt_and_make_user_obj(component
     
     if not os.path.isdir(user_objects_location):
         os.mkdir(user_objects_location)
+    elif overwrite:
+        dest_file = os.path.join(user_objects_location
+                                ,os.path.basename(user_object.Path)
+                                )
+        if os.path.isfile(dest_file):
+            os.remove(dest_file)
+
+
     shutil.move(user_object.Path, user_objects_location)
 
 
@@ -173,17 +184,15 @@ class DocStringParser(object):
 
 
 def build_comps_with_docstring_from_readme(default_path
-                                          ,path_dict
-                                          ,plug_in_name
                                           ,component_names
                                           ,name_map
                                           ,categories
                                           ,category_abbrevs
-                                          ,add_to_canvas = True
+                                          ,path_dict = {}                                          
                                           ,readme_path = None
-                                          ,user_objects_location = None
                                           ,row_height = None
                                           ,row_width = None
+                                          ,**kwargs
                                           ):
     #type(str, dict, str, list, dict, dict, dict, str, int, int) -> int, list
     # = (kwargs[k] for k in self.args)
@@ -259,35 +268,32 @@ def build_comps_with_docstring_from_readme(default_path
                                              component = gh_python_comp
                                             ,name = nick_name
                                             ,tool_name = tool_name
-                                            ,plug_in_name = plug_in_name
                                             ,subcategory = subcategory
                                             ,description = summary
                                             ,position = position
-                                            ,user_objects_location = user_objects_location
                                             ,locked = False  # all new compnts run
-                                            ,add_to_canvas = add_to_canvas
+                                            ,**kwargs
                                             )
             if success:
                 names_built += [nick_name]
 
-    readme_ghuser_file = 'Readme.txt.ghuser'
+    # CRASHES GRASSHOPPER!!
+    # readme_ghuser_file = 'Readme.txt.ghuser'  
 
-    if not os.path.isfile( os.path.join(user_objects_location, readme_ghuser_file)):
-        readme_component = Grasshopper.Kernel.Special.GH_Panel()
-        readme_component.SetUserText(readme)
-        # success = update_compnt_and_make_user_obj(
-        #                          component = readme_component
-        #                         ,name = readme_ghuser_file.rpartition('.')[0]
-        #                         ,tool_name = readme_ghuser_file.rpartition('.')[0]
-        #                         ,plug_in_name = plug_in_name
-        #                         ,subcategory = 'Extra'
-        #                         ,description = 'Usage and installation info for %s. ' % plug_in_name
-        #                         ,position = [position[0] + row_width, position[1]]
-        #                         ,user_objects_location = user_objects_location
-        #                         ,locked = False  # all new compnts run
-        #                         ,add_to_canvas = add_to_canvas
-        #                         ,update = False # False otherwise a Panel crashes GH
-        #                         )
+    # if not os.path.isfile( os.path.join(user_objects_location, readme_ghuser_file)):
+    #     readme_component = Grasshopper.Kernel.Special.GH_Panel()
+    #     readme_component.SetUserText(readme)
+    #     success = update_compnt_and_make_user_obj(
+    #                              component = readme_component
+    #                             ,name = readme_ghuser_file.rpartition('.')[0]
+    #                             ,tool_name = readme_ghuser_file.rpartition('.')[0]
+    #                             ,plug_in_name = plug_in_name
+    #                             ,subcategory = 'Extra'
+    #                             ,description = 'Usage and installation info for %s. ' % plug_in_name
+    #                             ,position = [position[0] + row_width, position[1]]
+    #                             ,locked = False  # all new compnts run
+    #                             ,**kwargs
+    #                             )
     return names_built
 
 

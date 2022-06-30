@@ -466,53 +466,6 @@ def update_opts(current_opts
                                                   )  
         
 
-def build_sDNA_GH_components(component_names
-                            ,name_map
-                            ,categories
-                            ,category_abbrevs
-                            ,user_objects_location
-                            ,plug_in_name = None
-                            ):
-    #type(list, dict, dict, dict, str, str)
-    
-    if isinstance(component_names, basestring):
-        component_names = [component_names]
-    
-    
-    if plug_in_name is None:
-        plug_in_name = launcher.package_name
-
-
-    sDNA_GH_path = os.path.dirname(user_objects_location)
-
-    README_md_path = os.path.join(sDNA_GH_path, 'README.md')
-    if not os.path.isfile(README_md_path):
-        README_md_path = os.path.join(os.path.dirname(sDNA_GH_path), 'README.md')
-        # Readme.md is a level higher in the repo than in the sDNA_GH
-        # folder in a user installation - it is moved intentionally
-        # by create_release_sDNA_GH_zip.bat 
-
-
-
-    logger.debug('README_md_path == %s' % README_md_path)
-
-
-    launcher_path = os.path.join(sDNA_GH_path, 'launcher.py')
-
-
-    return builder.build_comps_with_docstring_from_readme(
-                                 default_path = launcher_path
-                                ,path_dict = {}
-                                ,plug_in_name = plug_in_name # needed for Ribbon
-                                ,component_names = component_names
-                                ,name_map = name_map
-                                ,categories = categories
-                                ,category_abbrevs = category_abbrevs
-                                ,readme_path = README_md_path
-                                ,user_objects_location = user_objects_location
-                                ,row_height = None
-                                ,row_width = None
-                                )
 
 
 sDNA_GH_ghuser_folder = 'components'
@@ -615,15 +568,61 @@ def import_sDNA(opts
 
 
 
-def build_missing_sDNA_components(opts
-                                 ,user_objects_location = os.path.join(
-                                                 launcher.user_install_folder
+def build_sDNA_GH_components(component_names
+                            ,user_objects_location
+                            ,plug_in_name = None
+                            ,**kwargs
+                            ):
+    #type(list, dict, dict, dict, str, str, bool)
+    
+    if isinstance(component_names, basestring):
+        component_names = [component_names]
+    
+    
+    if plug_in_name is None:
+        plug_in_name = 'sDNA' #launcher.package_name
+
+
+    sDNA_GH_path = os.path.dirname(user_objects_location)
+
+    README_md_path = os.path.join(sDNA_GH_path, 'README.md')
+    if not os.path.isfile(README_md_path):
+        README_md_path = os.path.join(os.path.dirname(sDNA_GH_path), 'README.md')
+        # Readme.md is a level higher in the repo than in the sDNA_GH
+        # folder in a user installation - it is moved intentionally
+        # by create_release_sDNA_GH_zip.bat 
+
+
+
+    logger.debug('README_md_path == %s' % README_md_path)
+
+
+    launcher_path = os.path.join(sDNA_GH_path, 'launcher.py')
+
+
+    return builder.build_comps_with_docstring_from_readme(
+                                 default_path = launcher_path
+                                ,path_dict = {}
+                                ,plug_in_name = plug_in_name # needed for Ribbon
+                                ,component_names = component_names
+                                ,readme_path = README_md_path
+                                ,user_objects_location = user_objects_location
+                                ,row_height = None
+                                ,row_width = None
+                                ,**kwargs
+                                )
+
+
+def build_missing_sDNA_components(
+             opts
+            ,user_objects_location = os.path.join(launcher.user_install_folder
                                                 ,launcher.package_name
                                                 ,sDNA_GH_ghuser_folder
                                                 )
-                                 ,overwrite = False
-                                 ):
-
+            ,overwrite = False
+            ,**kwargs
+            ):
+    #type(dict, str, bool, kwargs) -> list
         metas = opts['metas']
         categories = metas.categories.copy()
 
@@ -658,6 +657,8 @@ def build_missing_sDNA_components(opts
                                                   ,categories = categories
                                                   ,category_abbrevs = metas.category_abbrevs
                                                   ,user_objects_location = user_objects_location
+                                                  ,overwrite = overwrite
+                                                  ,**kwargs
                                                   )
             Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
             return names_built
