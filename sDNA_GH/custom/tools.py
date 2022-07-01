@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.04'
+__version__ = '0.05'
 
 import os
 import logging
@@ -52,10 +52,9 @@ import shutil
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
-import Grasshopper
 import GhPython
 import System
-from System.Drawing import Color as Colour #.Net / C# Class
+import System.Drawing #.Net / C# Class
             #System is also available in IronPython, but System.Drawing isn't
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
@@ -270,6 +269,7 @@ class sDNAMetaOptions(object):
 
 sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 
+
 class PythonOptions(object):
     """All options needed to specify a Python interpreter, or search for one. """
 
@@ -284,8 +284,10 @@ class PythonOptions(object):
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
+
 class MissingPythonError(Exception):
     pass
+
 
 def check_python(opts):
     #type(dict) -> None 
@@ -723,7 +725,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     +sDNAUISpec.__file__
                     +'.  Rename tool_name or change sDNA version.  '
                     )
-            self.error(msg)
+            self.logger.error(msg)
             raise ValueError(msg)
                             
         self.input_spec = sDNA_Tool.getInputSpec()
@@ -868,7 +870,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             and f_name.rpartition('.')[2] in ['shp','dbf','shx']):  
             input_file = f_name
 
-        self.logger.debug('input file == %s ' % input_file)
+        msg = 'input file == %s ' % input_file
+        if not os.path.isfile(input_file):
+            msg += 'is not a file. To run sDNA please set file or input_file '
+            msg += 'to the path of a valid shape file. '
+            self.logger.error(msg)
+            raise ValueError(msg)
          
 
 
@@ -1044,7 +1051,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                              )
                               )
 
-    component_inputs = ('config', 'selected', 'layer') 
+    component_inputs = ('config', 'selected', 'layer', 'Geom') 
     
     def __call__(self, opts = None, gdm = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -1080,7 +1087,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                    )
                          )
         if gdm:
-            self.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
+            self.logger.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
 
 
         if tmp_gdm:
@@ -1088,6 +1095,21 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                                    ,tmp_gdm
                                                    ,options.merge_subdicts
                                                    )
+
+        if not gdm:
+            msg = 'Was unable to read any Rhino Geometry.  '
+            if options.selected:
+                msg += 'selected == %s. Select some objects ' % options.selected
+                msg += ' or set selected = false.  '
+            if options.layer:
+                msg = 'layer == %s. ' % options.layer
+                msg += 'Please set layer to the name of a layer containing objects'
+                msg += ', or to select all layers, set layer to any value that is '
+                msg += 'not the name of an existing layer.  ' 
+            msg += 'gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
         self.logger.debug('after override ....Last objects read: \n'
                          +'\n'.join( str(x) 
                                      for x in gdm.keys()[-3:]
@@ -1114,9 +1136,14 @@ class UsertextReader(sDNA_GH_Tool):
         #type(str, dict, dict) -> int, str, dict, list
 
         self.debug('Starting read_Usertext...  Creating Class logger. ')
-        self.debug('type(gdm) == %s ' % type(gdm))
-        self.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
-
+        self.logger.debug('type(gdm) == %s ' % type(gdm))
+        self.logger.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
+        
+        if not gdm:
+            msg = 'No Geometric objects to read User Text from, gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+        
         gdm = gdm.copy()
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
@@ -1211,7 +1238,11 @@ class ShapefileWriter(sDNA_GH_Tool):
             #     else:
             #         return []
         if gdm:
-            self.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
+            self.logger.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
+        else:
+            msg = 'No geometry and no data to write to shapefile, gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -1234,6 +1265,8 @@ class ShapefileWriter(sDNA_GH_Tool):
                 # but just to be safe and future proof we remove
                 # '.3dm'                                        
         self.logger.debug(f_name)
+
+
 
         (retcode
         ,f_name
@@ -1292,18 +1325,25 @@ class ShapefileReader(sDNA_GH_Tool):
         if opts is None:
             opts = self.opts
         options = opts['options']
-        self.debug('Creating Class Logger.  Reading shapefile... ')
+        self.debug('Creating Class Logger.  Checking shapefile... ')
 
+        if not os.path.isfile(f_name):
+            msg = "'File': %s  is not a valid file. " % f_name
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
+        self.logger.debug('Reading shapefile... ')
         (shp_fields
         ,recs
         ,shapes
         ,bbox ) = pyshp_wrapper.get_fields_recs_and_shapes( f_name )
 
-        self.debug('bbox == %s' % bbox)
+        self.logger.debug('bbox == %s' % bbox)
 
-        self.debug('gdm == %s ' % gdm)
+        self.logger.debug('gdm == %s ' % gdm)
 
-        self.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
+        self.logger.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
 
         if not recs:
             self.logger.warning('No data read from Shapefile ' + f_name + ' ')
@@ -1426,6 +1466,22 @@ class UsertextWriter(sDNA_GH_Tool):
 
         date_time_of_run = asctime()
         self.debug('Creating Class logger at: %s ' % date_time_of_run)
+
+        if not gdm:
+            msg = 'No Geom objects to write to. '
+            msg += 'Connect list of objects to Geom. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+        if all(not value for value in gdm.values()):
+            msg = 'No Data to write as User Text. '
+            msg += 'Please connect data tree to Data. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
 
 
         def write_dict_to_UserText_on_Rhino_obj(d, rhino_obj):
@@ -1554,12 +1610,37 @@ class DataParser(sDNA_GH_Tool):
 
         field = options.field
 
+        if not gdm:
+            msg = 'No Geom. Parser requires Geom to preserve correspondence '
+            msg += 'if the Data is re-ordered. '
+            msg += 'Connect list of objects to Geom. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+        items_missing_field = [(key, val)
+                               for (key, val) in gdm.items() 
+                               if (not isinstance(val, dict) or
+                                   field not in val or 
+                                   not isinstance(val[field], Number))
+                              ]
+
+        if items_missing_field:
+            msg = 'Missing data for field.  '
+            msg += 'The following: %s have a non-numeric record ' % items_missing_field
+            msg += 'for the field name: %s (or no record at all), ' % field
+            msg += 'and so cannot be parsed for field: %s' % field 
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
+
         plot_min, plot_max = options.plot_min, options.plot_max
         if (isinstance(plot_min, Number)  
            and isinstance(plot_max, Number) 
            and plot_min < plot_max ):
             #
-            self.info('Valid max and min override will be used. ')
+            self.logger.info('Valid max and min override will be used. ')
             #
             x_min, x_max = plot_min, plot_max 
             if options.exclude:
@@ -1573,7 +1654,7 @@ class DataParser(sDNA_GH_Tool):
                                   )
 
         else:
-            self.debug('Manually calculating max and min. '
+            self.logger.debug('Manually calculating max and min. '
                       +'No valid override found. '
                       )
             data = OrderedDict( (obj, val[field]) 
@@ -1607,7 +1688,7 @@ class DataParser(sDNA_GH_Tool):
            not use_manual_classes 
            and options.class_spacing in self.quantile_methods ):
             # 
-            self.info('Sorting data... ')
+            self.logger.info('Sorting data... ')
             data = OrderedDict( sorted(data.items()
                                       ,key = lambda tupl : tupl[1]
                                       ) 
@@ -1691,7 +1772,7 @@ class DataParser(sDNA_GH_Tool):
             if options.re_normaliser not in data_cruncher.valid_re_normalisers:
                 # e.g.  'linear', exponential, logarithmic
                 msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
-                self.error(msg)
+                self.logger.error(msg)
                 raise ValueError(msg)
 
 
@@ -1864,16 +1945,43 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         options = opts['options']
         
         field = options.field
+
+        if not gdm:
+            msg = 'No Geom objects to recolour. '
+            msg += 'Connect list of objects to Geom. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
+        items_missing_field = [(key, val)
+                               for (key, val) in gdm.items() 
+                               if  (not isinstance(val, dict) or
+                                   field not in val or 
+                                   not isinstance(val[field], Number))
+                              ]
+
+        if items_missing_field:
+            msg = 'Missing data for field.  '
+            msg += 'The following: %s have a non-numeric record ' % items_missing_field
+            msg += 'for the field name: %s (or no record at all), ' % field
+            msg += 'and so cannot be parsed for field: %s' % field 
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
+
         objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
                                     if isinstance(v, dict) and field in v    
                                    )  # any geom with a normal gdm dict of keys / vals
         if objs_to_parse or plot_min is None or plot_max is None:
+            self.info('Raw data in ObjectsRecolourer.  Calling DataParser...')
             x_min, x_max, gdm_in = self.parse_data(gdm = objs_to_parse
                                                   ,opts = opts
                                                   )
                                                                             
         else:
-            self.debug('Skipping parsing')
+            self.logger.debug('Skipping parsing')
             gdm_in = {}
             x_min, x_max = plot_min, plot_max
 
@@ -1927,8 +2035,16 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
         objs_to_recolour = OrderedDict( (k, v) 
                                         for k, v in gdm.items()
-                                        if isinstance(v, Colour)  
+                                        if isinstance(v, System.Drawing.Color)  
                                       )
+
+        if not objs_to_get_colour and not objs_to_recolour:
+            msg = 'No objects to recolour have been found. '
+            msg += 'objs_to_parse == %s, ' % objs_to_parse
+            msg += 'objs_to_get_colour == %s, ' % objs_to_get_colour
+            msg += 'objs_to_recolour == %s.  ' % objs_to_recolour
+            self.logger.error(msg)
+            raise ValueError(msg)
             
         objs_to_recolour.update( (key,  get_colour(val))
                                  for key, val in objs_to_get_colour.items()
@@ -2059,7 +2175,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
         gdm = GH_objs_to_recolour
         leg_cols = list(legend_tags.values())
-        leg_tags = list(legend_tags.keys())
+        leg_tags = list(legend_tags.keys())  #both are used by smart component
 
 
         sc.doc =  ghdoc 
@@ -2073,7 +2189,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
           # To recolour GH Geom with a native Preview component
 
 
+
 class sDNA_GeneralDummyTool(sDNA_GH_Tool):
+
     component_inputs = ('tool',)
 
     def __call__(self, *args, **kwargs):
@@ -2176,9 +2294,9 @@ class ConfigManager(sDNA_GH_Tool):
             opts['metas'] = opts['metas']._replace(sDNA_paths = sDNA_paths)
             import_sDNA(opts)
 
-        self.debug('options == %s ' % options)
+        self.logger.debug('options == %s ' % options)
 
-        # self.debug('opts == %s' % '\n\n'.join(str(item) 
+        # self.logger.debug('opts == %s' % '\n\n'.join(str(item) 
         #                                      for item in opts.items()
         #                                      )
         #           )
@@ -2188,7 +2306,7 @@ class ConfigManager(sDNA_GH_Tool):
         del parsed_dict['metas']['config'] # no nested options files
         if 'sDNA' in parsed_dict['metas']:
             del parsed_dict['metas']['sDNA'] # read only.  auto-updated.
-        # self.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
+        # self.logger.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
         #                                              for item in parsed_dict.items()
         #                                             )
         #           )
@@ -2199,7 +2317,7 @@ class ConfigManager(sDNA_GH_Tool):
                                 # wide config.toml file
                 #
                 save_to = self.save_to
-                self.warning('Saving opts to installation wide '
+                self.logger.warning('Saving opts to installation wide '
                             +' file: %s' % self.save_to
                             )
                 del parsed_dict['options']['path'] # no possibly specific path 
@@ -2210,7 +2328,7 @@ class ConfigManager(sDNA_GH_Tool):
             else:
                 msg = "There already is an installation wide options file"
                 msg += "  Specify save_to == 'config.toml' to overwrite it)."
-                self.error(msg)            
+                self.logger.error(msg)            
                 raise ValueError(msg)
 
         else:
@@ -2220,11 +2338,11 @@ class ConfigManager(sDNA_GH_Tool):
             
         if not isinstance(save_to, basestring):
             msg = 'File path to save to: %s needs to be a string' % save_to
-            self.error(msg)            
+            self.logger.error(msg)            
             raise TypeError(msg)
         if not save_to.endswith('.toml'):
             msg = 'File path to save to: %s needs to end in .toml' % save_to
-            self.error(msg)
+            self.logger.error(msg)
             raise ValueError(msg)
 
 

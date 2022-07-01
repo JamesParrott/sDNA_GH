@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.04'
+__version__ = '0.05'
 
 import logging
 import abc
@@ -300,7 +300,7 @@ class ParamsToolAdder(object):
         input_tools = tools[:]
 
         if wrapper:
-            output_tools = [wrapper] + output_tools
+            output_tools += [wrapper]
             input_tools = [wrapper] + input_tools
 
         self.needed_outputs = [output['NickName'] 

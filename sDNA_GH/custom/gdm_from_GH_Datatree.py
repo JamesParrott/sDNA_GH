@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.04'
+__version__ = '0.05'
 
 
 import logging
@@ -196,6 +196,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
                                                                    )
                                                    ,[ (tuple(), Data[len(Geom):]) ]
                                                    )
+        logger.warning('More Data than Geom.  Assigning list of surplus Data items to the empty tuple key. ')
     else:
         if len(Geom) > len(Data):
             logger.debug('repeating OrderedDict() after Data... ')

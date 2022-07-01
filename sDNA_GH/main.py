@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.04'
+__version__ = '0.05'
 
 import sys
 import os
@@ -183,7 +183,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  }
 
     category_abbrevs = {'Analysis geometry' : 'Geom'}
-
+    make_new_comps = True
     move_user_objects = False
 
 
@@ -239,8 +239,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for tools.sDNA_ToolWrapper
     #
-    sDNAUISpec = options_manager.error_raising_sentinel_factory('No sDNA module:'
-                                               +' sDNAUISpec loaded yet. '
+    sDNAUISpec = options_manager.error_raising_sentinel_factory(
+                                                'No sDNA module: '
+                                               +'sDNAUISpec loaded yet. '
                                                ,'Module is loaded from the '
                                                +'first files named in '
                                                +'metas.sDNAUISpec and '
@@ -248,8 +249,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                +'found in a path in '
                                                +'metas.sDNA_paths. '
                                                )
-    run_sDNA = options_manager.error_raising_sentinel_factory('No sDNA module:'
-                                               +' run_sDNA loaded yet. '
+    run_sDNA = options_manager.error_raising_sentinel_factory(
+                                                'No sDNA module: '
+                                               +'run_sDNA loaded yet. '
                                                ,'Module is loaded from the '
                                                +'first files named in '
                                                +'metas.sDNAUISpec and '
@@ -1085,7 +1087,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 return (None,) * len(self.Params.Output)
                 # to allow running the component again, with any new inputs
                 # supplied as Params
-            elif nick_name.replace(' ','').replace('_','').lower() == 'config':
+            elif (self.metas.make_new_comps and
+                  nick_name.replace(' ','').replace('_','').lower() == 'config'):
+                #
                 tools.import_sDNA(opts = self.opts)
                 logger.info('Building missing sDNA components (if any). ')
                 tools.build_missing_sDNA_components(opts = self.opts
