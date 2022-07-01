@@ -572,13 +572,9 @@ default_user_objects_location = os.path.join(launcher.user_install_folder
                                             )
 
 
-def build_sDNA_GH_components(component_names
-                            ,**kwargs
-                            ):
-    #type(list, dict, dict, dict, str, str, bool)
+def build_sDNA_GH_components(**kwargs):
+    #type(kwargs) -> list
     
-    if isinstance(component_names, basestring):
-        component_names = [component_names]
     
     
     user_objects_location = kwargs.setdefault('user_objects_location'
@@ -607,7 +603,6 @@ def build_sDNA_GH_components(component_names
     return builder.build_comps_with_docstring_from_readme(
                                  default_path = launcher_path
                                 ,path_dict = {}
-                                ,component_names = component_names
                                 ,readme_path = README_md_path
                                 ,row_height = None
                                 ,row_width = None
@@ -624,7 +619,6 @@ def build_missing_sDNA_components(opts
 
     sDNAUISpec = opts['options'].sDNAUISpec
 
-    overwrite = kwargs.get('overwrite', False)
     user_objects_location = kwargs.setdefault('user_objects_location'
                                              ,default_user_objects_location  
                                              )
@@ -645,12 +639,11 @@ def build_missing_sDNA_components(opts
             name_to_use = names[-1] if names else Tool.__name__
             logger.debug('Appending tool name to missing_tools: %s' % name_to_use)
             missing_tools.append(name_to_use)
-            categories[name_to_use] = Tool.category
-            raise Exception('Fix this!')
+            categories[Tool.__name__] = Tool.category
     
     if missing_tools:
         names_built = build_sDNA_GH_components(component_names = missing_tools
-                                              ,name_map = {} 
+                                              ,name_map = metas.name_map
                                               # the whole point of the extra call here is
                                               # to overwrite or build missing single tool 
                                               # components without nicknames
@@ -658,6 +651,8 @@ def build_missing_sDNA_components(opts
                                               ,**kwargs
                                               )
         return names_built
+    logger.debug('No missing sDNA tools were found. ')
+    return []
             
 
 

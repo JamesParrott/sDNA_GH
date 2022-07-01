@@ -400,9 +400,6 @@ Easily build all the other components for the sDNA installation provided.  User 
 Functionality is provided by main.py in the sDNA_GH Python package, so new components are only needed to be built for tools sDNA_GH doesn't know about yet.
 
 
-###### Component_Names Get (component_names)
-Returns a list of the names of all the components sDNA_GH currently knows how to build, including sDNA tool.  Searches the keys in the tools dict and all the classes returned by `sDNAUISpec.get_tools()`, and validates all the nick_names in the `name_map`.
-
 
 <!--
 ### Example Grasshopper definitions.

@@ -138,7 +138,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
         kwargs = dict(user_objects_location = user_objects_location
                      ,add_to_canvas = False
-                     ,overwrite = True
+                     ,move_user_objects = True
                      ,category_abbrevs = metas.category_abbrevs
                      ,plug_in_name = launcher.plug_in_name #'sDNA'
                      ,plug_in_sub_folder = plug_in_sub_folder # 'sDNA_GH'
@@ -148,6 +148,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                        component_names = unique_component_names
                                       ,name_map = name_map
                                       ,categories = categories
+                                      ,overwrite = True
                                       ,**kwargs
                                       )
 

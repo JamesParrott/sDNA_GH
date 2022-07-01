@@ -86,7 +86,6 @@ default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
                                ,('Write_Usertext', 'write_User_Text')
                                ,('Parse_Data', 'parse_data')
                                ,('Config', 'config')
-                               ,('Component_Names', 'component_names')
                                #
                                ,('sDNA_Integral', 'sDNAIntegral')
                                ,('sDNA_Skim', 'sDNASkim')
@@ -153,7 +152,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                                 ,('Read shapefile', 'read_shapefile')
                                 ,('Write User Text', 'write_User_Text')
                                 ,('Parse data', 'parse_data')
-                                ,('Component Names', 'component_names')
                                 #
                                 ,('Integral Analysis', 'sDNAIntegral')
                                 ,('Skim Matrix', 'sDNASkim')
@@ -180,12 +178,13 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
-                 ,'component_names'  : 'Dev'
                  ,'Unload_sDNA'      : 'Dev'
                  ,'config'           : 'Extra'
                  }
 
     category_abbrevs = {'Analysis geometry' : 'Geom'}
+
+    move_user_objects = False
 
 
 #######################################################################################################################
@@ -667,7 +666,6 @@ read_shapefile = tools.ShapefileReader()
 write_User_Text = tools.UsertextWriter()
 parse_data = tools.DataParser()
 recolour_objects = tools.ObjectsRecolourer()
-component_names = dev_tools.ToolNamesGetter()
 build_components = dev_tools.sDNA_GH_Builder()
 sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
 config = tools.ConfigManager()
@@ -679,7 +677,6 @@ runner.tools_dict.update(get_Geom = get_Geom
                         ,write_User_Text = write_User_Text
                         ,parse_data = parse_data
                         ,recolour_objects = recolour_objects 
-                        ,component_names = component_names
                         ,Build_components = build_components
                         ,sDNA_General = sDNA_General_dummy_tool
                         ,config = config
@@ -1092,12 +1089,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 tools.import_sDNA(opts = self.opts)
                 logger.info('Building missing sDNA components (if any). ')
                 tools.build_missing_sDNA_components(opts = self.opts
-                                                   ,user_objects_location = tools.default_user_objects_location
-                                                   ,add_to_canvas = False
-                                                   ,overwrite = True
                                                    ,category_abbrevs = self.metas.category_abbrevs
                                                    ,plug_in_name = dev_tools.plug_in_name #'sDNA'
                                                    ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
+                                                   ,user_objects_location = tools.default_user_objects_location
+                                                   ,add_to_canvas = False
+                                                   ,overwrite = True
+                                                   ,move_user_objects = self.metas.move_user_objects
                                                    )
 
 

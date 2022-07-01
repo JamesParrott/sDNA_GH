@@ -62,32 +62,45 @@ except NameError:
 
 ghuser_folder = os.path.join('components', 'automatically_built')
 
-
-def update_compnt_and_make_user_obj(component
-                                   ,name
-                                   ,tool_name
-                                   ,plug_in_name
-                                   ,subcategory
-                                   ,description
-                                   ,position
-                                   ,plug_in_sub_folder = None
-                                   ,user_objects_location = None
-                                   ,icons_path = None
-                                   ,locked = True
-                                   ,add_to_canvas = True
-                                   ,overwrite = False
-                                   ,update = False
-                                   ):
-    # type(type[any], str, str, str, str, str, list, str, str, bool, bool) -> int
-
+def default_args(plug_in_sub_folder
+                ,user_objects_location
+                ,plug_in_name
+                ):
+    #type(str, str, str) -> str, str
     if plug_in_sub_folder is None:
         plug_in_sub_folder = plug_in_name
 
     if user_objects_location is None:
-        user_objects_location = os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
-                                            ,plug_in_sub_folder
-                                            ,ghuser_folder
-                                            )
+        user_objects_location = os.path.join(
+                                   Grasshopper.Folders.DefaultUserObjectFolder
+                                  ,plug_in_sub_folder
+                                  ,ghuser_folder
+                                  )
+    return plug_in_sub_folder, user_objects_location
+
+def update_compnt_and_make_user_obj(component
+                                   ,name
+                                   ,tool_name
+                                   ,subcategory
+                                   ,description
+                                   ,position
+                                   ,plug_in_name
+                                   ,plug_in_sub_folder = None
+                                   ,user_objects_location = None
+                                   ,icons_path = None
+                                   ,locked = False
+                                   ,overwrite = False
+                                   ,add_to_canvas = True
+                                   ,move_user_object = False
+                                   ,update = False
+                                   ):
+    # type(type[any], str, str, str, str, list, str, str, str, str, bool, bool, bool, bool, bool) -> int
+
+    plug_in_sub_folder, user_objects_location = default_args(
+                                                         plug_in_sub_folder
+                                                        ,user_objects_location
+                                                        ,plug_in_name
+                                                        )
     
     if not os.path.isdir(user_objects_location):
         os.mkdir(user_objects_location)
@@ -135,20 +148,22 @@ def update_compnt_and_make_user_obj(component
     user_object.SetDataFromObject(component)
     user_object.CreateDefaultPath(True)
     user_object.SaveToFile()
-    #Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
+ 
+    if move_user_object:
+        if not os.path.isdir(user_objects_location):
+            os.mkdir(user_objects_location)
+        elif overwrite:
+            dest_file = os.path.join(user_objects_location
+                                    ,os.path.basename(user_object.Path)
+                                    )
+            if os.path.isfile(dest_file):
+                os.remove(dest_file)
 
-    # if not os.path.isdir(user_objects_location):
-    #     os.mkdir(user_objects_location)
-    # elif overwrite:
-    #     dest_file = os.path.join(user_objects_location
-    #                             ,os.path.basename(user_object.Path)
-    #                             )
-    #     if os.path.isfile(dest_file):
-    #         os.remove(dest_file)
+        logger.debug('Moving user object %s' % user_object.Description.Name)
 
-
-    # shutil.move(user_object.Path, user_objects_location)
-
+        shutil.move(user_object.Path, user_objects_location)
+    else:
+        logger.debug('Not moving user object %s ' % user_object.Description.Name)
 
     return success
 
@@ -197,22 +212,30 @@ def build_comps_with_docstring_from_readme(default_path
                                           ,name_map
                                           ,categories
                                           ,category_abbrevs
+                                          ,move_user_objects = False                              
                                           ,path_dict = {}                                          
                                           ,readme_path = None
                                           ,row_height = None
                                           ,row_width = None
                                           ,**kwargs
                                           ):
-    #type(str, dict, str, list, dict, dict, dict, str, int, int) -> int, list
+    #type(str, list, dict, dict, dict, bool, dict, str, int, int) -> list
     # = (kwargs[k] for k in self.args)
+    if isinstance(component_names, basestring):
+        component_names = [component_names]
+
+    logger.debug('categories.keys() == %s' % categories.keys())
+    logger.debug('name_map.keys() == %s' % name_map.keys())
+    
+
+
     row_height = 175 if row_height is None else row_height
     row_width = 800 if row_width is None else row_width
 
     
     while (isinstance(default_path, Iterable) 
-            and not isinstance(default_path, str)):
+            and not isinstance(default_path, basestring)):
         default_path = default_path[0]
-
 
 
     readme = text_file_to_str(readme_path)
@@ -221,12 +244,13 @@ def build_comps_with_docstring_from_readme(default_path
 
 
 
-    names_built = []
+    user_obj_paths = []
 
     get_doc_string = DocStringParser()
 
     for i, nick_name in enumerate(component_names):
         tool_name = name_map.get(nick_name, nick_name)
+        logger.debug('%s is a nick name for the tool %s' % (nick_name, tool_name))
         tool_code_path = path_dict.get(tool_name, default_path)
         tool_code = text_file_to_str(tool_code_path)
 
@@ -236,75 +260,62 @@ def build_comps_with_docstring_from_readme(default_path
             msg =  'No category for ' + nick_name
             logger.error(msg)
             raise ValueError(msg)
-        else:
 
-            subcategory = categories[tool_name]
-            subcategory = category_abbrevs.get(subcategory, subcategory)
-            logger.debug('Placing tool: %s in category: %s.' % (tool_name, subcategory))
+        subcategory = categories[tool_name]
+        subcategory = category_abbrevs.get(subcategory, subcategory)
+        logger.debug('Placing tool: %s in category: %s.' % (tool_name, subcategory))
 
-            logger.debug('Building tool with (nick)name = %s' % nick_name)
-            if readme:
-                logger.debug('Looking in readme for tool with name = %s' % tool_name)
+        logger.debug('Building tool with (nick)name = %s' % nick_name)
+        if readme:
+            logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
-                tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
-                                                 ,flags = re.DOTALL
-                                                 )
-                logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
+            tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
+                                                ,flags = re.DOTALL
+                                                )
+            logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
 
-                summary_match = tool_summary_pattern.search( readme )
-                if summary_match:
-                    summary = summary_match.groups()[0]
-                    tool_code = tool_code.replace(doc_string_content, summary)
-                    logger.debug('updating tool_code with summary')
-                else:
-                    logger.debug('No summary found for tool: %s.  Tool_code unchanged.' % tool_name)
-                    summary = doc_string_content
+            summary_match = tool_summary_pattern.search( readme )
+            if summary_match:
+                summary = summary_match.groups()[0]
+                tool_code = tool_code.replace(doc_string_content, summary)
+                logger.debug('updating tool_code with summary')
+            else:
+                logger.debug('No summary found for tool: %s.  Tool_code unchanged.' % tool_name)
+                summary = doc_string_content
 
-            l = i * row_height
-            x = 200 + (l % row_width)
-            y = 550 + 220 * (l // row_width)
-            position = [x, y]
+        l = i * row_height
+        x = 200 + (l % row_width)
+        y = 550 + 220 * (l // row_width)
+        position = [x, y]
 
-            gh_python_comp = GhPython.Component.ZuiPythonComponent()
-            gh_python_comp.Code = tool_code
-            gh_python_comp.IsAdvancedMode = True
+        gh_python_comp = GhPython.Component.ZuiPythonComponent()
+        gh_python_comp.Code = tool_code
+        gh_python_comp.IsAdvancedMode = True
 
-            for name, IO in zip(('a','x','y'),('Output','Input','Input')):
-                add_params.delete_Param(gh_python_comp.Params, name, IO)
-            #gh_python_comp.Params.Clear()
+        for name, IO in zip(('a','x','y'),('Output','Input','Input')):
+            add_params.delete_Param(gh_python_comp.Params, name, IO)
+        #gh_python_comp.Params.Clear()
 
 
-            success = update_compnt_and_make_user_obj(
-                                             component = gh_python_comp
-                                            ,name = nick_name
-                                            ,tool_name = tool_name
-                                            ,subcategory = subcategory
-                                            ,description = summary
-                                            ,position = position
-                                            ,locked = False  # all new compnts run
-                                            ,**kwargs
-                                            )
-            if success:
-                names_built += [nick_name]
+        user_obj_path = update_compnt_and_make_user_obj(
+                                         component = gh_python_comp
+                                        ,name = nick_name
+                                        ,tool_name = tool_name
+                                        ,subcategory = subcategory
+                                        ,description = summary
+                                        ,position = position
+                                        ,icons_path = None  
+                                        ,locked = False  # all new compnts run
+                                        ,move_user_object = move_user_objects
+                                        ,**kwargs
+                                        )
+        if user_obj_path:
+            user_obj_paths += [user_obj_path]
 
-    # CRASHES GRASSHOPPER!!
-    # readme_ghuser_file = 'Readme.txt.ghuser'  
+    return user_obj_paths
 
-    # if not os.path.isfile( os.path.join(user_objects_location, readme_ghuser_file)):
-    #     readme_component = Grasshopper.Kernel.Special.GH_Panel()
-    #     readme_component.SetUserText(readme)
-    #     success = update_compnt_and_make_user_obj(
-    #                              component = readme_component
-    #                             ,name = readme_ghuser_file.rpartition('.')[0]
-    #                             ,tool_name = readme_ghuser_file.rpartition('.')[0]
-    #                             ,plug_in_name = plug_in_name
-    #                             ,subcategory = 'Extra'
-    #                             ,description = 'Usage and installation info for %s. ' % plug_in_name
-    #                             ,position = [position[0] + row_width, position[1]]
-    #                             ,locked = False  # all new compnts run
-    #                             ,**kwargs
-    #                             )
-    return names_built
+
+
 
 
 
