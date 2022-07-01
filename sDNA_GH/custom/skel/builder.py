@@ -105,7 +105,11 @@ def update_compnt_and_make_user_obj(component
     if isinstance(tool_name, basestring) and isinstance(icons_path, basestring):
         icon_path = os.path.join(icons_path, tool_name + '.png')
         if os.path.isfile(icon_path):
+            logger.debug('Adding icon: %s to user_object: %s' % (icon_path, name))
             user_object.Icon = System.Drawing.Bitmap(icon_path)
+        else:
+            logger.debug("'Icon path' is not a path: %s, for user_object %s." % (icon_path, name))
+
 
     user_object.BaseGuid = component.ComponentGuid
     component.Description = user_object.Description.Description = description
@@ -131,18 +135,19 @@ def update_compnt_and_make_user_obj(component
     user_object.SetDataFromObject(component)
     user_object.CreateDefaultPath(True)
     user_object.SaveToFile()
-    
-    if not os.path.isdir(user_objects_location):
-        os.mkdir(user_objects_location)
-    elif overwrite:
-        dest_file = os.path.join(user_objects_location
-                                ,os.path.basename(user_object.Path)
-                                )
-        if os.path.isfile(dest_file):
-            os.remove(dest_file)
+    #Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
+
+    # if not os.path.isdir(user_objects_location):
+    #     os.mkdir(user_objects_location)
+    # elif overwrite:
+    #     dest_file = os.path.join(user_objects_location
+    #                             ,os.path.basename(user_object.Path)
+    #                             )
+    #     if os.path.isfile(dest_file):
+    #         os.remove(dest_file)
 
 
-    shutil.move(user_object.Path, user_objects_location)
+    # shutil.move(user_object.Path, user_objects_location)
 
 
     return success
@@ -229,22 +234,21 @@ def build_comps_with_docstring_from_readme(default_path
 
         if tool_name not in categories:
             msg =  'No category for ' + nick_name
-            logging.error(msg)
+            logger.error(msg)
             raise ValueError(msg)
         else:
 
-
-
             subcategory = categories[tool_name]
             subcategory = category_abbrevs.get(subcategory, subcategory)
+            logger.debug('Placing tool: %s in category: %s.' % (tool_name, subcategory))
 
             logger.debug('Building tool with (nick)name = %s' % nick_name)
             if readme:
                 logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
                 tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
-                                                    ,flags = re.DOTALL
-                                                    )
+                                                 ,flags = re.DOTALL
+                                                 )
                 logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
 
                 summary_match = tool_summary_pattern.search( readme )
@@ -253,7 +257,7 @@ def build_comps_with_docstring_from_readme(default_path
                     tool_code = tool_code.replace(doc_string_content, summary)
                     logger.debug('updating tool_code with summary')
                 else:
-                    logger.debug('tool_code unchanged.')
+                    logger.debug('No summary found for tool: %s.  Tool_code unchanged.' % tool_name)
                     summary = doc_string_content
 
             l = i * row_height

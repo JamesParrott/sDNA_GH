@@ -48,6 +48,7 @@ __version__ = '0.04'
 import sys
 import os
 from collections import namedtuple, OrderedDict
+import locale
 
 from . import launcher
 from .custom import options_manager
@@ -78,32 +79,39 @@ output = launcher.Output()
 # from a class, to avoid re-stating the order of the keys, and to run other
 # code too (e.g. checks, validations and assertions).
 
-default_name_map = dict(Read_Geom = 'get_Geom'
-                       ,Read_Usertext = 'read_User_Text'
-                       ,Write_Shp = 'write_shapefile'
-                       ,Read_Shp = 'read_shapefile'
-                       ,Write_Usertext = 'write_User_Text'
-                       #,Bake_UserText = 'bake_Usertext'
-                       ,Parse_Data = 'parse_data'
-                       ,Recolour_Objects = 'recolour_objects'
-                       ,Recolor_Objects = 'recolour_objects'
-                       ,Config = 'config'
-                       ,Component_Names = 'component_names'
-                       #
-                       ,sDNA_Integral = 'sDNAIntegral'
-                       ,sDNA_Skim = 'sDNASkim'
-                       ,sDNA_Int_From_OD = 'sDNAIntegralFromOD'
-                       ,sDNA_Geodesics = 'sDNAGeodesics'
-                       ,sDNA_Hulls = 'sDNAHulls'
-                       ,sDNA_Net_Radii = 'sDNANetRadii'
-                       ,sDNA_Access_Map = 'sDNAAccessibilityMap'
-                       ,sDNA_Prepare = 'sDNAPrepare'
-                       ,sDNA_Line_Measures = 'sDNALineMeasures'
-                       ,sDNA_Learn = 'sDNALearn'
-                       ,sDNA_Predict = 'sDNAPredict'
-                       #,Test_Plot = ['get_Geom', 'read_shapefile', 'parse_data', 'recolour_objects']
-                       #,Test_Parse = ['get_Geom', 'write_shapefile', 'sDNAIntegral', 'read_shapefile', 'parse_data']
-                       )
+default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
+                               ,('Read_Usertext', 'read_User_Text')
+                               ,('Write_Shp', 'write_shapefile')
+                               ,('Read_Shp', 'read_shapefile')
+                               ,('Write_Usertext', 'write_User_Text')
+                               ,('Parse_Data', 'parse_data')
+                               ,('Config', 'config')
+                               ,('Component_Names', 'component_names')
+                               #
+                               ,('sDNA_Integral', 'sDNAIntegral')
+                               ,('sDNA_Skim', 'sDNASkim')
+                               ,('sDNA_Int_From_OD', 'sDNAIntegralFromOD')
+                               ,('sDNA_Geodesics', 'sDNAGeodesics')
+                               ,('sDNA_Hulls', 'sDNAHulls')
+                               ,('sDNA_Net_Radii', 'sDNANetRadii')
+                               ,('sDNA_Access_Map', 'sDNAAccessibilityMap')
+                               ,('sDNA_Prepare', 'sDNAPrepare')
+                               ,('sDNA_Line_Measures', 'sDNALineMeasures')
+                               ,('sDNA_Learn', 'sDNALearn')
+                               ,('sDNA_Predict', 'sDNAPredict')
+                               ]
+                              )
+
+language_code = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
+
+if 'en' in language_code and 'us' in language_code:
+    Recolour = 'Recolor'
+else:
+    Recolour = 'Recolour'
+
+
+default_name_map[Recolour+'_Objects'] = 'recolour_objects'
+
 
 class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                     ,tools.ConfigManager.opts['metas'] # has config.toml path
@@ -139,40 +147,41 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
     name_map = default_name_map.copy()
                    # Long names for some Rhino installs that use component Name not Nickname
                    # (these can be removed if the components are all rebuilt s.t. name == nickname) 
-    name_map.update({'Read Rhino geometry' : 'get_Geom'
-                   ,'Read User Text' : 'read_User_Text'
-                   ,'Write shapefile' : 'write_shapefile'
-                   ,'Read shapefile' : 'read_shapefile'
-                   ,'Write User Text' : 'write_User_Text'
-                   #,Bake_UserText : 'bake_Usertext'
-                   ,'Parse data' : 'parse_data'
-                   ,'Recolour objects' : 'recolour_objects'
-                   ,'Recolor objects' : 'recolour_objects'
-                   ,'Component Names' : 'component_names'
-                   #
-                   ,'Integral Analysis' : 'sDNAIntegral'
-                   ,'Skim Matrix' : 'sDNASkim'
-                   ,'Integral from OD Matrix (assignment model)' : 'sDNAIntegralFromOD'
-                   ,'Geodesics' : 'sDNAGeodesics'
-                   ,'Convex Hulls' : 'sDNAHulls'
-                   ,'Network Radii' : 'sDNANetRadii'
-                   ,'Specific Origin Accessibility Maps' : 'sDNAAccessibilityMap'
-                   ,'Prepare network' : 'sDNAPrepare'
-                   ,'Individual Line Measures' : 'sDNALineMeasures'
-                   ,'Learn' : 'sDNALearn'
-                   ,'Predict' : 'sDNAPredict'                   
-                   })
+    name_map.update(OrderedDict([('Read Rhino geometry', 'get_Geom')
+                                ,('Read User Text', 'read_User_Text')
+                                ,('Write shapefile', 'write_shapefile')
+                                ,('Read shapefile', 'read_shapefile')
+                                ,('Write User Text', 'write_User_Text')
+                                ,('Parse data', 'parse_data')
+                                ,('Component Names', 'component_names')
+                                #
+                                ,('Integral Analysis', 'sDNAIntegral')
+                                ,('Skim Matrix', 'sDNASkim')
+                                ,('Integral from OD Matrix (assignment model)', 'sDNAIntegralFromOD')
+                                ,('Geodesics', 'sDNAGeodesics')
+                                ,('Convex Hulls', 'sDNAHulls')
+                                ,('Network Radii', 'sDNANetRadii')
+                                ,('Specific Origin Accessibility Maps', 'sDNAAccessibilityMap')
+                                ,('Prepare network', 'sDNAPrepare')
+                                ,('Individual Line Measures', 'sDNALineMeasures')
+                                ,('Learn', 'sDNALearn')
+                                ,('Predict', 'sDNAPredict')                   
+                                ]
+                               )
+                   )
+
+    name_map[Recolour+' objects'] = 'recolour_objects'
                           
     categories = {'get_Geom'         : 'Extra'
-                 ,'read_User_Text'    : 'Data'
+                 ,'read_User_Text'   : 'Data'
                  ,'write_shapefile'  : '.shp'
                  ,'read_shapefile'   : '.shp'
-                 ,'write_User_Text'   : 'Data'
+                 ,'write_User_Text'  : 'Data'
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
-                 ,'component_names'   : 'Dev'
-                 ,'Unload_sDNA' : 'Dev'
+                 ,'component_names'  : 'Dev'
+                 ,'Unload_sDNA'      : 'Dev'
                  ,'config'           : 'Extra'
                  }
 
@@ -190,7 +199,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.ShapefileWriter.opts['options']
                       ,tools.ShapefileReader.opts['options']
                       ,tools.UsertextWriter.opts['options']
-                    #   ,tools.UsertextBaker.opts['options']
                       ,tools.DataParser.opts['options']
                       ,tools.ObjectsRecolourer.opts['options']
                       ,tools.sDNA_ToolWrapper.opts['options']

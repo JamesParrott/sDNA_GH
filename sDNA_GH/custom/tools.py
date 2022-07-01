@@ -646,6 +646,7 @@ def build_missing_sDNA_components(opts
             logger.debug('Appending tool name to missing_tools: %s' % name_to_use)
             missing_tools.append(name_to_use)
             categories[name_to_use] = Tool.category
+            raise Exception('Fix this!')
     
     if missing_tools:
         names_built = build_sDNA_GH_components(component_names = missing_tools
@@ -656,7 +657,6 @@ def build_missing_sDNA_components(opts
                                               ,categories = categories
                                               ,**kwargs
                                               )
-        Grasshopper.Kernel.GH_ComponentServer.UpdateRibbonUI()
         return names_built
             
 

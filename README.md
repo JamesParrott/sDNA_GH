@@ -36,7 +36,7 @@ sDNA_GH:
 8. Copy in sDNA_GH.zip to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
 9. Unzip `sDNA_GH.zip` to this location (in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a single subfolder called sDNA_GH should have been created.
 10. Restart Rhino and Grasshopper.
-11. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).
+11. The sDNA_GH plug in components should now be available under a new "sDNA_GH" tab in the ribbon tabs amongst any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
 12. To ensure sDNA_GH uses the desired version of sDNA and Python 2.7 (and to be sure it can find one at all):
     -place a Config component on the canvas (the component with a lightbulb icon, under Support Tools).
     -Specify the file path of the sDNA folder (containing sDNAUISpec.py and runsdnacommand.py) of the sDNA you wish to use in the `sDNA_folders` input.
