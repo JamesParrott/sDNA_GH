@@ -1661,6 +1661,7 @@ class DataParser(sDNA_GH_Tool):
                                 for obj, val in gdm.items() 
                               )
             x_min, x_max = min(data.values()), max(data.values())
+            self.logger.debug('x_min == %s, x_max == %s' % (x_min x_max))
         # bool(0) is False so in case x_min==0 we can't use if options.plot_min
         # so test isinstance of Number ABC. 
         #
@@ -1954,28 +1955,21 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             raise ValueError(msg)
 
 
-        items_missing_field = [(key, val)
-                               for (key, val) in gdm.items() 
-                               if  (not isinstance(val, dict) or
-                                   field not in val or 
-                                   not isinstance(val[field], Number))
-                              ]
-
-        if items_missing_field:
-            msg = 'Missing data for field.  '
-            msg += 'The following: %s have a non-numeric record ' % items_missing_field
-            msg += 'for the field name: %s (or no record at all), ' % field
-            msg += 'and so cannot be parsed for field: %s' % field 
-            self.logger.error(msg)
-            raise ValueError(msg)
-
 
 
         objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
                                     if isinstance(v, dict) and field in v    
                                    )  # any geom with a normal gdm dict of keys / vals
-        if objs_to_parse or plot_min is None or plot_max is None:
+
+        objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
+                                                if isinstance(v, Number) 
+                                        )
+
+        if (objs_to_parse or 
+           (objs_to_get_colour and (plot_min is None or plot_max is None))):
+           #
             self.info('Raw data in ObjectsRecolourer.  Calling DataParser...')
+            self.debug('Raw data: %s' % objs_to_parse.items()[:4])
             x_min, x_max, gdm_in = self.parse_data(gdm = objs_to_parse
                                                   ,opts = opts
                                                   )
@@ -1988,9 +1982,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         self.logger.debug('x_min == %s ' % x_min)
         self.logger.debug('x_max == %s ' % x_max)
 
-        objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
-                                                if isinstance(v, Number) 
-                                        )
+
         objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
                                         # isinstance(x, dict) 
                                         # and isinstance(x, Number)
