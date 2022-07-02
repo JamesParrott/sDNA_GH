@@ -86,7 +86,7 @@ def remove_whitespace(strng):
 
 def first_item_if_seq(l, null_container = {}):
     #type(type[any], type[any])-> dict
-    """A function to strip out unnecessary wrappping containers, e.g. 
+    """A function to strip out unnecessary wrapping containers, e.g. 
        first_item_if_seq([[1,2,3,4,5]]) == [1,2,3,4,5] without breaking 
        up strings.  
        
@@ -155,7 +155,8 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
         return get_val(key.lower(), sources, True)
 
     # Whitespace is not stripped as valid python names, namedtuple fields
-    # and class attributes cannot contain whitespace.  So thisf you are using dict keys with whitespace
+    # and class attributes cannot contain whitespace.  So dict keys with whitespace
+    # will not be returned.
 
 def custom_retvals(retval_names
                   ,sources

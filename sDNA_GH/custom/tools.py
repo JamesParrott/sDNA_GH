@@ -42,7 +42,7 @@ import subprocess
 from .data_cruncher import itertools #pairwise from recipe if we're in Python 2
 import re
 import warnings
-from collections import OrderedDict, Counter
+import collections
 from time import asctime
 from numbers import Number
 import locale
@@ -91,6 +91,13 @@ try:
     basestring #type: ignore
 except NameError:
     basestring = str
+
+OrderedDict, Counter = collections.OrderedDict, collections.Counter
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
+else:
+    import collections.abc
+    Iterable = collections.abc.Iterable
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -206,7 +213,7 @@ def has_keywords(nick_name, keywords = ('prepare',)):
 sDNA_fmt_str = '{sDNAUISPec}_and_{runsdnacommand}' 
 # extra quotes would make it a quoted key string in .toml, 
 # which supports an extended character set than ascii (normal keys). 
-# But then this string coudln't be used in a NamedTuple class name
+# But then this string couldn't be used in a NamedTuple class name
 
 
 def sDNA_key(opts):
@@ -314,7 +321,7 @@ def check_python(opts):
     except StopIteration:
         msg = ('No Python interpreter file found.  Please specify a valid '
               +'python 2.7 interpreter in python (invalid: %s) ' % opts['metas'].python
-              +'or a range of python intepreter names and folder names to '
+              +'or a range of python interpreter names and folder names to '
               +'search for one in python_exes and python_paths.'
               )
         logger.error(msg)
@@ -734,9 +741,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         self.defaults_dict = OrderedDict((varname, default) for (
                                                             varname
-                                                           ,displayname
-                                                           ,datatype
-                                                           ,filtr
+                                                           ,display_name
+                                                           ,data_type
+                                                           ,filter_
                                                            ,default
                                                            ,required
                                                            ) in self.input_spec  
@@ -951,7 +958,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if has_keywords(self.nick_name, keywords = ('prepare',)):
             gdm = None
             # To overwrite any inputted gdm (already used) in vals_dict
-            # to makesure a subsequent ShapefileReader adds new Geometry
+            # to make sure a subsequent ShapefileReader adds new Geometry
 
 
         locs = locals().copy()
@@ -960,7 +967,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     
     retvals = 'retcode', 'f_name'
     component_outputs = ('file',) # retvals[-1])
-
 
 
 def get_objs_and_OrderedDicts(only_selected = False
@@ -978,14 +984,14 @@ def get_objs_and_OrderedDicts(only_selected = False
                              ):
     #type(bool, tuple, str, bool, function, function, function, function, 
     #                             function, function, function) -> function
-    if layers and isinstance(layers, str):
+    if layers and isinstance(layers, basestring):
         layers = (layers,) if layers in doc_layers() else None
 
 
     def generator():
         #type( type[any]) -> list, list
         #
-        # Groups first search.  If a special Usertext key on member objects 
+        # Groups first search.  If a special User Text key on member objects 
         # is used to indicate groups, then an objects first search 
         # is necessary instead, to test every object for membership
         # and track the groups yielded to date, in place of group_getter
@@ -1069,15 +1075,18 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
         self.logger.debug('options.selected == %s' % options.selected)
         self.logger.debug('options.layer == %s' % options.layer)
-            
+        
+        doc_layers = gdm_from_GH_Datatree.doc_layers
+
         gdm = gdm_from_GH_Datatree.make_gdm( get_objs_and_OrderedDicts(
                                                  only_selected = options.selected
                                                 ,layers = options.layer
                                                 ,shp_type = options.shp_type
                                                 ,include_groups = options.include_groups 
+                                                ,doc_layers = doc_layers
                                                 ) 
                        )
-        # lambda : {}, as Usertext is read elsewhere, in read_Usertext
+        # lambda : {}, as User Text is read elsewhere, in read_Usertext
 
 
 
@@ -1101,8 +1110,13 @@ class RhinoObjectsReader(sDNA_GH_Tool):
             if options.selected:
                 msg += 'selected == %s. Select some objects ' % options.selected
                 msg += ' or set selected = false.  '
-            if options.layer:
-                msg = 'layer == %s. ' % options.layer
+            elif options.layer and (
+                (isinstance(options.layer, basestring) 
+                 and options.layer in doc_layers()) or (
+                 isinstance(options.layer, Iterable) and
+                 any(layer in doc_layers() for layer in options.layer))):
+                 #
+                msg += 'layer == %s. ' % options.layer
                 msg += 'Please set layer to the name of a layer containing objects'
                 msg += ', or to select all layers, set layer to any value that is '
                 msg += 'not the name of an existing layer.  ' 
@@ -1385,7 +1399,7 @@ class ShapefileReader(sDNA_GH_Tool):
             self.logger.debug('objs_maker == %s' % objs_maker)
         else:
             #elif isinstance(gdm, dict) and len(gdm) == len(recs):
-            # an override for different number of overrided geom objects
+            # an override for different number of overridden geom objects
             # to shapes/recs opens a large a can of worms.  Unsupported.
 
             self.logger.debug('Geom data map matches shapefile.  ')
@@ -1661,7 +1675,7 @@ class DataParser(sDNA_GH_Tool):
                                 for obj, val in gdm.items() 
                               )
             x_min, x_max = min(data.values()), max(data.values())
-            self.logger.debug('x_min == %s, x_max == %s' % (x_min x_max))
+            self.logger.debug('x_min == %s, x_max == %s' % (x_min, x_max))
         # bool(0) is False so in case x_min==0 we can't use if options.plot_min
         # so test isinstance of Number ABC. 
         #
@@ -1910,7 +1924,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                        ,rgb_max = (155, 0, 0) #990000
                                        ,rgb_min = (0, 0, 125) #3333cc
                                        ,rgb_mid = (0, 155, 0) # guessed
-                                       ,line_width = 4 # milimetres? 
+                                       ,line_width = 4 # millimetres? 
                                        ,first_leg_tag_str = 'below {upper}'
                                        ,gen_leg_tag_str = '{lower} - {upper}'
                                        ,last_leg_tag_str = 'above {lower}'

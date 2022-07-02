@@ -20,7 +20,7 @@
 # literals.  A simple class or instance thereof is highly customisable, but its main attributes 
 # (non '__abcdef__' ones ) are not so elegantly iterable over (nor testable against) over.  And like 
 # dictionaries
-# they can  be changed inadvertantly.  Enter named tuples.  They are immutable, indexable without ['']
+# they can  be changed inadvertently.  Enter named tuples.  They are immutable, indexable without ['']
 # but require a little boilerplate code to set up.  They can easily be created from dictionaries and lists.
 # But they do still require e.g. ._fields to iterate over their field names or test for membership
 #  but dir ( ) can be avoided along (with the special methods it outputs).  

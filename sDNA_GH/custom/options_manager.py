@@ -277,7 +277,7 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
     Please note, .toml tables are mapped correctly to OrderedDictionaries
     by the line below.  But if convert_subdicts is False, then this dict is
     passed into override_namedtuple, and will pass up through the normal 
-    heirarchy of functions in this options_manager module, finally having 
+    hierarchy of functions in this options_manager module, finally having 
     make_nested_namedtuple called on it, turning the .toml table
     into a namedtuple."""
     return toml.load(config_path, _dict = OrderedDict)
@@ -294,7 +294,7 @@ def override_namedtuple(nt_lesser
     # type(namedtuple, list(object), dict, dict) -> namedtuple
     """ Override an nt, from a list of dicts, toml and nt.
     
-    Full function heirarchy kwargs
+    Full function hierarchy kwargs
     kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_', convert_subdicts is False}
              override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
              override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
@@ -312,7 +312,7 @@ def override_namedtuple(nt_lesser
         msg =  'override_funcs_dict is a ' + type(override_funcs_dict).__name__
         msg += ', not a dictionary.  '
         if hasattr(override_funcs_dict, 'items'):
-            msg += 'Relying on ducktyping.  '
+            msg += 'Relying on duck-typing.  '
             logging.warning(msg)
         else:
             msg += '.items() method required.  '
@@ -337,7 +337,7 @@ def override_namedtuple(nt_lesser
                 return val 
         
         if hasattr(override, '_asdict'):
-            logging.warning('Ducktyping override as namedtuple.  Calling' 
+            logging.warning('Duck-typing override as namedtuple.  Calling' 
                            +type(override).__name__ + '._asdict' 
                            +' to coerce to ordered dict.' 
                            )

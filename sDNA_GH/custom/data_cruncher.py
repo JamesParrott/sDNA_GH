@@ -115,7 +115,7 @@ def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = TOL/20):
     #type(Number, Number, str, str) -> None
     """ A simple validation function, e.g. avoid dividing by zero.  
         To check for floating point errors, tol can be set slightly 
-        higher than the approx machine espilon ~1.11e-16
+        higher than the approx machine epsilon ~1.11e-16
     """
     if abs(a - b) < tol:
         msg = '%s == %s ~= %s == %s ' % (a, a_name, b_name, b)
@@ -125,7 +125,7 @@ def check_not_eq(a, b, a_name = 'a', b_name = 'b', tol = TOL/20):
 
 def quadratic_mid_spline(x, x_min, x_mid, x_max, y_min, y_mid):
     # type(Number, Number, Number, Number, Number, Number) -> float
-    """Second order Lagrange basis polynomial multipled by y_mid to
+    """Second order Lagrange basis polynomial multiplied by y_mid to
        determine the degree of curvature. y_min is not used but is 
        present to keep the calling signature the same as the
        other spline functions in this module.  The ascending order
@@ -153,7 +153,7 @@ def log_spline(x, x_min, base, x_max, y_min, y_max):
 
 def exp_spline(x, x_min, base, x_max, y_min, y_max):
     # type(Number, Number, Number, Number, Number, Number) -> float
-    """ An expontial interpolation function.  Linear interpolation is performed
+    """ An exponential interpolation function.  Linear interpolation is performed
         inside the exponential, instead of outside it.  
     """
     check_strictly_less_than(x_min, x_max, 'x_min', 'x_max')
@@ -511,10 +511,10 @@ def quantile_l_to_r(data
                                                                   )
                 if not success:
                     # all further items are the same (tol - indistinguishable) 
-                    # until the end of data so can't place anymore 
+                    # until the end of data so can't place any more 
                     # inter-class bounds.
                     msg = (' Rest of data is repeated indistinguishable data '
-                          +'points. Cannot place anymore inter-class bounds so ' 
+                          +'points. Cannot place any more inter-class bounds so ' 
                           +'skipping. To avoid this, try selecting fewer '
                           +'classes or choose a different classification '
                           +'method.  '
@@ -668,7 +668,7 @@ def spike_isolating_quantile(data
                             ):
     #type(Sequence[Number], int, float, NamedTuple) -> list
     """ Classify largest spike in the frequency distribution; 
-        allocate remainining classes using discrete_pro_rata
+        allocate remaining classes using discrete_pro_rata
         call self on the gaps, or quantile_l_to_r if no spikes.
     
         Places interclass bounds in data, a Sequence (e.g. 

@@ -49,7 +49,7 @@
     Also, the Output class is used to define two Classes from this single 
     code definition.  Python scripts can happily import themselves, but here
     this is because launcher.py is itself part of the imported sDNA_GH python
-    package, imported by launcher.py in a GhPythoncomponent.  To achieve this, the 
+    package, imported by launcher.py in a GhPython component.  To achieve this, the 
     code in this file needs to be copied into the sDNA_GH GhPython components 
     during building of the components (e.g. via the code input Param), 
 
@@ -59,7 +59,7 @@
     A dummy MyComponent(component) class is defined in the script to appease
     GhPython's parser, even though the definition we use is imported from the package
 
-    launcher.py can also run unittests in a component named "selftest" 
+    launcher.py can also run unit tests in a component named "selftest" 
 """
 
 __author__ = 'James Parrott'
@@ -200,7 +200,7 @@ def strict_import(module_name = ''
         
         Avoids name clashes and casual hijack attempts.  In some 
         environments supporting a Python implementation (such as 
-        GhPython in Grasshopper) it may not be desireable to ask the user 
+        GhPython in Grasshopper) it may not be desirable to ask the user 
         to set PYTHONPATH.  Hence here, we save sys.path to a tmp 
         variable, set sys.path to the specified folders, attempt the 
         import in a try: block, and restore sys.path in a finally: block

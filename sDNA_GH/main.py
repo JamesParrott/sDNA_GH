@@ -288,7 +288,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     max_dp = 4 # decimal places
     yyyy_mm_dd = False
     keep_floats = True
-    use_memo = False # Use the 'M' field code in Shapefiles for uncoerced data
+    use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
     #
     # get_filename
     overwrite_shp = True
@@ -304,7 +304,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     cache_iterable= False
     uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'  
     # also in ShapefileReader, UsertextWriter  
-    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 separator characters.
     num_dp = 10 # decimal places
     min_sizes = True
     #
@@ -396,7 +396,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     rgb_max = [155, 0, 0] #990000
     rgb_min = [0, 0, 125] #3333cc
     rgb_mid = [0, 155, 0] # guessed
-    line_width = 4 # milimetres? 
+    line_width = 4 # millimetres? 
     ###########################################################################
     #
     # Options override system test field
@@ -498,7 +498,7 @@ def override_all_opts(args_dict
             raise ValueError(msg)
 
     else:
-        msg = 'No config specfied in args_dict'
+        msg = 'No config specified in args_dict'
         output.debug(msg + ' == %s' % args_dict.keys())
         file_ext = msg
 
@@ -522,7 +522,7 @@ def override_all_opts(args_dict
         args_dict.pop('nick_name')
 
     ###########################################################################
-    # Update syncing / desyncing controls in local_metas
+    # Update syncing / de-syncing controls in local_metas
     #
     local_metas_overrides_list = [ext_local_metas_dict
                                  ,config_toml_dict.get('local_metas',{}) 
@@ -647,7 +647,7 @@ else:
 
     # Create root logger.  All component launchers import this module, 
     # (or access it via Grasshopper's cache in sys.modules) but
-    # all their loggers are childs of this module's logger:
+    # all their loggers are children of this module's logger:
     logger = logging_wrapper.new_Logger(custom = None
                                        ,options = module_opts['options']
                                        ) 
@@ -756,7 +756,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
     local_metas = default_local_metas   # immutable.  controls syncing /
-                                        # desyncing / read / write of the
+                                        # de-syncing / read / write of the
                                         # above (opts).
                                         # Although local, it can be set on 
                                         # groups of components using the 
@@ -972,7 +972,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         go = smart_comp.first_item_if_seq(kwargs.pop('go', False), False) 
              # Input Params set 
-             # to list acess so
+             # to list access so
              # strip away outer 
              # list container
         Data = kwargs.pop('Data', None)
@@ -1058,9 +1058,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             
             if self.local_metas.synced != synced:
                 if self.local_metas.synced:
-                    self.opts = module_opts #resync
+                    self.opts = module_opts #re-sync
                 else:
-                    self.opts = self.opts.copy() #desync
+                    self.opts = self.opts.copy() #de-sync
                     #
 
         if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:

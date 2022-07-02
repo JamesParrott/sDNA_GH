@@ -45,7 +45,8 @@ sDNA_GH:
     -Connect a True boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
     -To save to other project specific `config.toml` files, or to update the installation wide user options file, specify the file path in 
     save_to and repeat the previous 4 sub steps.
-13. For a first test of sDNA_GH using sDNA, open  `\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the previosuly unzipped folder in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
+
+13. For a first test of sDNA_GH using sDNA, open  `\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the previously unzipped folder in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
 14. If a newer version of sDNA is used in future with tools unknown to sDNA_GH at the time it was built, if a Config component is placed, and the path of the new sDNA specified in `sDNA_folders`, sDNA_GH will attempt to automatically build components and user objects for the new sDNA tools, and add them to Grasshopper for you.  Set `make_new_comps` to false to prevent this.
 
 
@@ -60,8 +61,11 @@ Each sDNA tool has its own a Grasshopper component.  To run a tool, a True value
 Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.
 To work with a Grasshopper Colour Gradient tool, to show fewer Input and Output Params on each component, or to customise sDNA_GH behaviour, e.g. to connect in different inputs and outputs between individual tools running, advanced users may prefer to run only one tool per sDNA_GH component.  To do this, simply 'turn off' the `auto_` options: `auto_get_Geom`, `auto_read_User_Text`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data` by setting them to `false`, e.g. on a Config component.  How to do this is described below in more detail.  
 
+##### Component Execution Order.
+**Warning!**   If you did not create a `config.toml` file (in Installation step 12 above), and if you rely instead on components inside your .gh file itself to set option values, e.g. `Config` components to determine options, be sure to select and press `Ctrl` + `B` (or from the pull-down menu select `Edit` -> `Arrange` -> `Put To Back`) to to send to the back, any components that should run first whn you reload the .gh file.  E.g. send to the back all components that set options values that you wish other components to later depend on.  In particular if you are running with `auto_` options set to false, saved single-tool components will rebuild themselves as multi-tool components when a .gh file  is loaded,  if sDNA_GH's hard-coded default options are read before your custom options.  As even if these were set and read correctly, they are on a component that hasn't run yet, that Grasshopper doesn't know about yet. 
+
 ##### Errors.
-Errors that occurr while the components import the main sDNA_GH Python package  and when they initialise themselves must be cleared by deleting the component and placing a new one.  It may also be necessary to first unload the sDNA_GH package using the unload component, to clear sDNA_GH from GPython's cached modules, and force it to be reimported.  
+Errors that occur while the components import the main sDNA_GH Python package  and when they initialise themselves must be cleared by deleting the component and placing a new one.  It may also be necessary to first unload the sDNA_GH package using the unload component, to clear sDNA_GH from GPython's cached modules, and force it to be reimported.  
 
 #### Options.  
 sDNA_GH is highly customisable.  This customisation is controlled by setting options.  Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Similarly, any option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other components as well, via Grasshopper connections. 
@@ -71,9 +75,6 @@ To add a new Input or Output Param, zoom in on the component until symbols can b
 
 ##### Logging options
 When the first sDNA_GH component is placed (or when the first one runs when a .gh file is loaded) you may notice a slight delay.  This is because the main sDNA_GH code base is being imported from the installation sub folder in the User Objects folder.  Subsequent components simply link to it once it has already been imported.  This happens before a component knows what its input Params are.  The installation wide options file is read and the main logger for trouble shooting is created during this first import.  Therefore unlike other options, custom logger options for configuring the logger (e.g. making it less verbose by raising the logging level from `DEBUG`) must be set in the installation wide options file (`config.toml`).  Like other options, logger options are overridden by other files, components and Input Params afterwards.  Only as the logger has already been set up by the time the Input Params are created, it's simply too late by then for changes to logger options (made using what are normally the higher priority channels) to have any effect.  Supported values for logging levels are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
-
-
-
  
 ###### Options override priority order
 1. The component input Param options override options in a project specific options file (`config`).  
@@ -139,7 +140,7 @@ After parsing, the legend tags are the definitive reference for what each colour
 
 
 **Data Tree**
-A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or a Shapefile.  Grasshopper''s path tools can be used to adjust compatible Datatrees into this format.  
+A Data Tree connected to `Data`'s first level should be 2 branches deep.  The first level should contain a branch {n;0} for each geometric element n in the corresponding list connected to `Geom` .  Each of these top level branches should themselves contain a branch with only two items:  keys {n;0} and values {n;1}.  The two nodes of this structure should be a pair of corresponding (equal length) lists; a list of 'keys' or field names, and a list of 'values' corresponding to the actual numerical data items for that field, for that geometric object.  The mth key and value of the nth geometric object should be {n;0}[m] and {n;1}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or a Shapefile.  Grasshopper's path tools can be used to adjust compatible Data Trees into this format.  
 
 **Field to plot**
 Specify the actual numeric data values to be parsed from all the provided 'User Text values' by setting `field` to the name of the corresponding 'User Text key'.  

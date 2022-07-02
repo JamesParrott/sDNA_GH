@@ -66,9 +66,9 @@ def nick_names_that_map_to(names, name_map):
         return nick_names_that_map_to(nick_names + names, name_map)
 
 
-def are_GhPython_components_in_GH(compnt, names):
+def are_GhPython_components_in_GH(component, names):
     #type(str)->bool
-    doc = compnt.Attributes.Owner.OnPingDocument() 
+    doc = component.Attributes.Owner.OnPingDocument() 
     return any( type(GH_component) is GhPython.Component.ZuiPythonComponent 
                 and GH_component.NickName in names
                 for GH_component in doc.Objects
@@ -124,7 +124,7 @@ def are_any_GhPython_comps(up_or_downstream, names, Params):
             )
             
 def are_GhPython_downstream(names, Params):
-    comps = downstream_components(Params) #compnt, Params)
+    comps = downstream_components(Params) #component, Params)
     GhPython_compnt_NickNames = [ comp.NickName for comp in comps
                                   if type( comp.Attributes.GetTopLevel.DocObject ) 
                                      is GhPython.Component.ZuiPythonComponent

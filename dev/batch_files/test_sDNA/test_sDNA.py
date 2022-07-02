@@ -228,9 +228,9 @@ if __name__ == '__main__':
         output_shp_files = [arg
                             for arg in args
                             if arg.endswith('.shp') and (any(  ('output' in arg or
-                                                               arg.startswith(infile.rpartition('.')[0] + '_')
+                                                               arg.startswith(input_file.rpartition('.')[0] + '_')
                                                                )
-                                                               for infile in input_shp_files
+                                                               for input_file in input_shp_files
                                                             )                                                    
                                                         or not os.path.isfile(arg)
                                                         )

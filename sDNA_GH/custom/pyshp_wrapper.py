@@ -71,7 +71,7 @@ class ShpOptions(object):
     max_dp = 4 # decimal places
     yyyy_mm_dd = False
     keep_floats = True
-    use_memo = False # Use the 'M' field code in Shapefiles for uncoerced data
+    use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
     #
     # get_filename
     overwrite_shp = True
@@ -86,7 +86,7 @@ class ShpOptions(object):
     field_size = 30
     cache_iterable= False
     uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
-    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 seperator characters.
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 separator characters.
     num_dp = 10 # decimal places
     min_sizes = True
     encoding = 'utf-8' # also used by get_fields_recs_and_shapes
@@ -219,7 +219,7 @@ shp_field_codes = dict(int = 'N'
 # int = 'N'  here.  In PyShp, 'N' can also be a float
                 
 def get_field_code(x):
-    # typelookup function
+    # type lookup function
     return shp_field_codes[  type_dict[ type(x) ]  ]   
 
 pyshp_writer_method = dict(NULL = 'null'
@@ -258,7 +258,7 @@ if hasattr(shp, 'SHAPETYPE_LOOKUP'):
 
 
 def coerce_and_get_code(x, options = ShpOptions):
-    #typecoercer function
+    #type coercer function
 
     if options.decimal:
         import decimal as dec

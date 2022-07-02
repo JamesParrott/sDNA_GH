@@ -90,7 +90,7 @@ def change_line_thickness(obj, width, rel_or_abs = False):
     # will not be effective if the width has not already been increased.
     #
     # To make changes resulting from the function visible, it is necessary
-    # to change the view mode into PrintDistplat, e.g. by calling
+    # to change the view mode into PrintDisplay, e.g. by calling
     # rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
     #                +str(options.line_width)
     #                +' _enter')

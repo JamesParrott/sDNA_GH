@@ -58,7 +58,7 @@ class RunnableTool(ABC):
     """ Template for tools that can be run by run_tools()
     Subclass of this is only enforced if enforceABC is True,
     to permit running of regular
-    functions with attributes via ducktyping check
+    functions with attributes via duck-typing check
     in quacks_like
     """
 
