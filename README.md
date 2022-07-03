@@ -113,6 +113,7 @@ For advanced users, each component with a given NickName in name_map also has it
 
 ##### Support tools
 ###### Config (config)
+To guarantee this component runs before all others when your .gh file is loaded, ensuring your options are loaded, select it and press Ctrl + B before saving.
 Loads custom user options and configuration files (`.toml`).  Saves options to a `.toml` file if go is true - if a `.toml` file is specified in `save_to`, it is saved to.  Otherwise if `go` is true and `save_to` is unconnected, then an installation wide user options file is created, if one does not already exist (to update an existing one, specify its name in `save_to`, e.g.: `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
 
 
