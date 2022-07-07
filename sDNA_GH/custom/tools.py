@@ -198,7 +198,7 @@ def delete_shp_files_if_req(f_name
                            ):
     #type(str, type[any], bool, str/tuple) -> None
     if not strict_no_del:
-        file_name = f_name.rpartition('.')[0]
+        file_name = os.path.splitext(f_name)[0]
         logger.debug('Delete == %s ' % delete)
         if (delete or name_matches(file_name, regexes)):
             for ending in ('.shp', '.dbf', '.shx'):
@@ -874,7 +874,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         #if (not isinstance(input_file, str)) or not isfile(input_file): 
         if (isinstance(f_name, str) and os.path.isfile(f_name)
-            and f_name.rpartition('.')[2] in ['shp','dbf','shx']):  
+            and os.path.splitext(f_name)[1] in ['shp','dbf','shx']):  
             input_file = f_name
 
         msg = 'input file == %s ' % input_file
@@ -889,9 +889,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         output_file = tool_opts_sDNA.output
         if output_file == '':
             if self.tool_name == 'sDNAPrepare':
-                output_file = options.prepped_fmt.format(name = input_file.rpartition('.')[0])
+                output_file = options.prepped_fmt.format(name = os.path.splitext(input_file)[0])
             else:
-                output_file = options.output_fmt.format(name = input_file.rpartition('.')[0])
+                output_file = options.output_fmt.format(name = os.path.splitext(input_file)[0])
             output_file += '.shp'
 
         output_file = pyshp_wrapper.get_filename(output_file, options)
@@ -1273,7 +1273,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                 #
                 f_name = options.output_shp
             else:
-                f_name = options.path.rpartition('.')[0] + '.shp'
+                f_name = os.path.splitext(options.path)[0] + '.shp'
                 # Copy RhinoDoc or GH definition name without .3dm or .gh
                 # file extensions are actually optional in PyShp, 
                 # but just to be safe and future proof we remove
@@ -1302,7 +1302,7 @@ class ShapefileWriter(sDNA_GH_Tool):
             prj.endswith('.prj') and 
             os.path.isfile(prj)):
             #
-            new_prj = f_name.rpartition('.')[0] + '.prj'
+            new_prj = os.path.splitext(f_name)[0] + '.prj'
             shutil.copy2(prj, new_prj)
 
         # get_list_of_lists_from_tuple() will 
@@ -1415,7 +1415,7 @@ class ShapefileReader(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
         
-        file_name = f_name.rpartition('.')[0]
+        file_name = os.path.splitext(f_name)[0]
         csv_f_name = options.sDNA_names_fmt.format(name = file_name)
         #sDNA_fields = {}
         if os.path.isfile(csv_f_name):

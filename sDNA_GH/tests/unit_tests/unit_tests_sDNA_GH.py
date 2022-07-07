@@ -31,9 +31,9 @@
 __author__ = 'James Parrott'
 __version__ = '0.05'
 
-
+import sys
+import os
 import unittest
-import os.path
 from time import asctime    
 from itertools import repeat, izip
 from collections import OrderedDict
@@ -50,6 +50,7 @@ from ...custom.skel.basic.ghdoc import ghdoc
 
 
 from ... import main
+from ... import launcher
 from ...custom import tools
 from ...custom.skel.tools.helpers import checkers
                             
@@ -190,26 +191,27 @@ def test_empty_DataTree(self):
 #if GH_env_exists:
 TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
-#class sDNA_GH_Test_Runner_Component(component):
-def run_launcher_tests(self,*args):
-    import sys
-    tests_log_file_suffix = '_test_results'
-    test_log_file_path = (    ghdoc.Path.rpartition('.')[0]  #type: ignore
-                            + tests_log_file_suffix
-                            + '.log' )
+tests_log_file_suffix = '_unit_test_results'
+
+def run_launcher_tests(self, *args):
+    """ Set MyComponent.RunScript to this function to unit tests in Grasshopper. """
+    log_file_dir = os.path.dirname(checkers.get_path(fallback = self.fallback))
+    if os.path.isfile(log_file_dir):
+        log_file_path = os.path.splitext(log_file_dir)[0]
+    else:
+        log_file_path =  os.path.join(log_file_dir, launcher.package_name)
+
+    test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
     test_log_file = open(test_log_file_path,'at')
     output_double_stream = FileAndStream(test_log_file, sys.stderr)
     output_double_stream.write( 'Unit test run started at: ' 
                                 +asctime()
                                 +' ... \n\n')
     with output_double_stream as o:
-        #suite = unittest.TestLoader().loadTestsFromTestCase(TestStringMethods)
-        fallback = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        path = checkers.get_path(fallback = fallback)
-        discovered_suite = unittest.TestLoader().discover( path 
-                                                         ,'*test*.py'
-                                                         )
-        #unittest.TextTestRunner(o, verbosity=2).run(suite)
+
+        discovered_suite = unittest.TestLoader().discover( self.fallback 
+                                                        ,'*test*.py'
+                                                        )
         unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
         
         

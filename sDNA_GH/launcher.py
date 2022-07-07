@@ -96,6 +96,8 @@ package_name = 'sDNA_GH'
 plug_in_name = 'sDNA'               
 reload_already_imported = False
 repo_folder = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else None
+# Assume we are in repo_folder/dev/sDNA_build_components.gh
+
 user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder
 
 
@@ -327,17 +329,17 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if (repo_folder and 
         nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents'):
         #
-        sDNA_GH_search_paths = repo_folder 
+        sDNA_GH_search_path = repo_folder 
         # builder can only load sDNA_GH from its parent directory, 
         # e.g. if in a dir one level up in the main repo
         # such as sDNA_build_components.gh.
     else:
-        sDNA_GH_search_paths = user_install_folder
+        sDNA_GH_search_path = user_install_folder
 
 
     sc.doc = ghdoc #type: ignore
 
-    output.debug(sDNA_GH_search_paths)
+    output.debug(sDNA_GH_search_path)
 
     class sDNA_GH(object):
         pass
@@ -346,7 +348,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         sDNA_GH.main = sys.modules['sDNA_GH.main']
     else:
         sDNA_GH.main, _ = load_modules(m_names = package_name + '.main'
-                                      ,folders = sDNA_GH_search_paths
+                                      ,folders = sDNA_GH_search_path
                                       ,folders_error_msg = 'Please ensure a folder called %s' % package_name 
                                                           +' is created in '
                                                           +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
@@ -377,6 +379,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # immediately below.  
 
     MyComponent = sDNA_GH.main.sDNA_GH_Component
+    # Grasshopper calls MyComponent.RunScript automatically.
 
 
     if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
@@ -385,10 +388,11 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             from .tests.unit_tests import unit_tests_sDNA_GH
         else:
             unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
-                                                ,sDNA_GH_search_paths
+                                                ,sDNA_GH_search_path
                                                 )
 
         MyComponent._RunScript = MyComponent.RunScript
-        MyComponent.RunScript = unit_tests_sDNA_GH.run_launcher_tests  
-
+        MyComponent.fallback = sDNA_GH_search_path
+        MyComponent.RunScript =  unit_tests_sDNA_GH.run_launcher_tests
+        # Grasshopper calls MyComponent.RunScript automatically.
 

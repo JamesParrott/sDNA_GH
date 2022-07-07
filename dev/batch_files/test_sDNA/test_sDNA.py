@@ -108,8 +108,8 @@ def run_sDNA(python = 'python_2_7'
         input_shp = '15x15randomGrid.shp'
 
     if output_shp is None:
-        name, _, extension = input_shp.rpartition('.')
-        output_shp = '%s_sDNA_%s.%s' % (name, python, extension) 
+        name, extension = os.path.splitext(input_shp)
+        output_shp = '%s_sDNA_%s%s' % (name, python, extension) 
     
     logger.debug('python = %s, sDNA = %s, input_shp = %s, output_shp = %s' % (python, sDNA, input_shp, output_shp))
     
@@ -228,7 +228,7 @@ if __name__ == '__main__':
         output_shp_files = [arg
                             for arg in args
                             if arg.endswith('.shp') and (any(  ('output' in arg or
-                                                               arg.startswith(input_file.rpartition('.')[0] + '_')
+                                                               arg.startswith(os.path.splitext(input_file)[0] + '_')
                                                                )
                                                                for input_file in input_shp_files
                                                             )                                                    
@@ -243,7 +243,7 @@ if __name__ == '__main__':
                 for arg in args
                 if ('sdna' in os.path.basename(arg).lower() 
                     and ((os.path.isfile(arg) 
-                        and 'py' in arg.rpartition('.')[2]
+                        and '.py' in os.path.splitext(arg)[1]
                         ) 
                         or os.path.isdir(arg)
                         )

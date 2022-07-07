@@ -329,13 +329,13 @@ def get_filename(f, options = ShpOptions):
     if not options.overwrite_shp:
         i = 1
         file_dir, full_file_name = os.path.split(f)   
-        [file_name, _, file_extension] = full_file_name.rpartition('.') 
+        [file_name, file_extension] = os.path.splitext(full_file_name) 
         while os.path.isfile(f) and i <= options.max_new_files:
             f = os.path.join(file_dir
                             ,options.dupe_file_key_str.format(name = file_name 
                                                              ,number = str(i)
                                                              )
-                            + '.' + file_extension
+                            + file_extension
                             ) 
             i += 1
     elif not options.suppress_warning:

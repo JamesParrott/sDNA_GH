@@ -210,7 +210,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                        # Used by .custom.pyshp_wrapper
                        # get_fields_recs_and_shapes and write_iterable_to_shp
     package_name = os.path.basename(os.path.dirname(__file__))
-    sub_module_name = os.path.basename(__file__).rpartition('.')[0]
+    sub_module_name, _ = os.path.splitext(os.path.basename(__file__))
     #
     ###########################################################################
     #
@@ -484,7 +484,7 @@ def override_all_opts(args_dict
         #
         if os.path.isfile(args_dict['config']): 
             path = args_dict['config']
-            file_ext = path.rpartition('.')[2]
+            file_ext = os.path.splitext(path)[1]
             if file_ext == 'toml':
                 output.debug('Loading options from .toml file: %s' % path)
                 config_toml_dict =  options_manager.load_toml_file( path )
@@ -751,7 +751,6 @@ sDNA_GH_tools = list(runner.tools_dict.values())
 class sDNA_GH_Component(smart_comp.SmartComponent):
 
     """ The main sDNA_GH Grasshopper Component class.  
-    
     """
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
@@ -1107,6 +1106,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug(go)
 
         if go is True: 
+            if not hasattr(self, 'tools'):
+                msg = 'component name: %s unrecognised? ' % nick_name
+                msg += 'sDNA_GH has not found any tools to run.  '
+                msg += 'Change component name, or define tools for name in name_map.'
+                logger.error(msg)
+                raise ValueError(msg)                
             if not isinstance(self.tools, list):
                 msg = 'self.tools is not a list'
                 logger.error(msg)
