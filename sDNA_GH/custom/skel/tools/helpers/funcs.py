@@ -65,27 +65,27 @@ def is_uuid(val):
 
 def windows_installation_paths(names):
     #type(str/Sequence(str)) -> list(str)
-    """ Constructs a list of possible installation paths on Windows for an 
+    """ Yields possible installation paths on Windows for an 
         un-located app named name.
 
-        e.g. returns [r'C:\' + name
-                     ,r'C:\Program Files\' + name
-                     ,r'C:\Program Files (x86)\' + name
-                     ,r'C:\Users\James\AppData\Roaming\' + name
-                     ] 
-        and any paths on the system path with name as a substring. 
+        for each name in names, yields:
+            all paths on the system path with name as a substring
+            'C:\' + name
+            r'C:\Program Files\' + name
+            r'C:\Program Files (x86)\' + name
+            e.g. r'C:\Users\USER_NAME\AppData\Roaming\' + name
+
     """
     if isinstance(names, str):
         names = [names]
-    paths = []
     for name in names:
-        paths += [os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)]# r'C:\' + name
-        paths += [os.path.join(os.getenv('PROGRAMFILES'), name)]
-        paths += [os.path.join(os.getenv('PROGRAMFILES(X86)'), name)]
-        paths += [os.path.join(os.getenv('APPDATA'),name)]
-        paths += list(path 
-                    for path in os.getenv('PATH').split(';')
-                    if name in path 
-                    )   
-    return paths         
+        for path in os.getenv('PATH').split(';'):
+            if name in path:
+                yield path 
+        yield os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)# r'C:\' + name
+        # os.sep is needed.  os.getenv('SYSTEMDRIVE') returns c: on Windows.
+        #                    assert os.path.join('c:', 'foo') == 'c:foo'
+        yield os.path.join(os.getenv('PROGRAMFILES'), name)
+        yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
+        yield os.path.join(os.getenv('APPDATA'), name)
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables

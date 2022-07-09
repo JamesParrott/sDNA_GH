@@ -173,7 +173,7 @@ class InvalidArgsError(Exception):
                 ):
         if message_fmt and isinstance(message_fmt, basestring):
             self.message_fmt = message_fmt
-        if not message or not isinstance(message, basestring):
+        if kwargs and (not message or not isinstance(message, basestring)):
             message = self.message_fmt % kwargs
         logger.error(message)
         self.kwargs = kwargs
@@ -267,8 +267,14 @@ def load_modules(m_names
         Returns a tuple of all the modules and the path they were found in.  Else 
         raises a ModulesNotFoundError.
     """
-    if not m_names or any( not isinstance(m_name, basestring) 
-                               for m_name in m_names ):
+    if not m_names:
+        raise ModuleNameError(message_fmt = 'No module names supplied, m_names = %s'
+                             ,m_names = m_names
+                             ,logger = logger
+                             )
+
+    if any( not isinstance(m_name, basestring) for m_name in m_names ):
+        # if m_names is a basestring, the error is not raised 
         raise ModuleNameError(message_fmt = module_name_error_msg
                              ,m_names = m_names
                              ,logger = logger
@@ -276,6 +282,7 @@ def load_modules(m_names
     
     if isinstance(m_names, basestring):
         m_names = [m_names] 
+
     logger.debug('m_names == %s of type : %s' % (m_names, type(m_names).__name__))
 
     logger.debug('Testing paths : %s ' % folders)
@@ -306,7 +313,7 @@ def load_modules(m_names
             logger.debug('Importing %s' % repr(m_names))
 
             return tuple(strict_import(name, folder, '', logger = logger) 
-                            for name in m_names
+                         for name in m_names
                         ) + (folder,)
             # tuple of modules, followed by the path to them
     raise ModulesNotFoundError(message_fmt = modules_not_found_msg

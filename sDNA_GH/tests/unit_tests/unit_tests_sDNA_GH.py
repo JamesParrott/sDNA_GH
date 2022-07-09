@@ -168,16 +168,16 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                                                         )
                         )
     def test_floating_point_input(self):
-        self.assertAlmostEqual(  *self.get_expected_and_actual( self.conv_opts
-                                                                ,self.input_almost_expected
-                                                                )
+        self.assertAlmostEqual(  *self.get_expected_and_actual(self.conv_opts
+                                                              ,self.input_almost_expected
+                                                              )
                               )
 
     def test_not_equal(self):
         self.assertNotEqual(  *self.get_expected_and_actual(self.conv_opts
-                                                        ,self.input_not_equal
-                                                        )
-                        )
+                                                           ,self.input_not_equal
+                                                           )
+                           )
 
 def test_empty_DataTree(self):
         

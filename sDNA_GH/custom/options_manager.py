@@ -42,16 +42,31 @@ from logging (i.e. to stderr for >= warning, into the void otherwise).
 import sys
 import os
 import logging
-from collections import namedtuple, OrderedDict
+import collections
+if hasattr(collections, 'Sequence'):
+    Sequence = collections.Sequence 
+else:
+    import collections.abc
+    Sequence = collections.abc.Sequence
+if hasattr(collections, 'Set'):
+    Set = collections.Set 
+else:
+    import collections.abc
+    Set = collections.abc.Set
 from numbers import Number
 
 from ..third_party import toml
 
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 try:
     basestring #type: ignore
 except NameError:
     basestring = str
+
+OrderedDict = collections.OrderedDict
 
 def isnamedtuple(obj):
     #type(type[any]) -> bool
@@ -79,7 +94,7 @@ def get_dict_of_Classes(**kwargs):
                       )
 
 def namedtuple_from_class(Class, name = None):
-    # type: ( type[any], str) -> namedtuple
+    # type: ( type[any], str) -> collections.namedtuple
     #https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
     if name is None:
         name = 'NT_' + Class.__name__
@@ -87,7 +102,7 @@ def namedtuple_from_class(Class, name = None):
                                 for attr in dir(Class) 
                                 if not attr.startswith('_')
                              )  
-    factory = namedtuple(name, fields_dict.keys(), rename = True)   
+    factory = collections.namedtuple(name, fields_dict.keys(), rename = True)   
     return factory(**fields_dict)
 
 
@@ -139,10 +154,10 @@ def namedtuple_from_dict(d
                                          ,**kwargs
                                          )  
 
-    return namedtuple(class_prefix + d_namedtuple_class_name
-                     ,d.keys()
-                     ,rename=False 
-                     )(**d)  # Don't return nt class
+    return collections.namedtuple(class_prefix + d_namedtuple_class_name
+                                 ,d.keys()
+                                 ,rename=False 
+                                 )(**d)  # Don't return nt class
 
 def delistify_vals_if_not_list_in(d_lesser, d_greater): 
     #type(dict, dict) -> None   
@@ -157,44 +172,128 @@ def delistify_vals_if_not_list_in(d_lesser, d_greater):
             d_greater[key]=val[0]
 
 
+def is_instance_of_Class_of(x, y):
+    #type: (type[any], type[any]) -> bool
+    return isinstance(x, y.__class__)
+
+
+def is_instance_of_Class_of_item_of(x, y):
+    #type: (type[any], type[any]) -> bool
+    return isinstance(y, (Sequence, Set)) and any(is_instance_of_Class_of(x, z) 
+                                                  for z in y
+                                                 )
+
+
+def override_dict_key_val_generator(d_lesser
+                                   ,od_greater
+                                   ,check_types = False
+                                   ,delistify = True
+                                   ,add_new_opts = False
+                                   ,allow_containers = True
+                                   ,hush_type_error = False
+                                   ,**kwargs
+                                   ):
+    #type: (dict, OrderedDict, bool, bool, bool, bool, bool, dict) -> tuple
+
+    for key in od_greater:
+        val = od_greater[key]  #we may change val, so don't loop over .items()
+
+        if key not in d_lesser:
+            if add_new_opts:
+                yield key, val
+            continue
+        assert key in d_lesser, ("key: %s not in d_lesser.keys(): %s" 
+                                 % (key, d_lesser.keys()))
+
+        if (delistify and 
+            isinstance(val, list) and 
+            not isinstance(d_lesser[key], list)):
+            #
+            val = val[0]
+        
+        if check_types and d_lesser[key] is not None: 
+            # set default to None to allow override to be of any type
+            if (not is_instance_of_Class_of(val, d_lesser[key]) and 
+                (not allow_containers or
+                not is_instance_of_Class_of_item_of(val, d_lesser[key]))):
+                #val is mistyped
+
+                if hush_type_error:
+                    msg = 'Skipping key: %s from override as val == %s is not an instance of: %s, '
+                    msg = msg % (key, val, d_lesser[key])
+                    msg += 'and is not an instance of the Class of any of its elements (if any)'
+                    logger.warning(msg)
+                    continue
+                
+                msg = 'Option: %s needs to be instance of type: %s, '
+                msg += 'or an instance of the Class of one of its elements (if any).'
+                msg += ' Type supplied: %s (val == %s)' 
+                msg = msg % (key, d_lesser[key].__class__, val.___class__, val)
+                logger.error(msg)
+                raise TypeError(msg)
+        
+        yield key, val
+
+
 def override_OrderedDict_with_dict(d_lesser
                                   ,od_greater
                                   ,strict = True
                                   ,check_types = False
                                   ,delistify = True
                                   ,add_new_opts = False
+                                  ,allow_containers = True
+                                  ,hush_type_error = False
                                   ,**kwargs
                                   ):
-    #type: (dict, OrderedDict, bool, bool, bool, bool, dict) -> OrderedDict
+    #type: (dict, OrderedDict, bool, bool, bool, bool, bool, bool, dict) -> OrderedDict
     #
+    d_lesser = d_lesser.copy()
+
+
     if strict and not isinstance(od_greater, dict):  # also true for OrderedDict
         return d_lesser
 
-    if not add_new_opts:
-        new_od = OrderedDict( (key, val) 
-                   for key, val in od_greater.items() 
-                   if key in d_lesser )
-    else: 
-        new_od = od_greater.copy() 
+
+    d_lesser.update( override_dict_key_val_generator(d_lesser
+                                                    ,od_greater
+                                                    ,check_types
+                                                    ,delistify
+                                                    ,add_new_opts
+                                                    ,allow_containers
+                                                    ,hush_type_error
+                                                    ,**kwargs)
+                   )
+
+    return d_lesser
+
+
+
+    # if not add_new_opts:
+    #     new_od = OrderedDict( (key, val) 
+    #                for key, val in od_greater.items() 
+    #                if key in d_lesser )
+    # else: 
+    #     new_od = od_greater.copy() 
     
-    if delistify:
-        delistify_vals_if_not_list_in(d_lesser, new_od)
+    # if delistify:
+    #     delistify_vals_if_not_list_in(d_lesser, new_od)
 
-    if check_types:
-        for key in d_lesser.viewkeys() & new_od:  #.keys():
-            if (         d_lesser[key]  is not None       
-                and type(d_lesser[key]) != type(new_od[key])   ):
-                del new_od[key]
+    # if check_types:
+    #     for key in d_lesser.viewkeys() & new_od:  #.keys():
+    #         if (         d_lesser[key]  is not None       
+    #             and type(d_lesser[key]) != type(new_od[key])   ):
 
-    if sys.version_info.major > 3 or (    sys.version_info.major == 3 
-                                  and sys.version_info.minor >= 9 ):
-        return d_lesser | new_od    # I like this! :)  There's otherwise no 
-                                    # need to check >= Python 3.9
-                                    # n.b. dict key insertion order guaranteed
-                                    # to be preserved >= Python 3.7
-    else:
-        return OrderedDict(d_lesser, **new_od)      
-            # Arguments must be string-keyed PEP 0584
+    #             del new_od[key]
+
+    # if sys.version_info.major > 3 or (    sys.version_info.major == 3 
+    #                               and sys.version_info.minor >= 9 ):
+    #     return d_lesser | new_od    # I like this! :)  There's otherwise no 
+    #                                 # need to check >= Python 3.9
+    #                                 # n.b. dict key insertion order guaranteed
+    #                                 # to be preserved >= Python 3.7
+    # else:
+    #     return OrderedDict(d_lesser, **new_od)      
+    #         # Arguments must be string-keyed PEP 0584
             # The values of od_greater take priority if the keys clash
             # But the order of the keys is as for d_lesser (Iron Python 2.7.11)
             #

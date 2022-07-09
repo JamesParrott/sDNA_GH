@@ -272,23 +272,22 @@ class sDNAMetaOptions(object):
 
     sDNAUISpec = 'sDNAUISpec'
     runsdnacommand = 'runsdnacommand'
-    sDNA_paths = funcs.windows_installation_paths('sDNA')
-
+    sDNA_paths = list( funcs.windows_installation_paths('sDNA') )
 sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 
 
 class PythonOptions(object):
     """All options needed to specify a Python interpreter, or search for one. """
 
-    python_paths = funcs.windows_installation_paths(('Python27'
-                                                    ,'Python_27'
-                                                    ,'Python_2.7'
-                                                    ,'Python2.7'
-                                                    )
-                                                   )
+    python_paths = list( funcs.windows_installation_paths(('Python27'
+                                                          ,'Python_27'
+                                                          ,'Python_2.7'
+                                                          ,'Python2.7'
+                                                          )
+                                                         )
+                       )
     python_exes = ['python.exe', 'py27.exe']
     python = None #r'C:\Python27\python.exe'
-
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
 
@@ -522,10 +521,19 @@ def import_sDNA(opts
     logger.info('Attempting import of sDNA (sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA)
     #
     # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
+    if isinstance(metas.sDNA_paths, basestring):
+        folders = [metas.sDNA_paths] 
+    else:
+        folders = metas.sDNA_paths
+
+    folders = [os.path.dirname(folder) if os.path.basename(folder) == 'bin' else folder 
+               for folder in folders
+              ]
+
     try:
         sDNAUISpec, run_sDNA, _ = load_modules(
-                                                m_names = requested_sDNA
-                                            ,folders = metas.sDNA_paths
+                                             m_names = requested_sDNA
+                                            ,folders = folders
                                             ,logger = logger
                                             ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
                                                                     +"Please supply valid names of 'sDNAUISpec.py' "
@@ -2287,16 +2295,17 @@ class ConfigManager(sDNA_GH_Tool):
                 ):
         self.debug('Starting class logger')
             
+        self.debug('save_to : %s, python : %s, sDNA_paths : %s' % (save_to, python, sDNA_paths))
 
         if opts is None:
             opts = self.opts
 
         options = opts['options']
 
-        if python is not None:
+        if python:
             opts['metas'] = opts['metas']._replace(python = python)
             check_python(opts)
-        if sDNA_paths is not None:
+        if sDNA_paths:
             opts['metas'] = opts['metas']._replace(sDNA_paths = sDNA_paths)
             import_sDNA(opts)
 

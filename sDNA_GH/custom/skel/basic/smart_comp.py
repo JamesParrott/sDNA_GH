@@ -55,6 +55,7 @@ __version__ = '0.05'
 import logging
 import inspect
 import collections
+from numbers import Number
 if hasattr(collections, 'Sequence'):
     Sequence, Callable = collections.Sequence, collections.Callable
 else:
@@ -349,6 +350,10 @@ def custom_inputs_class_deco(BaseComponent
                     params_dict.setdefault(key, val)
         # If tools accept **kwargs or *args
         # duped kwargs or args could be a problem here. ymmv.
+
+            logger.debug('\n'.join('%s : %s' %(key, value) if isinstance(value, (str, Number, bool)) else key 
+                                   for (key, value) in params_dict.items())
+                        )
 
             pos_args, args_dict = prepare_args(self.script
                                               ,params_dict = params_dict
