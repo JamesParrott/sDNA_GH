@@ -86,6 +86,7 @@ default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
                                ,('Write_Usertext', 'write_User_Text')
                                ,('Parse_Data', 'parse_data')
                                ,('Config', 'config')
+                               ,('Self_test', launcher.selftest)
                                #
                                ,('sDNA_Integral', 'sDNAIntegral')
                                ,('sDNA_Skim', 'sDNASkim')
@@ -179,6 +180,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
                  ,'Unload_sDNA'      : 'Dev'
+                 ,launcher.selftest  : 'Dev'
                  ,'config'           : 'Extra'
                  }
 

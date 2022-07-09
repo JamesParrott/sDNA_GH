@@ -99,6 +99,7 @@ repo_folder = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else 
 # Assume we are in repo_folder/dev/sDNA_build_components.gh
 
 user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder
+selftest = 'selftest'
 
 
 
@@ -389,7 +390,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     # Grasshopper calls MyComponent.RunScript automatically.
 
 
-    if nick_name.replace(' ','').replace('_','').lower() == 'selftest':  
+    if nick_name.replace(' ','').replace('_','').lower() == selftest:  
 
         if sys.argv[0].endswith(os.path.join(package_name,'__main__.py')):   
             from .tests.unit_tests import unit_tests_sDNA_GH

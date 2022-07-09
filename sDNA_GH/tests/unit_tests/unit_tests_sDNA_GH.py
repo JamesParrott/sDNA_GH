@@ -194,7 +194,9 @@ TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 tests_log_file_suffix = '_unit_test_results'
 
 def run_launcher_tests(self, *args):
-    """ Set MyComponent.RunScript to this function to unit tests in Grasshopper. """
+    """ Set MyComponent.RunScript to this function to run sDNA_GH 
+        unit tests in Grasshopper. 
+    """
     log_file_dir = os.path.dirname(checkers.get_path(fallback = self.fallback))
     if os.path.isfile(log_file_dir):
         log_file_path = os.path.splitext(log_file_dir)[0]
