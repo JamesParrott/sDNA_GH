@@ -41,9 +41,9 @@ else:
     import collections.abc
     Iterable = collections.abc.Iterable
 
+import Grasshopper
 import rhinoscriptsyntax as rs
-from ghpythonlib import treehelpers as th
-from Grasshopper import DataTree
+from ghpythonlib import treehelpers
 
 
 OrderedDict = collections.OrderedDict
@@ -94,7 +94,7 @@ def dict_from_DataTree_and_lists(nested_dict):
                             for group_dict in nested_dict.values()
                             ]
         
-        Data =  th.list_to_tree([[User_Text_Keys, User_Text_Values]])
+        Data =  treehelpers.list_to_tree([[User_Text_Keys, User_Text_Values]])
     else:
         Data = nested_dict.values()
     Geometry = nested_dict.keys()  # Multi-polyline-groups aren't unpacked.
@@ -152,10 +152,10 @@ def gdm_from_DataTree_and_list(Geom, Data):
     if (Data in [[], None, [None]] or
         getattr(Data,'BranchCount',999)==0):
         Data = OrderedDict()
-    elif (isinstance(Data, DataTree[object]) 
+    elif (isinstance(Data, Grasshopper.DataTree[object]) 
           and getattr(Data, 'BranchCount', 0) > 0):
         logger.debug('Datatree inputted to Data.  Converting....  ')
-        Data = th.tree_to_list(Data)
+        Data = treehelpers.tree_to_list(Data)
     elif not isinstance(Data, list):
         logger.debug('Listifying Data.  ')
         Data = [Data]

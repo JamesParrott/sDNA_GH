@@ -45,13 +45,14 @@ import System
 import Rhino
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
-import ghpythonlib.treehelpers as th
+from ghpythonlib import treehelpers 
 from ...custom.skel.basic.ghdoc import ghdoc 
 
 
 from ... import main
 from ... import launcher
 from ...custom import tools
+from ...custom import gdm_from_GH_Datatree
 from ...custom.skel.tools.helpers import checkers
                             
 
@@ -106,11 +107,11 @@ class TestStringMethods(unittest.TestCase):
 class TestCreateGeomDataMapping(unittest.TestCase):
 
 
-    uuids = [ '64ff5ea2-fc0a-4d0d-b5f2-0953156b8484'
-           ,'48ea417c-42cf-4d4a-8df4-ea4da6a2489a'
-           ,'8da406be-06f2-4527-8de9-e6a9720b63cd'
-           ,'aae5eb82-a28b-4ae0-99db-03b76ebd86c0'
-          ]
+    uuids = ['64ff5ea2-fc0a-4d0d-b5f2-0953156b8484'
+            ,'48ea417c-42cf-4d4a-8df4-ea4da6a2489a'
+            ,'8da406be-06f2-4527-8de9-e6a9720b63cd'
+            ,'aae5eb82-a28b-4ae0-99db-03b76ebd86c0'
+            ]
 
     opts = main.default_options
 
@@ -157,8 +158,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                       ]
    
     def conv_opts(self, x):
-        return tools.convert_Data_tree_and_Geom_list_to_gdm(x[0], x[1], self.opts)
-
+        return gdm_from_GH_Datatree.gdm_from_DataTree_and_list(x[0], x[1])
     def get_expected_and_actual(self, f, l):
         return [x[1] for x in l], [f(x[0]) for x in l]
 
@@ -182,7 +182,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
 def test_empty_DataTree(self):
         
         #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
-    self.input_data_tree = [(([None], th.ListToTree(None)), OrderedDict())]
+    self.input_data_tree = [(([None], treehelpers.list_to_tree(None)), OrderedDict())]
     self.assertEqual(  *self.get_expected_and_actual(self.conv_opts
                                                 ,self.input_data_tree
                                                 )
