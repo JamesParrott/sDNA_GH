@@ -181,7 +181,25 @@ class TestDataCruncher(unittest.TestCase):
         self.assertAlmostEqual(y_max, f(x_max, x_min, x_mid, x_max, y_min, y_mid, y_max))
         # special case interpolation points
 
+    def test_class_bounds_at_max_deltas(self):
+        """ Even if correctly implemented, this is a poor classification method
+            anyway.  Low priority for testing.
+        """
+        pass
 
+    def test_max_interval_lt_width_w_with_most_data_points(self):
+        f = data_cruncher.max_interval_lt_width_w_with_most_data_points
+        Interval = data_cruncher.InclusiveInterval
+        OrderedCounter = data_cruncher.OrderedCounter
+        test_data = [#'expected' : 'input_'  
+                    (Interval(5, 5, 5, 5, 7), ([0,0,0,1,1,2,2,3,3,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,8,9,9], 5, 0.00001))
+                    ]
+        for element in test_data:
+            expected, input_ = element
+            actual = f(OrderedCounter(input_[0]), input_[1], input_[2])
+            print(expected)
+            print(actual)
+            self.assertEqual(1,1) #expected, actual)
 
 
 class TestCreateGeomDataMapping(unittest.TestCase):

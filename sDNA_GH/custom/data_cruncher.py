@@ -251,17 +251,31 @@ def class_bounds_at_max_deltas(data
     return class_bounds
 
 
+class InclusiveInterval:
+    
+    def __init__(self, a, i_a, b, i_b, num_data_points):
+        self.a = a
+        self.index_a = i_a
+        self.b = b
+        self.index_b = i_b
+        self.num_data_points = num_data_points
+
+    def __repr__(self):
+        str_ = 'InclusiveInterval(a = %s, i_a = %s, b = %s, i_b = %s, num_data_points = %s'
+        str_ = str_ % (self.a, self.index_a, self.b, self.index_b, self.num_data_points)
+        return str_
 
 
 def max_interval_lt_width_w_with_most_data_points(ordered_counter
-                                                 ,minimum_num
+                                                 ,min_num_of_data_pts
                                                  ,w = TOL
                                                  ):
     #type(OrderedCounter, Number) -> dict 
     """Given a discrete frequency distribution of Numbers in the form of an 
        OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
-       collections recipe), calculates a maximum closed interval [a, b] of
-       width b - a <= w that contains the most data points over minimum_num.  
+       collections recipe), calculates a closed interval [a, b] of
+       width b - a <= w that maximises the number of data points contained 
+       within it, containing at least min_num_of_data_pts data points.  
        In a histogram this would be the largest bin of width less than w.
        This implementation calculates a moving sum using a moving interval 
        between a and b taking values of the sorted data keys.  The attributes of 
@@ -278,15 +292,9 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
     i_b, b = next(b_iter)
     last_key = max(keys)
     num_data_points = ordered_counter[b]
-    class InclusiveInterval:
-        def __init__(self):
-            self.a = a
-            self.index_a = i_a
-            self.b = b
-            self.index_b = i_b
-            self.num_data_points = num_data_points
+
                         
-    interval = InclusiveInterval()
+    interval = InclusiveInterval(a, i_a, b, i_b, num_data_points)
     # num_data_points = sum(ordered_counter[key] 
                       # for key in keys
                       # if a <= key <= b
@@ -301,9 +309,9 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
             
         if num_data_points > interval.num_data_points: 
             # stick with first if equal
-            interval = InclusiveInterval() 
+            interval = InclusiveInterval(a, i_a, b, i_b, num_data_points) 
             
-    if interval.num_data_points > minimum_num:
+    if interval.num_data_points > min_num_of_data_pts:
         return interval
     return None
         
