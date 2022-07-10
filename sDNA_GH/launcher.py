@@ -63,7 +63,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.05'
+__version__ = '0.06'
 
 
 
@@ -392,15 +392,13 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     if nick_name.replace(' ','').replace('_','').lower() == selftest:  
 
-        if sys.argv[0].endswith(os.path.join(package_name,'__main__.py')):   
-            from .tests.unit_tests import unit_tests_sDNA_GH
-        else:
-            unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.tests.unit_tests.unit_tests_sDNA_GH'
-                                                ,sDNA_GH_search_path
-                                                )
+
+        unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.custom.tests.unit_tests'
+                                            ,sDNA_GH_search_path
+                                            )
 
         MyComponent._RunScript = MyComponent.RunScript
-        MyComponent.fallback = sDNA_GH_search_path
+        MyComponent.package_location = sDNA_GH_search_path
         MyComponent.RunScript =  unit_tests_sDNA_GH.run_launcher_tests
         # Grasshopper calls MyComponent.RunScript automatically.
 

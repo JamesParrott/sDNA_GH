@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.05'
+__version__ = '0.06'
 
 import os
 import logging
@@ -1945,7 +1945,6 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                         )
                         
     def __init__(self):
-        self.debug('Initialising Class.  Creating Class Logger. ')
         self.parse_data = DataParser()
         self.GH_Gradient_preset_names = {0 : 'EarthlyBrown'
                                         ,1 : 'Forest'
@@ -1963,6 +1962,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
     def __call__(self, gdm, opts, plot_min, plot_max, bbox):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
+        self.debug('Initialising Class.  Creating Class Logger. ')
+
         if opts is None:
             opts = self.opts
         options = opts['options']

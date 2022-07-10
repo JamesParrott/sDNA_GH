@@ -31,25 +31,31 @@
 __author__ = 'James Parrott'
 __version__ = '0.06'
 
+import sys
+import os
+import unittest
+from time import asctime    
+from itertools import repeat, izip
+from collections import OrderedDict
 
+from ghpythonlib.componentbase import executingcomponent as component
+import Grasshopper, GhPython
+import System
 import Rhino
-import GhPython
+import rhinoscriptsyntax as rs
 import scriptcontext as sc
+from ghpythonlib import treehelpers 
+
+from ..basic.ghdoc import ghdoc 
+from ..tools.helpers import checkers
+                            
 
 
-if 'ghdoc' not in globals():
-    if sc.doc == Rhino.RhinoDoc.ActiveDoc:
-        raise ValueError('sc.doc == Rhino.RhinoDoc.ActiveDoc. '
-                        +'Switch sc.doc = ghdoc and re-import module. '
-                        )
-    if isinstance(sc.doc, GhPython.DocReplacement.GrasshopperDocument):
-        ghdoc = sc.doc  # Normally a terrible idea!  But the check conditions
-                        # are strong, and we need to get the `magic variable'
-                        # ghdoc in this 
-                        # namespace as a global, from launcher and GH.
-    else:
-        raise TypeError('sc.doc is not of type: '
-                       +'GhPython.DocReplacement.GrasshopperDocument '
-                       +'Ensure sc.doc == ghdoc and re-import module.'
-                       )
 
+
+
+
+
+class TestSkelStuff(unittest.TestCase):
+    def test_important_thing(self):
+        self.assertEqual(1, 1)
