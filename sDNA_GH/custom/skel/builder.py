@@ -292,7 +292,7 @@ def build_comps_with_docstring_from_readme(default_path
         gh_python_comp.Code = tool_code
         gh_python_comp.IsAdvancedMode = True
 
-        for name, IO in zip(('a','x','y'),('Output','Input','Input')):
+        for name, IO in zip(('a', 'x', 'y'), ('Output', 'Input', 'Input')):
             add_params.delete_Param(gh_python_comp.Params, name, IO)
         #gh_python_comp.Params.Clear()
 

@@ -59,7 +59,7 @@ class ParamInfo(dict, ParamInfoABC):
     access_methods = ('item', 'list', 'tree')
     def __init__(self
                 ,NickName
-                ,factory = None 
+                ,param_Class = None 
                 ,Name = None
                 ,Description = None
                 ,Access = 'list'
@@ -67,15 +67,15 @@ class ParamInfo(dict, ParamInfoABC):
                 ,TypeHint = None 
                 ,**kwargs
                 ):
-        if isinstance(factory, str):
-            if not factory.startswith('Param_'):
-                factory = 'Param_' + factory
-            factory = getattr(Grasshopper.Kernel.Parameters, factory, None)
-        if factory is None:
-            factory = Param_ScriptVariable
+        if isinstance(param_Class, str):
+            if not param_Class.startswith('Param_'):
+                param_Class = 'Param_' + param_Class
+            param_Class = getattr(Grasshopper.Kernel.Parameters, param_Class, None)
+        if param_Class is None:
+            param_Class = Param_ScriptVariable
             logger.debug('Using factory Param_ScriptVariable for param : ' + NickName)
-        self.factory = factory
-        if TypeHint is None and factory == Param_ScriptVariable:
+        self.factory = param_Class
+        if TypeHint is None and param_Class == Param_ScriptVariable:
             TypeHint = GhPython.Component.GhDocGuidHint()
         self.TypeHint = TypeHint
 
@@ -115,42 +115,48 @@ class ToolwithParamsABC(ABC):
         """ List of output ParamInfo instances """
 
 def param_info_list_maker(param_names
-                         ,factories = {}
+                         ,param_classes = {}
                          ,TypeHints = {}
                          ,access_methods = {}
+                         ,descriptions = {}
                          ):
     if isinstance(param_names, str):
         param_names = [param_names]
     return [ParamInfo(NickName = name
-                     ,factory = factories.get(name
+                     ,param_Class = param_classes.get(name
                                              ,Param_ScriptVariable
                                              )
                      ,TypeHint = TypeHints.get(name
                                               ,None
                                               )
                      ,Access = access_methods.get(name, 'list')
+                     ,Description = descriptions.get(name, '')
                      ) for name in param_names                            
            ]
 
 class ToolWithParams(ToolwithParamsABC):
 
-    factories_dict = {}
+    param_classes = {} # Param name (str) : Grasshopper.Kernel.Parameters.Param_...
 
-    type_hints_dict = {}
+    type_hints = {} # Param name (str) : GhPython.Component.GhDocGuidHint()
+                         # Best to leave to the correct Param type above.
 
-    access_methods_dict = {}
+    access_methods = {} # Param name (str) : 'item', 'list' or 'tree'
+
+    descriptions = {} # Param name (str) : description text
 
     def params_list(self, names):
         return param_info_list_maker(param_names = names
-                                    ,factories = self.factories_dict
-                                    ,TypeHints = self.type_hints_dict
-                                    ,access_methods = self.access_methods_dict
+                                    ,param_classes = self.param_classes
+                                    ,TypeHints = self.type_hints
+                                    ,access_methods = self.access_methods
+                                    ,descriptions = self.descriptions
                                     )
 
 
-    component_inputs = ()
+    component_inputs = ()   # tuple of strings of input Param names
 
-    component_outputs = ()
+    component_outputs = ()  # tuple of strings of input Param names
 
     def input_params(self):
         return self.params_list(self.component_inputs)

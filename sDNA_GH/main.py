@@ -49,6 +49,7 @@ import sys
 import os
 from collections import namedtuple, OrderedDict
 import locale
+import functools
 
 from . import launcher
 from .custom import options_manager
@@ -713,6 +714,13 @@ do_not_remove += default_local_metas._fields
 ######################################################################
 
 
+make_params = functools.partial(add_params.param_info_list_maker
+                               ,param_classes = tools.sDNA_GH_Tool.param_classes
+                               ,TypeHints = tools.sDNA_GH_Tool.type_hints
+                               ,access_methods = tools.sDNA_GH_Tool.access_methods
+                               ,descriptions = tools.sDNA_GH_Tool.descriptions
+                               )
+
 
 def cache_sDNA_tool(compnt # instead of self
                    ,nick_name
@@ -1215,7 +1223,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                               ]
                              )
         return ret_args
-    script.input_params = lambda : tools.sDNA_GH_Tool.params_list(['go', 'opts'])
-    script.output_params = lambda : tools.sDNA_GH_Tool.params_list(['OK', 'opts'])
+    script.input_params = functools.partial(make_params, ['go', 'opts'])
+    script.output_params = functools.partial(make_params, ['OK', 'opts'])
 
 

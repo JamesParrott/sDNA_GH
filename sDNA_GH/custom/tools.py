@@ -113,7 +113,8 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
 
 class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolWithParams, ClassLogger):
 
-    factories_dict = dict(go = Param_Boolean
+    param_classes = add_params.ToolWithParams.param_classes.copy()
+    param_classes.update(dict(go = Param_Boolean
                          #,OK = Param_ScriptVariable
                          ,file = Param_FilePath
                          #,Geom = Param_ScriptVariable
@@ -136,21 +137,23 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolWithParams, ClassLogger):
                          #,Param_GenericObject
                          #,Param_Guid
                          )
+                    )
 
-    type_hints_dict = dict(Geom = GhPython.Component.GhDocGuidHint())
+    type_hints = add_params.ToolWithParams.type_hints.copy()
+    type_hints = dict(Geom = GhPython.Component.GhDocGuidHint())
 
-    access_methods_dict = dict(Data = 'tree')
+    access_methods = add_params.ToolWithParams.access_methods.copy()
+    access_methods = dict(Data = 'tree')
 
-    @classmethod
-    def params_list(cls, names):
-        return [add_params.ParamInfo(
-                          factory = cls.factories_dict.get(name
-                                                          ,Param_ScriptVariable
-                                                          )
-                         ,NickName = name
-                         ,Access = 'tree' if name == 'Data' else 'list'
-                         ) for name in names                            
-               ]
+    descriptions = add_params.ToolWithParams.descriptions.copy()
+    descriptions.update(Data = 'A Data Tree of a list of keys and list of corresponding values for each object in Geom.'
+                       ,Geom = 'A list of Geometric objects.'
+                       ,go = 'Boolean. True: runs the tool.  False: only read other Params.'
+                       ,file = 'File path. The shape file to be read in.'
+                       ,opts = 'Python dictionary. sDNA_GH options data structure from another component.'
+                       ,local_metas = 'Python named tuple. Local meta options, controlling synchronisation to the global sDNA_GH options.'
+                       )
+
 
 
 def make_regex(pattern):
@@ -683,6 +686,26 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     self.tool_name.  When the instance is called, the version of sDNA
     is looked up in opts['metas'], from its args. """
     
+    sDNA_types_to_py_type_names = dict(fc = 'file_path'
+                                      ,ofc = 'file_path'
+                                      ,bool = 'bool'
+                                      ,field = 'str'
+                                      ,text = 'str'
+                                      ,multiinfile = 'file_path'
+                                      ,infile = 'file_path'
+                                      ,outfile = 'file_path'
+                                      )
+
+    py_type_names_to_Params = dict(file = Param_FilePath 
+                                  ,bool = Param_Boolean
+                                  ,str = Param_String
+                                  )
+
+    py_type_names_to_type_description = dict(file = 'file path'
+                                            ,bool = 'Boolean'
+                                            ,str = 'text'
+                                            )
+
     metas = dict(sDNA = None
                 ,show_all = True
                 #,strict 
@@ -747,15 +770,27 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntax = sDNA_Tool.getSyntax
         self.run_sDNA_command = run_sDNA_command     
 
-        self.defaults_dict = OrderedDict((varname, default) for (
-                                                            varname
-                                                           ,display_name
-                                                           ,data_type
-                                                           ,filter_
-                                                           ,default
-                                                           ,required
-                                                           ) in self.input_spec  
-                                        )         
+        self.defaults = OrderedDict()
+        for varname, display_name, data_type, filter_, default, required in self.input_spec:  
+            
+            self.defaults[varname]= default
+            
+            description = display_name
+            if default is not None:
+                description = '%s. Default value == %s' %  (description, default)
+            if filter_ is not None: 
+                description = '%s. Allowed values: %s' % (description, filter_) 
+            # if required:     
+            #     description = 'REQUIRED. %s' % description
+            if data_type:
+                py_type_name = self.sDNA_types_to_py_type_names[data_type]
+                type_description = self.py_type_names_to_type_description[py_type_name]
+                description = '%s. Type: %s' % (description, type_description)
+
+            self.descriptions[varname] = description
+
+            if data_type.lower() in self.sDNA_types_to_Params:
+                self.param_classes[varname] = self.sDNA_types_to_Params[data_type.lower()]
 
 
 
@@ -767,7 +802,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                      ,default_tool_opts
                      ,tool_name
                      ,sDNA
-                     ,val = self.defaults_dict
+                     ,val = self.defaults
                      )
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
@@ -813,13 +848,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if metas.show_all:
             new_keys = tuple(key 
-                             for key in self.defaults_dict.keys() 
+                             for key in self.defaults.keys() 
                              if key not in self.component_inputs
                             )
             if new_keys:
                 self.component_inputs += new_keys
 
-            if 'advanced' not in self.defaults_dict:
+            if 'advanced' not in self.defaults:
                 msg = "'advanced' not in defaults_dict"
                 self.logger.warning(msg)
                 warnings.showwarning(message = msg
@@ -918,7 +953,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
                                 for (key, val) in kwargs.items()
                                 if (key in user_inputs and 
-                                    key not in self.defaults_dict)
+                                    key not in self.defaults)
                                )
             input_args['advanced'] = advanced
             self.logger.info('Advanced command string == %s' % advanced)
@@ -1064,6 +1099,11 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                              ,include_groups = False
                                              )
                               )
+
+    descriptions = dict(config = 'File path to sDNA_GH options file, e.g. config.toml'
+                       ,selected = 'Boolean.  True : only read selected geometry. False: read all.'
+                       ,layer = 'Text.  Names of the layers : read geometry only from those layers. Any value not the name of a layer: read all.'
+                       )
 
     component_inputs = ('config', 'selected', 'layer', 'Geom') 
     

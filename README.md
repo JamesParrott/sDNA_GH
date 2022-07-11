@@ -466,6 +466,18 @@ sDNA_GH will attempt to automatically build components and user objects for the 
 - If necessary Recompute the sheet - press F5.
 - The new user objects for the new components will be automatically created, and added to the sDNA section of the Grasshopper Plug-ins Ribbon.  Copy the relevant `.ghuser` file(s) from `%appdata%\Grasshopper\UserObjects\`, and paste them in `\sDNA_GH\components\automatically_built` in the repo.  Place copies of the updated README.md file and new icon files in there too for posterity. 
 
+The supported data types for inputs (forced to lower case) are in sDNA_ToolWrapper.sDNA_types_to_Params in tools.py: 
+- fc = Param_FilePath
+- ofc = Param_FilePath
+- bool = Param_Boolean
+- field = Param_String
+- text = Param_String
+- multiinfile = Param_FilePath
+- infile = Param_FilePath
+- outfile = Param_FilePath
+
+
+
 ### Misc
 To compile C# code to a grasshopper assembly (.gha file):
 Install Visual Studio 2017 community edition with VB / C# / .Net workflow [https://developer.rhino3d.com/guides/grasshopper/installing-tools-windows/#fnref:3]
