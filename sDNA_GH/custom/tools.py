@@ -686,14 +686,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     self.tool_name.  When the instance is called, the version of sDNA
     is looked up in opts['metas'], from its args. """
     
-    sDNA_types_to_py_type_names = dict(fc = 'file_path'
-                                      ,ofc = 'file_path'
+    sDNA_types_to_py_type_names = dict(fc = 'file'
+                                      ,ofc = 'file'
                                       ,bool = 'bool'
                                       ,field = 'str'
                                       ,text = 'str'
-                                      ,multiinfile = 'file_path'
-                                      ,infile = 'file_path'
-                                      ,outfile = 'file_path'
+                                      ,multiinfile = 'file'
+                                      ,infile = 'file'
+                                      ,outfile = 'file'
                                       )
 
     py_type_names_to_Params = dict(file = Param_FilePath 
@@ -776,21 +776,27 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.defaults[varname]= default
             
             description = display_name
-            if default is not None:
+            if default not in (None, ''):
                 description = '%s. Default value == %s' %  (description, default)
             if filter_ is not None: 
                 description = '%s. Allowed values: %s' % (description, filter_) 
             # if required:     
             #     description = 'REQUIRED. %s' % description
             if data_type:
-                py_type_name = self.sDNA_types_to_py_type_names[data_type]
-                type_description = self.py_type_names_to_type_description[py_type_name]
-                description = '%s. Type: %s' % (description, type_description)
+                if data_type.lower() not in self.sDNA_types_to_py_type_names:
+                    msg = 'Default types will be assigned to Param with unsupported data type: %s, '
+                    msg += 'for param: %s, of tool: %s, with nick name: %s'
+                    msg %= (data_type, varname, self.tool_name, self.nick_name)
+                    self.logger.warning(msg)
+                else:
+                    py_type_name = self.sDNA_types_to_py_type_names[data_type.lower()]
+                    type_description = self.py_type_names_to_type_description[py_type_name]
+                    description = '%s. Type: %s' % (description, type_description)
 
-            self.descriptions[varname] = description
+                    self.descriptions[varname] = description
+                    self.param_classes[varname] = self.py_type_names_to_Params[py_type_name]
 
-            if data_type.lower() in self.sDNA_types_to_Params:
-                self.param_classes[varname] = self.sDNA_types_to_Params[data_type.lower()]
+
 
 
 
