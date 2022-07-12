@@ -31,6 +31,7 @@
 __author__ = 'James Parrott'
 __version__ = '0.06'
 
+from collections import OrderedDict
 import logging
 import abc
 
@@ -56,7 +57,7 @@ class ParamInfoABC(ABC):
 
 
 class ParamInfo(dict, ParamInfoABC):
-    access_methods = ('item', 'list', 'tree')
+    valid_access_methods = ('item', 'list', 'tree')
     def __init__(self
                 ,NickName
                 ,param_Class = None 
@@ -73,8 +74,8 @@ class ParamInfo(dict, ParamInfoABC):
             param_Class = getattr(Grasshopper.Kernel.Parameters, param_Class, None)
         if param_Class is None:
             param_Class = Param_ScriptVariable
-            logger.debug('Using factory Param_ScriptVariable for param : ' + NickName)
-        self.factory = param_Class
+            logger.debug('Using Param_ScriptVariable for param_Class : ' + NickName)
+        self.param_Class = param_Class
         if TypeHint is None and param_Class == Param_ScriptVariable:
             TypeHint = GhPython.Component.GhDocGuidHint()
         self.TypeHint = TypeHint
@@ -83,10 +84,10 @@ class ParamInfo(dict, ParamInfoABC):
             Name = NickName
         if Description is None:
             Description = NickName
-        if Access in self.access_methods:
+        if Access in self.valid_access_methods:
             Access = getattr(Grasshopper.Kernel.GH_ParamAccess, Access)
         elif Access not in [getattr(Grasshopper.Kernel.GH_ParamAccess, x) 
-                            for x in self.access_methods]:
+                            for x in self.valid_access_methods]:
             logger.warning('Unrecognised access method : %s ' % Access)
         super(ParamInfo, self).__init__(NickName = NickName
                                        ,Name = Name
@@ -96,7 +97,7 @@ class ParamInfo(dict, ParamInfoABC):
                                        ,**kwargs
                                        )
     def make(self):
-        Param = self.factory() #**self)
+        Param = self.param_Class() #**self)
         if self.TypeHint:
             Param.TypeHint = self.TypeHint
         for attr in self: # class inherits from dict
@@ -114,36 +115,59 @@ class ToolwithParamsABC(ABC):
     def output_params(self):
         """ List of output ParamInfo instances """
 
+
 def param_info_list_maker(param_names
                          ,param_classes = {}
                          ,TypeHints = {}
                          ,access_methods = {}
                          ,descriptions = {}
                          ):
+    #type(Iterable, dict, dict, dict, dict) -> List[Grasshopper.Kernel.GH_Param]
     if isinstance(param_names, str):
         param_names = [param_names]
+
+    param_classes = OrderedDict(param_classes)    # If they do not throw an 
+    TypeHints = OrderedDict(TypeHints)            # error, dict and OrderedDict   
+    access_methods = OrderedDict(access_methods)  # are idempotent.
+    descriptions = OrderedDict(descriptions)
+
     return [ParamInfo(NickName = name
                      ,param_Class = param_classes.get(name
-                                             ,Param_ScriptVariable
-                                             )
+                                                     ,Param_ScriptVariable
+                                                     )
                      ,TypeHint = TypeHints.get(name
                                               ,None
                                               )
                      ,Access = access_methods.get(name, 'list')
-                     ,Description = descriptions.get(name, '')
-                     ) for name in param_names                            
+                     ,Description = descriptions.get(name#.lower()
+                                                         #.replace(' ','') # .strip misses middle
+                                                         #.replace('_','')
+                                                    ,''
+                                                    )
+                     ) 
+            for name in param_names                            
            ]
 
 class ToolWithParams(ToolwithParamsABC):
 
-    param_classes = {} # Param name (str) : Grasshopper.Kernel.Parameters.Param_...
+    # Tuples are immutable, so subclasses of this class can safely simply append to 
+    # these inherited variables.  
+    # If we used dicts, we would have to be careful to
+    # .copy() to avoid .updating these base class variables too.  
+    # This is a little more syntax, but much simpler than meta-classes also.
 
-    type_hints = {} # Param name (str) : GhPython.Component.GhDocGuidHint()
-                         # Best to leave to the correct Param type above.
+    param_classes = () # Tuple of tuple of key/value pairs
+                       # key: Param name (str), val: Grasshopper.Kernel.Parameters.Param_...
 
-    access_methods = {} # Param name (str) : 'item', 'list' or 'tree'
+    type_hints = () # Tuple of tuple of key/value pairs
+                    # key: Param name (str), val: GhPython.Component.GhDocGuidHint()
+                    # Best to leave to the correct Param type above.
 
-    descriptions = {} # Param name (str) : description text
+    access_methods = () # Tuple of tuple of key/value pairs
+                        # key: Param name (str), val in ('item', 'list', 'tree')
+
+    descriptions = () # Tuple of tuple of key/value pairs
+                      # key: Param name (str), val: description text
 
     def params_list(self, names):
         return param_info_list_maker(param_names = names
@@ -184,7 +208,7 @@ def add_Params(IO
               ,Params
               ,params_needed
               ):
-    #type(str, list, list, type[any], list, list[Param], list[ParamInfo]) -> None   
+    #type(str, list, list, type[any], list) -> None   
 
     check_IO(IO)
 
@@ -237,7 +261,7 @@ def add_Params(IO
             #                        ,Input_or_Output
             #                        )
 
-            getattr(Params, registers[IO])(param.make()) 
+            getattr(Params, registers[IO])(param.make() if isinstance(param, ParamInfoABC) else param) 
             Params.OnParametersChanged()
 
 

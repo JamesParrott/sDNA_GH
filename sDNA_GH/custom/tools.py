@@ -37,6 +37,7 @@ __author__ = 'James Parrott'
 __version__ = '0.06'
 
 import os
+import abc
 import logging
 import subprocess
 from .data_cruncher import itertools #pairwise from recipe if we're in Python 2
@@ -87,6 +88,8 @@ from . import logging_wrapper
 from . import gdm_from_GH_Datatree
 from .. import launcher
 
+abstractmethod = abc.abstractmethod
+
 try:
     basestring #type: ignore
 except NameError:
@@ -110,49 +113,108 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
 
 
 
+class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogger):
 
-class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolWithParams, ClassLogger):
+    """ General base class for all tools, that is runnable (should have an
+        retvals implemented), has params (input_params and output_params
+        should be implemented), and containing a class logger that adds the subclass
+        name to logging messages. """
 
-    param_classes = add_params.ToolWithParams.param_classes.copy()
-    param_classes.update(dict(go = Param_Boolean
-                         #,OK = Param_ScriptVariable
-                         ,file = Param_FilePath
-                         #,Geom = Param_ScriptVariable
-                         #,Data = Param_ScriptVariable
-                         #,leg_cols = Param_ScriptVariable
-                         #,leg_tags = Param_ScriptVariable
-                         #,leg_frame = Param_ScriptVariable
-                         #,gdm = Param_ScriptVariable
-                         #,opts = Param_ScriptVariable
-                         ,config = Param_FilePath
-                         #,l_metas = Param_ScriptVariable
-                         ,field = Param_String
-                         #,fields = Param_ScriptVariable
-                         #,plot_min = Param_ScriptVariable
-                         #,plot_max = Param_ScriptVariable
-                         #,class_bounds = Param_ScriptVariable
-                         #,abbrevs = Param_ScriptVariable
-                         #,sDNA_fields = Param_ScriptVariable
-                         #,bbox = Param_ScriptVariable
-                         #,Param_GenericObject
-                         #,Param_Guid
-                         )
-                    )
+    def param_info_list(self, param_names):
+        retvals = []
+        od_param_infos = OrderedDict(self.param_infos)
+        for param_name in param_names:
+            param_info = od_param_infos[param_name]
+            param_info['NickName'] = param_info['Name'] = param_name
+            retvals.append(param_info)
+        return retvals
 
-    type_hints = add_params.ToolWithParams.type_hints.copy()
-    type_hints = dict(Geom = GhPython.Component.GhDocGuidHint())
+    def input_params(self):
+        return self.param_info_list(self.component_inputs)
+    
+    def output_params(self):
+        return self.param_info_list(self.component_outputs)
 
-    access_methods = add_params.ToolWithParams.access_methods.copy()
-    access_methods = dict(Data = 'tree')
+    @property
+    @abstractmethod
+    def component_inputs(self):
+        pass
 
-    descriptions = add_params.ToolWithParams.descriptions.copy()
-    descriptions.update(Data = 'A Data Tree of a list of keys and list of corresponding values for each object in Geom.'
-                       ,Geom = 'A list of Geometric objects.'
-                       ,go = 'Boolean. True: runs the tool.  False: only read other Params.'
-                       ,file = 'File path. The shape file to be read in.'
-                       ,opts = 'Python dictionary. sDNA_GH options data structure from another component.'
-                       ,local_metas = 'Python named tuple. Local meta options, controlling synchronisation to the global sDNA_GH options.'
-                       )
+    @property
+    @abstractmethod
+    def component_outputs(self):
+        pass
+
+    # Can be both inputs and outputs
+    param_infos = (('go', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: runs tools.  false: do not '
+                                           +'run tools but still read other '
+                                           +'Params.'
+                                           )
+                            )),
+                   ('OK', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: tools ran successfully.  '
+                                           +'false: tools did not run, or '
+                                           +'there was an error.'
+                                           )
+                            )),
+                   ('file', add_params.ParamInfo(
+                             param_Class = Param_FilePath
+                            ,Description = 'File path of the shape file.'
+                            )),                            
+                   ('Geom', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = 'A list of Geometric objects.'
+                            )),  
+                   ('Data', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('A Data Tree of a list of keys '
+                                           +'and list of corresponding values '
+                                           +'for each object in Geom.'
+                                           )
+                            ,Access = 'tree'
+                            )),
+                   ('gdm', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('Geometry and Data Mapping.  '
+                                           +'Internal combination of Geom and '
+                                           +'Data.  Python dictionary.'
+                                           )
+                            )),  
+                   ('opts', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('sDNA_GH options data structure '
+                                           +'from another component. Python '
+                                           +'dictionary.'
+                                           )
+                            )),
+                   ('config', add_params.ParamInfo(
+                             param_Class = Param_FilePath
+                            ,Description = ('File path to sDNA_GH options '
+                                           +'file, e.g. config.toml'
+                                           )
+                            )),   
+                   ('local_metas', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('Local meta options, controlling '
+                                           +'synchronisation to the global '
+                                           +'sDNA_GH options. Python named '
+                                           +'tuple.'
+                                           )
+                            )),   
+                   ('l_metas', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('Local meta options, controlling '
+                                           +'synchronisation to the global '
+                                           +'sDNA_GH options. Python named '
+                                           +'tuple.'
+                                           )
+                            )),  
+                  )                     
+
+
 
 
 
@@ -793,7 +855,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     type_description = self.py_type_names_to_type_description[py_type_name]
                     description = '%s. Type: %s' % (description, type_description)
 
-                    self.descriptions[varname] = description
+                    self.descriptions += ((varname, description),)
                     self.param_classes[varname] = self.py_type_names_to_Params[py_type_name]
 
 
@@ -1106,10 +1168,23 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                              )
                               )
 
-    descriptions = dict(config = 'File path to sDNA_GH options file, e.g. config.toml'
-                       ,selected = 'Boolean.  True : only read selected geometry. False: read all.'
-                       ,layer = 'Text.  Names of the layers : read geometry only from those layers. Any value not the name of a layer: read all.'
-                       )
+    input_params = sDNA_GH_Tool.input_params + (
+                   ('selected', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true : only read from selection. '
+                                           +'false: read all.'
+                                           )
+                            )),
+                   ('layer', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('Text.  Names of the layers : '
+                                           +'read geometry only from those '
+                                           +'layers. Any value not the name '
+                                           +'of a layer: read all layers.'
+                                           )
+                            ))
+                                               )
+
 
     component_inputs = ('config', 'selected', 'layer', 'Geom') 
     
@@ -1252,6 +1327,9 @@ class ShapefileWriter(sDNA_GH_Tool):
                                                                  )
                                        )
                         )
+
+    descriptions = sDNA_GH_Tool.descriptions.copy()
+    descriptions.update(prj = 'File path of the projection file (.prj) to use for the new shapefile. ')
 
     component_inputs = ('Geom', 'Data', 'file', 'prj', 'config') 
 
@@ -1512,7 +1590,8 @@ class ShapefileReader(sDNA_GH_Tool):
 
 class UsertextWriter(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
+    opts = options_manager.get_dict_of_Classes(
+                         metas = {}
                         ,options = dict(uuid_field = 'Rhino3D_'
                                        ,output_key_str = 'sDNA output={name} run time={datetime}'
                                        ,overwrite_UserText = True
