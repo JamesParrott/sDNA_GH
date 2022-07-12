@@ -57,9 +57,10 @@ class ParamInfoABC(ABC):
 
 
 class ParamInfo(dict, ParamInfoABC):
+    __getattr__ = dict.__getitem__
     valid_access_methods = ('item', 'list', 'tree')
     def __init__(self
-                ,NickName
+                ,NickName = None
                 ,param_Class = None 
                 ,Name = None
                 ,Description = None
@@ -74,14 +75,16 @@ class ParamInfo(dict, ParamInfoABC):
             param_Class = getattr(Grasshopper.Kernel.Parameters, param_Class, None)
         if param_Class is None:
             param_Class = Param_ScriptVariable
-            logger.debug('Using Param_ScriptVariable for param_Class : ' + NickName)
+            msg = 'Using Param_ScriptVariable'
+            if NickName:
+                msg += 'for param_Class: %s' % NickName
+            else:
+                msg +='for as yet unnamed Param'
+            logger.debug(msg)
         self.param_Class = param_Class
         if TypeHint is None and param_Class == Param_ScriptVariable:
             TypeHint = GhPython.Component.GhDocGuidHint()
         self.TypeHint = TypeHint
-
-        if Name is None:
-            Name = NickName
         if Description is None:
             Description = NickName
         if Access in self.valid_access_methods:
@@ -96,8 +99,19 @@ class ParamInfo(dict, ParamInfoABC):
                                        ,Optional = Optional
                                        ,**kwargs
                                        )
-    def make(self):
+    def make(self, **kwargs):
+        
+        self.update(kwargs)
+
+        if self['NickName'] is None:
+            raise ValueError('Param: %s is missing a name' % self.param_Class.__name__)
+        
+        if self['Name'] is None:
+            self['Name'] = self['NickName']
+
+        
         Param = self.param_Class() #**self)
+
         if self.TypeHint:
             Param.TypeHint = self.TypeHint
         for attr in self: # class inherits from dict
@@ -333,11 +347,11 @@ class ParamsToolAdder(object):
             output_tools += [wrapper]
             input_tools = [wrapper] + input_tools
 
-        self.needed_outputs = [output['NickName'] 
+        self.needed_outputs = [output.NickName
                                for tool in output_tools
                                for output in tool.output_params() 
                               ]
-        self.needed_inputs = [input['NickName'] 
+        self.needed_inputs = [input.NickName
                               for tool in input_tools 
                               for input in tool.input_params() 
                              ]
@@ -346,11 +360,11 @@ class ParamsToolAdder(object):
 
         missing_output_params = [ output for tool in reversed(output_tools)
                                  for output in tool.output_params() 
-                                 if output['NickName'] not in self.current_outputs]
+                                 if output.NickName not in self.current_outputs]
 
         missing_input_params = [ input for tool in input_tools 
                                 for input in tool.input_params() 
-                                if input['NickName'] not in self.current_inputs ]
+                                if input.NickName not in self.current_inputs ]
                             
         # if wrapper:
         #     for output in reversed(wrapper.output_params()):

@@ -59,6 +59,7 @@ import System.Drawing #.Net / C# Class
             #System is also available in IronPython, but System.Drawing isn't
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
+                                          ,Param_Colour  
                                           ,Param_Curve
                                           ,Param_Boolean
                                           ,Param_Geometry
@@ -118,15 +119,15 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     """ General base class for all tools, that is runnable (should have an
         retvals implemented), has params (input_params and output_params
         should be implemented), and containing a class logger that adds the subclass
-        name to logging messages. """
+        name to logging messages. 
+    """
 
     def param_info_list(self, param_names):
         retvals = []
-        od_param_infos = OrderedDict(self.param_infos)
+        param_infos = OrderedDict(self.param_infos)
         for param_name in param_names:
-            param_info = od_param_infos[param_name]
-            param_info['NickName'] = param_info['Name'] = param_name
-            retvals.append(param_info)
+            param_info = param_infos[param_name]
+            retvals.append(param_info.make(NickName = param_name))
         return retvals
 
     def input_params(self):
@@ -182,7 +183,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                                            +'Internal combination of Geom and '
                                            +'Data.  Python dictionary.'
                                            )
-                            )),  
+                            )),   
                    ('opts', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('sDNA_GH options data structure '
@@ -763,9 +764,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                   ,str = Param_String
                                   )
 
-    py_type_names_to_type_description = dict(file = 'file path'
+    py_type_names_to_type_description = dict(file = 'File path'
                                             ,bool = 'Boolean'
-                                            ,str = 'text'
+                                            ,str = 'Text'
                                             )
 
     metas = dict(sDNA = None
@@ -855,8 +856,17 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     type_description = self.py_type_names_to_type_description[py_type_name]
                     description = '%s. Type: %s' % (description, type_description)
 
-                    self.descriptions += ((varname, description),)
-                    self.param_classes[varname] = self.py_type_names_to_Params[py_type_name]
+                    Param_Class = self.py_type_names_to_Params[py_type_name]
+
+                    self.param_infos += ((varname
+                                         ,add_params.ParamInfo(
+                                                     param_Class = Param_Class
+                                                    ,Description = description
+                                                    )
+                                         ) # Tuple of two elements.
+                                        ,  
+                                        )  # Tuple of only one element 
+                                           # (itself a tuple of two). 
 
 
 
@@ -1168,14 +1178,14 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                                              )
                               )
 
-    input_params = sDNA_GH_Tool.input_params + (
+    param_infos = sDNA_GH_Tool.param_infos + (
                    ('selected', add_params.ParamInfo(
                              param_Class = Param_Boolean
                             ,Description = ('true : only read from selection. '
                                            +'false: read all.'
                                            )
-                            )),
-                   ('layer', add_params.ParamInfo(
+                            ))
+                  ,('layer', add_params.ParamInfo(
                              param_Class = Param_String
                             ,Description = ('Text.  Names of the layers : '
                                            +'read geometry only from those '
@@ -1318,18 +1328,35 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
+    opts = options_manager.get_dict_of_Classes(
+                         metas = {}
                         ,options = dict(shp_type = 'POLYLINEZ'
-                                       ,input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
+                                       ,input_key_str = ('sDNA input name={name} '
+                                                        +'type={fieldtype} '
+                                                        +'size={size}'
+                                                        )
                                        ,path = __file__
-                                       ,output_shp = os.path.join( os.path.dirname(__file__)
-                                                                 ,'tmp.shp'
-                                                                 )
+                                       ,output_shp = os.path.join( 
+                                                         os.path.dirname(__file__)
+                                                        ,'tmp.shp'
+                                                        )
                                        )
                         )
 
-    descriptions = sDNA_GH_Tool.descriptions.copy()
-    descriptions.update(prj = 'File path of the projection file (.prj) to use for the new shapefile. ')
+    param_infos = sDNA_GH_Tool.param_infos + (
+                                ('prj'
+                                ,add_params.ParamInfo(
+                                  param_Class = Param_String
+                                 ,Description = ('File path of the projection '
+                                                +'file (.prj) to use for the '
+                                                +'new shapefile. '
+                                                )
+                                 )
+                                ),
+                                             ) 
+
+
+    
 
     component_inputs = ('Geom', 'Data', 'file', 'prj', 'config') 
 
@@ -1583,6 +1610,28 @@ class ShapefileReader(sDNA_GH_Tool):
 
     retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox'
     component_outputs = ('Geom', 'Data') + retvals[2:]
+
+    param_infos = sDNA_GH_Tool.param_infos + (
+            ('abbrevs', add_params.ParamInfo(
+                           param_Class = Param_String
+                          ,Description = ('Abbreviations of sDNA results used '
+                                         +' as key names for field. '
+                                         )
+                          ))
+            ,('fields', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = 'Field names from the Shapefile. '
+                            ))
+            ,('bbox', add_params.ParamInfo(
+                        param_Class = Param_Number
+                        ,Description = ('Bounding box from the Shapefile. '
+                                       +'Used to calculate leg_frame by '
+                                       +'the Recolour_objects component. '
+                                       +'[x_min, y_min, x_max, y_max], all '
+                                       +'Numbers.'
+                                       ) 
+                        ))      
+                                             )
                
 
 
@@ -1738,6 +1787,56 @@ class DataParser(sDNA_GH_Tool):
     assert opts['options'].re_normaliser in data_cruncher.valid_re_normalisers
     assert opts['options'].class_spacing in quantile_methods
                         
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('field', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('The field name / key value of '
+                                           +'the results field to parse '
+                                           +'and/or plot. Default: %(field)s'
+                                           ) % options
+                            ))
+                  ,('plot_max', add_params.ParamInfo(
+                             param_Class = Param_Number
+                            ,Description = ('Maximum data value to parse. '
+                                           +'Higher values (and their '
+                                           +'objects) are omitted. '+
+                                           'Automatically calculated if unset.'
+                                           )
+                            ))
+                  ,('plot_min', add_params.ParamInfo(
+                             param_Class = Param_Number
+                            ,Description = ('Minimum data value to parse. '
+                                           +'Lower values (and their '
+                                           +'objects) are omitted. '
+                                           +'Automatically calculated if unset.'
+                                           )
+                            ))
+                  ,('num_classes', add_params.ParamInfo(
+                             param_Class = Param_Number
+                            ,Description = ('Number of classes in the legend. '
+                                           +'Integer. Default: %(num_classes)s' 
+                                           ) % options
+                            ))                        
+                  ,('class_spacing', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('Name of method to use to '
+                                           +'classify the data / calculate '
+                                           +'the classes for the legend. '
+                                           +'Allowed Values : %s.  Default: %s'
+                                           ) % (quantile_methods.keys()
+                                               ,options['class_spacing']
+                                               )
+                            ))
+                  ,('class_bounds', add_params.ParamInfo(
+                             param_Class = Param_Number
+                            ,Description = ('Inter-class boundaries for the '
+                                           +'legend. '
+                                           +'Automatically calculated using '
+                                           +'the method in class_spacing if '
+                                           +'unset.'
+                                           )
+                            ))
+                                               )
 
     component_inputs = ('Geom', 'Data', 'field', 'plot_max', 'plot_min' 
                        ,'num_classes', 'class_spacing', 'class_bounds'
@@ -2081,6 +2180,23 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                         ,7 : 'Zebra'
                                         }
 
+
+        self.param_infos += (
+             ('plot_min', dict(self.parse_data.param_infos)['plot_min'])
+            ,('plot_max', dict(self.parse_data.param_infos)['plot_max'])
+            ,('field', dict(self.parse_data.param_infos)['field'])
+            ,('bbox', add_params.ParamInfo(
+                        param_Class = Param_Number
+                        ,Description = ('Bounding box of geometry. Used '
+                                       +'to calculate extent of leg_frame.'
+                                       +'Calculated from shapefiles by the '
+                                       +'Read_shapefile component. '
+                                       +'[x_min, y_min, x_max, y_max], all '
+                                       +'Numbers.'
+                                       ) 
+                        ))                        
+                                                      )
+
     
     component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field')
 
@@ -2326,7 +2442,21 @@ class ObjectsRecolourer(sDNA_GH_Tool):
     
     retvals = 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
     component_outputs = ('Geom', 'Data') + retvals[1:]
-          # To recolour GH Geom with a native Preview component
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('leg_cols', add_params.ParamInfo(
+                             param_Class = Param_Colour
+                            ,Description = 'Colour values for a legend.'
+                            ))
+                   ,('leg_tags', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = 'Tag names, for a legend.'
+                            ))
+                   ,('leg_frame', add_params.ParamInfo(
+                            Description = ('A Rectangle, suitable for a '
+                                          +'legend frame.'
+                                          )
+                            )),
+                                             )
 
 
 
@@ -2368,6 +2498,7 @@ def parse_values_for_toml(x, supported_types = toml_no_tuples):
                                      isinstance(val, tuple(supported_types))))
                           )
     return x
+
 
 
 class ConfigManager(sDNA_GH_Tool):

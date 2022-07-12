@@ -714,12 +714,7 @@ do_not_remove += default_local_metas._fields
 ######################################################################
 
 
-make_params = functools.partial(add_params.param_info_list_maker
-                               ,param_classes = tools.sDNA_GH_Tool.param_classes
-                               ,TypeHints = tools.sDNA_GH_Tool.type_hints
-                               ,access_methods = tools.sDNA_GH_Tool.access_methods
-                               ,descriptions = tools.sDNA_GH_Tool.descriptions
-                               )
+
 
 
 def cache_sDNA_tool(compnt # instead of self
@@ -736,7 +731,8 @@ def cache_sDNA_tool(compnt # instead of self
         Builds a new sDNA tool from tools.py (and thence from sDNAUISpec.py).
         Inserts this new tool into tools_dict (only under its nick_name).
         Adds in any new tool option fields to the list of Params not to 
-        be removed.  """
+        be removed.  
+    """
     sDNA_tool = tools.sDNA_ToolWrapper(tool_name = mapped_name
                                       ,nick_name = nick_name
                                       ,component = compnt
@@ -1223,7 +1219,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                               ]
                              )
         return ret_args
-    script.input_params = functools.partial(make_params, ['go', 'opts'])
-    script.output_params = functools.partial(make_params, ['OK', 'opts'])
+    script.input_params = functools.partial(tools.sDNA_GH_Tool.param_info_list
+                                           ,['go', 'opts']
+                                           )
+    script.output_params = functools.partial(tools.sDNA_GH_Tool.param_info_list
+                                            ,['OK', 'opts']
+                                            )
 
 
