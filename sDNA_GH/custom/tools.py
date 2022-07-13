@@ -109,7 +109,14 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
                                                   ,module_name = __name__
                                                   )
 
-
+def params_from_names_and_param_infos(param_names, param_infos):
+    #type(tuple) -> list
+    retvals = []
+    param_infos = OrderedDict(param_infos)
+    for param_name in param_names:
+        param_info = param_infos[param_name]
+        retvals.append(param_info.make(NickName = param_name))
+    return retvals
 
 
 
@@ -123,16 +130,13 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     """
 
     def param_info_list(self, param_names):
-        retvals = []
-        param_infos = OrderedDict(self.param_infos)
-        for param_name in param_names:
-            param_info = param_infos[param_name]
-            retvals.append(param_info.make(NickName = param_name))
-        return retvals
+        return params_from_names_and_param_infos(param_names, self.param_infos)
 
+    @property
     def input_params(self):
         return self.param_info_list(self.component_inputs)
-    
+
+    @property    
     def output_params(self):
         return self.param_info_list(self.component_outputs)
 
@@ -147,72 +151,51 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
         pass
 
     # Can be both inputs and outputs
-    param_infos = (('go', add_params.ParamInfo(
-                             param_Class = Param_Boolean
-                            ,Description = ('true: runs tools.  false: do not '
-                                           +'run tools but still read other '
-                                           +'Params.'
-                                           )
-                            )),
-                   ('OK', add_params.ParamInfo(
-                             param_Class = Param_Boolean
-                            ,Description = ('true: tools ran successfully.  '
-                                           +'false: tools did not run, or '
-                                           +'there was an error.'
-                                           )
-                            )),
-                   ('file', add_params.ParamInfo(
+    param_infos = (('file', add_params.ParamInfo(
                              param_Class = Param_FilePath
                             ,Description = 'File path of the shape file.'
-                            )),                            
-                   ('Geom', add_params.ParamInfo(
+                            ))                           
+                   ,('Geom', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = 'A list of Geometric objects.'
-                            )),  
-                   ('Data', add_params.ParamInfo(
+                            ))  
+                   ,('Data', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('A Data Tree of a list of keys '
                                            +'and list of corresponding values '
                                            +'for each object in Geom.'
                                            )
                             ,Access = 'tree'
-                            )),
-                   ('gdm', add_params.ParamInfo(
+                            ))
+                   ,('gdm', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Geometry and Data Mapping.  '
                                            +'Internal combination of Geom and '
                                            +'Data.  Python dictionary.'
                                            )
-                            )),   
-                   ('opts', add_params.ParamInfo(
-                             param_Class = Param_ScriptVariable
-                            ,Description = ('sDNA_GH options data structure '
-                                           +'from another component. Python '
-                                           +'dictionary.'
-                                           )
-                            )),
-                   ('config', add_params.ParamInfo(
+                            ))   
+                   ,('config', add_params.ParamInfo(
                              param_Class = Param_FilePath
                             ,Description = ('File path to sDNA_GH options '
                                            +'file, e.g. config.toml'
                                            )
-                            )),   
-                   ('local_metas', add_params.ParamInfo(
+                            ))   
+                   ,('local_metas', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Local meta options, controlling '
                                            +'synchronisation to the global '
                                            +'sDNA_GH options. Python named '
                                            +'tuple.'
                                            )
-                            )),   
-                   ('l_metas', add_params.ParamInfo(
+                            ))   
+                   ,('l_metas', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Local meta options, controlling '
                                            +'synchronisation to the global '
                                            +'sDNA_GH options. Python named '
                                            +'tuple.'
                                            )
-                            )),  
+                            ))  
                   )                     
 
 
@@ -1627,7 +1610,7 @@ class ShapefileReader(sDNA_GH_Tool):
                         ,Description = ('Bounding box from the Shapefile. '
                                        +'Used to calculate leg_frame by '
                                        +'the Recolour_objects component. '
-                                       +'[x_min, y_min, x_max, y_max], all '
+                                       +'[x_min, y_min, x_max, y_max]. All '
                                        +'Numbers.'
                                        ) 
                         ))      
@@ -2441,7 +2424,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
     
     retvals = 'gdm', 'leg_cols', 'leg_tags', 'leg_frame', 'opts'
-    component_outputs = ('Geom', 'Data') + retvals[1:]
+    component_outputs = ('Geom', 'Data') + retvals[1:-1]
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('leg_cols', add_params.ParamInfo(
                              param_Class = Param_Colour

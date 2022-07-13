@@ -237,7 +237,7 @@ def add_Params(IO
                 +' '.join(str(param.NickName) for param in params_current)
                 )
 
-    needed_NickNames = [str(param['NickName']) for param in params_needed]
+    needed_NickNames = [param.NickName for param in params_needed]
 
     logger.debug('params_needed NickNames == '
                 +' '.join(needed_NickNames)
@@ -266,7 +266,7 @@ def add_Params(IO
             do_not_add += [param.NickName]
 
     for param in params_needed:
-        param_name = param['NickName']
+        param_name = param.NickName
         if param_name not in do_not_add: 
             logger.debug('Adding param == ' + param_name)
             
@@ -275,7 +275,10 @@ def add_Params(IO
             #                        ,Input_or_Output
             #                        )
 
-            getattr(Params, registers[IO])(param.make() if isinstance(param, ParamInfoABC) else param) 
+            getattr(Params, registers[IO])(param.make() 
+                                           if isinstance(param, ParamInfoABC) 
+                                           else param
+                                          ) 
             Params.OnParametersChanged()
 
 
@@ -349,21 +352,24 @@ class ParamsToolAdder(object):
 
         self.needed_outputs = [output.NickName
                                for tool in output_tools
-                               for output in tool.output_params() 
+                               for output in tool.output_params
                               ]
         self.needed_inputs = [input.NickName
                               for tool in input_tools 
-                              for input in tool.input_params() 
+                              for input in tool.input_params
                              ]
+        # .NickName searches output['NickName'] for ParamInfo instances as
+        # ParamInfo.__getattr__ is dict.__getitem__
 
-
+        # .output_params may be a computed @property or iterable.
 
         missing_output_params = [ output for tool in reversed(output_tools)
-                                 for output in tool.output_params() 
+                                 for output in tool.output_params
                                  if output.NickName not in self.current_outputs]
 
+
         missing_input_params = [ input for tool in input_tools 
-                                for input in tool.input_params() 
+                                for input in tool.input_params
                                 if input.NickName not in self.current_inputs ]
                             
         # if wrapper:
@@ -392,7 +398,7 @@ class ParamsToolAdder(object):
                     ,do_not_add
                     ,do_not_remove
                     ,Params
-                    ,missing_output_params
+                    ,params_needed = missing_output_params
                     )
 
         if missing_input_params:
@@ -400,7 +406,7 @@ class ParamsToolAdder(object):
                     ,do_not_add
                     ,do_not_remove
                     ,Params
-                    ,missing_input_params
+                    ,params_needed = missing_input_params
                     )
 
         Params.Sync(ParamsSyncObj)

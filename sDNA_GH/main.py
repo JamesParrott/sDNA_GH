@@ -51,6 +51,8 @@ from collections import namedtuple, OrderedDict
 import locale
 import functools
 
+from Grasshopper.Kernel.Parameters import Param_Boolean, Param_ScriptVariable
+
 from . import launcher
 from .custom import options_manager
 from .custom import logging_wrapper
@@ -1219,11 +1221,30 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                               ]
                              )
         return ret_args
-    script.input_params = functools.partial(tools.sDNA_GH_Tool.param_info_list
-                                           ,['go', 'opts']
+
+    param_infos = (('OK', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: tools ran successfully.  '
+                                           +'false: tools did not run, or '
+                                           +'there was an error.'
                                            )
-    script.output_params = functools.partial(tools.sDNA_GH_Tool.param_info_list
-                                            ,['OK', 'opts']
-                                            )
+                            ))
+                  ,('go', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: runs tools.  false: do not '
+                                           +'run tools but still read other '
+                                           +'Params.'
+                                           )
+                            ))
+                  ,('opts', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('sDNA_GH options data structure. '
+                                           +'Python dictionary.'
+                                           )
+                            ))
+                  )                                          
+    script.input_params = tools.params_from_names_and_param_infos(['go', 'opts'], param_infos)
+    script.output_params = tools.params_from_names_and_param_infos(['OK', 'opts'], param_infos)
+
 
 
