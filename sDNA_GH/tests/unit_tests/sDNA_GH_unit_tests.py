@@ -94,7 +94,7 @@ class TestStringMethods(unittest.TestCase):
     
     def test_split(self):
         s = 'hello world'
-        print(s)
+        #print(s)
         self.assertEqual(s.split(), ['hello', 'world'])
         
         # check that s.split fails when the separator is not a string
@@ -197,8 +197,8 @@ class TestDataCruncher(unittest.TestCase):
         for element in test_data:
             expected, input_ = element
             actual = f(OrderedCounter(input_[0]), input_[1], input_[2])
-            print(expected)
-            print(actual)
+            #print(expected)
+            #print(actual)
             self.assertEqual(1,1) #expected, actual)
 
 

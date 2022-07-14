@@ -51,7 +51,7 @@ from collections import namedtuple, OrderedDict
 import locale
 import functools
 
-from Grasshopper.Kernel.Parameters import Param_Boolean, Param_ScriptVariable
+from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
 
 from . import launcher
 from .custom import options_manager
@@ -116,8 +116,8 @@ else:
 default_name_map[Recolour+'_Objects'] = 'recolour_objects'
 
 
-class HardcodedMetas(tools.sDNA_ToolWrapper.opts['metas']
-                    ,tools.ConfigManager.opts['metas'] # has config.toml path
+class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
+                    ,tools.ConfigManager.Metas # has config.toml path
                     ): 
     add_new_opts = False
     cmpnts_change = False
@@ -199,13 +199,14 @@ file_to_work_from = checkers.get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,pyshp_wrapper.ShpOptions
-                      ,tools.RhinoObjectsReader.opts['options']
-                      ,tools.ShapefileWriter.opts['options']
-                      ,tools.ShapefileReader.opts['options']
-                      ,tools.UsertextWriter.opts['options']
-                      ,tools.DataParser.opts['options']
-                      ,tools.ObjectsRecolourer.opts['options']
-                      ,tools.sDNA_ToolWrapper.opts['options']
+                      ,tools.RhinoObjectsReader.Options
+                      ,tools.ShapefileWriter.Options
+                      ,tools.ShapefileReader.Options
+                      ,tools.UsertextWriter.Options
+                      ,tools.DataParser.Options
+                      ,tools.ObjectsRecolourer.Options
+                      ,tools.sDNA_ToolWrapper.Options
+                      ,tools.ConfigManager.Options
                       ):            
     ###########################################################################
     #System
@@ -366,10 +367,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     class_spacing = 'quantile' 
     #_valid_class_spacings = (funcs.valid_re_normalisers
     #                         + ('quantile', 'cluster', 'nice'))
-    if class_spacing not in tools.DataParser.opts['options']._valid_class_spacings:
+    if class_spacing not in tools.DataParser.Options._valid_class_spacings:
         raise ValueError('%s must be in %s' 
                         %(class_spacing
-                         ,tools.DataParser.opts['options']._valid_class_spacings
+                         ,tools.DataParser.Options._valid_class_spacings
                          )
                         )
     first_leg_tag_str = 'below {upper}'
@@ -490,7 +491,7 @@ def override_all_opts(args_dict
         if os.path.isfile(args_dict['config']): 
             path = args_dict['config']
             file_ext = os.path.splitext(path)[1]
-            if file_ext == 'toml':
+            if file_ext == '.toml':
                 output.debug('Loading options from .toml file: %s' % path)
                 config_toml_dict =  options_manager.load_toml_file( path )
             else:
@@ -520,7 +521,7 @@ def override_all_opts(args_dict
     if 'nick_name' in ext_local_metas_dict:
         ext_local_metas_dict.pop('nick_name')
 
-    if file_ext == 'toml' and isinstance(config_toml_dict, dict):
+    if file_ext == '.toml' and isinstance(config_toml_dict, dict):
             config_toml_dict.get('local_metas', {}).pop('nick_name', None)
 
     if 'nick_name' in args_dict:
@@ -558,11 +559,15 @@ def override_all_opts(args_dict
                             )
                 ]            
 
-    output.debug('overrides == %s' % [override_.keys() for override_ in overrides])
+    output.debug('overrides == %s' 
+                % [override_.keys() for override_ in overrides]
+                )
 
 
 
-    if (not local_metas.synced and local_metas.read_only) and dict_to_update is not module_opts:
+    if ((not local_metas.synced and local_metas.read_only) 
+        and dict_to_update is not module_opts):
+        #
         overrides.insert(0, module_opts.copy())
 
     metas_overrides = map(lambda x : x.pop('metas', x), overrides)
@@ -605,7 +610,7 @@ if os.path.isfile(default_metas.config):
           + module_opts['options'].message
           )
 else:
-    output.warning('Config file: %s not found. '% default_metas.config 
+    output.warning('Config file: %s not found. ' % default_metas.config 
                   +'If no sDNA install or Python is automatically found (or to '
                   +'choose a different one), or to create an options file '
                   +' please place a Config component.  '
@@ -620,8 +625,8 @@ else:
                   +' folder.  '
                   +'To save these and any other options, set go to true on the Config '
                   +'component. '
-                  +'If no project options file is specified in save_to, an'
-                  +'installation wide options file (config.toml) will be created'
+                  +'If no project options file is specified in save_to, an '
+                  +'installation wide options file (config.toml) will be created '
                   +'for you for all future use.  '
                   )    
 #
@@ -666,16 +671,16 @@ output.set_logger(logger, flush = True)
 ############################################################################
 
 
-get_Geom = tools.RhinoObjectsReader()
-read_User_Text = tools.UsertextReader()
-write_shapefile = tools.ShapefileWriter()
-read_shapefile = tools.ShapefileReader()
-write_User_Text = tools.UsertextWriter()
-parse_data = tools.DataParser()
-recolour_objects = tools.ObjectsRecolourer()
-build_components = dev_tools.sDNA_GH_Builder()
-sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool()
-config = tools.ConfigManager()
+get_Geom = tools.RhinoObjectsReader(opts = module_opts)
+read_User_Text = tools.UsertextReader(opts = module_opts)
+write_shapefile = tools.ShapefileWriter(opts = module_opts)
+read_shapefile = tools.ShapefileReader(opts = module_opts)
+write_User_Text = tools.UsertextWriter(opts = module_opts)
+parse_data = tools.DataParser(opts = module_opts)
+recolour_objects = tools.ObjectsRecolourer(opts = module_opts)
+build_components = dev_tools.sDNA_GH_Builder(opts = module_opts)
+sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool(opts = module_opts)
+config = tools.ConfigManager(opts = module_opts)
 
 runner.tools_dict.update(get_Geom = get_Geom
                         ,read_User_Text = read_User_Text
@@ -735,7 +740,8 @@ def cache_sDNA_tool(compnt # instead of self
         Adds in any new tool option fields to the list of Params not to 
         be removed.  
     """
-    sDNA_tool = tools.sDNA_ToolWrapper(tool_name = mapped_name
+    sDNA_tool = tools.sDNA_ToolWrapper(opts = compnt.opts
+                                      ,tool_name = mapped_name
                                       ,nick_name = nick_name
                                       ,component = compnt
                                       )                                      
@@ -1243,8 +1249,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                            )
                             ))
                   )                                          
-    script.input_params = tools.params_from_names_and_param_infos(['go', 'opts'], param_infos)
-    script.output_params = tools.params_from_names_and_param_infos(['OK', 'opts'], param_infos)
+    script.input_params = tools.list_of_param_infos(['go', 'opts'], param_infos)
+    script.output_params = tools.list_of_param_infos(['OK', 'opts'], param_infos)
 
 
 

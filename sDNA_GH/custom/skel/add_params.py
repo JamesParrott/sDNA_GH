@@ -57,6 +57,18 @@ class ParamInfoABC(ABC):
 
 
 class ParamInfo(dict, ParamInfoABC):
+    """ Enables lazy loading of a Grasshopper.Kernel.Parameters.Param_ 
+        Class, and collects together both its calling args and the attrs 
+        to be set on the instance afterwards, simplifying construction.
+        
+        The actual Param is initialised by calling .make, e.g. by add_Params.
+        
+        Initialisation of Params might slow Grasshopper for the user, so this
+        Class guarantees we build Params only when they are actually
+        needed by a component, and collects all the properties conveniently as 
+        function args in the dict, instead of having to set them on the instance
+        afterwards.  
+    """
     __getattr__ = dict.__getitem__
     valid_access_methods = ('item', 'list', 'tree')
     def __init__(self
@@ -256,7 +268,7 @@ def add_Params(IO
         elif (param.NickName not in do_not_remove and
             len(getattr(param, 'Recipients', [])) == 0 and  
             len(getattr(param, 'Sources',    [])) == 0     ):
-            logger.debug(    'Param ' 
+            logger.debug( 'Param ' 
                         + str(param.NickName) 
                         + ' not needed, and can be removed.  '
                         )
@@ -274,11 +286,10 @@ def add_Params(IO
             #                        ,update_params.make_new_param(param_name)
             #                        ,Input_or_Output
             #                        )
-
-            getattr(Params, registers[IO])(param.make() 
-                                           if isinstance(param, ParamInfoABC) 
-                                           else param
-                                          ) 
+            made_param = param
+            if isinstance(made_param, ParamInfoABC):
+                made_param = made_param.make()
+            getattr(Params, registers[IO])(made_param) 
             Params.OnParametersChanged()
 
 
@@ -393,21 +404,17 @@ class ParamsToolAdder(object):
 
         ParamsSyncObj = Params.EmitSyncObject()
 
-        if missing_output_params:
-            add_Params('Output'
-                    ,do_not_add
-                    ,do_not_remove
-                    ,Params
-                    ,params_needed = missing_output_params
-                    )
+        for IO, params_list in zip(('Output', 'Input')
+                                  ,(missing_output_params, missing_input_params)
+                                  ):
+            if params_list:
+                add_Params(IO
+                          ,do_not_add
+                          ,do_not_remove
+                          ,Params
+                          ,params_needed = params_list
+                          )
 
-        if missing_input_params:
-            add_Params('Input'
-                    ,do_not_add
-                    ,do_not_remove
-                    ,Params
-                    ,params_needed = missing_input_params
-                    )
 
         Params.Sync(ParamsSyncObj)
         Params.RepairParamAssociations()

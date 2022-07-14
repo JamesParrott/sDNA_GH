@@ -134,7 +134,7 @@ def no_name_clashes(name_map, list_of_names_lists):
 
 
 def namedtuple_from_dict(d
-                        ,d_namedtuple_class_name
+                        ,NT_name
                         ,strict = True
                         ,class_prefix = 'NT_'
                         ,convert_subdicts = False
@@ -154,7 +154,7 @@ def namedtuple_from_dict(d
                                          ,**kwargs
                                          )  
 
-    return collections.namedtuple(class_prefix + d_namedtuple_class_name
+    return collections.namedtuple(class_prefix + NT_name
                                  ,d.keys()
                                  ,rename=False 
                                  )(**d)  # Don't return nt class

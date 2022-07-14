@@ -56,7 +56,8 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
 
     """ Gets list of Tool Names from tools_dict and sDNA.  """
 
-    def __init__(self):
+    def __init__(self, opts):
+        super(tools.sDNA_GH_Tool, self).__init__(opts)
         self.component_inputs = ()
 
     def __call__(self, opts):
@@ -85,6 +86,7 @@ plug_in_name = launcher.plug_in_name
 
 class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
+    component_inputs = ()
 
     def __call__(self, opts):
         self.debug('Starting class logger. ')
@@ -165,3 +167,4 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     retvals = ('retcode', 'names_built')
+    component_outputs = ()

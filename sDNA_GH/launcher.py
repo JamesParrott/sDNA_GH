@@ -334,8 +334,9 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     nick_name = ghenv.Component.NickName #type: ignore
 
+
     if (repo_folder and 
-        nick_name.replace(' ','').replace('_','').lower() == 'buildcomponents'):
+        nick_name == 'Build_components'):
         #
         sDNA_GH_search_path = repo_folder 
         # builder can only load sDNA_GH from its parent directory, 
@@ -393,12 +394,12 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if nick_name.replace(' ','').replace('_','').lower() == selftest:  
 
 
-        unit_tests_sDNA_GH, _ = load_modules('sDNA_GH.custom.tests.unit_tests'
-                                            ,sDNA_GH_search_path
-                                            )
+        unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((package_name,)*2)
+                                    ,sDNA_GH_search_path
+                                    )
 
         MyComponent._RunScript = MyComponent.RunScript
         MyComponent.package_location = sDNA_GH_search_path
-        MyComponent.RunScript =  unit_tests_sDNA_GH.run_launcher_tests
+        MyComponent.RunScript =  unit_tests.run_launcher_tests
         # Grasshopper calls MyComponent.RunScript automatically.
 

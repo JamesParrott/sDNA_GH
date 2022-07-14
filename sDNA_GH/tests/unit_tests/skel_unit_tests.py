@@ -46,8 +46,8 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 from ghpythonlib import treehelpers 
 
-from ..basic.ghdoc import ghdoc 
-from ..tools.helpers import checkers
+from ...custom.skel.basic.ghdoc import ghdoc 
+from ...custom.skel.tools.helpers import checkers
                             
 
 

@@ -43,8 +43,7 @@ sDNA_GH:
     -Specify the file path of the Python 2.7 interpreter's main executable in the `python` input.
     -Specify any other options you wish to save and reuse on all projects, if necessary by adding custom input Params with the option's name.
     -Connect a True boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
-    -To save to other project specific `config.toml` files, or to update the installation wide user options file, specify the file path in 
-    save_to and repeat the previous 4 sub steps.
+    -To save to other project specific `config.toml` files, specify the file path in save_to and repeat the previous 4 sub steps.
 
 13. For a first test of sDNA_GH using sDNA, open  `\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the previously unzipped folder in the User Objects folder), place an sDNA_Integral component and connect a True boolean toggle to its `go`.  
 14. If a newer version of sDNA is used in future with tools unknown to sDNA_GH at the time it was built, if a Config component is placed, and the path of the new sDNA specified in `sDNA_folders`, sDNA_GH will attempt to automatically build components and user objects for the new sDNA tools, and add them to Grasshopper for you.  Set `make_new_comps` to false to prevent this.
@@ -109,12 +108,12 @@ For advanced users, each component with a given NickName in name_map also has it
 **Geom** Accepts a list of geometric objects (Rhino or Grasshopper).  Data trees of objects need to be flattened.
 **gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the IDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
 **opts** Accepts an options data structure (a nested dictionary of named tuples) from another sDNA_GH component.  Only of use if they are not synced to the global module options.
-**config** Specified the path of a TOML file (e.g. `config.toml`) to be read in (or written to by a Config component) containing sDNA_GH options settings. 
+**config** The path of a TOML file (e.g. `config.toml`) to be read in containing sDNA_GH options settings. 
 
 ##### Support tools
 ###### Config (config)
 To guarantee this component runs before all others when your .gh file is loaded, ensuring your options are loaded, select it and press Ctrl + B before saving.
-Loads custom user options and configuration files (`.toml`).  Saves options to a `.toml` file if go is true - if a `.toml` file is specified in `save_to`, it is saved to.  Otherwise if `go` is true and `save_to` is unconnected, then an installation wide user options file is created, if one does not already exist (to update an existing one, specify its name in `save_to`, e.g.: `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
+Loads custom user options and configuration files (`.toml`).  Saves options to a `.toml` file if go is true.  If a `.toml` file is specified in `save_to`, it is saved to.  Otherwise the default value of `save_to` is the installation-wide user options file.  One is created if it does not already exist.  This will overwrite existing files.
 
 
 ###### Read_Geom (get_Geom)
@@ -386,7 +385,7 @@ For example, suppose we wish to calibrate a traffic model, using measured traffi
 ###### Unload_sDNA (Unload_sDNA)
 Unload the sDNA_GH Python package and all sDNA modules, by removing them from GhPython's shared cache (sys.modules).  
 
-The next sDNA_GH component to run will then reload the package and installation-wide options file (config.toml), and any specified options including a project specific config.toml, without otherwise having to restart Rhino to clear its cache.
+The next non-Unload_sDNA sDNA_GH component to run after this one will then reload the package and installation-wide options file (config.toml), and any specified options including a project specific config.toml, without otherwise having to restart Rhino to clear Grasshopper's cache.
 
 
 ###### sDNA_General (sDNA_General)

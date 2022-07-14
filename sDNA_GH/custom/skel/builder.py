@@ -190,7 +190,7 @@ class DocStringParser(object):
     
     doc_string_summary_line_pattern = re.compile(r'"""(.*?)"""'
                                                 ,flags = re.DOTALL
-                                                )
+                                                ) # so . will match \n
     def __call__(self, code):
         #type(str)-> str, str
         doc_string_match = self.doc_string_summary_line_pattern.search( code )
@@ -270,7 +270,7 @@ def build_comps_with_docstring_from_readme(default_path
             logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
             tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
-                                                ,flags = re.DOTALL
+                                                ,flags = re.DOTALL # so . will match \n
                                                 )
             logger.debug('tool_summary_pattern == %s' % tool_summary_pattern.pattern)
 

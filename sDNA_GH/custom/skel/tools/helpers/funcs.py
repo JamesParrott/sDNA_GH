@@ -30,6 +30,7 @@ __author__ = 'James Parrott'
 __version__ = '0.06'
 
 import os
+import re
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
@@ -89,3 +90,4 @@ def windows_installation_paths(names):
         yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
         yield os.path.join(os.getenv('APPDATA'), name)
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+

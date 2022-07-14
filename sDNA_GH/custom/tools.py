@@ -42,6 +42,7 @@ import logging
 import subprocess
 from .data_cruncher import itertools #pairwise from recipe if we're in Python 2
 import re
+import string
 import warnings
 import collections
 from time import asctime
@@ -69,11 +70,9 @@ from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Integer
                                           ,Param_Line
                                           ,Param_Rectangle
-                                          ,Param_Colour
                                           ,Param_Number
                                           ,Param_ScriptVariable
                                           ,Param_GenericObject
-                                          ,Param_Guid
                                           )
 
 from . import data_cruncher 
@@ -109,13 +108,34 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
                                                   ,module_name = __name__
                                                   )
 
-def params_from_names_and_param_infos(param_names, param_infos):
-    #type(tuple) -> list
+
+
+def list_of_param_infos(param_names
+                       ,param_infos
+                       ,descriptions = None
+                       ,interpolations = None):
+    #type(Iterable, tuple, Iterable) -> list
+    """ Returns a list of a selection of ParamInfo entries from Param_infos
+        (a tuple of tuples of names and ParamInfos), each selected if its name
+        is in param_names, with its NickName set to name, and Description
+        taken from descriptions if it doesn't already have one. 
+    """
     retvals = []
-    param_infos = OrderedDict(param_infos)
+    param_infos = OrderedDict(param_infos) # e.g. from tuple of key/value pairs.
+                                           # OrderedDict overwrites earlier 
+                                           # values with later values in 
+                                           # the tuple with the same key.
+                                           # param_infos need not be in any 
+                                           # particular order; the order of the 
+                                           # output is that of param_names.
     for param_name in param_names:
-        param_info = param_infos[param_name]
-        retvals.append(param_info.make(NickName = param_name))
+        param_info = param_infos[param_name] # instance of ParamInfo
+        param_info['NickName'] = param_name  # ParamInfo is a subclass of dict
+        if descriptions and 'Description' not in param_info:
+            param_info['Description'] = descriptions[param_name]
+        if interpolations:
+            param_info['Description'] %= interpolations
+        retvals.append(param_info)
     return retvals
 
 
@@ -129,8 +149,29 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
         name to logging messages. 
     """
 
+    def __init__(self, opts):
+        self.opts = opts
+
+    @property
+    def options(self):
+        return self.opts['options']
+
+    @property
+    def metas(self):
+        return self.opts['metas']
+
+    @property
+    def all_options_dict(self):
+        retval = self.options._asdict()
+        retval.update(self.metas._asdict())
+        return retval
+
+
     def param_info_list(self, param_names):
-        return params_from_names_and_param_infos(param_names, self.param_infos)
+        return list_of_param_infos(param_names
+                                  ,self.param_infos
+                                  ,interpolations = self.all_options_dict
+                                  )
 
     @property
     def input_params(self):
@@ -143,12 +184,14 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     @property
     @abstractmethod
     def component_inputs(self):
-        pass
+        pass # Iterable of strings, the names of the input Params required on
+             # a component running this tool
 
     @property
     @abstractmethod
     def component_outputs(self):
-        pass
+        pass # Iterable of strings, the names of the output Params required on
+             # a component running this tool
 
     # Can be both inputs and outputs
     param_infos = (('file', add_params.ParamInfo(
@@ -322,6 +365,7 @@ class sDNAMetaOptions(object):
     sDNAUISpec = 'sDNAUISpec'
     runsdnacommand = 'runsdnacommand'
     sDNA_paths = list( funcs.windows_installation_paths('sDNA') )
+
 sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 
 
@@ -337,6 +381,7 @@ class PythonOptions(object):
                        )
     python_exes = ['python.exe', 'py27.exe']
     python = None #r'C:\Python27\python.exe'
+
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
 
@@ -479,8 +524,12 @@ def update_opts(current_opts
                                                                     ,**kwargs
                                                                     )
                   # Needs explicit type, as general_opts above.
-        logger.debug('after current_opts update, sub_dicts_keys == %s' % sub_dicts_keys)
-        logger.debug('after current_opts update, current_data_node_keys == %s' % current_data_node_keys)
+        logger.debug('after current_opts update, sub_dicts_keys == %s' 
+                    % sub_dicts_keys
+                    )
+        logger.debug('after current_opts update, current_data_node_keys == %s' 
+                    % current_data_node_keys
+                    )
 
 
     #if sub_dicts_keys:
@@ -508,14 +557,19 @@ def update_opts(current_opts
             overrides = [this_level_override_data]
             if key in override:
                 overrides += [override[key]]
-            #logger.debug('Updating current_opts with overrides == %s & key == %s' % (overrides, key))
+            #logger.debug('Updating current_opts with overrides == %s & key == %s' 
+            #            % (overrides, key)
+            #            )
             current_opts[key] = update_data_node(current_opts[key]
                                                 ,overrides
                                                 ,**metas._asdict()
                                                 )
         else:
             this_level_override_data.update(override[key])
-            logger.debug('Creating node with this_level_override_data == %s & key == %s' % (this_level_override_data, key))
+            logger.debug('Creating node '
+                        +'with this_level_override_data == %s & key == %s' 
+                        % (this_level_override_data, key)
+                        )
 
             current_opts[key] = make_new_data_node(this_level_override_data
                                                   ,key # NamedTuple type name
@@ -545,10 +599,6 @@ def import_sDNA(opts
                 +', metas.runsdnacommand == %s ' % metas.runsdnacommand 
                 )
 
-    logger.debug('before update, options.sDNAUISpec == %s ' % repr(options.sDNAUISpec)
-                +', options.run_sDNA == %s ' % repr(options.run_sDNA)
-                )
-
 
     requested_sDNA = (metas.sDNAUISpec.partition('.')[0]
                      ,metas.runsdnacommand.partition('.')[0]) # remove .py s
@@ -567,7 +617,9 @@ def import_sDNA(opts
         #
         return None
 
-    logger.info('Attempting import of sDNA (sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA)
+    logger.info('Attempting import of sDNA '
+               +'(sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA
+               )
     #
     # Import sDNAUISpec.py and runsdnacommand.py from metas.sDNA_paths
     if isinstance(metas.sDNA_paths, basestring):
@@ -703,7 +755,9 @@ def build_missing_sDNA_components(opts
         names.insert(0, Tool.__name__)
         if not any( os.path.isfile(ghuser_file_path(name)) for name in names ):
             name_to_use = names[-1] if names else Tool.__name__
-            logger.debug('Appending tool name to missing_tools: %s' % name_to_use)
+            logger.debug('Appending tool name to missing_tools: %s' 
+                        %name_to_use
+                        )
             missing_tools.append(name_to_use)
             categories[Tool.__name__] = Tool.category
     
@@ -752,30 +806,23 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                             ,str = 'Text'
                                             )
 
-    metas = dict(sDNA = None
-                ,show_all = True
-                #,strict 
-                #,check_types
-                #,add_new_opts
-                )
-    metas.update(python_options._asdict())
-    metas.update(sDNA_meta_options._asdict())
+    class Metas(PythonOptions, sDNAMetaOptions):
+        sDNA = None
+        show_all = True
 
-    opts = options_manager.get_dict_of_Classes(
-                               metas = metas
-                              ,options = dict(sDNAUISpec = options_manager.Sentinel('Module not imported yet')
-                                             ,run_sDNA = options_manager.Sentinel('Module not imported yet')
-                                             ,prepped_fmt = "{name}_prepped"
-                                             ,output_fmt = "{name}_output"   
-                                             # file extensions are actually optional in PyShp, 
-                                             # but just to be safe and future proof
-                                             ,del_after_sDNA = True
-                                             ,strict_no_del = False # for debugging
+    class Options(object):
+        sDNAUISpec = options_manager.Sentinel('Module not imported yet')
+        run_sDNA = options_manager.Sentinel('Module not imported yet')
+        prepped_fmt = "{name}_prepped"
+        output_fmt = "{name}_output"   
+        # file extensions are actually optional in PyShp, 
+        # but just to be safe and future proof
+        del_after_sDNA = True
+        strict_no_del = False # for debugging
 # Default installation path of Python 2.7.3 release (32 bit ?) 
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
-                                             )
-                              )
+
 
     def update_tool_opts_and_syntax(self, opts = None):
         if opts is None:
@@ -817,60 +864,87 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.run_sDNA_command = run_sDNA_command     
 
         self.defaults = OrderedDict()
+
+
+
+
+
+
+        self.defaults = OrderedDict((tuple_[0], tuple_[4]) 
+                                    for tuple_ in self.input_spec
+                                   )
+        # See below for field names in input_spec
+
+        nt_name = '_'.join([nick_name, tool_name, sDNA])
+        defaults_nt = options_manager.namedtuple_from_dict(d = self.defaults
+                                                          ,NT_name = nt_name
+                                                          )
+
+        default_tool_opts = {}
+        # builds the tool opts structure in default_tool_opts,
+        # using nested_set_default
+        get_tool_opts(nick_name
+                     ,opts #default_tool_opts
+                     ,tool_name
+                     ,sDNA
+                     ,val = defaults_nt
+
+                     )
+        self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
+
+        update_opts(current_opts = default_tool_opts # opts
+                   ,override = opts # default_tool_opts
+                   )
+        #override default tool opts with opts
+
+        opts.update(default_tool_opts)
+        #get the updated opts back into opts, via .update (have to mutate)
+
         for varname, display_name, data_type, filter_, default, required in self.input_spec:  
-            
-            self.defaults[varname]= default
-            
-            description = display_name
-            if default not in (None, ''):
-                description = '%s. Default value == %s' %  (description, default)
-            if filter_ is not None: 
-                description = '%s. Allowed values: %s' % (description, filter_) 
+                      
+            description = display_name +'. '
+            description += 'Default value == %(' + varname + ')s.'
+            # to be interpolated by self.param_info_list from self.all_options_dict
+
+            if (isinstance(filter_, Iterable) 
+               and not isinstance(filter_, basestring)
+               and len(filter_) >= 2): 
+                #
+                description = '%s. Allowed values: %s. ' % (description
+                                                           ,', '.join(map(str
+                                                                         ,filter_
+                                                                         )
+                                                                     )
+                                                           ) 
             # if required:     
             #     description = 'REQUIRED. %s' % description
             if data_type:
                 if data_type.lower() not in self.sDNA_types_to_py_type_names:
-                    msg = 'Default types will be assigned to Param with unsupported data type: %s, '
+                    py_type_name = ''
+                    msg = 'Default types will be assigned to Param '
+                    msg +='with unsupported data type: %s, '
                     msg += 'for param: %s, of tool: %s, with nick name: %s'
                     msg %= (data_type, varname, self.tool_name, self.nick_name)
                     self.logger.warning(msg)
                 else:
                     py_type_name = self.sDNA_types_to_py_type_names[data_type.lower()]
                     type_description = self.py_type_names_to_type_description[py_type_name]
-                    description = '%s. Type: %s' % (description, type_description)
+                    description += 'Type: %s. ' % (description
+                                                  ,type_description
+                                                  )
 
-                    Param_Class = self.py_type_names_to_Params[py_type_name]
+            Param_Class = self.py_type_names_to_Params.get(py_type_name
+                                                          ,Param_ScriptVariable
+                                                          )
 
-                    self.param_infos += ((varname
-                                         ,add_params.ParamInfo(
-                                                     param_Class = Param_Class
-                                                    ,Description = description
-                                                    )
-                                         ) # Tuple of two elements.
-                                        ,  
-                                        )  # Tuple of only one element 
-                                           # (itself a tuple of two). 
-
-
-
-
-
-        default_tool_opts = {}
-
-        # builds the tool opts structure in default_tool_opts,
-        # using nested_set_default
-        get_tool_opts(nick_name
-                     ,default_tool_opts
-                     ,tool_name
-                     ,sDNA
-                     ,val = self.defaults
-                     )
-        self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
-
-        # mutates opts, adding in default_tool_opts
-        update_opts(current_opts = opts
-                   ,override = default_tool_opts
-                   )
+            self.param_infos += ((varname
+                                 ,add_params.ParamInfo(param_Class = Param_Class
+                                                      ,Description = description
+                                                      )
+                                 ) # Tuple of two elements.
+                                ,  
+                                )  # Tuple of only one element 
+                                   # (a tuple of a tuple of two). 
 
 
         self.logger.debug('\n\n'.join(map(str, opts.items())))
@@ -889,16 +963,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
     def __init__(self
+                ,opts
                 ,tool_name
                 ,nick_name
                 ,component = None
                 ,import_sDNA = import_sDNA
                 ):
+        super(sDNA_ToolWrapper, self).__init__(opts)
 
-        if component is None:
-            opts = self.opts  # the class property, tool default opts
-        else:
-            opts = component.opts
         metas = opts['metas']
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
@@ -978,13 +1050,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         #if (not isinstance(input_file, str)) or not isfile(input_file): 
         if (isinstance(f_name, str) and os.path.isfile(f_name)
-            and os.path.splitext(f_name)[1] in ['shp','dbf','shx']):  
+            and os.path.splitext(f_name)[1] in ['.shp','.dbf','.shx']):  
             input_file = f_name
+        else:
+            logger.debug('isinstance(f_name, str) == %s' % isinstance(f_name, str))
+            logger.debug('os.path.isfile(f_name) == %s' % os.path.isfile(f_name))
+            logger.debug('os.path.splitext(f_name)[1] == %s' % os.path.splitext(f_name)[1])
 
-        msg = 'input file == %s ' % input_file
+        self.logger.debug('input == %s, f_name == %s ' % (input_file, f_name))
+
         if not os.path.isfile(input_file):
-            msg += 'is not a file. To run sDNA please set file or input_file '
+            msg = 'input: "%s" is not a file. To run sDNA please set file or input '
             msg += 'to the path of a valid shape file. '
+            msg %= input_file
             self.logger.error(msg)
             raise ValueError(msg)
          
@@ -1152,20 +1230,20 @@ def get_objs_and_OrderedDicts(only_selected = False
 
 class RhinoObjectsReader(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
-                              ,options = dict(selected = False
-                                             ,layer = ''
-                                             ,shp_type = 'POLYLINEZ'
-                                             ,merge_subdicts = True
-                                             ,include_groups = False
-                                             )
-                              )
+    class Options(object):
+        selected = False
+        layer = ''
+        shp_type = 'POLYLINEZ'
+        merge_subdicts = True
+        include_groups = False
+
 
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('selected', add_params.ParamInfo(
                              param_Class = Param_Boolean
                             ,Description = ('true : only read from selection. '
-                                           +'false: read all.'
+                                           +'false: read all. '
+                                           +'Default: %(selected)s'
                                            )
                             ))
                   ,('layer', add_params.ParamInfo(
@@ -1173,7 +1251,8 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                             ,Description = ('Text.  Names of the layers : '
                                            +'read geometry only from those '
                                            +'layers. Any value not the name '
-                                           +'of a layer: read all layers.'
+                                           +'of a layer: read all layers. '
+                                           +'Default: %(layer)s'
                                            )
                             ))
                                                )
@@ -1263,9 +1342,10 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 
 
 class UsertextReader(sDNA_GH_Tool):
-    opts = options_manager.get_dict_of_Classes(metas = {}
-                        ,options = {}
-                        )
+
+    class Options(object):
+        pass
+
     component_inputs = ('Geom',) 
 
     def __call__(self, gdm):
@@ -1311,20 +1391,15 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(
-                         metas = {}
-                        ,options = dict(shp_type = 'POLYLINEZ'
-                                       ,input_key_str = ('sDNA input name={name} '
-                                                        +'type={fieldtype} '
-                                                        +'size={size}'
-                                                        )
-                                       ,path = __file__
-                                       ,output_shp = os.path.join( 
-                                                         os.path.dirname(__file__)
-                                                        ,'tmp.shp'
-                                                        )
-                                       )
+    class Options(object):
+        shp_type = 'POLYLINEZ'
+        input_key_str = ('sDNA input name={name} '
+                        +'type={fieldtype} '
+                        +'size={size}'
                         )
+        path = __file__
+        output_shp = os.path.join(os.path.dirname(__file__), 'tmp.shp')
+
 
     param_infos = sDNA_GH_Tool.param_infos + (
                                 ('prj'
@@ -1461,17 +1536,15 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(
-                         metas = {}
-                        ,options = dict(new_geom = True
-                                       ,uuid_field = 'Rhino3D_'
-                                       ,sDNA_names_fmt = '{name}.shp.names.csv'
-                                       ,prepped_fmt = '{name}_prepped'
-                                       ,output_fmt = '{name}_output'
-                                       ,del_after_read = False
-                                       ,strict_no_del = False
-                                       )
-                        )
+    class Options(object):
+        new_geom = True
+        uuid_field = 'Rhino3D_'
+        sDNA_names_fmt = '{name}.shp.names.csv'
+        prepped_fmt = '{name}_prepped'
+        output_fmt = '{name}_output'
+        del_after_read = False
+        strict_no_del = False
+
                         
     component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
                                         # objects need to be created
@@ -1606,7 +1679,7 @@ class ShapefileReader(sDNA_GH_Tool):
                             ,Description = 'Field names from the Shapefile. '
                             ))
             ,('bbox', add_params.ParamInfo(
-                        param_Class = Param_Number
+                         param_Class = Param_Number
                         ,Description = ('Bounding box from the Shapefile. '
                                        +'Used to calculate leg_frame by '
                                        +'the Recolour_objects component. '
@@ -1622,16 +1695,14 @@ class ShapefileReader(sDNA_GH_Tool):
 
 class UsertextWriter(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(
-                         metas = {}
-                        ,options = dict(uuid_field = 'Rhino3D_'
-                                       ,output_key_str = 'sDNA output={name} run time={datetime}'
-                                       ,overwrite_UserText = True
-                                       ,max_new_keys = 10
-                                       ,dupe_key_suffix = '_{}'
-                                       ,suppress_overwrite_warning = False
-                                       )
-                        )
+    class Options(object):
+        uuid_field = 'Rhino3D_'
+        output_key_str = 'sDNA output={name} run time={datetime}'
+        overwrite_UserText = True
+        max_new_keys = 10
+        dupe_key_suffix = '_{}'
+        suppress_overwrite_warning = False
+
                         
 
     component_inputs = ('Geom', 'Data')
@@ -1739,36 +1810,45 @@ class DataParser(sDNA_GH_Tool):
                            )
 
 
-    options = dict(
-         field = 'BtEn'
-        ,plot_min = options_manager.Sentinel('plot_min is automatically calculated by sDNA_GH unless overridden.  ')
-        ,plot_max = options_manager.Sentinel('plot_max is automatically calculated by sDNA_GH unless overridden.  ')
-        ,re_normaliser = 'linear'
-        ,sort_data = False
-        ,num_classes = 8
-        ,class_bounds = [options_manager.Sentinel('class_bounds is automatically calculated by sDNA_GH unless overridden.  ')]
+    class Options(data_cruncher.SpikeIsolatingQuantileOptions):
+        field = 'BtEn'
+        plot_min = options_manager.Sentinel('plot_min is automatically '
+                                           +'calculated by sDNA_GH unless '
+                                           +'overridden.  '
+                                           )
+        plot_max = options_manager.Sentinel('plot_max is automatically '
+                                           +'calculated by sDNA_GH unless '
+                                           +'overridden.  '
+                                           )
+        re_normaliser = 'linear'
+        sort_data = False
+        num_classes = 8
+        class_bounds = [options_manager.Sentinel('class_bounds is automatically '
+                                                +'calculated by sDNA_GH unless '
+                                                +'overridden.  '
+                                                )
+                       ]
         # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
-        ,class_spacing = 'quantile'
-        ,_valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile', 'combo', 'max_deltas')
-        ,base = 10 # for Log and exp
-        ,colour_as_class = False
-        ,locale = '' # '' => User's own settings.  Also in DataParser
+        class_spacing = 'quantile'
+        _valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile'
+                                                                     ,'combo'
+                                                                     ,'max_deltas'
+                                                                     )
+        base = 10 # for Log and exp
+        colour_as_class = False
+        locale = '' # '' => User's own settings.  Also in DataParser
         # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-        ,num_format = '{:.5n}'  #n is a number referring to the current locale setting
-        ,first_leg_tag_str = 'below {upper}'
-        ,gen_leg_tag_str = '{lower} - {upper}'
-        ,last_leg_tag_str = 'above {lower}'
-        ,exclude = False
-        ,remove_overlaps = True
-        ,suppress_small_classes_error = False
-        ,suppress_class_overlap_error = False
-        )
-    spike_isolating_quantile_options = options_manager.namedtuple_from_class(data_cruncher.SpikeIsolatingQuantileOptions)
-    options.update(spike_isolating_quantile_options._asdict())
-    opts = options_manager.get_dict_of_Classes(metas = {}, options = options)
-
-    assert opts['options'].re_normaliser in data_cruncher.valid_re_normalisers
-    assert opts['options'].class_spacing in quantile_methods
+        num_format = '{:.5n}'  #n is a number referring to the current locale setting
+        first_leg_tag_str = 'below {upper}'
+        gen_leg_tag_str = '{lower} - {upper}'
+        last_leg_tag_str = 'above {lower}'
+        exclude = False
+        remove_overlaps = True
+        suppress_small_classes_error = False
+        suppress_class_overlap_error = False
+        
+        assert re_normaliser in data_cruncher.valid_re_normalisers
+        assert class_spacing in _valid_class_spacings
                         
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('field', add_params.ParamInfo(
@@ -1776,14 +1856,14 @@ class DataParser(sDNA_GH_Tool):
                             ,Description = ('The field name / key value of '
                                            +'the results field to parse '
                                            +'and/or plot. Default: %(field)s'
-                                           ) % options
+                                           )
                             ))
                   ,('plot_max', add_params.ParamInfo(
                              param_Class = Param_Number
                             ,Description = ('Maximum data value to parse. '
                                            +'Higher values (and their '
-                                           +'objects) are omitted. '+
-                                           'Automatically calculated if unset.'
+                                           +'objects) are omitted. '
+                                           +'Automatically calculated if unset.'
                                            )
                             ))
                   ,('plot_min', add_params.ParamInfo(
@@ -1798,17 +1878,19 @@ class DataParser(sDNA_GH_Tool):
                              param_Class = Param_Number
                             ,Description = ('Number of classes in the legend. '
                                            +'Integer. Default: %(num_classes)s' 
-                                           ) % options
+                                           )
                             ))                        
                   ,('class_spacing', add_params.ParamInfo(
                              param_Class = Param_String
                             ,Description = ('Name of method to use to '
                                            +'classify the data / calculate '
                                            +'the classes for the legend. '
-                                           +'Allowed Values : %s.  Default: %s'
-                                           ) % (quantile_methods.keys()
-                                               ,options['class_spacing']
-                                               )
+                                           +('Allowed Values: %s' 
+                                            % quantile_methods.keys()
+                                            ) # can't interpolate before the 
+                                              # default field
+                                           +'Default: %(class_spacing)s'
+                                           ) 
                             ))
                   ,('class_bounds', add_params.ParamInfo(
                              param_Class = Param_Number
@@ -1856,9 +1938,10 @@ class DataParser(sDNA_GH_Tool):
 
         if items_missing_field:
             msg = 'Missing data for field.  '
-            msg += 'The following: %s have a non-numeric record ' % items_missing_field
-            msg += 'for the field name: %s (or no record at all), ' % field
-            msg += 'and so cannot be parsed for field: %s' % field 
+            msg += 'The following: %s have a non-numeric record '
+            msg += 'for the field name: %s (or no record at all), '
+            msg += 'and so cannot be parsed for field: %s'
+            msg %= (items_missing_field, field, field)
             self.logger.error(msg)
             raise ValueError(msg)
 
@@ -2132,36 +2215,49 @@ class DataParser(sDNA_GH_Tool):
 
 class ObjectsRecolourer(sDNA_GH_Tool):
 
-    opts = options_manager.get_dict_of_Classes(metas = {}
-                        ,options = dict(field = 'BtEn'
-                                       ,Col_Grad = False
-                                       ,Col_Grad_num = 5
-                                       ,rgb_max = (155, 0, 0) #990000
-                                       ,rgb_min = (0, 0, 125) #3333cc
-                                       ,rgb_mid = (0, 155, 0) # guessed
-                                       ,line_width = 4 # millimetres? 
-                                       ,first_leg_tag_str = 'below {upper}'
-                                       ,gen_leg_tag_str = '{lower} - {upper}'
-                                       ,last_leg_tag_str = 'above {lower}'
-                                       ,leg_extent = options_manager.Sentinel('leg_extent is automatically calculated by sDNA_GH unless overridden.  ')
-                                       # [xmin, ymin, xmax, ymax]
-                                       ,bbox = options_manager.Sentinel('bbox is automatically calculated by sDNA_GH unless overridden.  ') 
-                                       # [xmin, ymin, xmax, ymax]
+    class Options(object):
+        field = 'BtEn'
+        Col_Grad = False
+        Col_Grad_num = 5
+        rgb_max = (155, 0, 0) #990000
+        rgb_min = (0, 0, 125) #3333cc
+        rgb_mid = (0, 155, 0) # guessed
+        line_width = 4 # millimetres? 
+        first_leg_tag_str = 'below {upper}'
+        gen_leg_tag_str = '{lower} - {upper}'
+        last_leg_tag_str = 'above {lower}'
+        leg_extent = options_manager.Sentinel('leg_extent is automatically '
+                                             +'calculated by sDNA_GH unless '
+                                             +'overridden.  '
+                                             )
+        # [xmin, ymin, xmax, ymax]
+        bbox = options_manager.Sentinel('bbox is automatically calculated by '
+                                       +'sDNA_GH unless overridden.  '
+                                       ) 
+        # [xmin, ymin, xmax, ymax]
 
-                                       )
-                        )
-                        
-    def __init__(self):
-        self.parse_data = DataParser()
-        self.GH_Gradient_preset_names = {0 : 'EarthlyBrown'
-                                        ,1 : 'Forest'
-                                        ,2 : 'GreyScale'
-                                        ,3 : 'Heat'
-                                        ,4 : 'SoGay'
-                                        ,5 : 'Spectrum'
-                                        ,6 : 'Traffic'
-                                        ,7 : 'Zebra'
-                                        }
+
+    GH_Gradient_preset_names = {0 : 'EarthlyBrown'
+                               ,1 : 'Forest'
+                               ,2 : 'GreyScale'
+                               ,3 : 'Heat'
+                               ,4 : 'SoGay'
+                               ,5 : 'Spectrum'
+                               ,6 : 'Traffic'
+                               ,7 : 'Zebra'
+                               }
+
+    def __init__(self
+                ,opts
+                ,parse_data = None
+                ):
+
+        super(ObjectsRecolourer, self).__init__(opts)
+
+        if parse_data is None:
+            parse_data = DataParser(opts)
+
+        self.parse_data = parse_data
 
 
         self.param_infos += (
@@ -2169,7 +2265,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             ,('plot_max', dict(self.parse_data.param_infos)['plot_max'])
             ,('field', dict(self.parse_data.param_infos)['field'])
             ,('bbox', add_params.ParamInfo(
-                        param_Class = Param_Number
+                         param_Class = Param_Number
                         ,Description = ('Bounding box of geometry. Used '
                                        +'to calculate extent of leg_frame.'
                                        +'Calculated from shapefiles by the '
@@ -2177,8 +2273,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                        +'[x_min, y_min, x_max, y_max], all '
                                        +'Numbers.'
                                        ) 
-                        ))                        
-                                                      )
+                        )
+             )                        
+            )
 
     
     component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field')
@@ -2242,7 +2339,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
-                linearly_interpolate = data_cruncher.enforce_bounds(data_cruncher.linearly_interpolate)
+                linearly_interpolate = data_cruncher.enforce_bounds(
+                                            data_cruncher.linearly_interpolate)
                 return grad().ColourAt( linearly_interpolate(x
                                                             ,x_min
                                                             ,None
@@ -2258,15 +2356,16 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 # or System.Drawing.Color.FromArgb and even 
                 # Grasshopper.Kernel.Types.GH_Colour calling on the result to work
                 # in Grasshopper
-                rgb_col =  data_cruncher.map_f_to_three_tuples(data_cruncher.three_point_quad_spline
-                                                ,x
-                                                ,x_min
-                                                ,0.5*(x_min + x_max)
-                                                ,x_max
-                                                ,tuple(options.rgb_min)
-                                                ,tuple(options.rgb_mid)
-                                                ,tuple(options.rgb_max)
-                                                )
+                rgb_col =  data_cruncher.map_f_to_three_tuples(
+                                         data_cruncher.three_point_quad_spline
+                                        ,x
+                                        ,x_min
+                                        ,0.5*(x_min + x_max)
+                                        ,x_max
+                                        ,tuple(options.rgb_min)
+                                        ,tuple(options.rgb_mid)
+                                        ,tuple(options.rgb_max)
+                                        )
                 bounded_colour = ()
                 for channel in rgb_col:
                     bounded_colour += ( max(0, min(255, channel)), )
@@ -2357,9 +2456,16 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
 
-        if (bbox or not isinstance(options.leg_extent, (options_manager.Sentinel, type(None)))
-                 or not isinstance(options.bbox, (options_manager.Sentinel, type(None)))):
-            if not isinstance(options.leg_extent, options_manager.Sentinel) and options.leg_extent:
+        if (bbox or not isinstance(options.leg_extent
+                                  ,(options_manager.Sentinel, type(None))
+                                  )
+                 or not isinstance(options.bbox
+                                  ,(options_manager.Sentinel, type(None))
+                                  )):
+            #
+            if (not isinstance(options.leg_extent, options_manager.Sentinel) 
+                and options.leg_extent):
+                #
                 [legend_xmin
                 ,legend_ymin
                 ,legend_xmax
@@ -2371,13 +2477,16 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = bbox
                 elif not isinstance(options.bbox, options_manager.Sentinel):
                     self.logger.debug('Using options.bbox override. ')
-                    bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
+                    [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
+                    bbox = options.bbox
 
                 leg_width = math.sqrt((bbox_xmax - bbox_xmin)**2 
                                      +(bbox_ymax - bbox_ymin)**2
                                      ) / 2
-                tag_height = max( 1, 0.4 * leg_width / 7)
-                leg_height = min(options.num_classes * tag_height * 1.04, bbox_ymax - bbox_ymin)
+                tag_height = max(1, 0.4 * leg_width / 7)
+                leg_height = min(options.num_classes * tag_height * 1.04
+                                ,bbox_ymax - bbox_ymin
+                                )
                 legend_xmin = bbox_xmax - leg_width
                 legend_ymin = bbox_ymax - leg_height
 
@@ -2449,7 +2558,7 @@ class sDNA_GeneralDummyTool(sDNA_GH_Tool):
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError('this function should never run '
-                                 +' (there may be a problem with sDNA_General). '
+                                 +'(there is a problem with sDNA_General).'
                                  )
     component_outputs = ()
 
@@ -2458,6 +2567,11 @@ toml_no_tuples = options_manager.toml_types[:]
 if tuple in toml_no_tuples:
     toml_no_tuples.remove(tuple)
 #Internally in sDNA_GH opts, tuples are read only.
+
+bare_key_chars = string.ascii_letters + string.digits + '_-' 
+#https://toml.io/en/v1.0.0#keys
+
+
 
 def parse_values_for_toml(x, supported_types = toml_no_tuples):
     #type(type[any]) -> type[any]
@@ -2473,12 +2587,12 @@ def parse_values_for_toml(x, supported_types = toml_no_tuples):
                 if isinstance(y, tuple(supported_types))
                ]
     if isinstance(x, dict):
-        return OrderedDict((key, parse_values_for_toml(val, supported_types)) 
-                            for key, val in x.items() 
-                            if (isinstance(key, basestring) 
-                                and all(not char.isspace() for char in key) 
-                                and (options_manager.isnamedtuple(val) or 
-                                     isinstance(val, tuple(supported_types))))
+        return OrderedDict((key, parse_values_for_toml(val, supported_types)
+                           ) 
+                           for key, val in x.items() 
+                           if (isinstance(key, basestring) 
+                               and (options_manager.isnamedtuple(val) or 
+                                    isinstance(val, tuple(supported_types))))
                           )
     return x
 
@@ -2491,31 +2605,100 @@ class ConfigManager(sDNA_GH_Tool):
         All args connected to its input Params are loaded into opts,
         even if go is False.  
 
-        If go is True, tries to save the options. 
-        If save_to is a valid file path ending 
-        in toml, the opts are saved to it (overwriting an existing file), 
-        e.g. creating a project specific options file.  
-        Otherwise if save_to is not specified and no installation wide config.toml 
-        file is found (in the sDNA_GH installation directory 
-        %appdata%/Grasshopper/UserObjects/sDNA_GH) e.g. on the first use of
-        sDNA_GH after installation, string keyed str, bool, int, float, list, tuple, and dict 
-        values in opts are saved to the installation wide config.toml.
+        If go is True, tries to save the options to the toml file in 
+        save_to (needs to be a valid file path ending 
+        in toml) overwriting an existing file, the installation-wide
+        options file by default, or if specified by the user e.g. 
+        creating a project specific options file.  
+        
+        Only string keyed str, bool, int, float, list, tuple, and dict 
+        values in opts are saved to the toml file on disk.
     """
 
 
-    save_to = os.path.join(os.path.dirname(os.path.dirname(__file__))
-                          ,'config.toml'
-                          ) 
+    class Metas(PythonOptions, sDNAMetaOptions):
+        config = os.path.join(launcher.user_install_folder
+                              ,launcher.package_name  
+                              ,'config.toml'
+                              )
 
-    metas = dict(config = save_to)
-    metas.update(python_options._asdict())
-    metas.update(sDNA_meta_options._asdict())
-
-    opts = options_manager.get_dict_of_Classes(metas = metas
-                                              ,options = {}
-                                              )
+    class Options(object):
+        pass
+    Options.save_to = Metas.config
 
 
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('save_to', add_params.ParamInfo(
+                             param_Class = Param_FilePath
+                            ,Description = ('The field name / key value of '
+                                           +'the results field to parse '
+                                           +'and/or plot. Default: %(save_to)s'
+                                           )
+                            ))
+                  ,('python', add_params.ParamInfo(
+                             param_Class = Param_FilePath
+                            ,Description = ('Maximum data value to parse. '
+                                           +'Higher values (and their '
+                                           +'objects) are omitted. '
+                                           +'Automatically calculated if unset.'
+                                           )
+                            ))
+                  ,('sDNA_paths', add_params.ParamInfo(
+                             param_Class = Param_FilePath
+                            ,Description = ('Minimum data value to parse. '
+                                           +'Lower values (and their '
+                                           +'objects) are omitted. '
+                                           +'Automatically calculated if unset.'
+                                           )
+                            ))
+                  ,('auto_get_Geom', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Run Read Rhino geometry '
+                                           +'before Read User Text.  ' 
+                                           +"false: don't. "
+                                           +'Default: %(auto_get_Geom)s' 
+                                           )
+                            )) 
+                  ,('auto_read_User_Text', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Run Read User Text before'
+                                           +" Write shapefile.  false: don't. "
+                                           +'Default: %(auto_read_User_Text)s' 
+                                           )
+                            )) 
+                  ,('auto_write_Shp', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Run Write shapefile before'
+                                           +" sDNA tools.  false: don't. "
+                                           +'Default: %(auto_write_Shp)s' 
+                                           )
+                            )) 
+                  ,('auto_read_Shp', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Run Read shapefile after'
+                                           +" sDNA tools.  false: don't. "
+                                           +'Default: %(auto_read_Shp)s' 
+                                           )
+                            )) 
+                  ,('auto_plot_data', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Run Recolour objects after'
+                                           +" Read shapefile.  false: don't. "
+                                           +'Default: %(auto_plot_data)s' 
+                                           )
+                            ))         
+                  ,('show_all', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: show all possible input '
+                                           +'Params on sDNA tools.  '
+                                           +'false: only show required '
+                                           +'Params. '
+                                           +'Default: %(show_all)s' 
+                                           )
+
+                            ))                       
+
+                                               )
     component_inputs = ('save_to' # Primary Meta
                        ,'python'
                        ,'sDNA_paths'
@@ -2527,20 +2710,19 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'show_all'
                        )
 
-    def __call__(self
-                ,save_to
-                ,python = None
-                ,sDNA_paths = None
-                ,opts = opts
-                ):
+    def __call__(self, opts):
         self.debug('Starting class logger')
-            
-        self.debug('save_to : %s, python : %s, sDNA_paths : %s' % (save_to, python, sDNA_paths))
 
-        if opts is None:
-            opts = self.opts
-
+        metas = opts['metas']
         options = opts['options']
+                
+        python, sDNA_paths = metas.python, metas.sDNA_paths
+        save_to = options.save_to
+
+        self.debug('save_to : %s, python : %s, sDNA_paths : %s' 
+                  % (save_to, python, sDNA_paths)
+                  )
+
 
         if python:
             opts['metas'] = opts['metas']._replace(python = python)
@@ -2559,38 +2741,17 @@ class ConfigManager(sDNA_GH_Tool):
 
         parsed_dict = parse_values_for_toml(opts)   
         del parsed_dict['metas']['config'] # no nested options files
+
         if 'sDNA' in parsed_dict['metas']:
             del parsed_dict['metas']['sDNA'] # read only.  auto-updated.
+
         # self.logger.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
         #                                              for item in parsed_dict.items()
         #                                             )
         #           )
 
-        if save_to in (None, 'config.toml'):
-            if not os.path.isfile(self.save_to): 
-                                # Don't overwrite an existing installation 
-                                # wide config.toml file
-                #
-                save_to = self.save_to
-                self.logger.warning('Saving opts to installation wide '
-                            +' file: %s' % self.save_to
-                            )
-                del parsed_dict['options']['path'] # no possibly specific path 
-                                                # saved to the installation wide 
-                                                # config file's options
-                del parsed_dict['options']['working_folder']
-                parsed_dict['options']['message'] = 'Installation wide user options file. '
-            else:
-                msg = "There already is an installation wide options file"
-                msg += "  Specify save_to == 'config.toml' to overwrite it)."
-                self.logger.error(msg)            
-                raise ValueError(msg)
+        save_to = options.save_to
 
-        else:
-            parsed_dict['options']['message'] = 'Project specific user options file. '
-
-
-            
         if not isinstance(save_to, basestring):
             msg = 'File path to save to: %s needs to be a string' % save_to
             self.logger.error(msg)            
@@ -2600,12 +2761,19 @@ class ConfigManager(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
 
-
-
-
+        if save_to == self.Metas.config:
+            self.logger.warning('Saving opts to installation wide '
+                               +'file: %s' % save_to
+                               )
+            del parsed_dict['options']['path'] # no project-specific paths are
+                                               # saved to the installation wide 
+                                               # config file's options
+            del parsed_dict['options']['working_folder']
+            parsed_dict['options']['message'] = 'Installation wide user options file. '
+        else:
+            parsed_dict['options']['message'] = 'Project specific user options file. '
 
         options_manager.save_toml_file(save_to, parsed_dict)
-
         
         retcode = 0
         locs = locals().copy()
