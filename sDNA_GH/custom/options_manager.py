@@ -211,26 +211,28 @@ def override_dict_key_val_generator(d_lesser
             #
             val = val[0]
         
-        if check_types and d_lesser[key] is not None: 
+        if (check_types and 
+            d_lesser[key] is not None and 
+            not isinstance(d_lesser[key], Sentinel) and
             # set default to None to allow override to be of any type
-            if (not is_instance_of_Class_of(val, d_lesser[key]) and 
-                (not allow_containers or
-                not is_instance_of_Class_of_item_of(val, d_lesser[key]))):
-                #val is mistyped
+            not is_instance_of_Class_of(val, d_lesser[key]) and 
+            (not allow_containers or
+            not is_instance_of_Class_of_item_of(val, d_lesser[key]))):
+            #val is mistyped
 
-                if hush_type_error:
-                    msg = 'Skipping key: %s from override as val == %s is not an instance of: %s, '
-                    msg = msg % (key, val, d_lesser[key])
-                    msg += 'and is not an instance of the Class of any of its elements (if any)'
-                    logger.warning(msg)
-                    continue
-                
-                msg = 'Option: %s needs to be instance of type: %s, '
-                msg += 'or an instance of the Class of one of its elements (if any).'
-                msg += ' Type supplied: %s (val == %s)' 
-                msg = msg % (key, d_lesser[key].__class__, val.___class__, val)
-                logger.error(msg)
-                raise TypeError(msg)
+            if hush_type_error:
+                msg = 'Skipping key: %s from override as val == %s is not an instance of: %s, '
+                msg = msg % (key, val, d_lesser[key])
+                msg += 'and is not an instance of the Class of any of its elements (if any)'
+                logger.warning(msg)
+                continue
+            
+            msg = 'Option: %s needs to be instance of type: %s, '
+            msg += 'or an instance of the Class of one of its elements (if any).'
+            msg += ' Type supplied: %s (val == %s)' 
+            msg = msg % (key, d_lesser[key].__class__, val.__class__, val)
+            logger.error(msg)
+            raise TypeError(msg)
         
         yield key, val
 

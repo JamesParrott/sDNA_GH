@@ -1709,16 +1709,19 @@ class ShapefileReader(sDNA_GH_Tool):
     param_infos = sDNA_GH_Tool.param_infos + (
             ('abbrevs', add_params.ParamInfo(
                            param_Class = Param_String
-                          ,Description = ('Abbreviations of sDNA results used '
-                                         +' as key names for field. '
+                          ,Description = ('Abbreviations of sDNA results from '
+                                         +'the ...names.csv file. '
                                          )
                           ))
             ,('fields', add_params.ParamInfo(
                              param_Class = Param_String
-                            ,Description = 'Field names from the Shapefile. '
+                            ,Description = ('Field names from the Shapefile. '
+                                           +'Set field to one of these values '
+                                           +'to parse and/or plot it. '
+                                           )
                             ))
             ,('bbox', add_params.ParamInfo(
-                         param_Class = Param_Number
+                         param_Class = Param_ScriptVariable
                         ,Description = ('Bounding box from the Shapefile. '
                                        +'Used to calculate leg_frame by '
                                        +'the Recolour_objects component. '
@@ -1898,7 +1901,7 @@ class DataParser(sDNA_GH_Tool):
                                            )
                             ))
                   ,('plot_max', add_params.ParamInfo(
-                             param_Class = Param_Number
+                             param_Class = Param_ScriptVariable
                             ,Description = ('Maximum data value to parse. '
                                            +'Higher values (and their '
                                            +'objects) are omitted. '
@@ -1906,7 +1909,7 @@ class DataParser(sDNA_GH_Tool):
                                            )
                             ))
                   ,('plot_min', add_params.ParamInfo(
-                             param_Class = Param_Number
+                             param_Class = Param_ScriptVariable
                             ,Description = ('Minimum data value to parse. '
                                            +'Lower values (and their '
                                            +'objects) are omitted. '
@@ -1914,7 +1917,7 @@ class DataParser(sDNA_GH_Tool):
                                            )
                             ))
                   ,('num_classes', add_params.ParamInfo(
-                             param_Class = Param_Number
+                             param_Class = Param_ScriptVariable
                             ,Description = ('Number of classes in the legend. '
                                            +'Integer. Default: %(num_classes)s' 
                                            )
@@ -1932,7 +1935,7 @@ class DataParser(sDNA_GH_Tool):
                                            ) 
                             ))
                   ,('class_bounds', add_params.ParamInfo(
-                             param_Class = Param_Number
+                             param_Class = Param_ScriptVariable
                             ,Description = ('Inter-class boundaries for the '
                                            +'legend. '
                                            +'Automatically calculated using '
@@ -2304,7 +2307,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             ,('plot_max', dict(self.parse_data.param_infos)['plot_max'])
             ,('field', dict(self.parse_data.param_infos)['field'])
             ,('bbox', add_params.ParamInfo(
-                         param_Class = Param_Number
+                         param_Class = Param_ScriptVariable
                         ,Description = ('Bounding box of geometry. Used '
                                        +'to calculate extent of leg_frame.'
                                        +'Calculated from shapefiles by the '
@@ -2575,7 +2578,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
     component_outputs = ('Geom', 'Data') + retvals[1:-1]
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('leg_cols', add_params.ParamInfo(
-                             param_Class = Param_Colour
+                             param_Class = Param_ScriptVariable
                             ,Description = 'Colour values for a legend.'
                             ))
                    ,('leg_tags', add_params.ParamInfo(
