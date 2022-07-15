@@ -268,41 +268,6 @@ def override_OrderedDict_with_dict(d_lesser
 
 
 
-    # if not add_new_opts:
-    #     new_od = OrderedDict( (key, val) 
-    #                for key, val in od_greater.items() 
-    #                if key in d_lesser )
-    # else: 
-    #     new_od = od_greater.copy() 
-    
-    # if delistify:
-    #     delistify_vals_if_not_list_in(d_lesser, new_od)
-
-    # if check_types:
-    #     for key in d_lesser.viewkeys() & new_od:  #.keys():
-    #         if (         d_lesser[key]  is not None       
-    #             and type(d_lesser[key]) != type(new_od[key])   ):
-
-    #             del new_od[key]
-
-    # if sys.version_info.major > 3 or (    sys.version_info.major == 3 
-    #                               and sys.version_info.minor >= 9 ):
-    #     return d_lesser | new_od    # I like this! :)  There's otherwise no 
-    #                                 # need to check >= Python 3.9
-    #                                 # n.b. dict key insertion order guaranteed
-    #                                 # to be preserved >= Python 3.7
-    # else:
-    #     return OrderedDict(d_lesser, **new_od)      
-    #         # Arguments must be string-keyed PEP 0584
-            # The values of od_greater take priority if the keys clash
-            # But the order of the keys is as for d_lesser (Iron Python 2.7.11)
-            #
-            # Extra keys in new_od are added to d_lesser
-
-    # PEP 0584
-    # PEP 468
-    # https://docs.python.org/3/library/collections.html#collections.OrderedDict
-
 def override_namedtuple_with_dict(nt_lesser
                                  ,d_greater
                                  ,strict = True
@@ -462,7 +427,7 @@ class Sentinel(object):
     def __repr__(self):
         return 'Sentinel("' + self.message + '")'
 
-#TODO:  Make bool(Sentinel)is False optionally, and fail louder on iteration.
+#TODO:  Make bool(Sentinel) False optionally, and fail louder on iteration.
 
 def error_raising_sentinel_factory(warning
                                   ,message

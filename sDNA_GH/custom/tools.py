@@ -113,7 +113,8 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
 def list_of_param_infos(param_names
                        ,param_infos
                        ,descriptions = None
-                       ,interpolations = None):
+                       ,interpolations = None
+                       ):
     #type(Iterable, tuple, Iterable) -> list
     """ Returns a list of a selection of ParamInfo entries from Param_infos
         (a tuple of tuples of names and ParamInfos), each selected if its name
@@ -440,7 +441,7 @@ def categorise_keys(d
     sub_dict_keys, data_node_keys, data_field_keys = [], [], []
     for key, value in d.items(): 
         if isinstance(value, dict) or options_manager.isnamedtuple(value):
-            logger.debug('key == %s is a node' % key)
+            #logger.debug('key == %s is a node' % key)
             if is_data_key(key, **kwargs):
                 data_node_keys.append(key)
                 logger.debug('key == %s is a data_node' % key)
@@ -460,6 +461,12 @@ class DefaultMetas(object):
     strict = True
     check_types = True
     add_new_opts = False
+    @classmethod
+    def _asdict(cls):
+        return OrderedDict((attr, getattr(cls, attr)) 
+                           for attr in dir(cls)
+                           if not attr.startswith('_')
+                          )
 
 
 def update_opts(current_opts
@@ -487,6 +494,7 @@ def update_opts(current_opts
         Depth is counted for possible use by get_subdicts_keys_and_data_keys.
     """
 
+
     logger.debug('depth == %s' % depth)
     if not isinstance(current_opts, dict) or not isinstance(override, dict):
         msg = ('opts and override need to be dictionaries. '
@@ -500,6 +508,7 @@ def update_opts(current_opts
     if not kwargs:
         kwargs = {}
     metas = kwargs.setdefault('metas', current_opts.get('metas', DefaultMetas))
+    logger.debug('metas == %s' % metas)
                 #,strict 
                 #,check_types
                 #,add_new_opts, for update_data_node and make_new_data_node
@@ -512,6 +521,7 @@ def update_opts(current_opts
     sub_dicts_keys, data_node_keys, data_field_keys = categorise_keys(override
                                                                      ,**kwargs
                                                                      )
+
     logger.debug('sub_dicts_keys == %s' % sub_dicts_keys)
     logger.debug('data_node_keys == %s' % data_node_keys)
     logger.debug('data_field_keys == %s' % data_field_keys)
@@ -531,30 +541,39 @@ def update_opts(current_opts
                     % current_data_node_keys
                     )
 
+    override_data_fields = OrderedDict((key, override[key]) 
+                                       for key in data_field_keys
+                                      )
 
-    #if sub_dicts_keys:
     for key in sub_dicts_keys:
-        this_level_override_data = OrderedDict((key, override[key]) 
-                                                for key in data_field_keys
-                                                )
-        this_level_override_data.update( override.get(key, {}) )
-        update_opts(current_opts.setdefault(key, {})
-                    ,override = this_level_override_data 
-                    ,depth = depth + 1
-                    ,update_data_node = update_data_node
-                    ,make_new_data_node = make_new_data_node
-                    ,categorise_keys = categorise_keys
-                    ,**kwargs
-                    )
-    #else:
-    for key in data_node_keys + current_data_node_keys:
-        this_level_override_data = OrderedDict((key, override[key]) 
-                                                for key in data_field_keys
-                                                )
-        #logger.debug('this_level_override_data == %s' % this_level_override_data)
+        # assert key not in data_field_keys
+        override_data = override_data_fields.copy()
+        override_data.update( override.get(key, {}) )
+        kwargs['depth'] += 1
+        # Walk the tree, whether that's the tree of current_opts or a new tree
+        # in override_data - .setdefault will ensure it exists in
+        # current_opts.
+        update_opts(current_opts.setdefault(key, {}) # creates a new sub_dict
+                                                     # if there isn't a val
+                                                     # for key.   
+                   ,override = override_data 
+                   ,update_data_node = update_data_node
+                   ,make_new_data_node = make_new_data_node
+                   ,categorise_keys = categorise_keys
+                   ,**kwargs
+                   )
 
-        if key in current_opts:
-            overrides = [this_level_override_data]
+    logger.debug('depth == %s' % depth)
+
+    for key in data_node_keys + current_data_node_keys:
+        override_data = override_data_fields.copy()
+
+        logger.debug('override_data == %s' % override_data)
+        logger.debug('key == %s' % key)
+        logger.debug('current_opts.keys() == %s' % current_opts.keys())
+
+        if key in current_opts:  #current_data_node_keys
+            overrides = [override_data]
             if key in override:
                 overrides += [override[key]]
             #logger.debug('Updating current_opts with overrides == %s & key == %s' 
@@ -564,14 +583,20 @@ def update_opts(current_opts
                                                 ,overrides
                                                 ,**metas._asdict()
                                                 )
+        elif options_manager.isnamedtuple(override[key]):
+            # Do nothing with override_data
+            # 
+            # higher level generic options values are not supported from 
+            # sDNA_GH opts structures; just from toml files and Params
+            current_opts[key] = override[key]
         else:
-            this_level_override_data.update(override[key])
+            override_data.update(override[key])
             logger.debug('Creating node '
-                        +'with this_level_override_data == %s & key == %s' 
-                        % (this_level_override_data, key)
+                        +'with override_data == %s & key == %s' 
+                        % (override_data, key)
                         )
 
-            current_opts[key] = make_new_data_node(this_level_override_data
+            current_opts[key] = make_new_data_node(override_data
                                                   ,key # NamedTuple type name
                                                   ,**metas._asdict()
                                                   )  
@@ -824,6 +849,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
 
+    @property
+    def all_options_dict(self):
+        retval = self.options._asdict()
+        retval.update(self.metas._asdict())
+        retval.update(self.user_default_tool_opts._asdict())
+        return retval
+
     def update_tool_opts_and_syntax(self, opts = None):
         if opts is None:
             opts = self.opts
@@ -884,21 +916,28 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
         get_tool_opts(nick_name
-                     ,opts #default_tool_opts
+                     ,default_tool_opts
                      ,tool_name
                      ,sDNA
                      ,val = defaults_nt
-
                      )
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
-        update_opts(current_opts = default_tool_opts # opts
-                   ,override = opts # default_tool_opts
+        update_opts(current_opts = default_tool_opts # mutated
+                   ,override = opts 
                    )
         #override default tool opts with opts
 
+        self.user_default_tool_opts = get_tool_opts(nick_name
+                                                   ,default_tool_opts
+                                                   ,tool_name
+                                                   ,sDNA
+                                                   )
+
         opts.update(default_tool_opts)
-        #get the updated opts back into opts, via .update (have to mutate)
+        # get the updated opts back into opts, via .update (have to mutate
+        # as assignment will only affect the variable assigned to the local 
+        # name of this method arg)
 
         for varname, display_name, data_type, filter_, default, required in self.input_spec:  
                       
@@ -929,9 +968,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 else:
                     py_type_name = self.sDNA_types_to_py_type_names[data_type.lower()]
                     type_description = self.py_type_names_to_type_description[py_type_name]
-                    description += 'Type: %s. ' % (description
-                                                  ,type_description
-                                                  )
+                    description += 'Type: %s. ' % type_description
 
             Param_Class = self.py_type_names_to_Params.get(py_type_name
                                                           ,Param_ScriptVariable
@@ -946,8 +983,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 )  # Tuple of only one element 
                                    # (a tuple of a tuple of two). 
 
-
-        self.logger.debug('\n\n'.join(map(str, opts.items())))
 
         self.sDNA = sDNA
 
@@ -995,6 +1030,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     ,filename = __file__ + self.__class__.__name__
                     ,lineno = 253
                     )
+
+        self.logger.debug('Params built for args from input spec:\n %s' 
+                         %'\n'.join(OrderedDict(self.param_infos).keys())
+                         )
 
 
 
