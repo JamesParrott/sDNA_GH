@@ -198,7 +198,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
 file_to_work_from = checkers.get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
-                      ,pyshp_wrapper.ShpOptions
                       ,tools.RhinoObjectsReader.Options
                       ,tools.ShapefileWriter.Options
                       ,tools.ShapefileReader.Options
@@ -267,7 +266,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                )
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
-    del_after_sDNA = True
+    del_after_sDNA = False
     strict_no_del = False # Also in ShapefileReader
     ###########################################################################    
     #
@@ -300,7 +299,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     overwrite_shp = True
     max_new_files = 20
     suppress_warning = True     
-    dupe_file_key_str = '{name}_({number})'
+    dupe_file_suffix = '{name}_({number})'
     #
     # ensure_correct & write_iterable_to_shp
     extra_chars = 2
@@ -326,7 +325,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for ShapefileReader
     #
     new_geom = False
-    del_after_read = True                 
+    del_after_read = False
     sDNA_names_fmt = '{name}.shp.names.csv'  
     ###########################################################################   
     #         
@@ -728,7 +727,7 @@ def cache_sDNA_tool(compnt # instead of self
                    ,nick_name
                    ,mapped_name
                    ,name_map = None # unused; just for tool_not_found ArgSpec
-                   ,tools_dict = runner.tools_dict
+                   ,tools_dict = runner.tools_dict # mutated
                    ):
     #type(type[any], str, str, dict, dict, function) -> None
     """ Custom tasks to be carried out by tool factory when no tool named 
@@ -739,6 +738,8 @@ def cache_sDNA_tool(compnt # instead of self
         Inserts this new tool into tools_dict (only under its nick_name).
         Adds in any new tool option fields to the list of Params not to 
         be removed.  
+
+        Appends to Mutates compnt.do_not_remove and adds item to tools_dict.
     """
     sDNA_tool = tools.sDNA_ToolWrapper(opts = compnt.opts
                                       ,tool_name = mapped_name
@@ -748,12 +749,7 @@ def cache_sDNA_tool(compnt # instead of self
     tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
                                 # sDNA_ToolWrapper.update_tool_opts_and_syntax
-    compnt.do_not_remove += tuple( tools.get_tool_opts(nick_name
-                                                      ,compnt.opts
-                                                      ,mapped_name
-                                                      ,sDNA
-                                                      )._fields
-                                 )   
+    compnt.do_not_remove += tuple(sDNA_tool.defaults.keys())  
 
             
 

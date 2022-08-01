@@ -186,42 +186,36 @@ def insert_tool(before_or_after
     up_or_downstream = up_or_downstream_dict[before_or_after]
     offset = 1 if before_or_after == 'after' else 0
 
-    possible_targets = any(tool not in not_a_target 
-                                           for tool in tools
-                          )
-    logger.debug("Possible targets == " + str(possible_targets))
+    possible_targets = [tool for tool in tools if tool not in not_a_target]
+    logger.debug("Possible targets == %s " % possible_targets)
 
-    if possible_targets:  
-                    # Not just last tool.  Else no point checking more
-                    # than one downstream component?  The user may 
-                    # wish to do other stuff after the tool
+    if not possible_targets:  
+        return None
+        # Not just last tool.  Else no point checking more
+        # than one downstream component?  The user may 
+        # wish to do other stuff after the tool.
 
-        if  not already_inserted(up_or_downstream
-                                ,tool_to_insert
-                                ,tools_dict
-                                ,name_map
-                                ,Params
-                                ): 
-                             # check tool not already there in another 
-                             # component that will be executed next.
-                             # TODO: None in entire canvas is too strict?
-            for i, tool in enumerate(tools):
-                logger.debug('is_target(tool) : %s ' % is_target(tool))
-                logger.debug('tool : %s ' % tool)
-                if before_or_after == 'after':
-                    tools_run_anyway = tools[i:] 
-                else:
-                    tools_run_anyway = tools[:i] 
+    if  not already_inserted(up_or_downstream
+                            ,tool_to_insert
+                            ,tools_dict
+                            ,name_map
+                            ,Params
+                            ): 
+                            # check tool not already there in another 
+                            # component that will be executed next.
+                            # TODO: None in entire canvas is too strict?
+        for i, tool in enumerate(tools):
+            logger.debug('is_target(tool) : %s ' % is_target(tool))
+            logger.debug('tool : %s ' % tool)
+            if before_or_after == 'after':
+                tools_run_anyway = tools[i:] 
+            else:
+                tools_run_anyway = tools[:i] 
 
-                if is_target(tool) and tool_to_insert not in tools_run_anyway:
-                         # check tool not already inserted 
-                         # in tools after specials
-                    logger.info('Inserting tool : %s ' % tool_to_insert)
-                    tools.insert(i + offset, tool_to_insert)
+            if is_target(tool) and tool_to_insert not in tools_run_anyway:
+                        # check tool not already inserted 
+                        # in tools after specials
+                logger.info('Inserting tool : %s ' % tool_to_insert)
+                tools.insert(i + offset, tool_to_insert)
 
     
-def remove_component_output(self, name):
-    """Very buggy and glitchy.  But this is how you can do it... """
-    for param in self.Params.Output:
-        if param.NickName == name:
-            self.Params.UnregisterOutputParam(param)

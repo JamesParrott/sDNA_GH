@@ -60,36 +60,7 @@ logger.addHandler(logging.NullHandler())
 
 file_name_no_ext = os.path.split(__file__)[-1].split('.')[0]   
 
-class ShpOptions(object):
-    shp_type = 'POLYLINEZ'
-    locale = ''  # '' => User's own settings.  
-                 # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-    #
-    # coerce_and_get_code
-    decimal = True
-    precision = 12
-    max_dp = 4 # decimal places
-    yyyy_mm_dd = False
-    keep_floats = True
-    use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
-    #
-    # get_filename
-    overwrite_shp = True
-    max_new_files = 20
-    suppress_warning = True     
-    dupe_file_key_str ='{name}_({number})'
-    #
-    # ensure_correct & write_iterable_to_shp
-    extra_chars = 2
-    #
-    # write_iterable_to_shp
-    field_size = 30
-    cache_iterable= False
-    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
-    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 separator characters.
-    num_dp = 10 # decimal places
-    min_sizes = True
-    encoding = 'utf-8' # also used by get_fields_recs_and_shapes
+
 
 
 ###################################################################
@@ -256,8 +227,16 @@ if hasattr(shp, 'SHAPETYPE_LOOKUP'):
         logger.warning(msg)
 
 
+class CoerceAndGetCodeOptions(object):
+    decimal = True
+    precision = 12
+    max_dp = 4 # decimal places
+    yyyy_mm_dd = False
+    keep_floats = True
+    use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
 
-def coerce_and_get_code(x, options = ShpOptions):
+
+def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
     #type coercer function
 
     if options.decimal:
@@ -316,15 +295,28 @@ def coerce_and_get_code(x, options = ShpOptions):
                     logger.error(msg)
                     raise TypeError(msg)
 
-def dec_places_req(x, options = ShpOptions):
+
+class LocaleOptions(object):
+    locale = ''  # '' => User's own settings.  
+
+
+
+def dec_places_req(x, options = LocaleOptions):
     #type(Number, type[any]) -> int
     locale.setlocale(locale.LC_ALL,  options.locale)
     radix_char = locale.localeconv()['decimal_point']
     fractional_part = str(x).rpartition(radix_char)[2]
     return len(fractional_part)
 
-def get_filename(f, options = ShpOptions):
-    #type: (str,dict) -> str
+
+class GetFileNameOptions(object):
+    overwrite_shp = True
+    max_new_files = 20
+    suppress_warning = True     
+    duplicate_suffix ='_({number})'
+
+def get_filename(f, options = GetFileNameOptions):
+    #type: (str, type[any]) -> str
 
     if not options.overwrite_shp:
         i = 1
@@ -332,22 +324,28 @@ def get_filename(f, options = ShpOptions):
         [file_name, file_extension] = os.path.splitext(full_file_name) 
         while os.path.isfile(f) and i <= options.max_new_files:
             f = os.path.join(file_dir
-                            ,options.dupe_file_key_str.format(name = file_name 
-                                                             ,number = str(i)
-                                                             )
-                            + file_extension
+                            ,(file_name
+                             +options.duplicate_suffix.format(number = str(i))
+                             +file_extension
+                             )
                             ) 
             i += 1
     elif not options.suppress_warning:
         logger.warning('Overwriting file %s ! ' % f)
     return f
 
+
+class EnsureCorrectOptions(object):
+    # ensure_correct & write_iterable_to_shp
+    extra_chars = 2
+
+
 def ensure_correct(fields
                   ,nice_key
                   ,value
                   ,val_type
                   ,attribute_tables
-                  ,options = ShpOptions
+                  ,options = EnsureCorrectOptions
                   ): 
     # type(dict, str, type[any], str, dict namedtuple) -> None
     if nice_key in fields:
@@ -406,6 +404,16 @@ def ensure_correct(fields
     # Mutates fields.  Nothing returned.
 
 
+class WriteIterableToShpOptions(object):
+    field_size = 30
+    cache_iterable= False
+    uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
+    uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 separator characters.
+    num_dp = 10 # decimal places
+    min_sizes = True
+    encoding = 'utf-8' # also used by get_fields_recs_and_shapes
+
+
 def write_iterable_to_shp(my_iterable 
                          ,shp_file_path 
                          ,shape_mangler
@@ -414,7 +422,7 @@ def write_iterable_to_shp(my_iterable
                          ,key_matcher
                          ,value_demangler
                          ,shape_code # e.g. 'POLYLINEZ'
-                         ,options = ShpOptions
+                         ,options = WriteIterableToShpOptions
                          ,field_names = None
                          ):
     #type(type[Iterable]
@@ -555,7 +563,12 @@ def write_iterable_to_shp(my_iterable
 
     return 0, shapefile_path, fields, attribute_tables
 
-def get_fields_recs_and_shapes(shapefile_path, options = ShpOptions):
+
+class FieldRecsShapesOptions(object):
+    encoding = 'utf-8'
+
+
+def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions):
     with shp.Reader(shapefile_path, encoding = options.encoding) as r:
         fields = r.fields[1:] # skip first field (deletion flag)
         recs = r.records()
@@ -586,5 +599,24 @@ def objs_maker_factory(
     # e.g. rhino_obj_maker = rs.AddPolyline
 
 
+class ShpOptions(CoerceAndGetCodeOptions
+                ,GetFileNameOptions
+                ,EnsureCorrectOptions
+                ,WriteIterableToShpOptions
+                ,LocaleOptions
+                ,FieldRecsShapesOptions
+                ):
+                shp_type = 'POLYLINEZ'
 
+                 # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
+    #
+    # coerce_and_get_code
+
+    #
+    # get_filename
+
+    #
+
+    #
+    # write_iterable_to_shp 
 

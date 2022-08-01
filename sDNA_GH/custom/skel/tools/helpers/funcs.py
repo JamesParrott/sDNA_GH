@@ -30,11 +30,16 @@ __author__ = 'James Parrott'
 __version__ = '0.06'
 
 import os
+import logging
 import re
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
-    
+
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
 
 def tool_name(tool):
     #type(type[any] / function) -> str
@@ -91,3 +96,40 @@ def windows_installation_paths(names):
         yield os.path.join(os.getenv('APPDATA'), name)
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
 
+
+def make_regex(pattern):
+    # type (str) -> str
+    """ Makes a regex from its 'opposite'/'inverse': a format string.  
+        Escapes special characters.
+        Turns format string fields: {name} 
+        into regex named capturing groups: (?P<name>.*) 
+    """
+    
+    the_specials = '.^$*+?[]|():!#<='
+    #escape special characters
+    for c in the_specials:
+        pattern = pattern.replace(c,'\\' + c)
+
+    # turn all named fields '{name}' in the format string 
+    # into named capturing groups r'(?P<name>.*)' in a regex
+    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
+
+    # Anchor to beginning and end.
+    return r'\A' + pattern + r'\Z'
+    
+
+
+def name_matches(file_name, regexes = ()):
+    #type(str, Iterable) -> bool
+    if isinstance(regexes, str):
+        regexes = (regexes,)
+    return any(bool(re.match(regex, file_name)) for regex in regexes)
+
+
+def delete_file(path
+               ,logger = logger
+               ):
+    #type(str, type[any]) -> None
+    if os.path.isfile(path):
+        logger.info('Deleting file: %s ' % path)
+        os.remove(path)

@@ -88,6 +88,11 @@ from . import logging_wrapper
 from . import gdm_from_GH_Datatree
 from .. import launcher
 
+if hasattr(abc, 'ABC'):
+    ABC = abc.ABC
+else:
+    class ABC(object):
+        __metaclass__ = abc.ABCMeta
 abstractmethod = abc.abstractmethod
 
 try:
@@ -144,7 +149,7 @@ def list_of_param_infos(param_names
 
 class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogger):
 
-    """ General base class for all tools, that is runnable (should have an
+    """ General base class for all tools, that is runnable (should have
         retvals implemented), has params (input_params and output_params
         should be implemented), and containing a class logger that adds the subclass
         name to logging messages. 
@@ -246,41 +251,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
 
 
 
-def make_regex(pattern):
-    # type (str) -> str
-    """ Makes a regex from its 'opposite'/'inverse': a format string.  
-        Escapes special characters.
-        Turns format string fields: {name} 
-        into regex named capturing groups: (?P<name>.*) 
-    """
-    
-    the_specials = '.^$*+?[]|():!#<='
-    #escape special characters
-    for c in the_specials:
-        pattern = pattern.replace(c,'\\' + c)
 
-    # turn all named fields '{name}' in the format string 
-    # into named capturing groups r'(?P<name>.*)' in a regex
-    pattern = pattern.replace( '{', r'(?P<' ).replace( '}', r'>.*)' )
-
-    # Anchor to beginning and end.
-    return r'\A' + pattern + r'\Z'
-    
-
-
-def name_matches(file_name, regexes = ()):
-    if isinstance(regexes, str):
-        regexes = (regexes,)
-    return any(bool(re.match(regex, file_name)) for regex in regexes)
-
-
-def delete_file(path
-               ,logger = logger
-               ):
-    #type(str, type[any]) -> None
-    if os.path.isfile(path):
-        logger.info('Deleting file ' + path)
-        os.remove(path)
 
 
 def delete_shp_files_if_req(f_name
@@ -290,13 +261,17 @@ def delete_shp_files_if_req(f_name
                            ,regexes = () # no file extension in regexes
                            ):
     #type(str, type[any], bool, str/tuple) -> None
-    if not strict_no_del:
-        file_name = os.path.splitext(f_name)[0]
-        logger.debug('Delete == %s ' % delete)
-        if (delete or name_matches(file_name, regexes)):
-            for ending in ('.shp', '.dbf', '.shx'):
-                path = file_name + ending
-                delete_file(path, logger)
+    logger.debug('strict_no_del == %s ' % strict_no_del)
+    if strict_no_del:
+        return
+
+    file_name_no_ext = os.path.splitext(f_name)[0]
+    logger.debug('delete == %s ' % delete)
+    if (delete or funcs.name_matches(file_name_no_ext, regexes)):
+        for ext in ('.shp', '.dbf', '.shx'):
+            path = file_name_no_ext + ext
+            funcs.delete_file(path, logger)
+            
 
 def has_keywords(nick_name, keywords = ('prepare',)):
     return any(substr in nick_name.strip().strip('_').lower() 
@@ -514,7 +489,7 @@ def update_opts(current_opts
                 #,add_new_opts, for update_data_node and make_new_data_node
     kwargs.setdefault('max_depth', 2)
     kwargs.setdefault('specials', ('options', 'metas'))
-    kwargs.setdefault('patterns', (make_regex(sDNA_fmt_str),))
+    kwargs.setdefault('patterns', (funcs.make_regex(sDNA_fmt_str),))
     
     kwargs['depth'] = depth
 
@@ -802,6 +777,73 @@ def build_missing_sDNA_components(opts
 
 
 
+
+def file_name_formats(base_name, duplicate_suffix):
+    #type: (str, str) -> tuple[str, str]
+    """ Defines how to produce format strings for default file names. """
+    unique_name_fmt = base_name
+    dupe_name_fmt = unique_name_fmt + duplicate_suffix 
+    #File extensions must be added elsewhere
+
+    return unique_name_fmt, dupe_name_fmt
+
+
+class InputShpFileNameOptions(pyshp_wrapper.GetFileNameOptions):
+    input_base_fmt = '{path}_sDNA_GH'
+
+
+class OutputShpFileNameOptions(pyshp_wrapper.GetFileNameOptions):
+    output_base_fmt = '{path}_{tool}_output'
+
+
+class ShapeFileDeleter(object):
+    
+    file_name = None
+    duplicate_suffix = pyshp_wrapper.GetFileNameOptions.duplicate_suffix
+
+    def fmt_strs(self, base_name_fmts):
+        if isinstance(base_name_fmts, basestring):
+            base_name_fmts = [base_name_fmts] 
+        return base_name_fmts + [base_name_fmt + self.duplicate_suffix 
+                                 for base_name_fmt in base_name_fmts
+                                ]
+
+
+    def name_valid(self, file_name, base_name_fmts):
+        patterns = (funcs.make_regex(fmt_str) for fmt_str in self.fmt_strs(base_name_fmts))
+        return funcs.name_matches(file_name, patterns)
+    
+    def __init__(self
+                ,file_name # Needs to match self.fmt_strs.  ext will be removed 
+                           # anyway in delete_shp_files_if_req
+                ,base_name_fmts
+                ,opts
+                ):
+        self.base_name_fmts = base_name_fmts
+        if self.name_valid(file_name, opts):
+            self.file_name = file_name
+
+    def maybe_delete_file(self, delete, opts):
+        if (isinstance(self.file_name, str) and 
+            self.name_valid(self.file_name, opts)):
+            #
+            delete_shp_files_if_req(f_name = self.file_name
+                                   ,delete = delete
+                                   ,strict_no_del = opts['options'].strict_no_del  
+                                   ,logger = logger
+                                   )
+
+
+class InputFileDeletionOptions(InputShpFileNameOptions):
+    del_after_sDNA = True
+    strict_no_del = False 
+    input_file_deleter = None
+
+class OutputFileDeletionOptions(OutputShpFileNameOptions):
+    strict_no_del = InputFileDeletionOptions.strict_no_del 
+    output_file_to_maybe_delete = None
+    del_after_read = False
+
 class sDNA_ToolWrapper(sDNA_GH_Tool):
     """ Main sDNA_GH tool class for running sDNA tools externally.
     
@@ -809,7 +851,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     other necessary attributes of sDNA_GH_Tool, instances know their own name
     and nick name, in self.nick_name
     self.tool_name.  When the instance is called, the version of sDNA
-    is looked up in opts['metas'], from its args. """
+    is looked up in opts['metas'], from its args. 
+    """
     
     sDNA_types_to_py_type_names = dict(fc = 'file'
                                       ,ofc = 'file'
@@ -835,15 +878,16 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         sDNA = None
         show_all = True
 
-    class Options(object):
+    class Options(InputFileDeletionOptions
+                 ,OutputFileDeletionOptions
+                 ):
         sDNAUISpec = options_manager.Sentinel('Module not imported yet')
         run_sDNA = options_manager.Sentinel('Module not imported yet')
         prepped_fmt = "{name}_prepped"
-        output_fmt = "{name}_output"   
+        output_fmt = "{name}_output"
+        overwrite_shp = pyshp_wrapper.ShpOptions.overwrite_shp
         # file extensions are actually optional in PyShp, 
         # but just to be safe and future proof
-        del_after_sDNA = True
-        strict_no_del = False # for debugging
 # Default installation path of Python 2.7.3 release (32 bit ?) 
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
@@ -915,12 +959,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         default_tool_opts = {}
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
-        get_tool_opts(nick_name
-                     ,default_tool_opts
-                     ,tool_name
-                     ,sDNA
-                     ,val = defaults_nt
-                     )
+        self.user_default_tool_opts = get_tool_opts(nick_name
+                                                   ,default_tool_opts
+                                                   ,tool_name
+                                                   ,sDNA
+                                                   ,val = defaults_nt
+                                                   )
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
         update_opts(current_opts = default_tool_opts # mutated
@@ -928,11 +972,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                    )
         #override default tool opts with opts
 
-        self.user_default_tool_opts = get_tool_opts(nick_name
-                                                   ,default_tool_opts
-                                                   ,tool_name
-                                                   ,sDNA
-                                                   )
 
         opts.update(default_tool_opts)
         # get the updated opts back into opts, via .update (have to mutate
@@ -1170,11 +1209,25 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
         # Does not execute if subprocess raises an Exception
-        delete_shp_files_if_req(input_file
-                               ,logger = self.logger
-                               ,delete = options.del_after_sDNA
-                               ,strict_no_del = options.strict_no_del
-                               )
+        if ((options.del_after_sDNA and 
+            not options.strict_no_del and 
+            not options.overwrite_shp) and 
+            isinstance(options.input_file_deleter, ShapeFileDeleter)):
+            #
+            options.input_file_deleter.maybe_delete_file(options.del_after_sDNA
+                                                        ,opts
+                                                        )
+            opts['options'] = opts['options']._replace(
+                                        input_file_deleter = None
+                                        )
+
+        if (options.del_after_read and 
+            not options.strict_no_del):
+            maybe_delete = ShapeFileDeleter(f_name, opts)
+            opts['options'] = opts['options']._replace(
+                                        input_file_deleter = maybe_delete
+                                        )
+
 
         if has_keywords(self.nick_name, keywords = ('prepare',)):
             gdm = None
@@ -1430,14 +1483,14 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
-    class Options(object):
+    class Options(InputFileDeletionOptions, pyshp_wrapper.ShpOptions):
         shp_type = 'POLYLINEZ'
-        input_key_str = ('sDNA input name={name} '
+        input_key_str = ('sDNA input name={name} '  # User Text keys to read
                         +'type={fieldtype} '
                         +'size={size}'
                         )
         path = __file__
-        output_shp = os.path.join(os.path.dirname(__file__), 'tmp.shp')
+        output_shp = '' 
 
 
     param_infos = sDNA_GH_Tool.param_infos + (
@@ -1469,7 +1522,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 
         format_string = options.input_key_str
-        pattern = make_regex( format_string )
+        pattern = funcs.make_regex( format_string )
 
         def pattern_match_key_names(x):
             #type: (str)-> object #re.MatchObject
@@ -1490,23 +1543,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
         def get_list_of_lists_from_tuple(obj):
             return [f(obj)]
-            # target_doc = get_sc_doc_of_obj(obj)    
-            # if target_doc:
-            #     sc.doc = target_doc
-            #     if is_shape(obj, shp_type):
-            #         return [get_points_from_obj(obj, shp_type)]
-            #     else:
-            #         return []      
-            #     #elif is_a_group_in_GH_or_Rhino(obj):
-            # else:
-            #     target_doc = get_sc_doc_of_group(obj)    
-            #     if target_doc:
-            #         sc.doc = target_doc                  
-            #         return [get_points_from_obj(y, shp_type) 
-            #                 for y in checkers.get_members_of_a_group(obj)
-            #                 if is_shape(y, shp_type)]
-            #     else:
-            #         return []
+
         if gdm:
             self.logger.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
         else:
@@ -1524,24 +1561,34 @@ class ShapefileWriter(sDNA_GH_Tool):
             return gdm[obj][key] #tupl[1][key]
 
         if not f_name:  
-            if (options.output_shp and isinstance(options.output_shp, str) and
-                os.path.isfile( options.output_shp )  ):   
-                #
-                f_name = options.output_shp
-            else:
-                f_name = os.path.splitext(options.path)[0] + '.shp'
-                # Copy RhinoDoc or GH definition name without .3dm or .gh
-                # file extensions are actually optional in PyShp, 
-                # but just to be safe and future proof we remove
-                # '.3dm'                                        
+            f_name = options.output_shp
+
+        if (not isinstance(f_name, str) or 
+            not os.path.isdir(os.path.dirname(f_name))):
+            
+            f_name = os.path.splitext(options.path)[0] + '.shp'
+            # Copy RhinoDoc or GH definition name without .3dm or .gh
+
+            f_name = pyshp_wrapper.get_filename(f_name, options)
+            
+            logger.info('Using automatically generated file name: %s' % f_name)
+
+            if (options.del_after_sDNA and 
+                not options.strict_no_del and 
+                not options.overwrite_shp):
+                # Don't delete a shapefile that only just overwrote 
+                # another pre-existing shapefile.
+                maybe_delete = ShapeFileDeleter(f_name, opts)
+                opts['options'] = opts['options']._replace(
+                                            input_file_deleter = maybe_delete
+                                            )
+
+
         self.logger.debug(f_name)
 
 
 
-        (retcode
-        ,f_name
-        ,fields
-        ,gdm) = pyshp_wrapper.write_iterable_to_shp(
+        retcode, f_name, fields,gdm = pyshp_wrapper.write_iterable_to_shp(
                                  my_iterable = gdm
                                 ,shp_file_path = f_name 
                                 ,shape_mangler = get_list_of_lists_from_tuple 
@@ -1575,15 +1622,12 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    class Options(object):
+    class Options(OutputFileDeletionOptions):
         new_geom = True
         uuid_field = 'Rhino3D_'
         sDNA_names_fmt = '{name}.shp.names.csv'
         prepped_fmt = '{name}_prepped'
         output_fmt = '{name}_output'
-        del_after_read = False
-        strict_no_del = False
-
                         
     component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
                                         # objects need to be created
@@ -1668,7 +1712,10 @@ class ShapefileReader(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
         gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
-        
+
+        self.logger.debug('bbox == %s ' % bbox)
+
+
         file_name = os.path.splitext(f_name)[0]
         csv_f_name = options.sDNA_names_fmt.format(name = file_name)
         #sDNA_fields = {}
@@ -1682,21 +1729,29 @@ class ShapefileReader(sDNA_GH_Tool):
                 #sDNA_fields = [OrderedDict( line.split(',') for line in f )]
                 abbrevs = [line.split(',')[0] for line in f ]
             if not options.strict_no_del:
-                delete_file(csv_f_name, self.logger)
+                funcs.delete_file(csv_f_name, self.logger)
 
-
-        self.logger.debug('bbox == %s ' % bbox)
 
         delete_shp_files_if_req(f_name
                                ,logger = self.logger
                                ,delete = options.del_after_read
                                ,strict_no_del = options.strict_no_del
-                               ,regexes = (make_regex(options.output_fmt)
-                                          ,make_regex(options.prepped_fmt)
+                               ,regexes = (funcs.make_regex(options.output_fmt)
+                                          ,funcs.make_regex(options.prepped_fmt)
                                           )
                                )
 
-
+        if ((options.del_after_sDNA and 
+            not options.strict_no_del and 
+            not options.overwrite_shp) and 
+            isinstance(options.output_file_deleter, ShapeFileDeleter)):
+            #
+            options.input_file_deleter.maybe_delete_file(options.del_after_sDNA
+                                                        ,opts
+                                                        )
+            opts['options'] = opts['options']._replace(
+                                        input_file_deleter = None
+                                        )
         retcode = 0
 
         locs = locals().copy()
@@ -1730,7 +1785,9 @@ class ShapefileReader(sDNA_GH_Tool):
                                        ) 
                         ))      
                                              )
-               
+
+
+
 
 
 
@@ -2432,9 +2489,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
         legend_tags = OrderedDict()
-        legend_first_pattern = make_regex(options.first_leg_tag_str)
-        legend_inner_pattern = make_regex(options.gen_leg_tag_str)
-        legend_last_pattern = make_regex(options.last_leg_tag_str)
+        legend_first_pattern = funcs.make_regex(options.first_leg_tag_str)
+        legend_inner_pattern = funcs.make_regex(options.gen_leg_tag_str)
+        legend_last_pattern = funcs.make_regex(options.last_leg_tag_str)
 
         legend_tag_patterns = (legend_first_pattern
                               ,legend_inner_pattern
