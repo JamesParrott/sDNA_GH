@@ -206,6 +206,7 @@ To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sD
 
 
 **[Advanced config options for sDNA Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
+
 Option 	Default 	Description  
 startelev= 	  	Name of field to read start elevation from  
 endelev= 	  	Name of field to read end elevation from  
