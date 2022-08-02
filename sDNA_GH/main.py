@@ -267,7 +267,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
     del_after_sDNA = False
-    strict_no_del = False # Also in ShapefileReader
+    strict_no_del = True # Also in ShapefileReader
     ###########################################################################    
     #
     # Overrides for RhinoObjectsReader
@@ -296,7 +296,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
     #
     # get_filename
-    overwrite_shp = True
+    overwrite_shp = False
     max_new_files = 20
     suppress_warning = True     
     dupe_file_suffix = '{name}_({number})'
