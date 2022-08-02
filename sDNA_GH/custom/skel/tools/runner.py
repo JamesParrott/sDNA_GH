@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.06'
+__version__ = '0.07'
 
 
 import logging
