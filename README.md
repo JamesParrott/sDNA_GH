@@ -205,7 +205,7 @@ To add or remove existing `Geom`etry before the results file is read in (to cont
 To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sDNA component with the same name as each advanced config option you wish to include (omitting a trailing equals sign and leaving the Param unconnected, unless you wish to provide a value for it); the `advanced` config string can then be saved to a `config.toml` file with an sDNA_GH Config component).  Alternatively create an `advanced` config string manually.  The sDNA tools in that component will gather all user-specified input Params and construct the `advanced` config string from them.  Alternatively, prepare the and connect it to `advanced`.  See the readme for the list of supported advanced config options.
 
 
-**[Advanced config options for sDNA Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)**
+**[Advanced config options for sDNA Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#advanced-config-options-for-sdna-integral-and-geometry-tools)** 
 Option 	Default 	Description  
 startelev= 	  	Name of field to read start elevation from  
 endelev= 	  	Name of field to read end elevation from  
