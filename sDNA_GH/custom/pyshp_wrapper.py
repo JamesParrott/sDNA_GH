@@ -318,21 +318,28 @@ class GetFileNameOptions(object):
 def get_filename(f, options = GetFileNameOptions):
     #type: (str, type[any]) -> str
 
+    i = 1
+    prev_f = f
+    file_dir, full_file_name = os.path.split(f)   
+    [file_name, file_extension] = os.path.splitext(full_file_name) 
+    while os.path.isfile(f) and i <= options.max_new_files:
+        prev_f = f
+        f = os.path.join(file_dir
+                        ,(file_name
+                         +options.duplicate_suffix.format(number = str(i))
+                         +file_extension
+                         )
+                        ) 
+        i += 1
     if not options.overwrite_shp:
-        i = 1
-        file_dir, full_file_name = os.path.split(f)   
-        [file_name, file_extension] = os.path.splitext(full_file_name) 
-        while os.path.isfile(f) and i <= options.max_new_files:
-            f = os.path.join(file_dir
-                            ,(file_name
-                             +options.duplicate_suffix.format(number = str(i))
-                             +file_extension
-                             )
-                            ) 
-            i += 1
+        if options.max_new_files < 1:
+            logger.warning('max_new_files == %s, Overwriting file: %s ! ' 
+                          %(options.max_new_files, f)
+                          )
+        return f
     elif not options.suppress_warning:
-        logger.warning('Overwriting file %s ! ' % f)
-    return f
+        logger.warning('Overwriting file: %s ! ' % prev_f)
+    return prev_f
 
 
 class EnsureCorrectOptions(object):

@@ -268,7 +268,7 @@ def delete_shp_files_if_req(f_name
     file_name_no_ext = os.path.splitext(f_name)[0]
     logger.debug('delete == %s ' % delete)
     if (delete or funcs.name_matches(file_name_no_ext, regexes)):
-        for ext in ('.shp', '.dbf', '.shx'):
+        for ext in ('.shp', '.dbf', '.shx', '.shp.names.csv'):
             path = file_name_no_ext + ext
             funcs.delete_file(path, logger)
             
@@ -790,23 +790,26 @@ def file_name_formats(base_name, duplicate_suffix):
 
 
 
-class ShapeFileDeleter(object):
+class ShapeFilesDeleter(ABC):
     
     file_name = None
-    
+
     def __init__(self
                 ,file_name 
                 ):
         self.file_name = file_name
 
-    def delete_file(self, delete, opts):
-        if isinstance(self.file_name, str):
+    def delete_files(self, delete, opts):
+        if isinstance(self.file_name, basestring):
             #
             delete_shp_files_if_req(f_name = self.file_name
-                                   ,delete = delete
-                                   ,strict_no_del = opts['options'].strict_no_del  
-                                   )
+                                    ,delete = delete
+                                    ,strict_no_del = opts['options'].strict_no_del  
+                                    )
 
+class NullDeleter(object):
+    pass
+ShapeFilesDeleter.register(NullDeleter)
 
 class InputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
     del_after_sDNA = True
@@ -1128,11 +1131,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
             output_file = pyshp_wrapper.get_filename(output_file, options)
 
+            self.logger.debug('Using auto generated output_file name: %s' % output_file)
+
             if (options.del_after_read and 
                 not options.strict_no_del and
-                not options.overwrite_shp):
+                not options.overwrite_shp and
+                isinstance(options.input_file_deleter, ShapeFilesDeleter)):
                 #
-                maybe_delete = ShapeFileDeleter(output_file)
+                maybe_delete = ShapeFilesDeleter(output_file)
                 opts['options'] = opts['options']._replace(
                                             output_file_deleter = maybe_delete
                                             )
@@ -1193,9 +1199,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if (options.del_after_sDNA and 
             not options.strict_no_del and 
             not options.overwrite_shp and 
-            isinstance(options.input_file_deleter, ShapeFileDeleter)):
+            isinstance(options.input_file_deleter, ShapeFilesDeleter) and
+            hasattr(options.input_file_deleter, 'delete_files')):
             #
-            options.input_file_deleter.delete_file(
+            options.input_file_deleter.delete_files(
                                                 delete = options.del_after_sDNA
                                                ,opts = opts
                                                )
@@ -1551,17 +1558,27 @@ class ShapefileWriter(sDNA_GH_Tool):
                 not options.overwrite_shp):
                 # Don't delete a shapefile that only just overwrote 
                 # another pre-existing shapefile.
-                maybe_delete = ShapeFileDeleter(f_name)
+                maybe_delete = ShapeFilesDeleter(f_name)
                 opts['options'] = opts['options']._replace(
                                             input_file_deleter = maybe_delete
                                             )
-
+            else:
+                do_not_delete = NullDeleter() # Slight hack, so sDNA_tool knows
+                                              # f_name (input_file) is 
+                                              # auto-generated, so it can tell 
+                                              # if output_file is also
+                                              # auto-generated, and only if so
+                                              # maybe making a 
+                                              # ShapeFilesDeleter for it.
+                opts['options'] = opts['options']._replace(
+                                            input_file_deleter = do_not_delete
+                                            )
 
         self.logger.debug(f_name)
 
 
 
-        retcode, f_name, fields,gdm = pyshp_wrapper.write_iterable_to_shp(
+        retcode, f_name, fields, gdm = pyshp_wrapper.write_iterable_to_shp(
                                  my_iterable = gdm
                                 ,shp_file_path = f_name 
                                 ,shape_mangler = get_list_of_lists_from_tuple 
@@ -1701,11 +1718,7 @@ class ShapefileReader(sDNA_GH_Tool):
                 #
                 #sDNA_fields = [OrderedDict( line.split(',') for line in f )]
                 abbrevs = [line.split(',')[0] for line in f ]
-            if (options.del_after_read and 
-                not options.strict_no_del and
-                not options.overwrite_shp):
-                #
-                funcs.delete_file(csv_f_name, self.logger)
+
         else:
             msg = "No sDNA names.csv abbreviations file: %s found. " % csv_f_name
             abbrevs = [msg]
@@ -1715,9 +1728,9 @@ class ShapefileReader(sDNA_GH_Tool):
         if ((options.del_after_read and 
             not options.strict_no_del and 
             not options.overwrite_shp) and 
-            isinstance(options.output_file_deleter, ShapeFileDeleter)):
+            isinstance(options.output_file_deleter, ShapeFilesDeleter)):
             #
-            options.output_file_deleter.delete_file(delete = options.del_after_read
+            options.output_file_deleter.delete_files(delete = options.del_after_read
                                                    ,opts = opts
                                                    )
             opts['options'] = opts['options']._replace(

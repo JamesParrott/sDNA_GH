@@ -36,7 +36,11 @@ import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
 
-
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+    
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -121,7 +125,7 @@ def make_regex(pattern):
 
 def name_matches(file_name, regexes = ()):
     #type(str, Iterable) -> bool
-    if isinstance(regexes, str):
+    if isinstance(regexes, basestring):
         regexes = (regexes,)
     return any(bool(re.match(regex, file_name)) for regex in regexes)
 
