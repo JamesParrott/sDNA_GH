@@ -199,6 +199,7 @@ file_to_work_from = checkers.get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.RhinoObjectsReader.Options
+                      ,tools.UsertextReader.Options
                       ,tools.ShapefileWriter.Options
                       ,tools.ShapefileReader.Options
                       ,tools.UsertextWriter.Options

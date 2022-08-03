@@ -1417,12 +1417,28 @@ class RhinoObjectsReader(sDNA_GH_Tool):
 class UsertextReader(sDNA_GH_Tool):
 
     class Options(object):
-        pass
+        compute_vals = True
 
-    component_inputs = ('Geom',) 
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('compute_vals', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true : apply '
+                                           +'Rhino.RhinoApp.ParseTextField to '
+                                           +'vals that are attribute User Text'
+                                           +' computed fields. '
+                                           +'false: do nothing. '
+                                           +'Default: %(compute_vals)s'
+                                           )
+                            )),
 
-    def __call__(self, gdm):
+                                              )
+
+    component_inputs = ('Geom', 'compute_vals') 
+
+    def __call__(self, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
+
+        options = self.Options if opts is None else opts['options']
 
         self.debug('Starting read_Usertext...  Creating Class logger. ')
         self.logger.debug('type(gdm) == %s ' % type(gdm))
@@ -1440,9 +1456,17 @@ class UsertextReader(sDNA_GH_Tool):
         for obj in gdm:
             try:
                 keys = rs.GetUserText(obj)
-                gdm[obj].update( (key, rs.GetUserText(obj, key)) for key in keys )
             except ValueError:
-                pass
+                keys =[]
+            for key in keys:
+                val = rs.GetUserText(obj, key)
+                if (options.compute_vals and 
+                    val.startswith(r'%') and val.endswith(r'%') and
+                    re.search(funcs.uuid_pattern, val)):
+                    #
+                    coerced_obj = rs.coercerhinoobject(obj)
+                    val = Rhino.RhinoApp.ParseTextField(val, coerced_obj, None)
+                gdm[obj][key] = val
 
         # read_Usertext_as_tuples = checkers.get_OrderedDict()
         # for obj in gdm:
@@ -1662,11 +1686,11 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
         if not bbox:
-            self.logger.warning('No Bounding Box in Shapefile.  '
-                   + f_name 
-                   + ' '
-                   +'Supply bbox manually or create rectangle to plot legend.'
-                   )
+            self.logger.warning('No Bounding Box in Shapefile: %s '
+                               % f_name
+                               +'Supply bbox manually or create '
+                               +'rectangle to plot legend.'
+                               )
             
 
         fields = [ x[0] for x in shp_fields ]
@@ -1758,10 +1782,11 @@ class ShapefileReader(sDNA_GH_Tool):
             ('bake', add_params.ParamInfo(
                            param_Class = Param_Boolean
                           ,Description = ('If Geom is connected, does nothing.'
-                                         +' Otherwise, true (default): bakes '
+                                         +' Otherwise, true: bakes '
                                          +'the shapefile polylines to Rhino.  '
                                          +'false: creates Grasshopper '
-                                         +'polylines only.'
+                                         +'polylines only. '
+                                         +'Default: %(bake)s'
                                          )
                           ))
             ,('abbrevs', add_params.ParamInfo(

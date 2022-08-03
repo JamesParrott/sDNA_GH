@@ -62,7 +62,8 @@ def tool_name(tool):
         names = [name.strip("'") for name, val in c if val is tool]  
         return names[0]
 
-
+hexit = r'[0-9A-Fa-f]'
+uuid_pattern = r'%s{8}-%s{4}-%s{4}-%s{4}-%s{12}' % ((hexit,)*5)
 
 def is_uuid(val):
     try:
