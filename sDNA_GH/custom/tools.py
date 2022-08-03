@@ -1614,6 +1614,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
     class Options(OutputFileDeletionOptions):
         new_geom = True
+        bake = True
         uuid_field = 'Rhino3D_'
         sDNA_names_fmt = '{name}.shp.names.csv'
         prepped_fmt = '{name}_prepped'
@@ -1622,11 +1623,12 @@ class ShapefileReader(sDNA_GH_Tool):
     component_inputs = ('file', 'Geom', 'bake') # existing 'Geom', otherwise new 
                                                 # objects need to be created
 
-    def __call__(self, f_name, gdm, bake = True, opts = None):
+    def __call__(self, f_name, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
         options = opts['options']
+
         self.debug('Creating Class Logger.  Checking shapefile... ')
 
         if not os.path.isfile(f_name):
@@ -1683,7 +1685,7 @@ class ShapefileReader(sDNA_GH_Tool):
             objs_maker = pyshp_wrapper.objs_maker_factory(options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
             shapes_to_output = (
-                str(objs_maker(shp.points)) if bake else objs_maker(shp.points)
+                str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
                 for shp in shapes 
                 )
             #self.logger.debug('shapes == %s' % shapes)
@@ -1704,7 +1706,7 @@ class ShapefileReader(sDNA_GH_Tool):
                                           ,(rec.as_dict() for rec in recs)
                                           )
 
-        if bake:
+        if options.bake:
             sc.doc = Rhino.RhinoDoc.ActiveDoc
         gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
