@@ -211,6 +211,8 @@ def override_dict_key_val_generator(d_lesser
             #
             val = val[0]
         
+        print('isinstance(d_lesser[key], Sentinel) == %s' % isinstance(d_lesser[key], Sentinel))
+
         if (check_types and 
             d_lesser[key] is not None and 
             not isinstance(d_lesser[key], Sentinel) and

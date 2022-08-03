@@ -1619,10 +1619,10 @@ class ShapefileReader(sDNA_GH_Tool):
         prepped_fmt = '{name}_prepped'
         output_fmt = '{name}_output'
                         
-    component_inputs = ('file', 'Geom') # existing 'Geom', otherwise new 
-                                        # objects need to be created
+    component_inputs = ('file', 'Geom', 'bake') # existing 'Geom', otherwise new 
+                                                # objects need to be created
 
-    def __call__(self, f_name, gdm, opts = None):
+    def __call__(self, f_name, gdm, bake = True, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
@@ -1680,9 +1680,12 @@ class ShapefileReader(sDNA_GH_Tool):
              or len(gdm) != len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = pyshp_wrapper.objs_maker_factory(shp_type = options.shp_type) 
-            shapes_to_output = (objs_maker(shp.points) 
-                                for shp in shapes )
+            objs_maker = pyshp_wrapper.objs_maker_factory(options.shp_type)
+                         # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
+            shapes_to_output = (
+                str(objs_maker(shp.points)) if bake else objs_maker(shp.points)
+                for shp in shapes 
+                )
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
         else:
@@ -1692,14 +1695,17 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
-            shapes_to_output = list(gdm.keys()) # Dict view in Python 3
+            shapes_to_output = list(gdm.keys()) 
+            #                  dict.keys() is a dict view in Python 3
 
 
 
         shp_file_gen_exp  = itertools.izip(shapes_to_output
                                           ,(rec.as_dict() for rec in recs)
                                           )
-        sc.doc = Rhino.RhinoDoc.ActiveDoc
+
+        if bake:
+            sc.doc = Rhino.RhinoDoc.ActiveDoc
         gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
 
@@ -1746,7 +1752,16 @@ class ShapefileReader(sDNA_GH_Tool):
     component_outputs = ('Geom', 'Data') + retvals[2:]
 
     param_infos = sDNA_GH_Tool.param_infos + (
-            ('abbrevs', add_params.ParamInfo(
+            ('bake', add_params.ParamInfo(
+                           param_Class = Param_Boolean
+                          ,Description = ('If Geom is connected, does nothing.'
+                                         +' Otherwise, true (default): bakes '
+                                         +'the shapefile polylines to Rhino.  '
+                                         +'false: creates Grasshopper '
+                                         +'polylines only.'
+                                         )
+                          ))
+            ,('abbrevs', add_params.ParamInfo(
                            param_Class = Param_String
                           ,Description = ('Abbreviations of sDNA results from '
                                          +'the ...names.csv file. '

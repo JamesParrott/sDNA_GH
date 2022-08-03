@@ -56,14 +56,17 @@ logger.addHandler(logging.NullHandler())
 
 
 def make_gdm(main_iterable): 
-    #type(namedtuple)-> dict   
+    #type(Iterable)-> dict   
+    """ A trivial function to define a geometry data mapping - DRY.
 
-    gdm = OrderedDict( (obj, d)  
-                       for obj, d in main_iterable
-                     )
+        Anything building a gdm should refer to this for consistency.
+        main_iterable should return tuples of keys and values.  The keys
+        should be Rhino or Grasshopper geometric objects, or strings
+        matching the uuid pattern.  The values should also be a dictionary, 
+        string keyed, containing associated data usable as for User Text.
+    """
+    return OrderedDict(main_iterable)
 
-
-    return gdm
     
 
 def dict_from_key_val_lists(key_val_lists):
@@ -207,8 +210,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
 
 
 
-    geom_data_map = make_gdm(component_inputs_gen_exp  
-                            )
+    geom_data_map = make_gdm(component_inputs_gen_exp ) 
 
 
     return geom_data_map

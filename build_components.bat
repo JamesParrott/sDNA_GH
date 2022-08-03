@@ -6,6 +6,6 @@ cd ..
 rem https://www.grasshopper3d.com/forum/topics/parallel-computation-run-iterations-on-multiple-computers
 rem http://docs.mcneel.com/rhino/7/help/en-us/information/rhinoscripting.htm
 
-ECHO "After Grasshopper builds the components, please check Task Manager for Rhino processes that didn't close properly."
-TaskMgr 
-pause
+rem ECHO "After Grasshopper builds the components, please check Task Manager for Rhino processes that didn't close properly."
+rem TaskMgr 
+rem pause

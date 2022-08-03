@@ -442,15 +442,15 @@ grasshopper.sdna@gmail.com
 
 ### Dependencies.
 ####
- To bulk unblock files, to avoid unblocking every file manually it is necessary to install (Powershell)[https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell].  Otherwise no additional dependencies are required.  sDNA_GH is shipped with files from the following python packages included:
-PyShp (MIT License)  "version: 2.2.0" https://github.com/GeospatialPython/pyshp/blob/master/shapefile.py
-Toml (MIT License) https://github.com/uiri/toml/blob/master/toml/decoder.py  Latest commit 230f0c9 on 30 Oct 2020 
+ To bulk unblock files, to avoid unblocking every file manually it is necessary to install [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell).  Otherwise no additional dependencies are required.  sDNA_GH is shipped with files from the following python packages included:
+[PyShp (MIT License) "version: 2.2.0"](https://github.com/GeospatialPython/pyshp/blob/master/shapefile.py)
+[Toml (MIT License)](https://github.com/uiri/toml/blob/master/toml/decoder.py)  Latest commit 230f0c9 on 30 Oct 2020 
 
 
 ### Build instructions.
 1. If sDNA_GH has not automatically found the sDNA installation you wish to build components for, place a Config component (the one with a lightbulb icon) and add its path to `sDNA_paths`.
 2. Run `build_components.bat` (if necessary open it and adjust the paths to your local folders, and the paths in `\dev\sDNA_build_components.gh`).
-3. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: (print, PD Consulting  VS Marketplace Link)[ https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print].  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
+3. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: [print, PD Consulting  VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print).  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
 4. Manually create `Unload_sDNA_GH` and `Readme.txt` components if required. 
 5. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
 6. Note:  The components are only GhPython launchers with different names and different docstrings.  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`.

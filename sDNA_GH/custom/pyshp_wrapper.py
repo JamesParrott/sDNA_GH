@@ -72,8 +72,7 @@ Rhino_obj_for_shape = dict(NULL = None
                           ,MULTIPATCH = 'MeshVertices'  
                           # Unsupported.  Complicated. 
                           ,POLYLINE = 'PolylineVertices'  
-                          # Works on Line too.
-                          ,POLYGON = 'PolylineVertices'   
+                          ,POLYGON = 'PolylineVertices'
                           ,MULTIPOINT = 'PointCloudPoints'  
                           # Unsupported
                           # Needs chaining to list or POINT
@@ -600,7 +599,7 @@ def objs_maker_factory(
       #,add_objects_to_group = add_objs_to_group
       ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
       ):
-    #type(namedtuple, function, function, dict) -> function
+    #type(str, dict) -> function
     rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
     return rhino_obj_maker
     # e.g. rhino_obj_maker = rs.AddPolyline
