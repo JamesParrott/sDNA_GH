@@ -524,14 +524,14 @@ def update_opts(current_opts
         # assert key not in data_field_keys
         override_data = override_data_fields.copy()
         override_data.update( override.get(key, {}) )
-        kwargs['depth'] += 1
         # Walk the tree, whether that's the tree of current_opts or a new tree
         # in override_data - .setdefault will ensure it exists in
         # current_opts.
         update_opts(current_opts.setdefault(key, {}) # creates a new sub_dict
                                                      # if there isn't a val
                                                      # for key.   
-                   ,override = override_data 
+                   ,override = override_data
+                   ,depth = depth + 1
                    ,update_data_node = update_data_node
                    ,make_new_data_node = make_new_data_node
                    ,categorise_keys = categorise_keys
