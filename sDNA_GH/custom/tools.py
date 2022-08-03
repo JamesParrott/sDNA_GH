@@ -527,7 +527,8 @@ def update_opts(current_opts
         # Walk the tree, whether that's the tree of current_opts or a new tree
         # in override_data - .setdefault will ensure it exists in
         # current_opts.
-        update_opts(current_opts.setdefault(key, {}) # creates a new sub_dict
+        update_opts(current_opts.setdefault(key, OrderedDict()) 
+                                                     # creates a new sub_dict
                                                      # if there isn't a val
                                                      # for key.   
                    ,override = override_data
@@ -934,7 +935,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                                           ,NT_name = nt_name
                                                           )
 
-        default_tool_opts = {}
+        default_tool_opts = OrderedDict()
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
         self.user_default_tool_opts = get_tool_opts(nick_name
