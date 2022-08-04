@@ -46,6 +46,10 @@ else:
         __metaclass__ = abc.ABCMeta
 abstractmethod = abc.abstractmethod
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -81,7 +85,7 @@ class ParamInfo(dict, ParamInfoABC):
                 ,TypeHint = None 
                 ,**kwargs
                 ):
-        if isinstance(param_Class, str):
+        if isinstance(param_Class, basestring):
             if not param_Class.startswith('Param_'):
                 param_Class = 'Param_' + param_Class
             param_Class = getattr(Grasshopper.Kernel.Parameters, param_Class, None)
@@ -149,7 +153,7 @@ def param_info_list_maker(param_names
                          ,descriptions = {}
                          ):
     #type(Iterable, dict, dict, dict, dict) -> List[Grasshopper.Kernel.GH_Param]
-    if isinstance(param_names, str):
+    if isinstance(param_names, basestring):
         param_names = [param_names]
 
     param_classes = OrderedDict(param_classes)    # If they do not throw an 

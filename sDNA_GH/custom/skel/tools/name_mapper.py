@@ -11,6 +11,10 @@ else:
     import collections.abc
     Hashable = collections.abc.Hashable
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -107,7 +111,7 @@ def tool_factory(inst
         map_result = name_map.get(nick_name, nick_name)  
         # in case nick_name is a tool_name
         
-        if not isinstance(map_result, str):
+        if not isinstance(map_result, basestring):
             logger.debug('Processing list of tools found for %s ' % nick_name)
             tools =[]
             #nick_name_opts = {}

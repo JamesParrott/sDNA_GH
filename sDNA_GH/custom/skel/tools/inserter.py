@@ -41,6 +41,12 @@ else:
 
 import GhPython
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +55,7 @@ logger.addHandler(logging.NullHandler())
 
 def nick_names_that_map_to(names, name_map):
     #type(list, dict) -> list
-    if isinstance(names, str):
+    if isinstance(names, basestring):
         names = [names]
     #nick_names = [nick_name for nick_name, mapped_names in name_map._asdict().items()
     #              if (nick_name not in names and 

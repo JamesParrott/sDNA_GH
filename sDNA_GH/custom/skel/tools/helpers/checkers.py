@@ -43,6 +43,11 @@ import scriptcontext as sc
 
 from ...basic.ghdoc import ghdoc
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -68,7 +73,7 @@ def get_path(fallback = None, inst = None):
             path = path_getter()
         except AttributeError:
             continue
-        if isinstance(path, str) and (os.path.isfile(path) or os.path.isdir(path)):
+        if isinstance(path, basestring) and (os.path.isfile(path) or os.path.isdir(path)):
             return path 
     return None 
 

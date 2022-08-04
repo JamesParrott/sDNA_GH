@@ -356,7 +356,7 @@ class PythonOptions(object):
                                                          )
                        )
     python_exes = ['python.exe', 'py27.exe']
-    python = None #r'C:\Python27\python.exe'
+    python = '' #r'C:\Python27\python.exe'
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
@@ -381,16 +381,22 @@ def check_python(opts):
     if isinstance(pythons, basestring):
         pythons = [pythons]
 
+    if os.path.isdir(opts['metas'].python):
+        folders.insert(0, opts['metas'].python)
+
     possible_pythons = (os.path.join(folder, python) for folder in folders 
                                                      for python in pythons
                        )
-    try:
-        while not opts['metas'].python or not os.path.isfile(opts['metas'].python):
-            opts['metas'] = opts['metas']._replace(python = next(possible_pythons))
-    except StopIteration:
+
+    for python in possible_pythons:
+        if opts['metas'].python and os.path.isfile(opts['metas'].python):
+            break  
+        else:
+            opts['metas'] = opts['metas']._replace(python = python)
+    else:  # i.e. if the loop wasn't left by break
         msg = ('No Python interpreter file found.  Please specify a valid '
-              +'python 2.7 interpreter in python (invalid: %s) ' % opts['metas'].python
-              +'or a range of python interpreter names and folder names to '
+              +'python 2.7 interpreter or its parent folder in python '
+              +', or a range of python interpreter names and folder names to '
               +'search for one in python_exes and python_paths.'
               )
         logger.error(msg)
@@ -628,9 +634,11 @@ def import_sDNA(opts
     else:
         folders = metas.sDNA_paths
 
-    folders = [os.path.dirname(folder) if os.path.basename(folder) == 'bin' else folder 
-               for folder in folders
-              ]
+    for i, folder in enumerate(folders):
+        if os.path.isfile(folder):
+            folder = folders[i] = os.path.dirname(folder)
+        if os.path.basename(folder) == 'bin':
+            folders[i] = os.path.dirname(folder)
 
     try:
         sDNAUISpec, run_sDNA, _ = load_modules(
@@ -1102,12 +1110,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         input_file = tool_opts_sDNA.input
         
 
-        #if (not isinstance(input_file, str)) or not isfile(input_file): 
-        if (isinstance(f_name, str) and os.path.isfile(f_name)
+        #if (not isinstance(input_file, basestring)) or not isfile(input_file): 
+        if (isinstance(f_name, basestring) and os.path.isfile(f_name)
             and os.path.splitext(f_name)[1] in ['.shp','.dbf','.shx']):  
             input_file = f_name
         else:
-            logger.debug('isinstance(f_name, str) == %s' % isinstance(f_name, str))
+            logger.debug('isinstance(f_name, basestring) == %s' % isinstance(f_name, basestring))
             logger.debug('os.path.isfile(f_name) == %s' % os.path.isfile(f_name))
             logger.debug('os.path.splitext(f_name)[1] == %s' % os.path.splitext(f_name)[1])
 
@@ -1568,7 +1576,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         if not f_name:  
             f_name = options.output_shp
 
-        if (not isinstance(f_name, str) or 
+        if (not isinstance(f_name, basestring) or 
             not os.path.isdir(os.path.dirname(f_name))):
             
             f_name = os.path.splitext(options.path)[0] + '.shp'
@@ -1616,7 +1624,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                                 ,field_names = None 
                                 )
         
-        if (isinstance(prj, str) and 
+        if (isinstance(prj, basestring) and 
             prj.endswith('.prj') and 
             os.path.isfile(prj)):
             #
@@ -2549,9 +2557,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             #     obj_geom = None
 
             # if obj_geom:
-            if isinstance(obj, str) and any(bool(re.match(pattern, obj)) 
-                                            for pattern in legend_tag_patterns 
-                                           ):
+            if isinstance(obj, basestring) and any(bool(re.match(pattern, obj)) 
+                                                   for pattern in legend_tag_patterns
+                                                  ):
                 #sc.doc = ghdoc it's now never changed, 
                 #assert sc.doc == ghdoc #anyway
                 legend_tags[obj] = rs.CreateColor(new_colour) # Could glitch if dupe  
@@ -2756,25 +2764,32 @@ class ConfigManager(sDNA_GH_Tool):
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('save_to', add_params.ParamInfo(
                              param_Class = Param_FilePath
-                            ,Description = ('The field name / key value of '
-                                           +'the results field to parse '
-                                           +'and/or plot. Default: %(save_to)s'
+                            ,Description = ('The name of the .toml file to '
+                                           +'save your options to. '
+                                           +'Default: %(save_to)s'
                                            )
                             ))
                   ,('python', add_params.ParamInfo(
                              param_Class = Param_FilePath
-                            ,Description = ('Maximum data value to parse. '
-                                           +'Higher values (and their '
-                                           +'objects) are omitted. '
-                                           +'Automatically calculated if unset.'
+                            ,Description = ('File path of the Python 2.7 '
+                                           +'executable to run sDNA with, '
+                                           +'or its parent folder. '
+                                           +'cPython 2.7 is required for sDNA '
+                                           +'tools (download link in readme). '
+                                           +'Default: %(python)s'
                                            )
                             ))
                   ,('sDNA_paths', add_params.ParamInfo(
                              param_Class = Param_FilePath
-                            ,Description = ('Minimum data value to parse. '
-                                           +'Lower values (and their '
-                                           +'objects) are omitted. '
-                                           +'Automatically calculated if unset.'
+                            ,Description = ('File path to the folder of the '
+                                           +'sDNA installation to be used with'
+                                           +' sDNA_GH. This must contain '
+                                           +'%(sDNAUISpec)s.py and '
+                                           +'%(runsdnacommand)s.py. '
+# metas take priority in all_options_dict so even though there is a name 
+# clash, the module names in metas will be interpolated over the Sentinels or
+# actual modules in options.
+                                           +'Default: %(sNDA_paths)s'
                                            )
                             ))
                   ,('auto_get_Geom', add_params.ParamInfo(

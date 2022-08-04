@@ -390,7 +390,7 @@ def override_namedtuple(nt_lesser
     
     def get_nt_overrider_func(override, nt_lesser):
         #type(type[any], namedtuple) -> function
-        if isinstance(override, str):
+        if isinstance(override, basestring):
             if override.endswith('.toml'):
                 msg = 'Call load_toml_file first and add dict to overrides'
                 logging.error(msg)

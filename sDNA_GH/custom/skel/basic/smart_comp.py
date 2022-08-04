@@ -71,7 +71,10 @@ else:
 OrderedDict = collections.OrderedDict
 abstractmethod = abc.abstractmethod
 
-
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
 from ghpythonlib.componentbase import executingcomponent as component
 
@@ -98,7 +101,7 @@ def first_item_if_seq(l, null_container = {}):
     if not l:
         return null_container        
 
-    if isinstance(l, Sequence) and not isinstance(l, str):
+    if isinstance(l, Sequence) and not isinstance(l, basestring):
         l = l[0]
     
     return l

@@ -52,7 +52,11 @@ else:
 import rhinoscriptsyntax as rs
 
 from ..third_party.PyShp import shapefile as shp  
-                                  
+
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str              
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -124,7 +128,7 @@ def is_shape(obj, shp_type):   #e.g. polyline
     # type(str) -> bool
 
     allowers = Rhino_obj_checkers_for_shape[ shp_type]
-    if isinstance(allowers, str):
+    if isinstance(allowers, basestring):
         allowers = [allowers] 
     return any( getattr(rs, allower )( obj ) for allower in allowers)
 
@@ -270,9 +274,9 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
                 return x, shp_field_codes['date']   # i.e. 'D'   
 
             if isinstance(x, list) and len(x) == 3 and all(isinstance(z, int) for z in x):
-                x = ':'.join(map(str, ))
+                x = ':'.join(map(str, x))
     
-            if isinstance(x, str):
+            if isinstance(x, basestring):
                 year=r'([0-3]?\d{3})|\d{2}'
                 month=r'([0]?\d)|(1[0-2])'
                 day=r'([0-2]?\d)|(3[01])'
@@ -444,15 +448,15 @@ def write_iterable_to_shp(my_iterable
     #    )  -> int, str, dict, list, list
     #
     is_iterable = isinstance(my_iterable, Iterable)
-    is_str = isinstance(my_iterable, str)
-    is_path_str = isinstance(shp_file_path, str)
+    is_str = isinstance(my_iterable, basestring)
+    is_path_str = isinstance(shp_file_path, basestring)
 
 
-    if ( (not is_iterable) 
-         or is_str 
-         or not is_path_str
-         or not os.path.isdir( os.path.dirname(shp_file_path) ) 
-        ):
+    if ((not is_iterable) 
+        or is_str 
+        or not is_path_str
+        or not os.path.isdir(os.path.dirname(shp_file_path))):
+        #
         logger.error ('returning.  Not writing to .shp file')
         msg_1 = ' Is Iterable == %s' % is_iterable
         logger.info (msg_1)

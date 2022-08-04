@@ -45,7 +45,11 @@ import Grasshopper
 import rhinoscriptsyntax as rs
 from ghpythonlib import treehelpers
 
-
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+    
 OrderedDict = collections.OrderedDict
 
 logger = logging.getLogger(__name__)
@@ -136,7 +140,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
 
 
 
-    if isinstance(Geom, str) or not isinstance(Geom, Iterable):
+    if isinstance(Geom, basestring) or not isinstance(Geom, Iterable):
         logger.debug('Listifying Geom.  ')
         Geom = [Geom]
     elif (isinstance(Geom, list) 

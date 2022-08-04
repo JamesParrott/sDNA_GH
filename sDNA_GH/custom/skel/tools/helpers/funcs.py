@@ -87,7 +87,7 @@ def windows_installation_paths(names):
             e.g. r'C:\Users\USER_NAME\AppData\Roaming\' + name
 
     """
-    if isinstance(names, str):
+    if isinstance(names, basestring):
         names = [names]
     for name in names:
         for path in os.getenv('PATH').split(';'):
