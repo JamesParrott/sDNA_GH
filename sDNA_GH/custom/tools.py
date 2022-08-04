@@ -1639,7 +1639,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
     class Options(OutputFileDeletionOptions):
         new_geom = True
-        bake = True
+        bake = False
         uuid_field = 'Rhino3D_'
         sDNA_names_fmt = '{name}.shp.names.csv'
         prepped_fmt = '{name}_prepped'

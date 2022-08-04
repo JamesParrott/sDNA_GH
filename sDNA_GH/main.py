@@ -222,12 +222,12 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Automatic tool insertion rules ('smart' tools)
     #
-    auto_get_Geom = True
-    auto_read_User_Text = True
-    auto_write_Shp = True
-    auto_read_Shp = True
+    auto_get_Geom = False
+    auto_read_User_Text = False
+    auto_write_Shp = False
+    auto_read_Shp = False
     #auto_parse_data = False  # not used.  ObjectsRecolourer parses if req anyway
-    auto_plot_data = True
+    auto_plot_data = False
     ###########################################################################
     #
     # Overrides for .custom.logging_wrapper
@@ -325,6 +325,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for ShapefileReader
     #
+    bake = False
     new_geom = False
     del_after_read = False
     sDNA_names_fmt = '{name}.shp.names.csv'  
