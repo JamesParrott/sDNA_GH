@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.08'
+__version__ = '0.09'
 
 import sys
 import os
@@ -131,8 +131,8 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                             # to run runsdnacommand.runsdnacommand in future 
                             # with an env, while being able to pipe 
                             # sDNA's stderr and stdout to the sDNA_GH logger
-    sDNA = None  # Read only.  Auto updates from above.
-    python = None
+    sDNA = ''  # Read only.  Auto updates from above.
+    python = ''
     #python = r'C:\Python27\python.exe' 
 
     update_path = True

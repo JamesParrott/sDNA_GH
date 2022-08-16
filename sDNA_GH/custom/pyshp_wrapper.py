@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.08'
+__version__ = '0.09'
 """ Convenience wrappers to read and write .shp files from any iterable object
     and to any function, within GhPython (Rhino3D).  
 """
@@ -335,8 +335,9 @@ def get_filename(f, options = GetFileNameOptions):
                         ) 
         i += 1
     if not options.overwrite_shp:
-        if options.max_new_files < 1:
-            logger.warning('max_new_files == %s, Overwriting file: %s ! ' 
+        if options.max_new_files < i:
+            # If the while loop never found an f that is not a file
+            logger.warning('max_new_files == %s exceeded, Overwriting file: %s' 
                           %(options.max_new_files, f)
                           )
         return f

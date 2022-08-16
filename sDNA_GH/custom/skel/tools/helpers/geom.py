@@ -32,24 +32,56 @@ __author__ = 'James Parrott'
 __version__ = '0.09'
 
 
+import os
+import logging
+from collections import OrderedDict
+import System  #.Net from IronPython
+
 import Rhino
-import GhPython
+import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
+from ...basic.ghdoc import ghdoc
 
-if 'ghdoc' not in globals():
-    if sc.doc == Rhino.RhinoDoc.ActiveDoc:
-        raise ValueError('sc.doc == Rhino.RhinoDoc.ActiveDoc. '
-                        +'Switch sc.doc = ghdoc and re-import module. '
-                        )
-    if isinstance(sc.doc, GhPython.DocReplacement.GrasshopperDocument):
-        ghdoc = sc.doc  # Normally a terrible idea!  But the check conditions
-                        # are strong, and we need to get the `magic variable'
-                        # ghdoc in this 
-                        # namespace as a global, from launcher and GH.
-    else:
-        raise TypeError('sc.doc is not of type: '
-                       +'GhPython.DocReplacement.GrasshopperDocument '
-                       +'Ensure sc.doc == ghdoc and re-import module.'
-                       )
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
+
+
+def add_GH_rectangle(xmin, ymin, xmax, ymax, plane = None):
+    """ Adds a Grasshopper rectangle defined by xmin, ymin, xmax, ymax."""
+    #type(Number, Number, Number, Number) -> Rectangle
+
+
+    width = xmax - xmin
+    length = ymax - ymin
+
+    logger.debug('Rectangle (width, length) == (%s,  %s)' % (width, length))
+
+    if width == 0:
+        raise ValueError('Rectangle cannot have zero width')
+    if length == 0:
+        raise ValueError('Rectangle cannot have zero length')
+
+    tmp = sc.doc
+
+    sc.doc = ghdoc
+
+
+    if plane is None:
+        plane = rs.WorldXYPlane()
+
+    leg_frame = rs.AddRectangle(plane
+                               ,width
+                               ,length 
+                               )
+
+    rs.MoveObject(leg_frame, [xmin, ymin])
+    
+    sc.doc = tmp
+
+    return leg_frame

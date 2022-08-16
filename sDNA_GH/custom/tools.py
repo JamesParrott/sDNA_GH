@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.08'
+__version__ = '0.09'
 
 import os
 import abc
@@ -79,6 +79,7 @@ from . import data_cruncher
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers import checkers
 from .skel.tools.helpers import funcs
+from .skel.tools.helpers import geom
 from .skel.tools import runner                                       
 from .skel import add_params
 from .skel import builder
@@ -278,7 +279,7 @@ def has_keywords(nick_name, keywords = ('prepare',)):
               for substr in keywords
               )
 
-sDNA_fmt_str = '{sDNAUISPec}_and_{runsdnacommand}' 
+sDNA_KEY_FORMAT = '{sDNAUISPec}_and_{runsdnacommand}' 
 # extra quotes would make it a quoted key string in .toml, 
 # which supports an extended character set than ascii (normal keys). 
 # But then this string couldn't be used in a NamedTuple class name
@@ -295,7 +296,7 @@ def sDNA_key(opts):
     sDNA = (metas.sDNAUISpec.partition('.')[0]
            ,metas.runsdnacommand.partition('.')[0]
            )
-    return sDNA_fmt_str.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
+    return sDNA_KEY_FORMAT.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
 
 def nested_set_default(d, keys, last_default = None):
@@ -381,7 +382,9 @@ def check_python(opts):
     if isinstance(pythons, basestring):
         pythons = [pythons]
 
-    if os.path.isdir(opts['metas'].python):
+    if (isinstance(opts['metas'].python, basestring) 
+        and os.path.isdir(opts['metas'].python)):
+        #
         folders.insert(0, opts['metas'].python)
 
     possible_pythons = (os.path.join(folder, python) for folder in folders 
@@ -389,7 +392,9 @@ def check_python(opts):
                        )
 
     for python in possible_pythons:
-        if opts['metas'].python and os.path.isfile(opts['metas'].python):
+        if (isinstance(opts['metas'].python, basestring) 
+            and os.path.isfile(opts['metas'].python)):
+            #
             break  
         else:
             opts['metas'] = opts['metas']._replace(python = python)
@@ -495,7 +500,7 @@ def update_opts(current_opts
                 #,add_new_opts, for update_data_node and make_new_data_node
     kwargs.setdefault('max_depth', 2)
     kwargs.setdefault('specials', ('options', 'metas'))
-    kwargs.setdefault('patterns', (funcs.make_regex(sDNA_fmt_str),))
+    kwargs.setdefault('patterns', (funcs.make_regex(sDNA_KEY_FORMAT),))
     
     kwargs['depth'] = depth
 
@@ -1163,7 +1168,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             # tool on it.
 
             self.logger.debug('user_inputs == %s' % user_inputs)
-            advanced = ';'.join(key if val is None else '%s=%s' % (key, val) 
+            self.logger.debug('needed_inputs == %s' 
+                             % self.component.params_adder.needed_inputs
+                             )
+            advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
                                 for (key, val) in kwargs.items()
                                 if (key in user_inputs and 
                                     key not in self.defaults)
@@ -1508,7 +1516,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
     param_infos = sDNA_GH_Tool.param_infos + (
                                 ('prj'
-                                ,add_params.ParamInfo(
+                                 ,add_params.ParamInfo(
                                   param_Class = Param_String
                                  ,Description = ('File path of the projection '
                                                 +'file (.prj) to use for the '
@@ -1607,7 +1615,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                                             input_file_deleter = do_not_delete
                                             )
 
-        self.logger.debug(f_name)
+        self.logger.debug('f_name == %s' % f_name)
 
 
 
@@ -2365,6 +2373,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                              +'overridden.  '
                                              )
         # [xmin, ymin, xmax, ymax]
+        plane = None # plane for legend frame only. 
+                     # add_GH_rectangle sets plane to rs.WorldXYPlane() if None
         bbox = options_manager.Sentinel('bbox is automatically calculated by '
                                        +'sDNA_GH unless overridden.  '
                                        ) 
@@ -2614,6 +2624,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = options.bbox
                     bbox = options.bbox
 
+                self.logger.debug('bbox == %s ' % bbox)
+
                 leg_width = math.sqrt((bbox_xmax - bbox_xmin)**2 
                                      +(bbox_ymax - bbox_ymin)**2
                                      ) / 2
@@ -2621,28 +2633,50 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 leg_height = min(options.num_classes * tag_height * 1.04
                                 ,bbox_ymax - bbox_ymin
                                 )
-                legend_xmin = bbox_xmax - leg_width
+
+                self.logger.debug('leg_width == %s' % leg_width)
+                self.logger.debug('tag_height == %s' % tag_height)
+                self.logger.debug('leg_height == %s' % leg_height)
+
+                legend_xmin = bbox_xmax + 0.07 * leg_width
                 legend_ymin = bbox_ymax - leg_height
 
-                # legend_xmin = bbox_xmin + (1 - 0.4)*(bbox_xmax - bbox_xmin)
-                # legend_ymin = bbox_ymin + (1 - 0.4)*(bbox_ymax - bbox_ymin)
-                legend_xmax, legend_ymax = bbox_xmax, bbox_ymax
+                legend_xmax = legend_xmin + leg_width
+                legend_ymax = bbox_ymax
                 
-                self.logger.debug('bbox == %s ' % bbox)
+
+            ###################################################
+            #
+            # Now in skel.helpers.geom.add_GH_rectangle
+            #
+            # plane = rs.WorldXYPlane()
+            # leg_frame = rs.AddRectangle( plane
+            #                             ,leg_width
+            #                             ,leg_height 
+            #                             )
+
+            # self.logger.debug('Rectangle width * height == '
+            #                  +'%s * %s' % (leg_width, leg_height)
+            #                  )
 
 
-            plane = rs.WorldXYPlane()
-            leg_frame = rs.AddRectangle( plane
-                                        ,leg_width
-                                        ,leg_height 
-                                        )
+            # rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
+            #
+            ###################################################
 
-            self.logger.debug('Rectangle width * height == '
-                             +'%s * %s' % (leg_width, leg_height)
-                             )
+            self.logger.debug('leg_bounds == %s ' % [legend_xmin
+                                                    ,legend_ymin
+                                                    ,legend_xmax
+                                                    ,legend_ymax
+                                                    ]
+                              )
 
+            leg_frame = geom.add_GH_rectangle(legend_xmin
+                                             ,legend_ymin
+                                             ,legend_xmax
+                                             ,legend_ymax
+                                             )
 
-            rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
 
 
         else:
@@ -2789,7 +2823,7 @@ class ConfigManager(sDNA_GH_Tool):
 # metas take priority in all_options_dict so even though there is a name 
 # clash, the module names in metas will be interpolated over the Sentinels or
 # actual modules in options.
-                                           +'Default: %(sNDA_paths)s'
+                                           +'Default: %(sDNA_paths)s'
                                            )
                             ))
                   ,('auto_get_Geom', add_params.ParamInfo(

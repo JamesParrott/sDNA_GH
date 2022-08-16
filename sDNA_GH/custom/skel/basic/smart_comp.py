@@ -50,7 +50,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.08'
+__version__ = '0.09'
 
 import logging
 import inspect

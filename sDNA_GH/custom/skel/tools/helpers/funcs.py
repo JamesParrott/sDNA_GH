@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 __author__ = 'James Parrott'
-__version__ = '0.08'
+__version__ = '0.09'
 
 import os
 import logging
@@ -99,6 +99,9 @@ def windows_installation_paths(names):
         yield os.path.join(os.getenv('PROGRAMFILES'), name)
         yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
         yield os.path.join(os.getenv('APPDATA'), name)
+        yield os.path.join(os.getenv('LOCALAPPDATA'), name)
+        yield os.path.join(os.getenv('LOCALAPPDATA'), 'Programs', name)
+        # e.g. for one user: C:\Users\James\AppData\Local\Programs\sDNA\
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
 
 
