@@ -81,8 +81,8 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
     component_outputs = retvals[1:]
 
 
-plug_in_sub_folder = launcher.package_name
-plug_in_name = launcher.plug_in_name
+plug_in_sub_folder = launcher.PACKAGE_NAME
+plug_in_name = launcher.PLUG_IN_NAME
 
 class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
@@ -93,7 +93,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         self.logger.debug('opts.keys() == %s ' % opts.keys())
 
 
-        user_objects_location = os.path.join(launcher.repo_folder
+        user_objects_location = os.path.join(launcher.REPOSITORY
                                             ,plug_in_sub_folder
                                             ,builder.ghuser_folder
                                             )
@@ -142,7 +142,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                      ,add_to_canvas = False
                      ,move_user_objects = True
                      ,category_abbrevs = metas.category_abbrevs
-                     ,plug_in_name = launcher.plug_in_name #'sDNA'
+                     ,plug_in_name = launcher.PLUG_IN_NAME #'sDNA'
                      ,plug_in_sub_folder = plug_in_sub_folder # 'sDNA_GH'
                      )
 

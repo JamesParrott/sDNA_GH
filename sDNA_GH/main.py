@@ -89,7 +89,7 @@ default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
                                ,('Write_Usertext', 'write_User_Text')
                                ,('Parse_Data', 'parse_data')
                                ,('Config', 'config')
-                               ,('Self_test', launcher.selftest)
+                               ,('Self_test', launcher.SELFTEST)
                                #
                                ,('sDNA_Integral', 'sDNAIntegral')
                                ,('sDNA_Skim', 'sDNASkim')
@@ -183,7 +183,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                  ,'recolour_objects' : 'Plot'
                  ,'sDNA_General'     : 'Dev'
                  ,'Unload_sDNA'      : 'Dev'
-                 ,launcher.selftest  : 'Dev'
+                 ,launcher.SELFTEST  : 'Dev'
                  ,'config'           : 'Extra'
                  }
 
@@ -318,7 +318,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for ShapefileWriter
     #
-    input_key_str = 'sDNA input name={name} type={fieldtype} size={size}'
+    input_key_str = 'sDNA input name={name}'
     #30,000 characters tested.
     output_shp = ''
     ###########################################################################
@@ -353,9 +353,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
     re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
-    if re_normaliser not in data_cruncher.valid_re_normalisers:
+    if re_normaliser not in data_cruncher.VALID_RE_NORMALISERS:
         raise ValueError('%s must be in %s' 
-                        %(re_normaliser, data_cruncher.valid_re_normalisers)
+                        %(re_normaliser, data_cruncher.VALID_RE_NORMALISERS)
                         )
     class_bounds = [options_manager.Sentinel('class_bounds is automatically '
                                             +'calculated by sDNA_GH unless '
@@ -366,12 +366,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
     num_classes = 7
     class_spacing = 'quantile' 
-    #_valid_class_spacings = (funcs.valid_re_normalisers
-    #                         + ('quantile', 'cluster', 'nice'))
-    if class_spacing not in tools.DataParser.Options._valid_class_spacings:
+    if class_spacing not in tools.DataParser.Options.valid_class_spacings:
         raise ValueError('%s must be in %s' 
                         %(class_spacing
-                         ,tools.DataParser.Options._valid_class_spacings
+                         ,tools.DataParser.Options.valid_class_spacings
                          )
                         )
     first_leg_tag_str = 'below {upper}'

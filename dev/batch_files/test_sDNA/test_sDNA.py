@@ -96,7 +96,7 @@ def run_sDNA(python = 'python_2_7'
                               )
             sDNA_dir = sDNA_dirs[0]
         else:
-            sDNA_dir = r'C:\Program Files (x86)\sDNA\bin'
+            sDNA_dir = r'C:\Program Files (x86)\sDNA+\bin'
         sDNA = os.path.join(sDNA_dir, os.path.basename(sDNA))
     if not os.path.isfile(sDNA):
         # if a folder was specified, but no file

@@ -293,8 +293,8 @@ def sDNA_key(opts):
         Returns a string so the key can be loaded from a toml file.
     """
     metas = opts['metas']
-    sDNA = (metas.sDNAUISpec.partition('.')[0]
-           ,metas.runsdnacommand.partition('.')[0]
+    sDNA = (os.path.splitext(metas.sDNAUISpec)[0]
+           ,os.path.splitext(metas.runsdnacommand)[0]
            )
     return sDNA_KEY_FORMAT.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
@@ -612,8 +612,9 @@ def import_sDNA(opts
                 )
 
 
-    requested_sDNA = (metas.sDNAUISpec.partition('.')[0]
-                     ,metas.runsdnacommand.partition('.')[0]) # remove .py s
+    requested_sDNA = (os.path.splitext(metas.sDNAUISpec)[0]
+                     ,os.path.splitext(metas.runsdnacommand)[0] # remove .py s
+                     )
 
     # To load new sDNA modules, specify the new module names in
     # metas.sDNAUISpec and metas.runsdnacommand
@@ -698,8 +699,8 @@ def import_sDNA(opts
     return None
 
 
-default_user_objects_location = os.path.join(launcher.user_install_folder
-                                            ,launcher.package_name
+default_user_objects_location = os.path.join(launcher.USER_INSTALLATION_FOLDER
+                                            ,launcher.PACKAGE_NAME
                                             ,builder.ghuser_folder
                                             )
 
@@ -714,7 +715,7 @@ def build_sDNA_GH_components(**kwargs):
                                              )
 
     sDNA_GH_path = user_objects_location
-    while os.path.basename(sDNA_GH_path) != launcher.package_name:
+    while os.path.basename(sDNA_GH_path) != launcher.PACKAGE_NAME:
         sDNA_GH_path = os.path.dirname(sDNA_GH_path)
 
     README_md_path = os.path.join(sDNA_GH_path, 'README.md')
@@ -824,6 +825,7 @@ class ShapeFilesDeleter(ABC):
 class NullDeleter(object):
     pass
 ShapeFilesDeleter.register(NullDeleter)
+#assert issubclass(NullDeleter, ShapeFilesDeleter)
 
 class InputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
     del_after_sDNA = True
@@ -1476,12 +1478,17 @@ class UsertextReader(sDNA_GH_Tool):
                 keys =[]
             for key in keys:
                 val = rs.GetUserText(obj, key)
+
+                # Expand/parse computed vals like:
+                #  %<CurveLength("ac4669e5-53a6-4c2b-9080-bbc67129d93e")>%
                 if (options.compute_vals and 
                     val.startswith(r'%') and val.endswith(r'%') and
                     re.search(funcs.uuid_pattern, val)):
                     #
                     coerced_obj = rs.coercerhinoobject(obj)
                     val = Rhino.RhinoApp.ParseTextField(val, coerced_obj, None)
+
+
                 gdm[obj][key] = val
 
         # read_Usertext_as_tuples = checkers.get_OrderedDict()
@@ -1506,9 +1513,9 @@ class ShapefileWriter(sDNA_GH_Tool):
 
     class Options(InputFileDeletionOptions, pyshp_wrapper.ShpOptions):
         shp_type = 'POLYLINEZ'
-        input_key_str = ('sDNA input name={name} '  # User Text keys to read
-                        +'type={fieldtype} '
-                        +'size={size}'
+        input_key_str = ('sDNA input name={name}'  # User Text keys to read
+                        # +'type={fieldtype} '
+                        # +'size={size}'
                         )
         path = __file__
         output_shp = '' 
@@ -1940,16 +1947,16 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
-
+QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
+                       ,max_deltas = data_cruncher.class_bounds_at_max_deltas
+                       ,adjuster = data_cruncher.quantile_l_to_r
+                       ,quantile = data_cruncher.spike_isolating_quantile
+                       )
 
 class DataParser(sDNA_GH_Tool):
 
 
-    quantile_methods = dict(simple = data_cruncher.simple_quantile
-                           ,max_deltas = data_cruncher.class_bounds_at_max_deltas
-                           ,adjuster = data_cruncher.quantile_l_to_r
-                           ,quantile = data_cruncher.spike_isolating_quantile
-                           )
+
 
 
     class Options(data_cruncher.SpikeIsolatingQuantileOptions):
@@ -1972,10 +1979,8 @@ class DataParser(sDNA_GH_Tool):
                        ]
         # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
         class_spacing = 'quantile'
-        _valid_class_spacings = data_cruncher.valid_re_normalisers + ('quantile'
-                                                                     ,'combo'
-                                                                     ,'max_deltas'
-                                                                     )
+        valid_class_spacings = data_cruncher.VALID_RE_NORMALISERS + tuple(QUANTILE_METHODS.keys())
+
         base = 10 # for Log and exp
         colour_as_class = False
         locale = '' # '' => User's own settings.  Also in DataParser
@@ -1989,8 +1994,8 @@ class DataParser(sDNA_GH_Tool):
         suppress_small_classes_error = False
         suppress_class_overlap_error = False
         
-        assert re_normaliser in data_cruncher.valid_re_normalisers
-        assert class_spacing in _valid_class_spacings
+        assert re_normaliser in data_cruncher.VALID_RE_NORMALISERS
+        assert class_spacing in valid_class_spacings
                         
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('field', add_params.ParamInfo(
@@ -2027,10 +2032,8 @@ class DataParser(sDNA_GH_Tool):
                             ,Description = ('Name of method to use to '
                                            +'classify the data / calculate '
                                            +'the classes for the legend. '
-                                           +('Allowed Values: %s' 
-                                            % quantile_methods.keys()
-                                            ) # can't interpolate before the 
-                                              # default field
+                                           +'Allowed Values: '
+                                           +'%(valid_class_spacings)s.  ' 
                                            +'Default: %(class_spacing)s'
                                            ) 
                             ))
@@ -2141,7 +2144,7 @@ class DataParser(sDNA_GH_Tool):
 
         if options.sort_data or (
            not use_manual_classes 
-           and options.class_spacing in self.quantile_methods ):
+           and options.class_spacing in QUANTILE_METHODS ):
             # 
             self.logger.info('Sorting data... ')
             data = OrderedDict( sorted(data.items()
@@ -2180,9 +2183,9 @@ class DataParser(sDNA_GH_Tool):
             self.logger.info('Using manually specified'
                             +' inter-class boundaries. '
                             )
-        elif options.class_spacing in self.quantile_methods:
+        elif options.class_spacing in QUANTILE_METHODS:
             self.logger.debug('Using: %s class calculation method.' % options.class_spacing)
-            class_bounds = self.quantile_methods[options.class_spacing](data = data.values()
+            class_bounds = QUANTILE_METHODS[options.class_spacing](data = data.values()
                                                                        ,num_classes = m
                                                                        ,options = options
                                                                        )
@@ -2224,7 +2227,7 @@ class DataParser(sDNA_GH_Tool):
                 raise ValueError(msg)
 
 
-            if options.re_normaliser not in data_cruncher.valid_re_normalisers:
+            if options.re_normaliser not in data_cruncher.VALID_RE_NORMALISERS:
                 # e.g.  'linear', exponential, logarithmic
                 msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
                 self.logger.error(msg)
@@ -2785,8 +2788,8 @@ class ConfigManager(sDNA_GH_Tool):
 
 
     class Metas(PythonOptions, sDNAMetaOptions):
-        config = os.path.join(launcher.user_install_folder
-                              ,launcher.package_name  
+        config = os.path.join(launcher.USER_INSTALLATION_FOLDER
+                              ,launcher.PACKAGE_NAME  
                               ,'config.toml'
                               )
 

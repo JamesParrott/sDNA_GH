@@ -299,7 +299,7 @@ def run_launcher_tests(self, *args):
     if os.path.isfile(log_file_dir):
         log_file_path = os.path.splitext(log_file_dir)[0]
     else:
-        log_file_path =  os.path.join(log_file_dir, launcher.package_name)
+        log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
 
     test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
     test_log_file = open(test_log_file_path,'at')

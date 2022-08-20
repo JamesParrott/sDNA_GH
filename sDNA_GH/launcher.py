@@ -92,14 +92,14 @@ try:
 except NameError:
     from .custom.skel.basic.ghdoc import ghdoc
 
-package_name = 'sDNA_GH'
-plug_in_name = 'sDNA'               
-reload_already_imported = False
-repo_folder = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else None
+PACKAGE_NAME = 'sDNA_GH'
+PLUG_IN_NAME = 'sDNA'               
+RELOAD_IF_ALREADY_IMPORTED = False
+REPOSITORY = os.path.dirname( os.path.dirname(ghdoc.Path) ) if ghdoc.Path else None
 # Assume we are in repo_folder/dev/sDNA_build_components.gh
 
-user_install_folder = Grasshopper.Folders.DefaultUserObjectFolder
-selftest = 'selftest'
+USER_INSTALLATION_FOLDER = Grasshopper.Folders.DefaultUserObjectFolder
+SELFTEST = 'selftest'
 
 
 
@@ -194,7 +194,7 @@ def strict_import(module_name = ''
                  ,folder = ''
                  ,sub_folder = ''
                  ,logger = output
-                 ,reload_already_imported = reload_already_imported
+                 ,reload_already_imported = RELOAD_IF_ALREADY_IMPORTED
                  ):
 
     # type: (str, str, str, type[any], bool) -> type[any]
@@ -335,15 +335,15 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     nick_name = ghenv.Component.NickName #type: ignore
 
 
-    if (repo_folder and 
+    if (REPOSITORY and 
         nick_name == 'Build_components'):
         #
-        sDNA_GH_search_path = repo_folder 
+        sDNA_GH_search_path = REPOSITORY 
         # builder can only load sDNA_GH from its parent directory, 
         # e.g. if in a dir one level up in the main repo
         # such as sDNA_build_components.gh.
     else:
-        sDNA_GH_search_path = user_install_folder
+        sDNA_GH_search_path = USER_INSTALLATION_FOLDER
 
 
     sc.doc = ghdoc #type: ignore
@@ -356,9 +356,9 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if 'sDNA_GH.main' in sys.modules:
         sDNA_GH.main = sys.modules['sDNA_GH.main']
     else:
-        sDNA_GH.main, _ = load_modules(m_names = package_name + '.main'
+        sDNA_GH.main, _ = load_modules(m_names = PACKAGE_NAME + '.main'
                                       ,folders = sDNA_GH_search_path
-                                      ,folders_error_msg = 'Please ensure a folder called %s' % package_name 
+                                      ,folders_error_msg = 'Please ensure a folder called %s' % PACKAGE_NAME 
                                                           +' is created in '
                                                           +Grasshopper.Folders.DefaultUserObjectFolder                                                                    
                                                           +', containing main.py and all sDNA_GH python' 
@@ -371,7 +371,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                                               +' Ensure that main.py and all sDNA_GH python' 
                                                               +' files and subfolders are inside: '
                                                               +os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
-                                                                           ,package_name
+                                                                           ,PACKAGE_NAME
                                                                            )
                                       )         
 
@@ -391,10 +391,10 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     # Grasshopper calls MyComponent.RunScript automatically.
 
 
-    if nick_name.replace(' ','').replace('_','').lower() == selftest:  
+    if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
 
 
-        unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((package_name,)*2)
+        unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((PACKAGE_NAME,)*2)
                                     ,sDNA_GH_search_path
                                     )
 

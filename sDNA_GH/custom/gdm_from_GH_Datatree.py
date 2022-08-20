@@ -43,7 +43,7 @@ else:
 
 import Grasshopper
 import rhinoscriptsyntax as rs
-from ghpythonlib import treehelpers
+from ghpythonlib import treehelpers as tree_helpers
 
 try:
     basestring #type: ignore
@@ -101,7 +101,7 @@ def dict_from_DataTree_and_lists(nested_dict):
                             for group_dict in nested_dict.values()
                             ]
         
-        Data =  treehelpers.list_to_tree([[User_Text_Keys, User_Text_Values]])
+        Data =  tree_helpers.list_to_tree([[User_Text_Keys, User_Text_Values]])
     else:
         Data = nested_dict.values()
     Geometry = nested_dict.keys()  # Multi-polyline-groups aren't unpacked.
@@ -152,7 +152,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
                            )
         Geom = Geom[0]
 
-    # This check won't allows legend tags through. Later functions 
+    # This check won't allow legend tags through. Later functions 
     # must handle invalid geometry
     # 
     logger.debug(str(Data))
@@ -162,7 +162,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
     elif (isinstance(Data, Grasshopper.DataTree[object]) 
           and getattr(Data, 'BranchCount', 0) > 0):
         logger.debug('Datatree inputted to Data.  Converting....  ')
-        Data = treehelpers.tree_to_list(Data)
+        Data = tree_helpers.tree_to_list(Data)
     elif not isinstance(Data, list):
         logger.debug('Listifying Data.  ')
         Data = [Data]

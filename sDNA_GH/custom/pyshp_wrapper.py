@@ -505,7 +505,7 @@ def write_iterable_to_shp(my_iterable
                 nice_match = key_matcher(key)            
                 if nice_match:
                     nice_key = nice_match.group('name')
-                    # TODO: use .group('fieldtype') and .group('size') if there
+                    #TODO: Support more fields, e.g. type, size
                     value = value_demangler(item, key) 
 
                     value, val_type = coerce_and_get_code(value, options)
