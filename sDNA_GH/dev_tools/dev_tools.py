@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 
 import os
 import logging
@@ -57,7 +57,7 @@ class ToolNamesGetter(tools.sDNA_GH_Tool): # (name, name_map, inst, retvals = No
     """ Gets list of Tool Names from tools_dict and sDNA.  """
 
     def __init__(self, opts):
-        super(tools.sDNA_GH_Tool, self).__init__(opts)
+        super(ToolNamesGetter, self).__init__(opts)
         self.component_inputs = ()
 
     def __call__(self, opts):

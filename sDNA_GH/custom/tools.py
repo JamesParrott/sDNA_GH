@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 
 import os
 import abc
@@ -167,17 +167,20 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     def metas(self):
         return self.opts['metas']
 
-    @property
-    def all_options_dict(self):
-        retval = self.options._asdict()
-        retval.update(self.metas._asdict())
+    def built_in_options(self, opts = None):
+        if opts is None:
+            options, metas = self.options, self.metas
+        else:
+            options, metas = opts['options'], opts['metas']
+        retval = options._asdict()
+        retval.update(metas._asdict())
         return retval
 
 
     def param_info_list(self, param_names):
         return list_of_param_infos(param_names
                                   ,self.param_infos
-                                  ,interpolations = self.all_options_dict
+                                  ,interpolations = self.built_in_options()
                                   )
 
     @property
@@ -835,7 +838,7 @@ class InputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
 class OutputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
     strict_no_del = InputFileDeletionOptions.strict_no_del 
     output_file_to_maybe_delete = None
-    del_after_read = False
+    del_after_read = True
     output_file_deleter = None
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
@@ -871,6 +874,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     class Metas(PythonOptions, sDNAMetaOptions):
         sDNA = None
         show_all = True
+        make_advanced = False
 
     class Options(InputFileDeletionOptions
                  ,OutputFileDeletionOptions
@@ -886,12 +890,22 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
+    def get_tool_opts(self, opts = None, val = None):
+        if val is None:
+            val = self.defaults_nt
+        if opts is None:
+            return val
+        return get_tool_opts(nick_name = self.nick_name
+                            ,opts = opts
+                            ,tool_name = self.tool_name
+                            ,sDNA = self.sDNA
+                            ,val = val
+                            )
 
-    @property
-    def all_options_dict(self):
-        retval = self.options._asdict()
-        retval.update(self.metas._asdict())
-        retval.update(self.user_default_tool_opts._asdict())
+    def built_in_options(self, opts = None):
+        retval = super(sDNA_ToolWrapper, self).built_in_options(opts)
+        tool_opts = self.get_tool_opts(opts)._asdict()
+        retval.update(tool_opts)
         return retval
 
     def update_tool_opts_and_syntax(self, opts = None):
@@ -909,7 +923,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
         metas = opts['metas']
-        sDNA = metas.sDNA
+        self.sDNA = sDNA = metas.sDNA
 
         sDNAUISpec = opts['options'].sDNAUISpec # module
         run_sDNA_command = opts['options'].run_sDNA # module
@@ -933,32 +947,21 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntax = sDNA_Tool.getSyntax
         self.run_sDNA_command = run_sDNA_command     
 
-        self.defaults = OrderedDict()
-
-
-
-
-
-
         self.defaults = OrderedDict((tuple_[0], tuple_[4]) 
                                     for tuple_ in self.input_spec
                                    )
         # See below for field names in input_spec
 
         nt_name = '_'.join([nick_name, tool_name, sDNA])
-        defaults_nt = options_manager.namedtuple_from_dict(d = self.defaults
+        self.defaults_nt = options_manager.namedtuple_from_dict(
+                                                           d = self.defaults
                                                           ,NT_name = nt_name
                                                           )
 
         default_tool_opts = OrderedDict()
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
-        self.user_default_tool_opts = get_tool_opts(nick_name
-                                                   ,default_tool_opts
-                                                   ,tool_name
-                                                   ,sDNA
-                                                   ,val = defaults_nt
-                                                   )
+        self.get_tool_opts(opts = default_tool_opts)
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
         update_opts(current_opts = default_tool_opts # mutated
@@ -1015,9 +1018,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 ,  
                                 )  # Tuple of only one element 
                                    # (a tuple of a tuple of two). 
-
-
-        self.sDNA = sDNA
 
 
 
@@ -1111,7 +1111,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 self.logger.error(msg)
                 raise ImportError(msg)
 
-        tool_opts_sDNA = get_tool_opts(self.nick_name, opts, self.tool_name, sDNA)
+        assert self.sDNA == sDNA, "Error updating %s.sDNA" % self.__class__
+
+        tool_opts_sDNA = self.get_tool_opts(opts)
 
 
         input_file = tool_opts_sDNA.input
@@ -1163,7 +1165,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         input_args.update(input = input_file, output = output_file)
 
         advanced = input_args.get('advanced', None)
-        if not advanced:
+        if metas.make_advanced and not advanced:
             user_inputs = self.component.params_adder.user_inputs
             # We need this reference because some args this tool doesn't 
             # recognise, may have been added to the component, by another
@@ -1176,7 +1178,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
                                 for (key, val) in kwargs.items()
                                 if (key in user_inputs and 
-                                    key not in self.defaults)
+                                    key not in self.built_in_options(opts)
+                                   )
                                )
             input_args['advanced'] = advanced
             self.logger.info('Advanced command string == %s' % advanced)

@@ -176,11 +176,11 @@ A field specifying an originating Rhino object's UUID `uuid_field` will be omitt
 
 #### sDNA Tools
 ##### Analysis tools
-All sDNA tools try to load an sDNA installation from the first pair of sDNAUISPEc.py and runsdnacommand.py, files matching the names in `sDNAUISpec` and `runsdnacommand`, found in a folder in sDNA_paths (if the corresponding sDNA is not already loaded).  This is primarily used to add Input Params to the sDNA component for each of its sDNA tool's inputs.
-sDNA tools run sDNA from the command line, using the Python interpreter in `python`.  
-By default an sDNA tool component will show all the possible inputs on its input Params.  To show only the essential inputs instead (and make the components a lot smaller) set `show_all` = false.  
-
-sDNA tools require a shapefile to be specified in `file` or `input`.  If Write_User_Text is run beforehand and a file name is not specified, a default file name will be used.
+ - sDNA tools run sDNA from the command line, using the Python interpreter in `python`.  
+ - All sDNA tools try to load an sDNA installation.  The first pair of sDNAUISPEc.py and runsdnacommand.py files matching the names in `sDNAUISpec` and `runsdnacommand`, found in a folder in sDNA_paths are loaded (if the corresponding sDNA is not already loaded).  This is used to run the correct sDNA tool in the corresponding `/bin` sub folder, and to add Input Params to the sDNA component for each of its sDNA tool's inputs.
+ - By default an sDNA tool component will show all the possible inputs on its input Params.  To show only the essential inputs instead (and make the components a lot smaller) set `show_all` = false.  
+ - sDNA tools require a shapefile to be specified in `file` or `input`.  If Write_User_Text is run beforehand and a file name is not specified, a default file name will be used.
+ - if the user Param `make_advanced` is true, all other unrecognised user params on the component will be added into the advanced config string.
 
 If `auto_write_Shp` or `auto_read_Shp` are true, all sDNA components attempt to check, e.g. if any Write_User_Text or Read_User_Text components are already connected to its inputs (upstream) or outputs (downstream) respectively.  If not, the sDNA component will run Write_User_Text or Read_User_Text before and after it.  If all `auto_` options are true, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis in sDNA, read in the output shapefile, and recolour the Rhino polylines.  **WARNING!  If a valid file path was not specified in `file` or `input` on a preceding Write_Shp component, and that file was used by an sDNA tool, sDNA components will delete input shapefiles with default names if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**   
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):

@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 """ Convenience wrappers to read and write .shp files from any iterable object
     and to any function, within GhPython (Rhino3D).  
 """

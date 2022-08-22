@@ -43,20 +43,19 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 
 import sys
 import os
 from collections import namedtuple, OrderedDict
 import locale
-import functools
+import copy
 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
 
 from . import launcher
 from .custom import options_manager
 from .custom import logging_wrapper
-from .custom import pyshp_wrapper
 from .custom import data_cruncher 
 from .custom import gdm_from_GH_Datatree
 from .custom.skel.basic import smart_comp
@@ -267,8 +266,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                                )
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
-    del_after_sDNA = False
-    strict_no_del = True # Also in ShapefileReader
+    del_after_sDNA = True
+    strict_no_del = False # Also in ShapefileReader
     ###########################################################################    
     #
     # Overrides for RhinoObjectsReader
@@ -327,7 +326,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     bake = False
     new_geom = False
-    del_after_read = False
+    del_after_read = True
     sDNA_names_fmt = '{name}.shp.names.csv'  
     ###########################################################################   
     #         
@@ -963,7 +962,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
     def __init__(self, *args, **kwargs):
         logger.debug('Calling sDNA_GH_Components parent initialiser')
-        super(smart_comp.SmartComponent, self).__init__()
+        super(sDNA_GH_Component, self).__init__()
         self.ghdoc = ghdoc
         # self.update_sDNA() moved to cache_sDNA_tool
 
@@ -1069,7 +1068,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 if self.local_metas.synced:
                     self.opts = module_opts #re-sync
                 else:
-                    self.opts = self.opts.copy() #de-sync
+                    self.opts = copy.deepcopy(self.opts) #de-sync
                     #
 
         if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:

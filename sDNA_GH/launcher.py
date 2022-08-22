@@ -63,7 +63,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 
 
 
@@ -178,7 +178,7 @@ class InvalidArgsError(Exception):
             message = self.message_fmt % kwargs
         logger.error(message)
         self.kwargs = kwargs
-        super(Exception, self).__init__(message)    
+        super(InvalidArgsError, self).__init__(message)    
 
 
 class ModuleNameError(InvalidArgsError):
@@ -398,8 +398,10 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                     ,sDNA_GH_search_path
                                     )
 
-        MyComponent._RunScript = MyComponent.RunScript
-        MyComponent.package_location = sDNA_GH_search_path
-        MyComponent.RunScript =  unit_tests.run_launcher_tests
+        
+        MyComponent = unit_tests.make_test_running_component_class(
+                                         MyComponent
+                                        ,package_location = sDNA_GH_search_path
+                                        )
         # Grasshopper calls MyComponent.RunScript automatically.
 

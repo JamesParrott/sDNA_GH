@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.09'
+__version__ = '0.10'
 
 import sys
 import os
@@ -54,8 +54,6 @@ from ...custom.skel.tools.helpers import checkers
 
 from ...custom import data_cruncher
 from ...custom import gdm_from_GH_Datatree
-
-                            
 
 
 class FileAndStream():
@@ -326,47 +324,23 @@ def run_launcher_tests(self, *args):
     
     return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
 
-""" if ( __name__ == '__main__' and
-     '__file__' in dir(__builtins__) and
-     sys.argv[0] == __file__):   
-        class ProxyComponentForRunLauncher():
-            sDNA_GH_path = dirname(dirname(sys.path[0]))
-            sDNA_GH_package = ''
-        run_launcher_tests(ProxyComponentForRunLauncher(), True, [], [], '') """
 
+def make_test_running_component_class(Component
+                                     ,package_location
+                                     ,launcher = None
+                                     ):
+    #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
+    """ Class Decorator to add in package location and replace 
+        RunScript with a test launcher. 
+    """
 
+    if launcher is None:
+        launcher = run_launcher_tests
 
-""" class MyComponent(component):
-    
-    def RunScript(self, x, y):
-        
-        import sys
-        
-        class TestStringMethods(unittest.TestCase):
-        
-            def test_upper(self):
-                self.assertEqual('foo'.upper(), 'FOO')
-        
-            def test_isupper(self):
-                self.assertTrue('FOO'.isupper())
-                self.assertFalse('Foo'.isupper())
-        
-            def test_split(self):
-                s = 'hello world'
-                self.assertEqual(s.split(), ['hello', 'world'])
-                
-                # check that s.split fails when the separator is not a string
-                with self.assertRaises(TypeError):
-                    s.split(2)
-                    
-        test_log_file = open(test_log_file_path,'at')
-        output_double_stream = FileAndStream(test_log_file, sys.stderr)
-        output_double_stream.write( 'Unit test run started at: ' 
-                                   +asctime()
-                                   +' ... \n\n')
-        with output_double_stream as o:
-            suite = unittest.TestLoader().loadTestsFromTestCase(TestStringMethods)
-            unittest.TextTestRunner(o, verbosity=2).run(suite)
-            
-        a=''
-        return a """
+    class TestRunningComponent(Component):
+        _RunScript = Component.RunScript
+        RunScript = launcher
+
+    TestRunningComponent.package_location = package_location
+
+    return TestRunningComponent
