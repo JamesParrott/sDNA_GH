@@ -238,7 +238,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     log_file = logger_name + '.log'
     logs_dir = 'logs'
     log_file_level = 'DEBUG'
-    log_console_level = 'DEBUG'
+    log_console_level = 'INFO'
     #
     ##########################################################################
     #
