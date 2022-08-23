@@ -49,7 +49,6 @@ import sys
 import os
 from collections import namedtuple, OrderedDict
 import locale
-import copy
 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
 
@@ -1069,8 +1068,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 if self.local_metas.synced:
                     self.opts = module_opts #re-sync
                 else:
-                    self.opts = copy.deepcopy(self.opts) #de-sync
-                    #
+                    self.opts = self.opts.copy() #de-sync
+                    # noisy sentinels and imported modules are in 
+                    # opts['options'].sDNA so best to avoid deep copying.
 
         if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:
             # If new sDNA module names are specified or metas.sDNA is None
