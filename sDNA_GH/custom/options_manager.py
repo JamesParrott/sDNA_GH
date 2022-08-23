@@ -172,16 +172,22 @@ def delistify_vals_if_not_list_in(d_lesser, d_greater):
             d_greater[key]=val[0]
 
 
-def is_instance_of_Class_of(x, y):
+def is_same_Class_as(x, y):
     #type: (type[any], type[any]) -> bool
     return isinstance(x, y.__class__)
 
 
-def is_instance_of_Class_of_item_of(x, y):
+def is_same_Class_as_item_of(x, y):
     #type: (type[any], type[any]) -> bool
-    return isinstance(y, (Sequence, Set)) and any(is_instance_of_Class_of(x, z) 
-                                                  for z in y
-                                                 )
+    return isinstance(y, (list, tuple, Set)) and any(is_same_Class_as(x, z)
+                                                     for z in y
+                                                    )
+
+def is_container_of_Class_of(x, y):
+    #type: (type[any], type[any]) -> bool
+    return isinstance(x, (list, tuple, Set)) and all(is_same_Class_as(z, y)
+                                                     for z in x
+                                                    )
 
 
 def override_dict_key_val_generator(d_lesser
@@ -207,19 +213,23 @@ def override_dict_key_val_generator(d_lesser
 
         if (delistify and 
             isinstance(val, list) and 
+            len(val) == 1 and 
             not isinstance(d_lesser[key], list)):
             #
             val = val[0]
         
-        print('isinstance(d_lesser[key], Sentinel) == %s' % isinstance(d_lesser[key], Sentinel))
+        logger.debug('isinstance(d_lesser[key], Sentinel) == %s' 
+                     % isinstance(d_lesser[key], Sentinel)
+                    )
 
         if (check_types and 
             d_lesser[key] is not None and 
             not isinstance(d_lesser[key], Sentinel) and
             # set default to None to allow override to be of any type
-            not is_instance_of_Class_of(val, d_lesser[key]) and 
-            (not allow_containers or
-            not is_instance_of_Class_of_item_of(val, d_lesser[key]))):
+            not is_same_Class_as(val, d_lesser[key]) and 
+            not is_same_Class_as_item_of(val, d_lesser[key]) and
+            not (allow_containers and is_container_of_Class_of(val, d_lesser[key]))
+            ):
             #val is mistyped
 
             if hush_type_error:

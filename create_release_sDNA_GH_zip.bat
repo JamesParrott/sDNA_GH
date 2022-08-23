@@ -24,6 +24,9 @@ del README.md
 del README.pdf
 del license.md
 
+cd ..
+pandoc README.md -o README.docx
+
 
 REM sDNA_GH\* dev_tools\batch_files\unblock_all_files_powershell.bat
 REM cd ..

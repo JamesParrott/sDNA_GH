@@ -210,7 +210,10 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                             ))                           
                    ,('Geom', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
-                            ,Description = 'A list of Geometric objects.'
+                            ,Description = ('A list of geometric objects, '
+                                           +'that must all be polylines for '
+                                           +'sDNA tools, read_Shp and write_Shp'
+                                           )
                             ))  
                    ,('Data', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
@@ -1164,6 +1167,21 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         input_args = tool_opts_sDNA._asdict()
         input_args.update(input = input_file, output = output_file)
 
+        LIST_ARGS = ('radius'
+                    ,'radii'
+                    ,'preserve_absolute'
+                    ,'preserve_unitlength'
+                    ,'origins'
+                    ,'destinations'
+                    ,'predictors'
+                    ,'reglambda'
+                    )
+
+        for key, val in input_args.items():
+            if  key in LIST_ARGS and isinstance(val, list) and len(val) >= 2:
+                input_args[key] = ','.join(str(element) for element in val)
+                self.logger.info('Converted list to str: %s' % input_args[key])
+
         advanced = input_args.get('advanced', None)
         if metas.make_advanced and not advanced:
             user_inputs = self.component.params_adder.user_inputs
@@ -1696,7 +1714,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('bbox == %s' % bbox)
 
-        self.logger.debug('gdm == %s ' % gdm)
+        self.logger.debug('gdm == %s ' % (gdm.items()[:4] + gdm.items()[-4:],))
 
         self.logger.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
 

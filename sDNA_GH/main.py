@@ -1054,6 +1054,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         kwargs['l_metas'] = self.local_metas
 
         logger.debug('Opts overridden....    ')
+        logger.debug(self.opts)
         logger.debug(self.local_metas)
         
         if (self.metas.update_path 
