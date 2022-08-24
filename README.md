@@ -45,8 +45,7 @@ sDNA_GH:
     -Connect a true boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
     -To save options to other project specific `config.toml` files, specify the file path in `save_to` and repeat the previous 4 sub steps.
 
-13. For a first test of sDNA_GH using sDNA, open  `\sDNA_GH\tests\5x18_random_grid_network.3dm` (in the previously unzipped folder in the User Objects folder), place an sDNA_Integral component and connect a true boolean toggle to its `go`.  
-14. If a newer version of sDNA is used in future with tools unknown to sDNA_GH at the time it was built, if a Config component is placed, and the path of the new sDNA specified in `sDNA_folders`, sDNA_GH will attempt to automatically build components and user objects for the new sDNA tools, and add them to Grasshopper for you.  Set `make_new_comps` to false to prevent this.
+13. If a newer version of sDNA is used in future with tools unknown to sDNA_GH at the time it was built, if a Config component is placed, and the path of the new sDNA specified in `sDNA_folders`, sDNA_GH will attempt to automatically build components and user objects for the new sDNA tools, and add them to Grasshopper for you.  Set `make_new_comps` to false to prevent this.
 
 
 ### Usage.  
