@@ -9,5 +9,3 @@ del README.md
 del README.pdf
 del license.md
 
-cd ..
-pandoc README.md -o README.docx
