@@ -99,6 +99,8 @@ def new_Logger(custom = None
                        ,filemode = 'w'
                        )
 
+    file_handler = None #TODO
+
     # define a Handler which writes to the sys.stderr
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(getattr(logging, console_logging_level))
@@ -112,7 +114,7 @@ def new_Logger(custom = None
 
     if custom:            
         add_custom_file_to_logger(new_logger, custom, options)
-    return new_logger 
+    return new_logger, file_handler, console, custom 
 #
 ####################################################################################
 

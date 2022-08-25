@@ -655,9 +655,10 @@ else:
     # Create root logger.  All component launchers import this module, 
     # (or access it via Grasshopper's cache in sys.modules) but
     # all their loggers are children of this module's logger:
-    logger = logging_wrapper.new_Logger(custom = None
-                                       ,options = module_opts['options']
-                                       ) 
+    logger, log_file_handler, console_log_handler, _ = logging_wrapper.new_Logger(
+                                               custom = None
+                                              ,options = module_opts['options']
+                                              ) 
 
      # Flushes cached log messages to above handlers
 
@@ -1051,6 +1052,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         #######################################################################
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
+
+        console_logging_level = self.opts['options'].log_console_level.upper()
+        console_log_handler.setLevel(getattr(logging_wrapper.logging
+                                            ,console_logging_level
+                                            )
+                                    )
+
 
         logger.debug('Opts overridden....    ')
         logger.debug(self.opts)
