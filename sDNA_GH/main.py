@@ -1019,8 +1019,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         
             self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
 
-            logger.debug('self.tools == %s ' % self.tools)
-
             extra_params_added = self.update_Params() #self.Params, self.tools)
 
             if extra_params_added != 'No extra Params required. ':
@@ -1037,7 +1035,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # e.g. config, and anything there that they already configured
                 # and saved should still run when the canvas loads. 
 
-        
+                    
+        logger.info('Tools == %s ' % self.tools)
+
         synced = self.local_metas.synced
         #######################################################################
         logger.debug('kwargs.keys() == %s ' % kwargs.keys())
