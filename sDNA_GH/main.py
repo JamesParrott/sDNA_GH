@@ -316,7 +316,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for ShapefileWriter
     #
-    input_key_str = 'sDNA input name={name}'
+    input_key_str = '{name}'
     #30,000 characters tested.
     output_shp = ''
     ###########################################################################

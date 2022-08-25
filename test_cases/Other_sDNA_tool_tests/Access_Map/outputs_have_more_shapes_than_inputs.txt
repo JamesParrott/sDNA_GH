@@ -1,0 +1,2 @@
+One shape per origin per shape in the input, will be in the output, so recolouring results for more than one origin onto
+the existing geom will not work.

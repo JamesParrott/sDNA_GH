@@ -1534,10 +1534,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
     class Options(InputFileDeletionOptions, pyshp_wrapper.ShpOptions):
         shp_type = 'POLYLINEZ'
-        input_key_str = ('sDNA input name={name}'  # User Text keys to read
-                        # +'type={fieldtype} '
-                        # +'size={size}'
-                        )
+        input_key_str = '{name}'
         path = __file__
         output_shp = '' 
 
@@ -1552,12 +1549,31 @@ class ShapefileWriter(sDNA_GH_Tool):
                                                 )
                                  )
                                 ),
+                                ('input_key_str'
+                                 ,add_params.ParamInfo(
+                                  param_Class = Param_String
+                                 ,Description = ('Format string containing a '
+                                                +r'"{name}" field. '
+                                                +'Default: %(input_key_str)s  '
+                                                +'User Text '
+                                                +'key names matching this will'
+                                                +' have their values written '
+                                                +'to shape files under the '
+                                                +'field: {name}. The actual '
+                                                +' values of name in User Text'
+                                                +' keys must be '
+                                                +' specified to the sDNA tools'
+                                                +' that use their User Text '
+                                                +' values. '     
+                                                )
+                                 )
+                                ),
                                              ) 
 
 
     
 
-    component_inputs = ('Geom', 'Data', 'file', 'prj', 'config') 
+    component_inputs = ('Geom', 'Data', 'file', 'prj', 'input_key_str', 'config') 
 
     def __call__(self, f_name, gdm, prj = None, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
@@ -1785,6 +1801,8 @@ class ShapefileReader(sDNA_GH_Tool):
 
         file_name = os.path.splitext(f_name)[0]
         csv_f_name = options.sDNA_names_fmt.format(name = file_name)
+        self.logger.debug('Looking for csv_f_name == %s ' % csv_f_name)
+
         #sDNA_fields = {}
         if os.path.isfile(csv_f_name):
 # sDNA writes this file in simple 'w' mode, 
@@ -2473,9 +2491,17 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                     if isinstance(v, dict) and field in v    
                                    )  # any geom with a normal gdm dict of keys / vals
 
+        logger.debug('Objects to parse & fields == %s, ... , %s'
+                    %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
+                    )
+
         objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
                                                 if isinstance(v, Number) 
                                         )
+
+        logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
+                    %(objs_to_get_colour.items()[:5], objs_to_get_colour.items()[-5:])
+                    )
 
         if (objs_to_parse or 
            (objs_to_get_colour and (plot_min is None or plot_max is None))):
@@ -2498,6 +2524,11 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
                                         # isinstance(x, dict) 
                                         # and isinstance(x, Number)
+        logger.debug('Objects to get colours & vals == %s, ... , %s'
+                    %(objs_to_get_colour.items()[:5], objs_to_get_colour.items()[-5:])
+                    )
+
+
         if options.Col_Grad:
             grad = getattr( GH_Gradient()
                         ,self.GH_Gradient_preset_names[options.Col_Grad_num])
@@ -2544,6 +2575,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                         if isinstance(v, System.Drawing.Color)  
                                       )
 
+
+
         if not objs_to_get_colour and not objs_to_recolour:
             msg = 'No objects to recolour have been found. '
             msg += 'objs_to_parse == %s, ' % objs_to_parse
@@ -2556,6 +2589,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                  for key, val in objs_to_get_colour.items()
                                )
 
+        logger.debug('Objects to recolour & colours == %s, ... , %s'
+                    %(objs_to_recolour.items()[:5], objs_to_recolour.items()[-5:])
+                    )
 
         legend_tags = OrderedDict()
         legend_first_pattern = funcs.make_regex(options.first_leg_tag_str)
