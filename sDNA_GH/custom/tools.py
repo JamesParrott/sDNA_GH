@@ -1553,18 +1553,23 @@ class ShapefileWriter(sDNA_GH_Tool):
                                  ,add_params.ParamInfo(
                                   param_Class = Param_String
                                  ,Description = ('Format string containing a '
-                                                +r'"{name}" field. '
+                                                +r'prefix, a {name} field, '
+                                                +'and a postfix, to enable '
+                                                +'more descriptive User Text '
+                                                +'key names. '
                                                 +'Default: %(input_key_str)s  '
-                                                +'User Text '
-                                                +'key names matching this will'
+                                                +'Only User Text key names '
+                                                +'matching this pattern will '
                                                 +' have their values written '
-                                                +'to shape files under the '
-                                                +'field: {name}. The actual '
+                                                +'to shape files by Write_Shp,'
+                                                +'under the field name in '
+                                                +r'{name}, which can have a '
+                                                +'max of 10 chars in '
+                                                +'Write_Shp. The actual '
                                                 +' values of name in User Text'
-                                                +' keys must be '
+                                                +' keys must also be '
                                                 +' specified to the sDNA tools'
-                                                +' that use their User Text '
-                                                +' values. '     
+                                                +' that use them.'     
                                                 )
                                  )
                                 ),
