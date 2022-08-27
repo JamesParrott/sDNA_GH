@@ -90,7 +90,7 @@ def get_BaseOptsClass(**kwargs):
 def get_dict_of_Classes(**kwargs):
     #type( dict(str: dict) ) -> dict(str : type[any])
     return OrderedDict( (key, get_BaseOptsClass(**val)) 
-                        for (key, val) in kwargs.items() 
+                        for key, val in kwargs.items() 
                       )
 
 def namedtuple_from_class(Class, name = None):

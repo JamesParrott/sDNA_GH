@@ -197,7 +197,7 @@ def map_f_to_tuples(f, x, x_min, x_max, tuples_min, tuples_max):
        specified function using the specified 3 args, with the last two args
        taking their values from the specified pair of iterable. 
     """
-    return [f(x, x_min, x_max, a, b) for (a, b) in zip(tuples_min, tuples_max)]
+    return [f(x, x_min, x_max, a, b) for a, b in zip(tuples_min, tuples_max)]
 
 
 def map_f_to_three_tuples(f

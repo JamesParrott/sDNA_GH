@@ -339,7 +339,7 @@ def custom_inputs_class_deco(BaseComponent
 
         def RunScript(self, *param_vals):
             params_dict = OrderedDict( (param.NickName, delistify(param_val))
-                                       for (param, param_val) 
+                                       for param, param_val 
                                           in zip(self.Params.Input, param_vals)
                                      )
             if not case_sensitive or not leave_whitespace: # Add in extra keys 
@@ -355,7 +355,7 @@ def custom_inputs_class_deco(BaseComponent
         # duped kwargs or args could be a problem here. ymmv.
 
             logger.debug('\n'.join('%s : %s' %(key, value) if isinstance(value, (str, Number, bool)) else key 
-                                   for (key, value) in params_dict.items())
+                                   for key, value in params_dict.items())
                         )
 
             pos_args, args_dict = prepare_args(self.script

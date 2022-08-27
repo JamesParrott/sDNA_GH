@@ -476,7 +476,7 @@ def override_all_opts(args_dict
     config_toml_dict = {}
 
     args_dict = OrderedDict((key, value) 
-                            for (key, value) in args_dict.items() 
+                            for key, value in args_dict.items() 
                             if value is not None
                            )
 

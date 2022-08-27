@@ -770,7 +770,7 @@ def build_missing_sDNA_components(opts
     names = []
     for Tool in sDNAUISpec.get_tools():
         names = [nick_name
-                 for (nick_name, tool_name) in metas.name_map.items()
+                 for nick_name, tool_name in metas.name_map.items()
                  if tool_name == Tool.__name__
                 ]
         names.insert(0, Tool.__name__)
@@ -1194,7 +1194,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                              % self.component.params_adder.needed_inputs
                              )
             advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
-                                for (key, val) in kwargs.items()
+                                for key, val in kwargs.items()
                                 if (key in user_inputs and 
                                     key not in self.built_in_options(opts)
                                    )
@@ -2140,7 +2140,7 @@ class DataParser(sDNA_GH_Tool):
             raise ValueError(msg)
 
         items_missing_field = [(key, val)
-                               for (key, val) in gdm.items() 
+                               for key, val in gdm.items() 
                                if (not isinstance(val, dict) or
                                    field not in val or 
                                    not isinstance(val[field], Number))
@@ -2318,12 +2318,12 @@ class DataParser(sDNA_GH_Tool):
         def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
             spline = data_cruncher.splines[options.re_normaliser]
             return spline(x
-                        ,x_min
-                        ,p   # base or x_mid.  Can't be kwarg.
-                        ,x_max
-                        ,y_min = x_min
-                        ,y_max = x_max
-                        )
+                         ,x_min
+                         ,p   # base or x_mid.  Can't be kwarg.
+                         ,x_max
+                         ,y_min = x_min
+                         ,y_max = x_max
+                         )
         
         def class_mid_point(x): 
             highest_lower_bound = x_min if x < class_bounds[0] else max(
@@ -2353,11 +2353,8 @@ class DataParser(sDNA_GH_Tool):
 
 
         mid_points = [0.5*(x_min + min(class_bounds))]
-        mid_points += [0.5*(x + y) for (x,y) in zip(class_bounds[0:-1]
-                                                   ,class_bounds[1:]  
-                                                   )
-                      ]
-        mid_points += [ 0.5*(x_max + max(class_bounds))]
+        mid_points += [0.5*(x + y) for x, y in itertools.pairwise(class_bounds)]
+        mid_points += [0.5*(x_max + max(class_bounds))]
         self.logger.debug(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
