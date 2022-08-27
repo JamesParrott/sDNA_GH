@@ -125,7 +125,7 @@ Rhino_obj_checkers_for_shape = dict(NULL = [None]
                                    )  
 
 def is_shape(obj, shp_type):   #e.g. polyline
-    # type(str) -> bool
+    # type(type[any], str) -> bool
 
     allowers = Rhino_obj_checkers_for_shape[ shp_type]
     if isinstance(allowers, basestring):
@@ -562,11 +562,20 @@ def write_iterable_to_shp(my_iterable
         logger.debug(str(fields))
 
         add_geometric_object = getattr( w,  pyshp_writer_method[shape_code] )
-        for item, attribute_table in attribute_tables.items():
-            list_of_shapes = shape_mangler(item)
+        # e.g. add_geometric_object = w.linez
+
+        for shape, attribute_table in attribute_tables.items():
+            if not is_shape(shape, shape_code):
+                msg = 'Shape: %s cannot be converted to shape_code: %s' 
+                msg %= (shape, shape_code)
+                logger.error(msg)
+                raise TypeError(msg)
+
+            list_of_shapes = shape_mangler(shape)
             if list_of_shapes:
 
-                add_geometric_object( list_of_shapes )   
+                add_geometric_object( list_of_shapes ) 
+                #e.g. w.linez(list_of_shapes)  
 
                 w.record( **attribute_table )    
 

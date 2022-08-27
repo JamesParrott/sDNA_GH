@@ -1599,27 +1599,48 @@ class ShapefileWriter(sDNA_GH_Tool):
 
             return re.match(pattern, x) 
 
-        def f(z):
-            if hasattr(Rhino.Geometry, type(z).__name__):
-                z_geom = z
+        def get_list_of_points_from_obj(obj):
+            #type: (type[any]) -> list
+            if hasattr(Rhino.Geometry, type(obj).__name__):
+                geom = obj
             else:
-                z = System.Guid(str(z))
-                z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
-                if not z_geom:
-                    z_geom = ghdoc.Objects.FindGeometry(z)
-            if hasattr(z_geom,'TryGetPolyline'):
-                z_geom = z_geom.TryGetPolyline()[1]
-            return [list(z_geom[i]) for i in range(len(z_geom))]
+                obj = System.Guid(str(obj))
+                geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
+                if not geom:
+                    geom = ghdoc.Objects.FindGeometry(obj)
 
-        def get_list_of_lists_from_tuple(obj):
-            return [f(obj)]
+            if not pyshp_wrapper.is_shape(geom, shp_type):
+                msg = 'Shape: %s cannot be converted to shp_type: %s' 
+                msg %= (geom, shp_type)
+                self.logger.error(msg)
+                raise TypeError(msg)
 
-        if gdm:
-            self.logger.debug('Test points obj 0: %s ' % get_list_of_lists_from_tuple(gdm.keys()[0]) )
-        else:
+            points = pyshp_wrapper.get_points_from_obj(geom, shp_type)
+
+            if not points:
+                return []
+
+            return [list(point) for point in points]
+
+        def get_list_of_list_of_pts_from_obj(obj):
+            #type: (list) -> list
+            return [get_list_of_points_from_obj(obj)]
+
+        if not gdm:
             msg = 'No geometry and no data to write to shapefile, gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
+        else:
+            bad_shapes = [obj for obj in gdm if not pyshp_wrapper.is_shape(obj, shp_type)]
+            if bad_shapes:
+                msg = 'Shape(s): %s cannot be converted to shp_type: %s' 
+                msg %= (bad_shapes, shp_type)
+                self.logger.error(msg)
+                raise TypeError(msg)
+            else:
+                self.logger.debug('Points for obj 0: %s ' 
+                                 % get_list_of_list_of_pts_from_obj(gdm.keys()[0]) 
+                                 )
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -1671,7 +1692,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         retcode, f_name, fields, gdm = pyshp_wrapper.write_iterable_to_shp(
                                  my_iterable = gdm
                                 ,shp_file_path = f_name 
-                                ,shape_mangler = get_list_of_lists_from_tuple 
+                                ,shape_mangler = get_list_of_list_of_pts_from_obj 
                                 ,shape_IDer = shape_IDer
                                 ,key_finder = find_keys 
                                 ,key_matcher = pattern_match_key_names 
