@@ -79,7 +79,7 @@ from . import data_cruncher
 from .skel.basic.ghdoc import ghdoc
 from .skel.tools.helpers import checkers
 from .skel.tools.helpers import funcs
-from .skel.tools.helpers import geom
+from .skel.tools.helpers import rhino_gh_geom
 from .skel.tools import runner                                       
 from .skel import add_params
 from .skel import builder
@@ -1267,11 +1267,11 @@ def get_objs_and_OrderedDicts(only_selected = False
                              ,layers = ()
                              ,shp_type = 'POLYLINEZ'
                              ,include_groups = False
-                             ,all_objs_getter = pyshp_wrapper.get_Rhino_objs
+                             ,all_objs_getter = rhino_gh_geom.get_Rhino_objs
                              ,group_getter = checkers.get_all_groups
                              ,group_objs_getter = checkers.get_members_of_a_group
                              ,OrderedDict_getter = checkers.get_OrderedDict()
-                             ,is_shape = pyshp_wrapper.is_shape
+                             ,is_shape = rhino_gh_geom.is_shape
                              ,is_selected = gdm_from_GH_Datatree.is_selected
                              ,obj_layer = gdm_from_GH_Datatree.obj_layer
                              ,doc_layers = gdm_from_GH_Datatree.doc_layers
@@ -1314,12 +1314,16 @@ def get_objs_and_OrderedDicts(only_selected = False
                     d.update(OrderedDict_getter(obj))
                 yield group, d
 
-        objs = all_objs_getter(shp_type) # e.g. rs.ObjectsByType(geometry_type = 4
+        objs = all_objs_getter(shp_type) # Note!:  may include non-polylines, 
+                                         # arcs etc. for geometry_type = 4
+                                         # e.g. rs.ObjectsByType(geometry_type = 4
                                          #                      ,select = False
                                          #                      ,state = 0
                                          #                      )
         for obj in objs:
             if obj in objs_already_yielded:
+                continue 
+            if not is_shape(obj, shp_type):                                                 
                 continue 
 
             if layers and obj_layer(obj) not in layers:
@@ -1609,13 +1613,13 @@ class ShapefileWriter(sDNA_GH_Tool):
                 if not geom:
                     geom = ghdoc.Objects.FindGeometry(obj)
 
-            if not pyshp_wrapper.is_shape(geom, shp_type):
+            if not rhino_gh_geom.is_shape(geom, shp_type):
                 msg = 'Shape: %s cannot be converted to shp_type: %s' 
                 msg %= (geom, shp_type)
                 self.logger.error(msg)
                 raise TypeError(msg)
 
-            points = pyshp_wrapper.get_points_from_obj(geom, shp_type)
+            points = rhino_gh_geom.get_points_from_obj(geom, shp_type)
 
             if not points:
                 return []
@@ -1631,7 +1635,7 @@ class ShapefileWriter(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
         else:
-            bad_shapes = [obj for obj in gdm if not pyshp_wrapper.is_shape(obj, shp_type)]
+            bad_shapes = [obj for obj in gdm if not rhino_gh_geom.is_shape(obj, shp_type)]
             if bad_shapes:
                 msg = 'Shape(s): %s cannot be converted to shp_type: %s' 
                 msg %= (bad_shapes, shp_type)
@@ -1690,17 +1694,18 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 
         retcode, f_name, fields, gdm = pyshp_wrapper.write_iterable_to_shp(
-                                 my_iterable = gdm
-                                ,shp_file_path = f_name 
-                                ,shape_mangler = get_list_of_list_of_pts_from_obj 
-                                ,shape_IDer = shape_IDer
-                                ,key_finder = find_keys 
-                                ,key_matcher = pattern_match_key_names 
-                                ,value_demangler = get_data_item 
-                                ,shape_code = shp_type 
-                                ,options = options
-                                ,field_names = None 
-                                )
+                                             my_iterable = gdm
+                                            ,shp_file_path = f_name
+                                            ,is_shape = rhino_gh_geom.is_shape
+                                            ,shape_mangler = get_list_of_list_of_pts_from_obj 
+                                            ,shape_IDer = shape_IDer
+                                            ,key_finder = find_keys 
+                                            ,key_matcher = pattern_match_key_names 
+                                            ,value_demangler = get_data_item 
+                                            ,shape_code = shp_type 
+                                            ,options = options
+                                            ,field_names = None 
+                                            )
         
         if (isinstance(prj, basestring) and 
             prj.endswith('.prj') and 
@@ -1793,7 +1798,7 @@ class ShapefileReader(sDNA_GH_Tool):
              or len(gdm) != len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = pyshp_wrapper.objs_maker_factory(options.shp_type)
+            objs_maker = rhino_gh_geom.objs_maker_factory(options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
             shapes_to_output = (
                 str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
@@ -2037,7 +2042,7 @@ class DataParser(sDNA_GH_Tool):
         re_normaliser = 'linear'
         sort_data = False
         num_classes = 8
-        class_bounds = [options_manager.Sentinel('class_bounds is automatically '
+        inter_class_bounds = [options_manager.Sentinel('inter_class_bounds is automatically '
                                                 +'calculated by sDNA_GH unless '
                                                 +'overridden.  '
                                                 )
@@ -2102,7 +2107,7 @@ class DataParser(sDNA_GH_Tool):
                                            +'Default: %(class_spacing)s'
                                            ) 
                             ))
-                  ,('class_bounds', add_params.ParamInfo(
+                  ,('inter_class_bounds', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Inter-class boundaries for the '
                                            +'legend. '
@@ -2114,13 +2119,21 @@ class DataParser(sDNA_GH_Tool):
                                                )
 
     component_inputs = ('Geom', 'Data', 'field', 'plot_max', 'plot_min' 
-                       ,'num_classes', 'class_spacing', 'class_bounds'
+                       ,'num_classes', 'class_spacing', 'inter_class_bounds'
                        )
     #
     # Geom is essentially unused in this function, except that the legend tags
     # are appended to it, to colour them in exactly the same way as the 
     # objects.
     #
+
+    def max_and_min_are_valid(self, plot_max, plot_min):
+        #type(type[any], type[any]) -> bool
+        return (isinstance(plot_max, Number)  
+                and isinstance(plot_min, Number) 
+                and plot_max > plot_min 
+               )
+
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
@@ -2139,28 +2152,23 @@ class DataParser(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
 
-        items_missing_field = [(key, val)
-                               for key, val in gdm.items() 
-                               if (not isinstance(val, dict) or
-                                   field not in val or 
-                                   not isinstance(val[field], Number))
-                              ]
-
-        if items_missing_field:
-            msg = 'Missing data for field.  '
-            msg += 'The following: %s have a non-numeric record '
-            msg += 'for the field name: %s (or no record at all), '
-            msg += 'and so cannot be parsed for field: %s'
-            msg %= (items_missing_field, field, field)
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-
+        def select(val, field):
+            #type( type[any], str) -> Number
+            if isinstance(val, Number):
+                return val
+            if not isinstance(val, dict):
+                msg = 'val: %s is not a dict or a Number (type(val) == %s)' 
+                msg %= (val, type(val))
+                self.logger.error(msg)
+                raise TypeError(msg)
+            if field not in val:
+                msg = 'Key for field: %s not found in val: %s' % (field, val)
+                self.logger.error(msg)
+                raise KeyError(msg)
+            return val[field]
 
         plot_min, plot_max = options.plot_min, options.plot_max
-        if (isinstance(plot_min, Number)  
-           and isinstance(plot_max, Number) 
-           and plot_min < plot_max ):
+        if self.max_and_min_are_valid(plot_max, plot_min):
             #
             self.logger.info('Valid max and min override will be used. ')
             #
@@ -2168,10 +2176,10 @@ class DataParser(sDNA_GH_Tool):
             if options.exclude:
                 data = OrderedDict( (obj, val[field]) 
                                     for obj, val in gdm.items()
-                                    if x_min <= val[field] <= x_max
+                                    if x_min <= select(val, field) <= x_max
                                   )
-            else:
-                data = OrderedDict( (obj, min(x_max, max(x_min, val[field]))) 
+            else: # exclude == False => cap and collar
+                data = OrderedDict( (obj, min(x_max, max(x_min, select(val, field)))) 
                                     for obj, val in gdm.items()
                                   )
 
@@ -2179,7 +2187,7 @@ class DataParser(sDNA_GH_Tool):
             self.logger.debug('Manually calculating max and min. '
                       +'No valid override found. '
                       )
-            data = OrderedDict( (obj, val[field]) 
+            data = OrderedDict( (obj, select(val, field)) 
                                 for obj, val in gdm.items() 
                               )
             x_min, x_max = min(data.values()), max(data.values())
@@ -2200,10 +2208,10 @@ class DataParser(sDNA_GH_Tool):
 
 
 
-        use_manual_classes = (options.class_bounds and
-                              isinstance(options.class_bounds, list)
+        use_manual_classes = (options.inter_class_bounds and
+                              isinstance(options.inter_class_bounds, list)
                               and all( isinstance(x, Number) 
-                                       for x in options.class_bounds
+                                       for x in options.inter_class_bounds
                                      )
                              )
 
@@ -2244,19 +2252,19 @@ class DataParser(sDNA_GH_Tool):
 
 
         if use_manual_classes:
-            class_bounds = options.class_bounds
+            inter_class_bounds = options.inter_class_bounds
             self.logger.info('Using manually specified'
                             +' inter-class boundaries. '
                             )
         elif options.class_spacing in QUANTILE_METHODS:
             self.logger.debug('Using: %s class calculation method.' % options.class_spacing)
-            class_bounds = QUANTILE_METHODS[options.class_spacing](data = data.values()
+            inter_class_bounds = QUANTILE_METHODS[options.class_spacing](data = data.values()
                                                                        ,num_classes = m
                                                                        ,options = options
                                                                        )
 
         else: 
-            class_bounds = [data_cruncher.splines[options.class_spacing](i
+            inter_class_bounds = [data_cruncher.splines[options.class_spacing](i
                                                           ,1
                                                           ,param.get(options.class_spacing
                                                                     ,'Not used'
@@ -2268,7 +2276,7 @@ class DataParser(sDNA_GH_Tool):
                             for i in range(1, options.num_classes) 
                             ]
 
-        count_bound_counts = Counter(class_bounds)
+        count_bound_counts = Counter(inter_class_bounds)
 
         class_overlaps = [val for val in count_bound_counts
                           if count_bound_counts[val] > 1
@@ -2278,7 +2286,7 @@ class DataParser(sDNA_GH_Tool):
             msg = 'Class overlaps at: ' + ' '.join(map(str, class_overlaps))
             if options.remove_overlaps:
                 for overlap in class_overlaps:
-                    class_bounds.remove(overlap)
+                    inter_class_bounds.remove(overlap)
 
             if options.suppress_class_overlap_error:
                 self.logger.warning(msg)
@@ -2300,41 +2308,46 @@ class DataParser(sDNA_GH_Tool):
 
 
         self.logger.debug('num class boundaries == ' 
-                    + str(len(class_bounds))
+                    + str(len(inter_class_bounds))
                     )
         self.logger.debug('m == %s' % m)
         self.logger.debug('n == %s' % n)
-        if len(class_bounds) + 1 < m:
+        if len(inter_class_bounds) + 1 < m:
             logger.warning('It has only been possible to classify data into '
-                          +'%s distinct classes, not %s' % (len(class_bounds) + 1, m)
+                          +'%s distinct classes, not %s' % (len(inter_class_bounds) + 1, m)
                           )
 
         msg = 'x_min == %s \n' % x_min
-        msg += 'class bounds == %s \n' % class_bounds
+        msg += 'class bounds == %s \n' % inter_class_bounds
         msg += 'x_max == %s ' % x_max
         self.logger.debug(msg)
 
 
-        def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
+        if (x_max - x_min < options.tol 
+            or options.re_normaliser not in data_cruncher.splines):
+            #
+            re_normalise = lambda x, *args : x
+        else:
             spline = data_cruncher.splines[options.re_normaliser]
-            return spline(x
-                         ,x_min
-                         ,p   # base or x_mid.  Can't be kwarg.
-                         ,x_max
-                         ,y_min = x_min
-                         ,y_max = x_max
-                         )
+            def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
+                return spline(x
+                             ,x_min
+                             ,p   # base or x_mid.  Can't be kwarg.
+                             ,x_max
+                             ,y_min = x_min
+                             ,y_max = x_max
+                             )
         
         def class_mid_point(x): 
-            highest_lower_bound = x_min if x < class_bounds[0] else max(
+            highest_lower_bound = x_min if x < inter_class_bounds[0] else max(
                                             y 
-                                            for y in [x_min] + class_bounds
+                                            for y in [x_min] + inter_class_bounds
                                             if y <= x                  
                                             )
             #Classes include their lower bound
-            least_upper_bound = x_max if x >= class_bounds[-1] else min(
+            least_upper_bound = x_max if x >= inter_class_bounds[-1] else min(
                                             y 
-                                            for y in class_bounds + [x_max] 
+                                            for y in inter_class_bounds + [x_max] 
                                             if y > x
                                             )
 
@@ -2351,10 +2364,12 @@ class DataParser(sDNA_GH_Tool):
 
 
 
-
-        mid_points = [0.5*(x_min + min(class_bounds))]
-        mid_points += [0.5*(x + y) for x, y in itertools.pairwise(class_bounds)]
-        mid_points += [0.5*(x_max + max(class_bounds))]
+        if inter_class_bounds:
+            mid_points = [0.5*(x_min + min(inter_class_bounds))]
+            mid_points += [0.5*(x + y) for x, y in itertools.pairwise(inter_class_bounds)]
+            mid_points += [0.5*(x_max + max(inter_class_bounds))]
+        else:
+            mid_points = [0.5*(x_min + x_max)]
         self.logger.debug(mid_points)
 
         locale.setlocale(locale.LC_ALL,  options.locale)
@@ -2365,51 +2380,61 @@ class DataParser(sDNA_GH_Tool):
                 format_str = '{:d}'
             return format_str.format(x)
 
-        x_min_str = format_number(x_min, options.num_format) 
-        upper_str = format_number(min( class_bounds ), options.num_format)
-        mid_pt_str = format_number(mid_points[0], options.num_format)
-        #e.g. first_leg_tag_str = 'below {upper}'
+        if inter_class_bounds:
+            x_min_str = format_number(x_min, options.num_format) 
+            upper_str = format_number(min( inter_class_bounds ), options.num_format)
+            mid_pt_str = format_number(mid_points[0], options.num_format)
+            #e.g. first_leg_tag_str = 'below {upper}'
 
-        legend_tags = [options.first_leg_tag_str.format(lower = x_min_str
-                                                       ,upper = upper_str
-                                                       ,mid_pt = mid_pt_str
-                                                       )
-                      ]
-        for lower_bound, class_mid_point, upper_bound in zip(class_bounds[0:-1]
-                                                      ,mid_points[1:-1]
-                                                      ,class_bounds[1:]  
-                                                      ):
-            
-            lower_str = format_number(lower_bound, options.num_format)
-            upper_str = format_number(upper_bound, options.num_format)
-            mid_pt_str = format_number(class_mid_point, options.num_format)
+            legend_tags = [options.first_leg_tag_str.format(lower = x_min_str
+                                                        ,upper = upper_str
+                                                        ,mid_pt = mid_pt_str
+                                                        )
+                        ]
+            for lower_bound, class_mid_point, upper_bound in zip(inter_class_bounds[0:-1]
+                                                        ,mid_points[1:-1]
+                                                        ,inter_class_bounds[1:]  
+                                                        ):
+                
+                lower_str = format_number(lower_bound, options.num_format)
+                upper_str = format_number(upper_bound, options.num_format)
+                mid_pt_str = format_number(class_mid_point, options.num_format)
+                # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
+                legend_tags += [options.gen_leg_tag_str.format(lower = lower_str
+                                                            ,upper = upper_str
+                                                            ,mid_pt = mid_pt_str 
+                                                            )
+                            ]
+
+            lower_str =  format_number(max( inter_class_bounds ), options.num_format)
+            x_max_str =  format_number(x_max, options.num_format)
+            mid_pt_str =  format_number(mid_points[-1], options.num_format)
+
+            # e.g. last_leg_tag_str = 'above {lower}'
+            legend_tags += [options.last_leg_tag_str.format(lower = lower_str
+                                                        ,upper = x_max_str 
+                                                        ,mid_pt = mid_pt_str 
+                                                        )        
+                        ]        
+        else:
+            x_min_str = format_number(x_min, options.num_format)
+            x_max_str = format_number(x_max, options.num_format)
+            mid_pt_str = format_number(mid_points[0], options.num_format)
             # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
-            legend_tags += [options.gen_leg_tag_str.format(lower = lower_str
-                                                          ,upper = upper_str
-                                                          ,mid_pt = mid_pt_str 
-                                                          )
-                           ]
-
-        lower_str =  format_number(max( class_bounds ), options.num_format)
-        x_max_str =  format_number(x_max, options.num_format)
-        mid_pt_str =  format_number(mid_points[-1], options.num_format)
-
-        # e.g. last_leg_tag_str = 'above {lower}'
-        legend_tags += [options.last_leg_tag_str.format(lower = lower_str
-                                                       ,upper = x_max_str 
-                                                       ,mid_pt = mid_pt_str 
-                                                       )        
-                       ]                                                       
+            legend_tags = [options.gen_leg_tag_str.format(lower = x_min_str
+                                                        ,upper = x_max_str
+                                                        ,mid_pt = mid_pt_str 
+                                                        )
+                        ]                                          
 
         self.logger.debug(legend_tags)
 
-        objs = list( gdm.keys() )[:]
-        data_vals = [val[field] for val in gdm.values()]
-
-        gdm = OrderedDict(   zip(objs + legend_tags 
-                                ,[renormaliser(x) for x in data_vals + mid_points]
-                                )
+        gdm = OrderedDict( (key, renormaliser(val)) 
+                           for key, val in itertools.chain(data.items()
+                                                          ,zip(legend_tags, mid_points)
+                                                          )
                          )
+
         plot_min, plot_max = x_min, x_max
         
         locs = locals().copy()
@@ -2489,7 +2514,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
     
     component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field')
 
-    def __call__(self, gdm, opts, plot_min, plot_max, bbox):
+    def __call__(self, gdm, opts, bbox):
         #type(str, dict, dict) -> int, str, dict, list
         # Note!  opts can be mutated.
         self.debug('Initialising Class.  Creating Class Logger. ')
@@ -2499,6 +2524,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         options = opts['options']
         
         field = options.field
+        plot_min, plot_max = options.plot_min, options.plot_max
 
         if not gdm:
             msg = 'No Geom objects to recolour. '
@@ -2511,28 +2537,35 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
         objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
-                                    if isinstance(v, dict) and field in v    
+                                    if isinstance(v, dict) and field in v   
                                    )  # any geom with a normal gdm dict of keys / vals
 
         logger.debug('Objects to parse & fields == %s, ... , %s'
                     %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
                     )
 
-        objs_to_get_colour = OrderedDict( (k, v) for k, v in gdm.items()
+        objs_with_numbers = OrderedDict( (k, v) for k, v in gdm.items()
                                                 if isinstance(v, Number) 
                                         )
 
         logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
-                    %(objs_to_get_colour.items()[:5], objs_to_get_colour.items()[-5:])
+                    %(objs_with_numbers.items()[:5], objs_with_numbers.items()[-5:])
                     )
 
-        if (objs_to_parse or 
-           (objs_to_get_colour and (plot_min is None or plot_max is None))):
-           #
+        if self.parse_data.max_and_min_are_valid(plot_max, plot_min):
+            objs_to_get_colour = objs_with_numbers
+        else:
+            objs_to_get_colour = OrderedDict()
+            objs_to_parse.update(objs_with_numbers)
+
+
+        if objs_to_parse:
+            #
             self.info('Raw data in ObjectsRecolourer.  Calling DataParser...')
             self.debug('Raw data: %s' % objs_to_parse.items()[:4])
             x_min, x_max, gdm_in = self.parse_data(gdm = objs_to_parse
-                                                  ,opts = opts
+                                                  ,opts = opts 
+                                                  #includes plot_min, plot_max
                                                   )
                                                                             
         else:
@@ -2571,6 +2604,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                             ,1 #0.82
                                                             )
                                       )
+        elif x_max - x_min < options.tol:
+            get_colour = lambda x : tuple(options.rgb_mid)
         else:
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)
@@ -2728,25 +2763,6 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 legend_ymax = bbox_ymax
                 
 
-            ###################################################
-            #
-            # Now in skel.helpers.geom.add_GH_rectangle
-            #
-            # plane = rs.WorldXYPlane()
-            # leg_frame = rs.AddRectangle( plane
-            #                             ,leg_width
-            #                             ,leg_height 
-            #                             )
-
-            # self.logger.debug('Rectangle width * height == '
-            #                  +'%s * %s' % (leg_width, leg_height)
-            #                  )
-
-
-            # rs.MoveObject(leg_frame, [1.07*bbox_xmax, legend_ymin])
-            #
-            ###################################################
-
             self.logger.debug('leg_bounds == %s ' % [legend_xmin
                                                     ,legend_ymin
                                                     ,legend_xmax
@@ -2754,7 +2770,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                     ]
                               )
 
-            leg_frame = geom.add_GH_rectangle(legend_xmin
+            leg_frame = rhino_gh_geom.add_GH_rectangle(legend_xmin
                                              ,legend_ymin
                                              ,legend_xmax
                                              ,legend_ymax

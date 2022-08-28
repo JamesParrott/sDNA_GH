@@ -49,7 +49,6 @@ else:
     Iterable = collections.abc.Iterable
 
 
-import rhinoscriptsyntax as rs
 
 from ..third_party.PyShp import shapefile as shp  
 
@@ -62,139 +61,24 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-file_name_no_ext = os.path.split(__file__)[-1].split('.')[0]   
+file_name_no_ext = os.path.splitext(os.path.basename(__file__))[0]
 
 
 
 
-###################################################################
 
 
 
-Rhino_obj_for_shape = dict(NULL = None
-                          ,POINT = 'PointCoordinates'
-                          ,MULTIPATCH = 'MeshVertices'  
-                          # Unsupported.  Complicated. 
-                          ,POLYLINE = 'PolylineVertices'  
-                          ,POLYGON = 'PolylineVertices'
-                          ,MULTIPOINT = 'PointCloudPoints'  
-                          # Unsupported
-                          # Needs chaining to list or POINT
-                          ,POINTZ = 'PointCoordinates'
-                          ,POLYLINEZ = 'PolylineVertices'
-                          ,POLYGONZ = 'PolylineVertices'  
-                          ,MULTIPOINTZ = 'PointCloudPoints'  
-                          #see MULTIPOINT
-                          ,POINTM = 'PointCoordinates'
-                          ,POLYLINEM = 'PolylineVertices'
-                          ,POLYGONM = 'PolylineVertices'    
-                          ,MULTIPOINTM = 'PointCloudPoints'  
-                          #see MULTIPOINT
-                          )  
-
-def get_points_from_obj(x, shp_type='POLYLINEZ'):
-    #type(str, dict) -> list
-    f = getattr(rs, Rhino_obj_for_shape[shp_type])
-    return [list(y) for y in f(x)]
-
-Rhino_obj_checkers_for_shape = dict(NULL = [None]
-                                   ,POINT = ['IsPoint']
-                                   ,MULTIPATCH = ['IsMesh']  # Unsupported  
-                                   # (too complicated).
-                                   ,POLYLINE = ['IsLine','IsPolyline']  
-                                   #IsPolyline ==False for lines, 
-                                   # on which PolylineVertices works fine
-                                   ,POLYGON = ['IsPolyline'] 
-                                   #2 pt Line not a Polygon.
-                                   # Doesn't check closed
-                                   ,MULTIPOINT = ['IsPoint']   
-                                   # e.g. 
-                                   # lambda l : any(IsPoint(x) for x in l)
-                                   ,POINTZ = ['IsPoint']
-                                   ,POLYLINEZ = ['IsLine','IsPolyline']
-                                   ,POLYGONZ = ['IsPolyline']   
-                                   #Doesn't check enclosed shape
-                                   ,MULTIPOINTZ = ['IsPoints']  
-                                   # see MULTIPOINT
-                                   ,POINTM = ['IsPoint']
-                                   ,POLYLINEM = ['IsLine','IsPolyline']
-                                   ,POLYGONM = ['IsPolyline']   
-                                   #Doesn't check enclosed shape
-                                   ,MULTIPOINTM = ['IsPoints']  
-                                   # see MULTIPOINT
-                                   )  
-
-def is_shape(obj, shp_type):   #e.g. polyline
-    # type(type[any], str) -> bool
-
-    allowers = Rhino_obj_checkers_for_shape[ shp_type]
-    if isinstance(allowers, basestring):
-        allowers = [allowers] 
-    return any( getattr(rs, allower )( obj ) for allower in allowers)
-
-Rhino_obj_code_for_shape = dict(NULL = None
-                               ,POINT = 1         
-                               # Untested.  
-                               ,MULTIPATCH = 32    
-                               # Unsupported.  Complicated.  
-                               ,POLYLINE = 4
-                               ,POLYGON = 4  
-                               ,MULTIPOINT = 2     
-                               # Untested.  
-                               ,POINTZ = 1         
-                               ,POLYLINEZ = 4
-                               ,POLYGONZ = 4   
-                               ,MULTIPOINTZ = 2 
-                               ,POINTM = 1
-                               ,POLYLINEM = 4
-                               ,POLYGONM = 4  
-                               ,MULTIPOINTM = 2
-                               )  
-
-def get_Rhino_objs(shp_type='POLYLINEZ'):
-    #type (None) -> list
-    return rs.ObjectsByType(geometry_type = Rhino_obj_code_for_shape[shp_type]
-                           ,select = False
-                           ,state = 0
-                           )
-
-Rhino_obj_adder_for_shape = dict(NULL = None
-                                ,POINT = 'AddPoint'
-                                ,MULTIPATCH = 'AddMesh'    
-                                # Unsupported.  Complicated.
-                                ,POLYLINE = 'AddPolyline'
-                                ,POLYGON = 'AddPolyline'   
-                                # check Pyshp closes them
-                                ,MULTIPOINT = 'AddPoints'
-                                ,POINTZ = 'AddPoint'
-                                ,POLYLINEZ = 'AddPolyline'
-                                ,POLYGONZ = 'AddPolyline'   
-                                # check Pyshp closes them
-                                ,MULTIPOINTZ = 'AddPoints'
-                                ,POINTM = 'AddPoint'
-                                ,POLYLINEM = 'AddPolyline'
-                                ,POLYGONM = 'AddPolyline'    
-                                # check Pyshp closes them
-                                ,MULTIPOINTM = 'AddPoints'
-                                )  
-
-
-type_dict = {}
-for x in (int, float, bool, str, date):
-    type_dict[x] = x.__name__
-
-shp_field_codes = dict(int = 'N'
-                      ,str = 'C'
-                      ,float = 'F'
-                      ,date = 'D'
-                      ,bool = 'L'
-                      )   
-# We omit 'M' for Memo 
-# int = 'N'  here.  In PyShp, 'N' can also be a float
+SHP_FIELD_CODES = {int: 'N'
+                  ,float: 'F'
+                  ,bool: 'L'
+                  ,str: 'C'
+                  ,date: 'D'
+                  }
                 
-def get_field_code(x):
-    # type lookup function
-    return shp_field_codes[  type_dict[ type(x) ]  ]   
+
+# We omit 'M' for Memo 
+# int = 'N'  here.  In PyShp, 'N' can also be a float 
 
 pyshp_writer_method = dict(NULL = 'null'
                           ,POINT = 'point'
@@ -247,10 +131,10 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
     dec.getcontext().prec = options.precision #if else options.precision    # significant figures,  >= # decimal places
     if      x in [True, False] or (hasattr(x, 'lower')
         and x.lower() in ['true','false']):   # if isinstance(x,bool):.  Don't test coercion with bool() first or everything truthy will be 'L'
-        return x, shp_field_codes['bool']   # i.e. 'L'
+        return x, SHP_FIELD_CODES[bool]   # i.e. 'L'
     try:
         y = int(x)   # if isinstance(x,int):  # Bool test needs to come before this as int(True) == 1
-        return y, shp_field_codes['int']    # i.e.   'N'
+        return y, SHP_FIELD_CODES[int]    # i.e.   'N'
     except ValueError:
         try:
             n = options.max_dp
@@ -267,11 +151,11 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
                 #  Beware:  
                 # https://docs.python.org/2.7/tutorial/floatingpoint.html#tut-fp-issues                                                      
                 
-            return x if options.keep_floats else y, shp_field_codes['float']  
+            return x if options.keep_floats else y, SHP_FIELD_CODES[float]  
                     # Tuple , binds to result of ternary operator
         except (dec.InvalidOperation, ValueError):
             if isinstance(x, date):
-                return x, shp_field_codes['date']   # i.e. 'D'   
+                return x, SHP_FIELD_CODES[date]   # i.e. 'D'   
 
             if isinstance(x, list) and len(x) == 3 and all(isinstance(z, int) for z in x):
                 x = ':'.join(map(str, x))
@@ -286,9 +170,9 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
                     test_patterns += [  day + sep + month + sep + year   # https://en.wikipedia.org/wiki/Date_format_by_country
                                        ,month + sep + day + sep + year]  # 
                 if any(re.match(pattern, x) for pattern in test_patterns):
-                    return x, shp_field_codes['date']                # TODO, optionally, return datetime.date() object?
+                    return x, SHP_FIELD_CODES[date]                # TODO, optionally, return datetime.date() object?
                 else:
-                    return x, shp_field_codes['str']  # i.e. 'C'  
+                    return x, SHP_FIELD_CODES[str]  # i.e. 'C'  
             else:
                 msg = 'Failed to coerce UserText to PyShp record data type.  '
                 if options.use_memo:
@@ -363,16 +247,16 @@ def ensure_correct(fields
         fields[nice_key]['size'] = max(fields[nice_key]['size']
                                       ,len(str(value)) + max(0, options.extra_chars)
                                       )
-        if (val_type == shp_field_codes['float'] 
+        if (val_type == SHP_FIELD_CODES[float] 
             and 'decimal' in fields[nice_key] ):
             fields[nice_key]['decimal'] = max(fields[nice_key]['decimal']
                                              ,dec_places_req(value) 
                                              )
         if val_type != fields[nice_key]['fieldType']:
             if (value in [0,1] #Python list. Discrete. Not math closed interval
-                and fields[nice_key]['fieldType'] == shp_field_codes['bool'] 
-                or (val_type == shp_field_codes['bool'] 
-                    and fields[nice_key]['fieldType'] == shp_field_codes['int'] 
+                and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[bool] 
+                or (val_type == SHP_FIELD_CODES[bool] 
+                    and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[int] 
                     and all( attribute_tables[i][nice_key] in [0,1] 
                              for i in attribute_tables
                            )
@@ -383,12 +267,12 @@ def ensure_correct(fields
                 # TODO:  Check options and rectify - flag as Bool for now 
                 #        (rest of loop will recheck others), 
                 #        or flag for recheck all at end
-            elif (val_type == shp_field_codes['float'] 
-                  and fields[nice_key]['fieldType'] == shp_field_codes['int']):
-                fields[nice_key]['fieldType'] = shp_field_codes['float']
+            elif (val_type == SHP_FIELD_CODES[float] 
+                  and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[int]):
+                fields[nice_key]['fieldType'] = SHP_FIELD_CODES[float]
                 fields[nice_key]['decimal'] = dec_places_req(value)
             else:
-                fields[nice_key]['fieldType'] = shp_field_codes['str']
+                fields[nice_key]['fieldType'] = SHP_FIELD_CODES[str]
                 #logger.error('Type mismatch in same field.  Cannot store ' 
                 #            +str(value) + ' as .shp record type ' 
                 #            + fields[nice_key]['fieldType']
@@ -410,7 +294,7 @@ def ensure_correct(fields
         # in fields.  If we wanted to rename it in the shape file to
         # something different than the dictionary key then this is a neat way 
         # of doing so.
-        if val_type == shp_field_codes['float']:
+        if val_type == SHP_FIELD_CODES[float]:
             fields[nice_key]['decimal'] = dec_places_req(value)    
     # Mutates fields.  Nothing returned.
 
@@ -426,7 +310,8 @@ class WriteIterableToShpOptions(object):
 
 
 def write_iterable_to_shp(my_iterable 
-                         ,shp_file_path 
+                         ,shp_file_path
+                         ,is_shape 
                          ,shape_mangler
                          ,shape_IDer # to make dict key
                          ,key_finder
@@ -438,6 +323,7 @@ def write_iterable_to_shp(my_iterable
                          ):
     #type(type[Iterable]
     #    ,str
+    #    ,function
     #    ,function
     #    ,function
     #    ,function
@@ -485,7 +371,7 @@ def write_iterable_to_shp(my_iterable
             + options.extra_chars)
 
     fields = OrderedDict( {options.uuid_field 
-                                : dict(fieldType = shp_field_codes['str']
+                                : dict(fieldType = SHP_FIELD_CODES[str]
                                       ,size = (options.uuid_length
                                               +max(0, options.extra_chars)
                                               )
@@ -520,13 +406,13 @@ def write_iterable_to_shp(my_iterable
                         fields[nice_key] = dict(size = max_size
                                                ,fieldType = val_type
                                                ) 
-                        if val_type == shp_field_codes['float']:
+                        if val_type == SHP_FIELD_CODES[float]:
                             fields[nice_key]['decimal'] = options.num_dp
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
     else:
         for name in field_names:
             fields[name] = dict(size = max_size
-                               ,fieldType = shp_field_codes['str']
+                               ,fieldType = SHP_FIELD_CODES[str]
                                )
         #TODO setup basic fields dict from list without looping over my_iterable        
 
@@ -599,24 +485,9 @@ def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions)
     
     return fields, recs, shapes, bbox
 
-def add_objs_to_group(objs, group_name):
-    #type(list, str) -> int
-    return rs.AddObjectsToGroup(objs, group_name)  
 
-def make_group(group_name = None):
-    #type(str) -> str
-    return rs.AddGroup(group_name)
 
-def objs_maker_factory(
-       shp_type = 'POLYLINEZ'
-      #,make_new_group = make_group
-      #,add_objects_to_group = add_objs_to_group
-      ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
-      ):
-    #type(str, dict) -> function
-    rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
-    return rhino_obj_maker
-    # e.g. rhino_obj_maker = rs.AddPolyline
+
 
 
 class ShpOptions(CoerceAndGetCodeOptions
