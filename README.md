@@ -101,9 +101,10 @@ Advanced users may give sDNA_GH components different options to the others, by d
 
 ##### Support tools
 ###### Config (config)
-To guarantee your components are setup correctly, this component must run before all others when your .gh file is loaded.  To ensure this, select it and press `Ctrl` + `B` (or from the pull-down menu select `Edit` -> `Arrange` -> `Put To Back`) before saving.
-
 Loads custom user options and configuration files (`.toml`).  Saves options to a `.toml` file if go is true.  If a `.toml` file is specified in `save_to`, it is saved to.  Otherwise the default value of `save_to` is the installation-wide user options file.  One is created if it does not already exist.  This will overwrite existing files.
+
+If not using a `config.toml` file, then e.g. when using a config component to set true `auto_` options, to guarantee your components are setup correctly when reloading a saved `.gh` file, this component must run before all your others.  To ensure a component runs first, select it and press `Ctrl` + `B` (or from the pull-down menu select `Edit` -> `Arrange` -> `Put To Back`) before saving the `.gh` file.
+
 
 
 ###### Read_Geom (get_Geom)
