@@ -72,7 +72,7 @@ Any option in a component can be read by adding an Output Param and renaming it 
 To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
 
 ##### Logging options
-The logger is setup before Input Params are created on components, so to change the logging levels or to use a specific log file, `log_file_level`, `log_console_level`, `working_folder`, `logs_dir` or `log_file` must be set in an installation wide config.toml file, e.g. using a Config component.  Supported values for logging levels are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
+The logger file is created setup before Input Params are created on components, so `working_folder`, `logs_dir` or `log_file` must be set in an installation wide config.toml file, e.g. setting `go` to true on Config component, and restarting Rhino.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
  
 ###### Options override priority order
 1. The component input Param options override options in a project specific options file (`config`).  

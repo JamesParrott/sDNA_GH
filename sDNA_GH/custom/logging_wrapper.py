@@ -35,11 +35,18 @@ import logging
 import functools
 import inspect
 
+try:
+    basestring #type: ignore
+except NameError:
+    basestring = str
+
 class LoggingOptions(object):
     default_path = __file__
     working_folder = os.path.dirname(default_path)
     logger_name = 'root'
     log_file = __name__ + '.log'
+    log_file_mode = 'w'
+    log_file_encoding = 'utf-8'
     logs_dir = 'logs'
     log_file_level = 'DEBUG'
     log_console_level = 'INFO'
@@ -56,26 +63,36 @@ class LoggingOptions(object):
 formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 
 
-def add_custom_file_to_logger(logger
-                             ,custom = None
-                             ,options = LoggingOptions
-                             ):
-    custom_stream=logging.StreamHandler(custom)
-    custom_stream.setLevel(getattr(logging, options.log_custom_level))
-    custom_stream.setFormatter(logging.Formatter(options.log_fmt_str))
-    logger.addHandler(custom_stream)
+def add_stream_handler_to_logger(logger
+                                ,stream = None
+                                ,options = LoggingOptions
+                                ):
+    stream_handler=logging.StreamHandler(stream)
+    stream_handler.setLevel(getattr(logging, options.log_custom_level))
+    stream_handler.setFormatter(logging.Formatter(options.log_fmt_str))
+    logger.addHandler(stream_handler)
+    return stream_handler
 
-
+def set_handler_level(handler, level):
+    #type(logging.Handler, str/int) -> None
+    if isinstance(level, basestring):
+        level = level.upper()
+        if not hasattr(logging, level):
+            raise ValueError('Unsupported logging level: %s' % level)
+        level = getattr(logging, level)
+    if isinstance(handler, logging.Handler) and handler.level != level:
+        # allow custom numeric levels
+        handler.setLevel(level) 
 
 
 ####################################################################################
 #
 # Core functionality from the python.org logging cookbook
 #
-def new_Logger(custom = None
+def new_Logger(stream = None
               ,options = LoggingOptions
               ):
-    # type : (type[any]/namedtuple, stream, str) -> Logger
+    # type : (type[any]/namedtuple, stream, str) -> logging.Logger, logging.Handler, logging.Handler, logging.Handler
     # stream is any'file-like object' supporting write() and flush() methods
     """ Wrapper for Vinay Sajip's logger recipe with customisable
         console output, configured via options in a class/namedtuple 
@@ -88,33 +105,34 @@ def new_Logger(custom = None
 
     file_name = os.path.join(dir_name, options.log_file)
 
-    # ensure logging levels are in all capital letters.
+    file_handler = logging.FileHandler(filename = file_name
+                                      ,mode = options.log_file_mode
+                                      ,encoding = options.log_file_encoding
+                                      )
     file_logging_level = options.log_file_level.upper()
+    set_handler_level(file_handler, file_logging_level)
+    log_file_formatter = logging.Formatter(format = options.log_fmt_str
+                                          ,datefmt = options.log_date_fmt
+                                          )
+    file_handler.setFormatter(log_file_formatter)
+
+    # writes to stderr
     console_logging_level = options.log_console_level.upper()
-
-    logging.basicConfig( level = getattr(logging, file_logging_level)
-                       ,format = options.log_fmt_str
-                       ,datefmt = options.log_date_fmt
-                       ,filename = file_name
-                       ,filemode = 'w'
-                       )
-
-    file_handler = None #TODO
-
-    # define a Handler which writes to the sys.stderr
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(getattr(logging, console_logging_level))
+    console_handler = logging.StreamHandler(sys.stdout)
+    set_handler_level(console_handler, console_logging_level)
+    console_file_formatter = logging.Formatter(format = options.log_fmt_str)
+    console_handler.setFormatter(console_file_formatter)
     
-    # specify handler format
-    console.setFormatter(logging.Formatter(options.log_fmt_str))
-    
-    # add the handler to the new_logger
-    new_logger = logging.getLogger(options.logger_name)
-    new_logger.addHandler(console)
+    logger = logging.getLogger(options.logger_name)
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
 
-    if custom:            
-        add_custom_file_to_logger(new_logger, custom, options)
-    return new_logger, file_handler, console, custom 
+    if stream:            
+        stream_handler = add_stream_handler_to_logger(logger, stream, options)
+    else:
+        stream_handler = None
+    
+    return logger, file_handler, console_handler, stream_handler 
 #
 ####################################################################################
 

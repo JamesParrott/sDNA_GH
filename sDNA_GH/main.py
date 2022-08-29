@@ -656,7 +656,7 @@ else:
     # (or access it via Grasshopper's cache in sys.modules) but
     # all their loggers are children of this module's logger:
     logger, log_file_handler, console_log_handler, _ = logging_wrapper.new_Logger(
-                                               custom = None
+                                               stream = None
                                               ,options = module_opts['options']
                                               ) 
 
@@ -1053,11 +1053,14 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         kwargs['opts'] = self.opts
         kwargs['l_metas'] = self.local_metas
 
-        console_logging_level = self.opts['options'].log_console_level.upper()
-        console_log_handler.setLevel(getattr(logging_wrapper.logging
-                                            ,console_logging_level
-                                            )
-                                    )
+        for handler, level in ((console_log_handler
+                               ,self.opts['options'].log_console_level
+                               )
+                              ,(log_file_handler
+                               ,self.opts['options'].log_file_level
+                               )
+                              ):
+            logging_wrapper.set_handler_level(handler, level)
 
 
         logger.debug('Opts overridden....    ')
