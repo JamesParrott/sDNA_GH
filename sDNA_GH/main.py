@@ -272,7 +272,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Overrides for RhinoObjectsReader
     #
     selected = False
-    layer = None
+    layer = ''
     merge_subdicts = True
     #
     #

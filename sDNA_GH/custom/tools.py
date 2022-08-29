@@ -698,8 +698,8 @@ def import_sDNA(opts
         logger.error(msg)
         raise ImportError(msg)
     opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
-                                                ,run_sDNA = run_sDNA 
-                                                ) 
+                                              ,run_sDNA = run_sDNA 
+                                              ) 
     # we want to mutate the value in the original dict 
     # - so we can't use options for this assignment.  Latter for clarity.
     return None
