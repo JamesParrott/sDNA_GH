@@ -209,7 +209,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
             ,'aae5eb82-a28b-4ae0-99db-03b76ebd86c0'
             ]
 
-    opts = main.default_options
+    opts = main.DEFAULT_OPTIONS
 
     #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
 

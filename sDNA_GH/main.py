@@ -80,7 +80,7 @@ output = launcher.Output()
 # from a class, to avoid re-stating the order of the keys, and to run other
 # code too (e.g. checks, validations and assertions).
 
-default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
+DEFAULT_NAME_MAP = OrderedDict([('Read_Geom', 'get_Geom')
                                ,('Read_Usertext', 'read_User_Text')
                                ,('Write_Shp', 'write_shapefile')
                                ,('Read_Shp', 'read_shapefile')
@@ -103,15 +103,16 @@ default_name_map = OrderedDict([('Read_Geom', 'get_Geom')
                                ]
                               )
 
-language_code = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
+LANGUAGE_CODE = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
 
-if 'en' in language_code and 'us' in language_code:
+if 'en' in LANGUAGE_CODE and 'us' in LANGUAGE_CODE:
     Recolour = 'Recolor'
 else:
     Recolour = 'Recolour'
 
 
-default_name_map[Recolour+'_Objects'] = 'recolour_objects'
+DEFAULT_NAME_MAP[Recolour+'_Objects'] = 'recolour_objects' #Dynamic calculation
+                                                           # of constant's value
 
 
 class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
@@ -145,7 +146,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
     #
 
 
-    name_map = default_name_map.copy()
+    name_map = DEFAULT_NAME_MAP.copy()
                    # Long names for some Rhino installs that use component Name not Nickname
                    # (these can be removed if the components are all rebuilt s.t. name == nickname) 
     name_map.update(OrderedDict([('Read Rhino geometry', 'get_Geom')
@@ -193,7 +194,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
 #######################################################################################################################
 
 
-file_to_work_from = checkers.get_path(fallback = __file__)
+FILE_TO_WORK_FROM = checkers.get_path(fallback = __file__)
 
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.RhinoObjectsReader.Options
@@ -230,7 +231,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for .custom.logging_wrapper
     #
-    path = file_to_work_from
+    path = FILE_TO_WORK_FROM
     # Also used by ShapefileWriter, ShapefileReader
     working_folder = os.path.dirname(path)
     logger_name = package_name
@@ -423,16 +424,17 @@ class HardcodedLocalMetas(object):
 
 namedtuple_from_class = options_manager.namedtuple_from_class
 
-default_metas = namedtuple_from_class(HardcodedMetas, 'Metas')
-default_options = namedtuple_from_class(HardcodedOptions, 'Options')
-default_local_metas = namedtuple_from_class(HardcodedLocalMetas, 'LocalMetas')
+DEFAULT_METAS = namedtuple_from_class(HardcodedMetas, 'Metas')
+DEFAULT_OPTIONS = namedtuple_from_class(HardcodedOptions, 'Options')
+DEFAULT_LOCAL_METAS = namedtuple_from_class(HardcodedLocalMetas, 'LocalMetas')
 
-empty_NT = namedtuple('Empty','')(**{})
+EMPTY_NT = namedtuple('Empty','')(**{})
 
-module_opts = OrderedDict(metas = default_metas
-                         ,options = default_options
-                         )                
-           
+DEFAULT_OPTS = OrderedDict(metas = DEFAULT_METAS
+                          ,options = DEFAULT_OPTIONS
+                          )                
+
+module_opts = DEFAULT_OPTS.copy()           
 
 output.debug(module_opts['options'].message)
 
@@ -449,8 +451,8 @@ override_namedtuple = options_manager.override_namedtuple
 def override_all_opts(args_dict
                      ,local_opts # mutated
                      ,external_opts
-                     ,local_metas = default_local_metas
-                     ,external_local_metas = empty_NT
+                     ,local_metas = DEFAULT_LOCAL_METAS
+                     ,external_local_metas = EMPTY_NT
                      ):
     #type(dict, dict, dict, namedtuple, namedtuple) -> namedtuple
     """    
@@ -548,7 +550,8 @@ def override_all_opts(args_dict
 
     output.debug('external_opts == %s' % external_opts)
 
-    overrides = [external_opts
+    overrides = [DEFAULT_OPTS
+                ,external_opts
                 ,config_toml_dict
                 ,OrderedDict((key, val )
                              for (key, val) in args_dict.items() 
@@ -565,7 +568,7 @@ def override_all_opts(args_dict
     if ((not local_metas.synced and local_metas.read_only) 
         and dict_to_update is not module_opts):
         #
-        overrides.insert(0, module_opts.copy())
+        overrides.insert(1, module_opts.copy())
 
     metas_overrides = map(lambda x : x.pop('metas', x), overrides)
 
@@ -594,9 +597,9 @@ def override_all_opts(args_dict
 # hardcoded defaults above under config.
 #
 
-if os.path.isfile(default_metas.config):
+if os.path.isfile(DEFAULT_METAS.config):
     #logger.debug('Before override: message == '+opts['options'].message)
-    override_all_opts(args_dict = dict(config = default_metas.config)
+    override_all_opts(args_dict = dict(config = DEFAULT_METAS.config)
                      # to get installation config.toml only once, for this call
                      ,local_opts = module_opts #  mutates opts
                      ,external_opts = {}  
@@ -607,7 +610,7 @@ if os.path.isfile(default_metas.config):
           + module_opts['options'].message
           )
 else:
-    output.warning('Config file: %s not found. ' % default_metas.config 
+    output.warning('Config file: %s not found. ' % DEFAULT_METAS.config 
                   +'If no sDNA install or Python is automatically found (or to '
                   +'choose a different one), or to create an options file '
                   +' please place a Config component.  '
@@ -713,9 +716,9 @@ do_not_remove = ('out'   # TODO: Removing Params has proved to be a
                 )
 
 #
-do_not_remove += default_metas._fields
-do_not_remove += default_options._fields
-do_not_remove += default_local_metas._fields
+do_not_remove += DEFAULT_METAS._fields
+do_not_remove += DEFAULT_OPTIONS._fields
+do_not_remove += DEFAULT_LOCAL_METAS._fields
 ######################################################################
 
 
@@ -763,7 +766,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     """
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
-    local_metas = default_local_metas   # immutable.  controls syncing /
+    local_metas = DEFAULT_LOCAL_METAS   # immutable.  controls syncing /
                                         # de-syncing / read / write of the
                                         # above (opts).
                                         # Although local, it can be set on 
@@ -996,9 +999,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 
         external_local_metas = smart_comp.first_item_if_seq(kwargs.pop('local_metas'
-                                                                 ,empty_NT
+                                                                 ,EMPTY_NT
                                                                  )
-                                                      ,empty_NT
+                                                      ,EMPTY_NT
                                                       )
         logger.debug(external_opts)
 
