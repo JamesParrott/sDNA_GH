@@ -118,13 +118,13 @@ DEFAULT_NAME_MAP[Recolour+'_Objects'] = 'recolour_objects' #Dynamic calculation
 class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                     ,tools.ConfigManager.Metas # has config.toml path
                     ): 
+    # config from 
     add_new_opts = False
     cmpnts_change = False
     strict = True
     check_types = True
     sDNAUISpec = 'sDNAUISpec'  #Names of sDNA modules to import
-                               # The actual modules will be loaded into
-                               # options.sDNAUISpec and options.run_sDNA 
+
     runsdnacommand = 'runsdnacommand' # only used for .map_to_string. 
                             # Kept in case we use work out how
                             # to run runsdnacommand.runsdnacommand in future 
@@ -191,7 +191,28 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
     move_user_objects = False
 
 
-#######################################################################################################################
+#######################################################################################
+if (not isinstance(HardcodedMetas.config, basestring) 
+    or not os.path.isfile(HardcodedMetas.config)):
+    output.warning('Config file: %s not found. ' % HardcodedMetas.config 
+                +'If no sDNA install or Python is automatically found (or to '
+                +'choose a different one), or to create an options file '
+                +' please place a Config component.  '
+                +'To use sDNA_GH with a specific sDNA installation, firstly '
+                +'ensure sDNA_paths contains only your sDNA folder, and secondly set '
+                +'sdnauispec and runsdnacommand to the names of the sdnauispec.py and '
+                +'runsdnacommand.py files respectively (to use more than one sDNA you '
+                +'must rename these files in any extra versions).  '
+                +'To use sDNA_GH with a specific python.exe, set python to its path or '
+                +'to search for it ensure python_exes only '
+                +'contains its name, and python_paths only contains the path of its '
+                +' folder.  '
+                +'To save these and any other options, set go to true on the Config '
+                +'component. '
+                +'If no project options file is specified in save_to, an '
+                +'installation wide options file (config.toml) will be created. '
+                )  
+#######################################################################################
 
 
 FILE_TO_WORK_FROM = checkers.get_path(fallback = __file__)
@@ -244,26 +265,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     # Overrides for tools.sDNA_ToolWrapper
     #
-    sDNAUISpec = options_manager.error_raising_sentinel_factory(
-                                                'No sDNA module: '
-                                               +'sDNAUISpec loaded yet. '
-                                               ,'Module is loaded from the '
-                                               +'first files named in '
-                                               +'metas.sDNAUISpec and '
-                                               +'metas.runsdnacommand both '
-                                               +'found in a path in '
-                                               +'metas.sDNA_paths. '
-                                               )
-    run_sDNA = options_manager.error_raising_sentinel_factory(
-                                                'No sDNA module: '
-                                               +'run_sDNA loaded yet. '
-                                               ,'Module is loaded from the '
-                                               +'first files named in '
-                                               +'metas.sDNAUISpec and '
-                                               +'metas.runsdnacommand both '
-                                               +'found in a path in '
-                                               +'metas.sDNA_paths. '
-                                               )
     prepped_fmt = '{name}_prepped'
     output_fmt = '{name}_output'   
     del_after_sDNA = True
@@ -410,16 +411,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
 
 class HardcodedLocalMetas(object):
-    synced = True    
+    sync = True    
     read_only = True
-    nick_name = options_manager.error_raising_sentinel_factory('Nick name has '
-                                              +'not been read '
-                                              +'from component yet! '
-                                              ,'nick_name will automatically '
-                                              +'be updated on each component.'
-                                              )
-
-
+    no_state = True
 
 
 namedtuple_from_class = options_manager.namedtuple_from_class
@@ -448,13 +442,13 @@ output.debug(module_opts['options'].message)
 #
 override_namedtuple = options_manager.override_namedtuple
 #
-def override_all_opts(args_dict
-                     ,local_opts # mutated
-                     ,external_opts
+def override_all_opts(local_opts #  mutated
+                     ,overrides
+                     ,args_dict
                      ,local_metas = DEFAULT_LOCAL_METAS
                      ,external_local_metas = EMPTY_NT
                      ):
-    #type(dict, dict, dict, namedtuple, namedtuple) -> namedtuple
+    #type(dict, list, dict, namedtuple, namedtuple) -> dict, namedtuple
     """    
     The options override function for sDNA_GH.  
 
@@ -471,11 +465,11 @@ def override_all_opts(args_dict
     5) The named tuple Local metas will be overridden with external_local_metas 
        if present, and is returned.
     
-    Mutates: Local_opts
-    Returns: local_metas
+    Mutates: local_opts
+    Returns: local_metas, local_opts
     """
 
-    config_toml_dict = {}
+    metas = local_opts['metas']
 
     args_dict = OrderedDict((key, value) 
                             for key, value in args_dict.items() 
@@ -483,113 +477,95 @@ def override_all_opts(args_dict
                            )
 
 
+
+
+    project_file_opts = {}
     if (args_dict and 
         'config' in args_dict and 
         isinstance(args_dict['config'], basestring)):
         #
-        if os.path.isfile(args_dict['config']): 
-            path = args_dict['config']
-            file_ext = os.path.splitext(path)[1]
-            if file_ext == '.toml':
-                output.debug('Loading options from .toml file: %s' % path)
-                config_toml_dict =  options_manager.load_toml_file( path )
-            else:
-                output.debug('config_toml_dict = %s' % config_toml_dict)
-        else:
-            msg = ('config in args_dict == %s ' % args_dict['config']
-                  +' needs to be an existing .toml file'
-                  )
-            output.error(msg)
-            raise ValueError(msg)
-
+        project_file_opts = options_manager.dict_from_toml_file(args_dict['config'])
     else:
         msg = 'No config specified in args_dict'
         output.debug(msg + ' == %s' % args_dict.keys())
-        file_ext = msg
 
-
-    ###########################################################################
-    #
-    # Ensure we don't overwrite a component's nick_name with another's, or 
-    # with a nick_name from config.toml (sDNAgeneral components change a 
-    # separate local variable to an Input Param, after it was 
-    # initialised to this local_meta)
-    #
 
     ext_local_metas_dict = external_local_metas._asdict()
-    if 'nick_name' in ext_local_metas_dict:
-        ext_local_metas_dict.pop('nick_name')
 
-    if file_ext == '.toml' and isinstance(config_toml_dict, dict):
-            config_toml_dict.get('local_metas', {}).pop('nick_name', None)
-
-    if 'nick_name' in args_dict:
-        args_dict.pop('nick_name')
+    old_sync = local_metas.sync
 
     ###########################################################################
     # Update syncing / de-syncing controls in local_metas
     #
-    local_metas_overrides_list = [ext_local_metas_dict
-                                 ,config_toml_dict.get('local_metas',{}) 
-                                                    # 'nick_name' removed above
-                                 ,args_dict
-                                 ]
+    local_metas_overrides_list = [ext_local_metas_dict]
+    local_metas_overrides_list += [override_['local_metas'] 
+                                   for override_ in overrides
+                                   if 'local_metas' in override_
+                                  ]
+    local_metas_overrides_list += [project_file_opts.get('local_metas',{})
+                                  ,args_dict
+                                  ]
+
     local_metas = override_namedtuple(local_metas
                                      ,local_metas_overrides_list
-                                     ,**local_opts['metas']._asdict()
-
+                                     ,**metas._asdict()
                                      ) 
+
+
     ###########################################################################
 
-    if local_metas.synced:
-        dict_to_update = module_opts # the opts in this module's global scope, 
-                                     # outside this function
-    else:
-        dict_to_update = local_opts
 
+    output.debug('overrides == %s' % overrides)
 
-    output.debug('external_opts == %s' % external_opts)
-
-    overrides = [DEFAULT_OPTS
-                ,external_opts
-                ,config_toml_dict
-                ,OrderedDict((key, val )
-                             for (key, val) in args_dict.items() 
-                             if val is not None
-                            )
-                ]            
+    overrides += [project_file_opts, args_dict]
 
     output.debug('overrides == %s' 
                 % [override_.keys() for override_ in overrides]
                 )
 
 
+    if local_metas.sync:
+        local_opts = module_opts
+    else:
+        if old_sync:  #Desynchronise
+            local_opts = module_opts.copy()
+        elif local_metas.read_only: #externally imposed state
+            overrides = [module_opts] + overrides
 
-    if ((not local_metas.synced and local_metas.read_only) 
-        and dict_to_update is not module_opts):
-        #
-        overrides.insert(1, module_opts.copy())
+        if local_metas.no_state:
+            local_opts = {}
+            if not local_metas.read_only: #makes no odds; just unnecessary
+                installation_opts = options_manager.dict_from_toml_file(metas.config)
+                overrides = [DEFAULT_OPTS, installation_opts] + overrides
+
+
+
+
+
+            
+
+
 
     metas_overrides = map(lambda x : x.pop('metas', x), overrides)
 
-    dict_to_update['metas'] = options_manager.override_namedtuple(
-                                        dict_to_update['metas']
-                                       ,metas_overrides
-                                       ,**local_opts['metas']._asdict()
-                                       )
+    metas = local_opts['metas'] = options_manager.override_namedtuple(
+                                                            local_opts['metas']
+                                                           ,metas_overrides
+                                                           ,**metas._asdict()
+                                                           )
 
     for override in overrides:
-        tools.update_opts(current_opts = dict_to_update
+        tools.update_opts(current_opts = local_opts
                          ,override = override
-                         ,metas = dict_to_update['metas']
+                         ,metas = metas
                          )
         output.debug('override.keys() == %s' % override.keys())
-        output.debug('dict_to_update.keys() == %s' % dict_to_update.keys())
+        output.debug('local_opts.keys() == %s' % local_opts.keys())
 
 
-    #output.debug('dict_to_update (opts) == %s' % dict_to_update)
+    #output.debug('local_opts (opts) == %s' % local_opts)
 
-    return local_metas
+    return local_opts, local_metas
 
 ##############################################################################
 # First options options_manager.override, reading the
@@ -598,17 +574,19 @@ def override_all_opts(args_dict
 #
 
 if os.path.isfile(DEFAULT_METAS.config):
-    #logger.debug('Before override: message == '+opts['options'].message)
-    override_all_opts(args_dict = dict(config = DEFAULT_METAS.config)
-                     # to get installation config.toml only once, for this call
-                     ,local_opts = module_opts #  mutates opts
-                     ,external_opts = {}  
-                     ) 
+    #output.debug('Before override: message == %s' % opts['options'].message)
+    installation_opts = options_manager.dict_from_toml_file(DEFAULT_METAS.config)
+
+    module_opts, setup_default_local_metas = override_all_opts(
+                                 local_opts = module_opts #  mutated
+                                ,overrides = [installation_opts]
+                                ,args_dict = {}  
+                                )
     output.debug(module_opts)
 
-    output.debug("After override: opts['options'].message == " 
-          + module_opts['options'].message
-          )
+    output.debug("After override: opts['options'].message == %s" 
+                % module_opts['options'].message
+                )
 else:
     output.warning('Config file: %s not found. ' % DEFAULT_METAS.config 
                   +'If no sDNA install or Python is automatically found (or to '
@@ -751,7 +729,8 @@ def cache_sDNA_tool(compnt # instead of self
     tools_dict[nick_name] =  sDNA_tool
     sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
                                 # sDNA_ToolWrapper.update_tool_opts_and_syntax
-    compnt.do_not_remove += tuple(sDNA_tool.defaults.keys())  
+    compnt.do_not_remove += tuple(sDNA_tool.defaults.keys()) 
+    compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
 
             
 
@@ -766,16 +745,16 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     """
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
-    local_metas = DEFAULT_LOCAL_METAS   # immutable.  controls syncing /
-                                        # de-syncing / read / write of the
-                                        # above (opts).
-                                        # Although local, it can be set on 
-                                        # groups of components using the 
-                                        # default section of a project 
-                                        # config.toml, or passed as a
-                                        # Grasshopper parameter between
-                                        # components.
-
+    local_metas = setup_default_local_metas   # immutable.  controls syncing /
+                                              # de-syncing / read / write of the
+                                              # above (opts).
+                                              # Although local, it can be set on 
+                                              # groups of components using the 
+                                              # default section of a project 
+                                              # config.toml, or passed as a
+                                              # Grasshopper parameter between
+                                              # components.
+    tools_default_opts = {}
     #sDNA_GH_path = sDNA_GH_path
     #sDNA_GH_package = sDNA_GH_package
     do_not_remove = do_not_remove
@@ -910,7 +889,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         #type(type[any], str) -> type[any]
 
         if nick_name is None:
-            nick_name = self.local_metas.nick_name
+            nick_name = self.nick_name
 
         tools = name_mapper.tool_factory(inst = self
                                         ,nick_name = nick_name
@@ -947,18 +926,18 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             # Attributes attribute yet (ghenv.Component can be used instead).
             logger.debug('new_name == %s' % new_name)
 
-        if ( (isinstance(self.local_metas.nick_name, options_manager.Sentinel)) 
+        if ( (isinstance(self.nick_name, options_manager.Sentinel)) 
               or (self.opts['metas'].cmpnts_change 
-                  and self.local_metas.nick_name != new_name )):  
+                  and self.nick_name != new_name )):  
             #
-            self.local_metas = self.local_metas._replace(nick_name = new_name)
-            self.logger = logger.getChild(self.local_metas.nick_name)
+            self.nick_name = new_name
+            self.logger = logger.getChild(self.nick_name)
 
             logger.info(' Component nick name changed to : ' 
-                       +self.local_metas.nick_name
+                       +self.nick_name
                        )
             return 'Name updated'
-        logger.debug('Old name kept == %s' % self.local_metas.nick_name)
+        logger.debug('Old name kept == %s' % self.nick_name)
 
         return 'Old name kept'
 
@@ -1010,7 +989,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
         result = self.try_to_update_nick_name()
-        nick_name = self.local_metas.nick_name
+        nick_name = self.nick_name
 
         if result == 'Name updated': # True 1st run after __init__
             if (nick_name.lower()
@@ -1042,13 +1021,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     
         logger.info('Tools == %s ' % self.tools)
 
-        synced = self.local_metas.synced
+        sync = self.local_metas.sync
         #######################################################################
         logger.debug('kwargs.keys() == %s ' % kwargs.keys())
-        self.local_metas = override_all_opts(
-                                 args_dict = kwargs
-                                ,local_opts = self.opts # mutated
-                                ,external_opts = external_opts 
+        self.opts, self.local_metas = override_all_opts(
+                                 local_opts = self.opts # mutated
+                                ,overrides = [self.defaults, external_opts]
+                                ,args_dict = kwargs
                                 ,local_metas = self.local_metas 
                                 ,external_local_metas = external_local_metas
                                 )
@@ -1078,8 +1057,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if self.metas.cmpnts_change: 
             
-            if self.local_metas.synced != synced:
-                if self.local_metas.synced:
+            if self.local_metas.sync != sync:
+                if self.local_metas.sync:
                     self.opts = module_opts #re-sync
                 else:
                     self.opts = self.opts.copy() #de-sync
@@ -1202,10 +1181,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
             tool_opts = self.opts
-            nick_name = self.local_metas.nick_name
             sDNA = self.opts['metas'].sDNA
-            if nick_name in self.opts:
-                tool_opts = self.opts[nick_name]
+            if self.nick_name in self.opts:
+                tool_opts = self.opts[self.nick_name]
                 if isinstance(tool_opts, dict):
                     tmp = {}
                     for tool_name in tool_opts:

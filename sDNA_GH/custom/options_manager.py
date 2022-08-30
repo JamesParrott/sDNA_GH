@@ -361,6 +361,20 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
     return toml.load(config_path, _dict = OrderedDict)
 
 
+def dict_from_toml_file(path):
+    #type (str) -> dict
+    """ If path is an existing toml file, returns load_toml_file(path). """
+    if not os.path.isfile(path) or os.path.splitext(path)[1] != '.toml':
+        msg = ('config in args_dict == %s ' % path
+                +' needs to be an existing .toml file'
+                )
+        logger.error(msg)
+        raise ValueError(msg)
+    logger.debug('Loading .toml file: %s' % path)
+    return load_toml_file( path )
+
+
+
 override_funcs_dict = {  dict : override_namedtuple_with_dict  }
 
 

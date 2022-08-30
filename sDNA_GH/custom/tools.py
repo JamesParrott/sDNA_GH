@@ -37,6 +37,7 @@ __author__ = 'James Parrott'
 __version__ = '0.10'
 
 import os
+import sys
 import abc
 import logging
 import subprocess
@@ -489,7 +490,7 @@ def update_opts(current_opts
 
     logger.debug('depth == %s' % depth)
     if not isinstance(current_opts, dict) or not isinstance(override, dict):
-        msg = ('opts and override need to be dictionaries. '
+        msg = ('opts and override both need to be dictionaries. '
               +'depth == %s' % depth
               )
         logger.error(msg)
@@ -628,13 +629,11 @@ def import_sDNA(opts
     # If they are loaded successfully the actual corresponding modules are
     # in options.sDNAUISpec and options.run_sDNA
 
-    if ( metas.sDNA is not None and
-         not isinstance(options.sDNAUISpec, options_manager.Sentinel) and
-         not isinstance(options.run_sDNA, options_manager.Sentinel) and
-         (options.sDNAUISpec.__name__
-                    ,options.run_sDNA.__name__) == requested_sDNA ):
-        #
-        return None
+
+    if requested_sDNA[0] in sys.modules and requested_sDNA[1] in sys.modules:
+        sDNAUISpec = sys.modules[requested_sDNA[0]]
+        run_sDNA = sys.modules[requested_sDNA[1]]
+        return sDNAUISpec, run_sDNA
 
     logger.info('Attempting import of sDNA '
                +'(sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA
@@ -697,12 +696,7 @@ def import_sDNA(opts
                 )
         logger.error(msg)
         raise ImportError(msg)
-    opts['options'] = opts['options']._replace(sDNAUISpec = sDNAUISpec
-                                              ,run_sDNA = run_sDNA 
-                                              ) 
-    # we want to mutate the value in the original dict 
-    # - so we can't use options for this assignment.  Latter for clarity.
-    return None
+    return sDNAUISpec, run_sDNA
 
 
 default_user_objects_location = os.path.join(launcher.USER_INSTALLATION_FOLDER
@@ -854,6 +848,27 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     is looked up in opts['metas'], from its args. 
     """
     
+    sDNAUISpec = options_manager.error_raising_sentinel_factory(
+                                                'No sDNA module: '
+                                               +'sDNAUISpec loaded yet. '
+                                               ,'Module is loaded from the '
+                                               +'first files named in '
+                                               +'metas.sDNAUISpec and '
+                                               +'metas.runsdnacommand both '
+                                               +'found in a path in '
+                                               +'metas.sDNA_paths. '
+                                               )
+    run_sDNA = options_manager.error_raising_sentinel_factory(
+                                                'No sDNA module: '
+                                               +'run_sDNA loaded yet. '
+                                               ,'Module is loaded from the '
+                                               +'first files named in '
+                                               +'metas.sDNAUISpec and '
+                                               +'metas.runsdnacommand both '
+                                               +'found in a path in '
+                                               +'metas.sDNA_paths. '
+                                               )
+
     sDNA_types_to_py_type_names = dict(fc = 'file'
                                       ,ofc = 'file'
                                       ,bool = 'bool'
@@ -882,8 +897,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     class Options(InputFileDeletionOptions
                  ,OutputFileDeletionOptions
                  ):
-        sDNAUISpec = options_manager.Sentinel('Module not imported yet')
-        run_sDNA = options_manager.Sentinel('Module not imported yet')
         prepped_fmt = "{name}_prepped"
         output_fmt = "{name}_output"
         overwrite_shp = pyshp_wrapper.ShpOptions.overwrite_shp
@@ -921,26 +934,26 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if sDNA_key(opts) != opts['metas'].sDNA:
             # Do the sDNA modules in the opts need updating?
-            self.import_sDNA(opts, logger = self.logger)
-            opts['metas'] = opts['metas']._replace(sDNA = sDNA_key(opts))
+            self.sDNAUISpec, self.run_sDNA = self.import_sDNA(
+                                                         opts
+                                                        ,logger = self.logger
+                                                        )
+
+            sDNA = sDNA_key(opts)
+            opts['metas'] = opts['metas']._replace(sDNA = sDNA)
+            self.sDNA = sDNA
 
 
-        metas = opts['metas']
-        self.sDNA = sDNA = metas.sDNA
-
-        sDNAUISpec = opts['options'].sDNAUISpec # module
-        run_sDNA_command = opts['options'].run_sDNA # module
-
-
+        sDNA = self.sDNA
 
 
         try:
-            sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
+            sDNA_Tool = getattr(self.sDNAUISpec, self.tool_name)()
         except AttributeError:
             msg =   ('No tool called '
                     +self.tool_name
                     +' found in '
-                    +sDNAUISpec.__file__
+                    +self.sDNAUISpec.__file__
                     +'.  Rename tool_name or change sDNA version.  '
                     )
             self.logger.error(msg)
@@ -948,7 +961,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                             
         self.input_spec = sDNA_Tool.getInputSpec()
         self.get_syntax = sDNA_Tool.getSyntax
-        self.run_sDNA_command = run_sDNA_command     
 
         self.defaults = OrderedDict((tuple_[0], tuple_[4]) 
                                     for tuple_ in self.input_spec
@@ -961,14 +973,23 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                                           ,NT_name = nt_name
                                                           )
 
+        self.default_tool_opts = OrderedDict()
+        self.get_tool_opts(opts = self.default_tool_opts)
+        # This feels weird, but minor repetition below, 
+        # is a lot easier than a deep copy / clone.
+
         default_tool_opts = OrderedDict()
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
         self.get_tool_opts(opts = default_tool_opts)
         self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
 
+        self.default_tool_opts = default_tool_opts.copy()
+
         update_opts(current_opts = default_tool_opts # mutated
-                   ,override = opts 
+                   ,override = opts # in case opts for this tool were already
+                                    # loaded before it was first placed, 
+                                    # e.g. loaded from a file or Param
                    )
         #override default tool opts with opts
 
@@ -1205,7 +1226,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.logger.debug('Advanced command string == %s' % advanced)
 
         syntax = self.get_syntax(input_args)
-        run_sDNA = self.run_sDNA_command
+        run_sDNA = self.run_sDNA
 
         f_name = output_file
 

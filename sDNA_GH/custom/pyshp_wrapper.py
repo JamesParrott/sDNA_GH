@@ -1,6 +1,5 @@
-#! /usr/bin/awk NR==3
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
-# This module requires Grasshopper Python (Rhino3D)
 
 # MIT License
 
@@ -30,8 +29,7 @@
 
 __author__ = 'James Parrott'
 __version__ = '0.10'
-""" Convenience wrappers to read and write .shp files from any iterable object
-    and to any function, within GhPython (Rhino3D).  
+""" Reads .shp files, and parses data and writes .shp files from any iterable.   
 """
 
 import os

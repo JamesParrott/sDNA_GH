@@ -99,11 +99,9 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                             )
 
 
-        tools.import_sDNA(opts
-                         ,logger = self.logger
-                         ) 
-
-        sDNAUISpec = opts['options'].sDNAUISpec
+        sDNAUISpec, _ = tools.import_sDNA(opts
+                                         ,logger = self.logger
+                                         ) 
 
         opts['options'] = opts['options']._replace(auto_get_Geom = False
                                                   ,auto_read_User_Text = False
