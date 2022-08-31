@@ -33,7 +33,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.10'
+__version__ = '0.11'
 
 
 from ghpythonlib.componentbase import executingcomponent as component
