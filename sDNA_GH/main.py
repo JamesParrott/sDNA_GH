@@ -429,6 +429,7 @@ DEFAULT_OPTS = OrderedDict(metas = DEFAULT_METAS
                           )                
 
 module_opts = DEFAULT_OPTS.copy()           
+setup_local_metas = DEFAULT_LOCAL_METAS
 
 output.debug(module_opts['options'].message)
 
@@ -439,8 +440,6 @@ output.debug(module_opts['options'].message)
 
 
 #########################################################################
-#
-override_namedtuple = options_manager.override_namedtuple
 #
 def override_all_opts(local_opts #  mutated
                      ,overrides
@@ -506,10 +505,10 @@ def override_all_opts(local_opts #  mutated
                                   ,args_dict
                                   ]
 
-    local_metas = override_namedtuple(local_metas
-                                     ,local_metas_overrides_list
-                                     ,**metas._asdict()
-                                     ) 
+    local_metas = options_manager.override_namedtuple(local_metas
+                                                     ,local_metas_overrides_list
+                                                     ,**metas._asdict()
+                                                     ) 
 
 
     ###########################################################################
@@ -570,7 +569,7 @@ if os.path.isfile(DEFAULT_METAS.config):
     #output.debug('Before override: message == %s' % opts['options'].message)
     installation_opts = options_manager.dict_from_toml_file(DEFAULT_METAS.config)
 
-    module_opts, setup_default_local_metas = override_all_opts(
+    module_opts, setup_local_metas = override_all_opts(
                                                  local_opts = module_opts
                                                 ,overrides = [installation_opts]
                                                 ,args_dict = {}  
@@ -738,7 +737,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     """
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
-    local_metas = setup_default_local_metas   # immutable.  controls syncing /
+    local_metas = setup_local_metas   # immutable.  controls syncing /
                                               # de-syncing / read / write of the
                                               # above (opts).
                                               # Although local, it can be set on 
@@ -751,7 +750,13 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     #sDNA_GH_path = sDNA_GH_path
     #sDNA_GH_package = sDNA_GH_package
     do_not_remove = do_not_remove
-    
+    nick_name = options_manager.error_raising_sentinel_factory('No name yet'
+                                                              ,'nick_name should'
+                                                              +'be set by '
+                                                              +'try_to_update_nick_name'
+                                                              )
+
+
     @property
     def metas(self):
         return self.opts['metas']

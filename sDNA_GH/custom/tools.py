@@ -627,7 +627,7 @@ def import_sDNA(opts
     # metas.sDNAUISpec and metas.runsdnacommand
 
     # If they are loaded successfully the actual corresponding modules are
-    # in options.sDNAUISpec and options.run_sDNA
+    # returned
 
 
     if requested_sDNA[0] in sys.modules and requested_sDNA[1] in sys.modules:
@@ -750,7 +750,8 @@ def build_missing_sDNA_components(opts
     metas = opts['metas']
     categories = metas.categories.copy()
 
-    sDNAUISpec = opts['options'].sDNAUISpec
+    sDNAUISpec, _ = import_sDNA(opts)
+    # = opts['options'].sDNAUISpec
 
     user_objects_location = kwargs.setdefault('user_objects_location'
                                              ,default_user_objects_location  
@@ -847,7 +848,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     self.tool_name.  When the instance is called, the version of sDNA
     is looked up in opts['metas'], from its args. 
     """
-    
+    sDNA = None
+
     sDNAUISpec = options_manager.error_raising_sentinel_factory(
                                                 'No sDNA module: '
                                                +'sDNAUISpec loaded yet. '
@@ -1109,11 +1111,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             opts = self.opts
 
         sDNA = opts['metas'].sDNA
-        sDNAUISpec = opts['options'].sDNAUISpec
 
 
 
-        if not hasattr(sDNAUISpec, self.tool_name): 
+        if not hasattr(self.sDNAUISpec, self.tool_name): 
             raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
         metas = opts['metas']
@@ -1226,20 +1227,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.logger.debug('Advanced command string == %s' % advanced)
 
         syntax = self.get_syntax(input_args)
-        run_sDNA = self.run_sDNA
 
         f_name = output_file
 
         command =   (metas.python
                     + ' -u ' 
                     + '"' 
-                    + os.path.join(  os.path.dirname(sDNAUISpec.__file__)
+                    + os.path.join(  os.path.dirname(self.sDNAUISpec.__file__)
                             ,'bin'
                             ,syntax['command'] + '.py'  
                             ) 
                     + '"'
-                    + ' --im ' + run_sDNA.map_to_string( syntax["inputs"] )
-                    + ' --om ' + run_sDNA.map_to_string( syntax["outputs"] )
+                    + ' --im ' + self.run_sDNA.map_to_string( syntax["inputs"] )
+                    + ' --om ' + self.run_sDNA.map_to_string( syntax["outputs"] )
                     + ' ' + syntax["config"]
                     )
         self.logger.info('sDNA command run = ' + command)
@@ -1784,7 +1784,8 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('gdm == %s ' % (gdm.items()[:4] + gdm.items()[-4:],))
 
-        self.logger.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
+        if len(recs) >= 1:
+            self.logger.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
 
         if not recs:
             self.logger.warning('No data read from Shapefile ' + f_name + ' ')

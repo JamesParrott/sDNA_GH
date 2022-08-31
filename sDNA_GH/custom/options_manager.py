@@ -472,19 +472,21 @@ def error_raising_sentinel_factory(warning
                                                  ,'dict' ,'new','metaclass'
                                                  ,'subclasshook','mro','bases'
                                                  ,'getattr','getattribute'
-                                                 ,'dir'
+                                                 ,'dir','isabstractmethod'
                                                  )
                                   ):
     #type(str, str, tuple, tuple) -> type[any]
-    def raise_error(*args):
-        raise ValueError(warning) 
+    def make_raise_error(name):
+        def raise_error(*args):
+            raise ValueError(warning + ' %s accessed' % name) 
+        return raise_error
     class NewSentinel(Sentinel):
         def __getattribute__(self, name):
             if name.strip('_') not in leave_alone:
-                return raise_error()
+                make_raise_error('__getattribute__ & %s'% name)()
             return object.__getattribute__(self, name)
-    for name in list(extra_dunders):
+    for name in extra_dunders:
         if name not in leave_alone:
-            setattr(NewSentinel, '__' + name + '__', raise_error)
+            setattr(NewSentinel, '__%s__' % name, make_raise_error(name))
         
     return NewSentinel(message)

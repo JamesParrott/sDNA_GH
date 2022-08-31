@@ -261,7 +261,7 @@ class InclusiveInterval:
         self.num_data_points = num_data_points
 
     def __repr__(self):
-        str_ = 'InclusiveInterval(a = %s, i_a = %s, b = %s, i_b = %s, num_data_points = %s'
+        str_ = 'InclusiveInterval(a = %s, i_a = %s, b = %s, i_b = %s, num_data_points = %s)'
         str_ = str_ % (self.a, self.index_a, self.b, self.index_b, self.num_data_points)
         return str_
 
@@ -619,7 +619,7 @@ def pro_rata(n, N_1, N_2, tol = TOL):
     # N_1 + N_2 = N = n * m + r   0 <= r < n
     #N_1 = m*n_1 + r_1            0 <= r_1 < m
     #N_2 = m*n_2 + r_2            0 <= r_2 < m
-
+    logger.debug('n = %s, N_1 = %s, N_2 = %s' % (n, N_1, N_2))
     not_numbers = [x for x in (n, N_1, N_2) if not isinstance(x, Number) ]
     if not_numbers:
         msg = 'All args need to be numbers. Invalid args: %s' % not_numbers
@@ -631,7 +631,7 @@ def pro_rata(n, N_1, N_2, tol = TOL):
     if N == 0:
         msg = ('Cannot divide n pro-rata with respect to a total of zero. '
                 +' Choose N_1 != - N2.  '
-                +'Invalid args: N1 == %s, N_2 == %s' % (N_1, N_2)
+                +'Invalid args: N_1 == %s, N_2 == %s' % (N_1, N_2)
                 )
         logger.error(msg)
         raise TypeError(msg)  
@@ -676,15 +676,15 @@ def spike_isolating_quantile(data
                             ):
     #type(Sequence[Number], int, float, NamedTuple) -> list
     """ Classify largest spike in the frequency distribution; 
-        allocate remaining classes using discrete_pro_rata
+        allocate remaining classes using pro_rata
         call self on the gaps, or quantile_l_to_r if no spikes.
     
         Places interclass bounds in data, a Sequence (e.g. 
         list / tuple) of Numbers that has been sorted (in ascending order).  
         It first isolates the largest / narrowest spike in the frequency 
         distribution, then calls itself on both remaining sub-Sequences 
-        either side of the spike, with a smartly determined allocation of 
-        classes.  This allocation is from discrete_pro_rata.  If there are no spikes 
+        either side of the spike, with 
+        classes allocated via pro_rata.  If there are no spikes 
         narrower than the max width, containing at least the minimum number of 
         data points, the corresponding number of classes to it are allocated 
         within each sub-Sequence using quantile_l_to_r.  The lists of 
@@ -693,6 +693,7 @@ def spike_isolating_quantile(data
     """
     if ordered_counter is None:
         ordered_counter = OrderedCounter(data)
+    logger.debug(ordered_counter)
     num_inter_class_bounds = num_classes - 1
     if num_inter_class_bounds <= 0:
         return []
@@ -721,7 +722,8 @@ def spike_isolating_quantile(data
             spike_data_index_b = len(data) - 1 - spike_data_index_b
             logger.debug('spike_data_index_a == %s' % spike_data_index_a)
             logger.debug('spike_data_index_b == %s' % spike_data_index_b)
-            if num_classes - 3 <= 0:
+            if (num_classes - 3 <= 0 or 
+               (spike_data_index_a == 0 and spike_data_index_b == len(data)- 1)):
                 extra_classes_a, extra_classes_b = 0, 0
             else:
                 logger.debug('n == %s, N_1 == %s, N_2 == %s ' %   (num_classes - 3
@@ -734,26 +736,32 @@ def spike_isolating_quantile(data
                                                            ,len(data) - spike_data_index_b - 1
                                                            ,tol = options.tol
                                                            )
+            logger.debug('extra_classes_a == %s, extra_classes_b == %s' % (extra_classes_a, extra_classes_b))
             inter_class_bounds = []
             if spike_data_index_a >= 1:
                 _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
                                                                   ,spike_data_index_a - 1
                                                                   )
+                logger.debug('midpoint_i_a == %s' % midpoint_i_a)
                 inter_class_bounds += spike_isolating_quantile(data[:spike_data_index_a]
                                                               ,extra_classes_a + 1
                                                               ,options = options
                                                               ) 
                 inter_class_bounds += [midpoint_i_a]
+                logger.debug('left of a inter_class_bounds == %s ' % inter_class_bounds)
             if spike_data_index_b <= len(data) - 2:
 
                 _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
                                                                   ,spike_data_index_b
                                                                   )
+                logger.debug('midpoint_i_b == %s' % midpoint_i_b)
                 inter_class_bounds += [midpoint_i_b]
                 inter_class_bounds += spike_isolating_quantile(data[spike_data_index_b + 1:]
                                                               ,extra_classes_b + 1
                                                               ,options = options
                                                               )
+                logger.debug('right of b inter_class_bounds == %s ' % inter_class_bounds)
+
 
 
 

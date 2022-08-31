@@ -72,13 +72,13 @@ Any option in a component can be read by adding an Output Param and renaming it 
 To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
 
 ##### Logging options
-The logger file is created setup before Input Params are created on components, so `working_folder`, `logs_dir` or `log_file` must be set in an installation wide config.toml file, e.g. setting `go` to true on Config component, and restarting Rhino.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
+The logger file is created before Input Params are created on components, so `working_folder`, `logs_dir` or `log_file` must be set in an installation wide config.toml file, e.g. by setting those options and `go` to true on Config component, and restarting Rhino.  Logging levels can be changed dynamically.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
  
 ###### Options override priority order
 1. The component input Param options override options in a project specific options file (`config`).  
 2. A project specific options file (specified in `config`) overrides options from another sDNA_GH component (connected in `opts`).  
 3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
-4. The installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
+4. On start up only (and every time thereafter if `sync = false`, `no_state = true` and `read_only = false`) the installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
 [note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
 
 ##### Local meta options.
@@ -169,7 +169,7 @@ To recolour Grasshopper geometry instead of Rhino Geometry (i.e. unbaked objects
 ##### User Text tools    
 ##### Data tools
 ###### Read_User_Text (read_User_Text)
-Reads all User Text from the list of Rhino objects in `Geom`.  If `auto_get_Geom` = true, Read_From_Rhino is first called.  If `compute_vals` = true, values starting and ending in `%` referring to a Rhino object's UUID (e.g. `%<CurveLength("ac4669e5-53a6-4c2b-9080-bbc67129d93e")>%`) are computed using Rhino.RhinoApp.ParseTextField.
+Reads all User Text from the list of Rhino objects in `Geom` - these must be Rhino objects from Read_Geom (Grasshopper references to Rhino objects, e.g. from a geom Param will not work).  If `auto_get_Geom` = true, Read_Geom is first called.  If `compute_vals` = true, values starting and ending in `%` referring to a Rhino object's UUID (e.g. `%<CurveLength("ac4669e5-53a6-4c2b-9080-bbc67129d93e")>%`) are computed using Rhino.RhinoApp.ParseTextField.
 
 
 ###### Write_User_Text (write_User_Text)

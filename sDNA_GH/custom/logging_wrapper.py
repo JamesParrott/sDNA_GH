@@ -52,7 +52,7 @@ class LoggingOptions(object):
     log_console_level = 'INFO'
     #
     log_custom_level = 'INFO'
-    log_fmt_str = '%(name)-12s: %(levelname)-8s %(message)s'
+    log_fmt_str = '%(name)s: %(levelname)s: %(message)s'
     log_date_fmt = '%d-%m-%y %H:%M'
 
 
@@ -111,7 +111,7 @@ def new_Logger(stream = None
                                       )
     file_logging_level = options.log_file_level.upper()
     set_handler_level(file_handler, file_logging_level)
-    log_file_formatter = logging.Formatter(format = options.log_fmt_str
+    log_file_formatter = logging.Formatter(fmt = options.log_fmt_str
                                           ,datefmt = options.log_date_fmt
                                           )
     file_handler.setFormatter(log_file_formatter)
@@ -120,10 +120,11 @@ def new_Logger(stream = None
     console_logging_level = options.log_console_level.upper()
     console_handler = logging.StreamHandler(sys.stdout)
     set_handler_level(console_handler, console_logging_level)
-    console_file_formatter = logging.Formatter(format = options.log_fmt_str)
+    console_file_formatter = logging.Formatter(fmt = options.log_fmt_str)
     console_handler.setFormatter(console_file_formatter)
     
     logger = logging.getLogger(options.logger_name)
+    logger.setLevel('DEBUG')
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
