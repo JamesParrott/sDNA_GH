@@ -527,23 +527,16 @@ def override_all_opts(local_opts #  mutated
     if local_metas.sync:
         local_opts = module_opts
     else:
-        if old_sync:  #Desynchronise
-            local_opts = module_opts.copy()
-        elif local_metas.read_only: #externally imposed state
+        if local_metas.read_only: 
             overrides = [module_opts] + overrides
 
         if local_metas.no_state:
-            local_opts = {}
-            if not local_metas.read_only: #makes no odds; just unnecessary
+            local_opts = {} # Clear the state
+            if not local_metas.read_only: 
                 installation_opts = options_manager.dict_from_toml_file(metas.config)
-                overrides = [DEFAULT_OPTS, installation_opts] + overrides
-
-
-
-
-
-            
-
+                overrides = [DEFAULT_OPTS, installation_opts] + overrides # rebuild the state
+        elif old_sync:  # Desynchronise
+            local_opts = module_opts.copy()
 
 
     metas_overrides = map(lambda x : x.pop('metas', x), overrides)
@@ -578,10 +571,10 @@ if os.path.isfile(DEFAULT_METAS.config):
     installation_opts = options_manager.dict_from_toml_file(DEFAULT_METAS.config)
 
     module_opts, setup_default_local_metas = override_all_opts(
-                                 local_opts = module_opts #  mutated
-                                ,overrides = [installation_opts]
-                                ,args_dict = {}  
-                                )
+                                                 local_opts = module_opts
+                                                ,overrides = [installation_opts]
+                                                ,args_dict = {}  
+                                                )
     output.debug(module_opts)
 
     output.debug("After override: opts['options'].message == %s" 
@@ -1026,7 +1019,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         logger.debug('kwargs.keys() == %s ' % kwargs.keys())
         self.opts, self.local_metas = override_all_opts(
                                  local_opts = self.opts # mutated
-                                ,overrides = [self.defaults, external_opts]
+                                ,overrides = [self.tools_default_opts, external_opts]
                                 ,args_dict = kwargs
                                 ,local_metas = self.local_metas 
                                 ,external_local_metas = external_local_metas
