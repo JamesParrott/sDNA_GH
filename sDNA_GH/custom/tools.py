@@ -934,7 +934,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         check_python(opts)
 
-        if sDNA_key(opts) != opts['metas'].sDNA:
+        if (isinstance(self.sDNAUISpec, options_manager.Sentinel) or
+            isinstance(self.run_sDNA, options_manager.Sentinel) or
+            sDNA_key(opts) != opts['metas'].sDNA):
             # Do the sDNA modules in the opts need updating?
             self.sDNAUISpec, self.run_sDNA = self.import_sDNA(
                                                          opts
