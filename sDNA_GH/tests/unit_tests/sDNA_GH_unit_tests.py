@@ -186,18 +186,24 @@ class TestDataCruncher(unittest.TestCase):
         pass
 
     def test_max_interval_lt_width_w_with_most_data_points(self):
-        f = data_cruncher.max_interval_lt_width_w_with_most_data_points
+        f = lambda *args : str(data_cruncher.max_interval_lt_width_w_with_most_data_points(*args))
         Interval = data_cruncher.InclusiveInterval
         OrderedCounter = data_cruncher.OrderedCounter
         test_data = [#'expected' : 'input_'  
-                    (Interval(5, 5, 5, 5, 7), ([0,0,0,1,1,2,2,3,3,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,8,9,9], 5, 0.00001))
+                    (str(Interval(5, 5, 5, 5, 7)), ([0,0,0,1,1,2,2,3,3,4,4,4,5,5,5,5,5,5,5,6,6,6,6,7,8,9,9], 5, 0.00001))
                     ]
         for element in test_data:
             expected, input_ = element
             actual = f(OrderedCounter(input_[0]), input_[1], input_[2])
-            #print(expected)
-            #print(actual)
-            self.assertEqual(1,1) #expected, actual)
+            self.assertEqual(expected, actual)
+
+    def test_spike_isolating_quantile(self):
+        f = data_cruncher.spike_isolating_quantile  
+        #input data must be sorted in ascending order
+        test_data = [#'expected' : 'input_'  
+                     ([], ([2,]*9, 7))
+                    ,([0.3333333, 1.5], ([0,0] +[1]*9 + [2] * 9,7))
+                    ]
 
 
 class TestCreateGeomDataMapping(unittest.TestCase):
