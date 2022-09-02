@@ -739,7 +739,7 @@ def spike_isolating_quantile(data
             logger.debug('extra_classes_a == %s, extra_classes_b == %s' % (extra_classes_a, extra_classes_b))
             inter_class_bounds = []
             if spike_data_index_a >= 1:
-                _, midpoint_i_a, _1 = data_point_midpoint_and_next(data
+                __, midpoint_i_a, __ = data_point_midpoint_and_next(data
                                                                   ,spike_data_index_a - 1
                                                                   )
                 logger.debug('midpoint_i_a == %s' % midpoint_i_a)
@@ -751,7 +751,7 @@ def spike_isolating_quantile(data
                 logger.debug('left of a inter_class_bounds == %s ' % inter_class_bounds)
             if spike_data_index_b <= len(data) - 2:
 
-                _, midpoint_i_b, _1 = data_point_midpoint_and_next(data
+                __, midpoint_i_b, __ = data_point_midpoint_and_next(data
                                                                   ,spike_data_index_b
                                                                   )
                 logger.debug('midpoint_i_b == %s' % midpoint_i_b)

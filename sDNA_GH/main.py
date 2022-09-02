@@ -80,7 +80,12 @@ output = launcher.Output()
 # from a class, to avoid re-stating the order of the keys, and to run other
 # code too (e.g. checks, validations and assertions).
 
-DEFAULT_NAME_MAP = OrderedDict([('Read_Geom', 'get_Geom')
+
+class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
+                    ,tools.ConfigManager.Metas # has config.toml path
+                    ): 
+    # config from tools.ConfigManager.Metas
+    DEFAULT_NAME_MAP = OrderedDict([('Read_Geom', 'get_Geom')
                                ,('Read_Usertext', 'read_User_Text')
                                ,('Write_Shp', 'write_shapefile')
                                ,('Read_Shp', 'read_shapefile')
@@ -103,22 +108,16 @@ DEFAULT_NAME_MAP = OrderedDict([('Read_Geom', 'get_Geom')
                                ]
                               )
 
-LANGUAGE_CODE = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
+    language_code = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
 
-if 'en' in LANGUAGE_CODE and 'us' in LANGUAGE_CODE:
-    Recolour = 'Recolor'
-else:
-    Recolour = 'Recolour'
-
-
-DEFAULT_NAME_MAP[Recolour+'_Objects'] = 'recolour_objects' #Dynamic calculation
-                                                           # of constant's value
+    if 'en' in language_code and 'us' in language_code:
+        Recolour = 'Recolor'
+    else:
+        Recolour = 'Recolour'
 
 
-class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
-                    ,tools.ConfigManager.Metas # has config.toml path
-                    ): 
-    # config from 
+    DEFAULT_NAME_MAP[Recolour+'_Objects'] = 'recolour_objects' # tool name
+    
     add_new_opts = False
     cmpnts_change = False
     strict = True
@@ -131,8 +130,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                             # with an env, while being able to pipe 
                             # sDNA's stderr and stdout to the sDNA_GH logger
     sDNA = ''  # Read only.  Auto updates from above.
-    python = ''
-    #python = r'C:\Python27\python.exe' 
 
     update_path = True
     ##########################################################################
@@ -314,6 +311,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     num_dp = 10 # decimal places
     min_sizes = True
     #
+    ###########################################################################
+    # Override for sDNA_ToolWrapper
+    python = ''
+    #python = r'C:\Python27\python.exe' 
     ###########################################################################
     #
     # Overrides for ShapefileWriter

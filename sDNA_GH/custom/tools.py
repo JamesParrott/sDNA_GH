@@ -116,7 +116,6 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
                                                   )
 
 
-
 def list_of_param_infos(param_names
                        ,param_infos
                        ,descriptions = None
@@ -375,13 +374,15 @@ class MissingPythonError(Exception):
 
 def check_python(opts):
     #type(dict) -> None 
-    """ Searches opts['metas'].python_paths, updating opts['metas'].python 
+    """ Searches opts['options'].python_paths, updating opts['options'].python 
         until it is a file.  Mutates opts.  Raises MissingPythonError if no
         valid file found.
     """
 
-    folders = opts['metas'].python_paths
-    pythons = opts['metas'].python_exes
+    options = opts['options']
+
+    folders = options.python_paths
+    pythons = options.python_exes
 
     if isinstance(folders, basestring):
         folders = [folders]
@@ -389,23 +390,23 @@ def check_python(opts):
     if isinstance(pythons, basestring):
         pythons = [pythons]
 
-    if (isinstance(opts['metas'].python, basestring) 
-        and os.path.isdir(opts['metas'].python)):
+    if (isinstance(options.python, basestring) 
+        and os.path.isdir(options.python)):
         #
-        folders.insert(0, opts['metas'].python)
+        folders = itertools.chain( (options.python,), folders)
 
-    possible_pythons = (os.path.join(folder, python) for folder in folders 
-                                                     for python in pythons
+    possible_pythons = (os.path.join(dirpath, python) 
+                        for folder in folders 
+                        for dirpath, __, __ in os.walk(folder)
+                        for python in pythons
+                        if isinstance(folder, basestring) and os.path.isdir(folder)
                        )
 
-    for python in possible_pythons:
-        if (isinstance(opts['metas'].python, basestring) 
-            and os.path.isfile(opts['metas'].python)):
-            #
+    for python in itertools.chain((opts['options'].python,), possible_pythons):
+        if isinstance(python, basestring) and os.path.isfile(python):
+            opts['options'] = opts['options']._replace(python = python)
             break  
-        else:
-            opts['metas'] = opts['metas']._replace(python = python)
-    else:  # i.e. if the loop wasn't left by break
+    else:  # for/else, i.e. if the for loop wasn't left early by break
         msg = ('No Python interpreter file found.  Please specify a valid '
               +'python 2.7 interpreter or its parent folder in python '
               +', or a range of python interpreter names and folder names to '
@@ -757,20 +758,31 @@ def build_missing_sDNA_components(opts
                                              ,default_user_objects_location  
                                              )
 
-    def ghuser_file_path(name):
+    def ghuser_file_path(name, folder = user_objects_location):
         #type(str)->str
-        return os.path.join(user_objects_location, name + '.ghuser') 
+        return os.path.join(folder, name + '.ghuser') 
+
+    components_folders = (user_objects_location
+                         ,default_user_objects_location
+                         ,launcher.USER_INSTALLATION_FOLDER
+                         )
 
     missing_tools = []
     names = []
     for Tool in sDNAUISpec.get_tools():
-        names = [nick_name
-                 for nick_name, tool_name in metas.name_map.items()
-                 if tool_name == Tool.__name__
-                ]
+        default_names = [nick_name
+                         for nick_name, tool_name in metas.DEFAULT_NAME_MAP.items()
+                         if tool_name == Tool.__name__
+                        ]
+        names = default_names + [nick_name
+                                 for nick_name, tool_name in metas.name_map.items()
+                                 if tool_name == Tool.__name__
+                                ]
         names.insert(0, Tool.__name__)
-        if not any( os.path.isfile(ghuser_file_path(name)) for name in names ):
-            name_to_use = names[-1] if names else Tool.__name__
+        if not any(os.path.isfile(ghuser_file_path(name, folder)) 
+                   for name in names for folder in components_folders):
+            #
+            name_to_use = default_names[-1] if default_names else Tool.__name__
             logger.debug('Appending tool name to missing_tools: %s' 
                         %name_to_use
                         )
@@ -891,12 +903,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                             ,str = 'Text'
                                             )
 
-    class Metas(PythonOptions, sDNAMetaOptions):
+    class Metas(sDNAMetaOptions):
         sDNA = None
         show_all = True
         make_advanced = False
 
-    class Options(InputFileDeletionOptions
+    class Options(PythonOptions
+                 ,InputFileDeletionOptions
                  ,OutputFileDeletionOptions
                  ):
         prepped_fmt = "{name}_prepped"
@@ -1232,7 +1245,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         f_name = output_file
 
-        command =   (metas.python
+        command =   (options.python
                     + ' -u ' 
                     + '"' 
                     + os.path.join(  os.path.dirname(self.sDNAUISpec.__file__)
@@ -2907,13 +2920,13 @@ class ConfigManager(sDNA_GH_Tool):
     """
 
 
-    class Metas(PythonOptions, sDNAMetaOptions):
+    class Metas(sDNAMetaOptions):
         config = os.path.join(launcher.USER_INSTALLATION_FOLDER
                               ,launcher.PACKAGE_NAME  
                               ,'config.toml'
                               )
 
-    class Options(object):
+    class Options(PythonOptions):
         pass
     Options.save_to = Metas.config
 
@@ -3014,7 +3027,7 @@ class ConfigManager(sDNA_GH_Tool):
         metas = opts['metas']
         options = opts['options']
                 
-        python, sDNA_paths = metas.python, metas.sDNA_paths
+        python, sDNA_paths = options.python, metas.sDNA_paths
         save_to = options.save_to
 
         self.debug('save_to : %s, python : %s, sDNA_paths : %s' 
@@ -3023,7 +3036,7 @@ class ConfigManager(sDNA_GH_Tool):
 
 
         if python:
-            opts['metas'] = opts['metas']._replace(python = python)
+            opts['options'] = opts['options']._replace(python = python)
             check_python(opts)
         if sDNA_paths:
             opts['metas'] = opts['metas']._replace(sDNA_paths = sDNA_paths)

@@ -38,7 +38,6 @@ from ..custom.skel.tools import name_mapper
 from ..custom import tools
 from ..custom.skel.tools import runner
 from ..custom.skel.basic.ghdoc import ghdoc
-from .. import main
 from .. import launcher
 from ..custom.skel import builder
 
@@ -117,7 +116,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         categories = {Tool.__name__ : Tool.category for Tool in sDNAUISpec.get_tools()}
         categories.update(metas.categories)
 
-        name_map = main.DEFAULT_NAME_MAP # metas.name_map
+        name_map = metas.DEFAULT_NAME_MAP # metas.name_map
 
         names = list(runner.tools_dict.keys()) # Non sDNA tools.
         self.logger.debug('names == %s ' % names)
