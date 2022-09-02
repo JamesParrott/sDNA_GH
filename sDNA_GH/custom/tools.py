@@ -431,7 +431,7 @@ def is_data_key(key
 def categorise_keys(d
                    ,**kwargs
                    ):
-    
+    #type(dict, **kwargs) -> list, list, list
     sub_dict_keys, data_node_keys, data_field_keys = [], [], []
     for key, value in d.items(): 
         if isinstance(value, dict) or options_manager.isnamedtuple(value):
@@ -502,7 +502,7 @@ def update_opts(current_opts
     if not kwargs:
         kwargs = {}
     metas = kwargs.setdefault('metas', current_opts.get('metas', DefaultMetas))
-    logger.debug('metas == %s' % metas)
+    logger.debug('metas == %s' % (metas,))
                 #,strict 
                 #,check_types
                 #,add_new_opts, for update_data_node and make_new_data_node
@@ -843,13 +843,12 @@ ShapeFilesDeleter.register(NullDeleter)
 class InputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
     del_after_sDNA = True
     strict_no_del = False 
-    input_file_deleter = None
+    INPUT_FILE_DELETER = None
 
 class OutputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
     strict_no_del = InputFileDeletionOptions.strict_no_del 
-    output_file_to_maybe_delete = None
     del_after_read = True
-    output_file_deleter = None
+    OUTPUT_FILE_DELETER = None
 
 class sDNA_ToolWrapper(sDNA_GH_Tool):
     """ Main sDNA_GH tool class for running sDNA tools externally.
@@ -904,7 +903,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                             )
 
     class Metas(sDNAMetaOptions):
-        sDNA = None
+        SDNA = None
         show_all = True
         make_advanced = False
 
@@ -949,7 +948,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         if (isinstance(self.sDNAUISpec, options_manager.Sentinel) or
             isinstance(self.run_sDNA, options_manager.Sentinel) or
-            sDNA_key(opts) != opts['metas'].sDNA):
+            sDNA_key(opts) != opts['metas'].SDNA):
             # Do the sDNA modules in the opts need updating?
             self.sDNAUISpec, self.run_sDNA = self.import_sDNA(
                                                          opts
@@ -957,7 +956,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                                         )
 
             sDNA = sDNA_key(opts)
-            opts['metas'] = opts['metas']._replace(sDNA = sDNA)
+            opts['metas'] = opts['metas']._replace(SDNA = sDNA)
             self.sDNA = sDNA
 
 
@@ -1125,7 +1124,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if opts is None:
             opts = self.opts
 
-        sDNA = opts['metas'].sDNA
+        sDNA = opts['metas'].SDNA
 
 
 
@@ -1134,7 +1133,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         options = opts['options']
         metas = opts['metas']
 
-        if self.sDNA != sDNA:  # last sDNA this tool has seen != metas.sDNA
+        if self.sDNA != sDNA:  # last sDNA this tool has seen != metas.SDNA
             outcome = self.update_tool_opts_and_syntax(opts)
 
             # If sDNA has changed, the component really needs to be called again.
@@ -1194,11 +1193,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             if (options.del_after_read and 
                 not options.strict_no_del and
                 not options.overwrite_shp and
-                isinstance(options.input_file_deleter, ShapeFilesDeleter)):
+                isinstance(options.INPUT_FILE_DELETER, ShapeFilesDeleter)):
                 #
                 maybe_delete = ShapeFilesDeleter(output_file)
                 opts['options'] = opts['options']._replace(
-                                            output_file_deleter = maybe_delete
+                                            OUTPUT_FILE_DELETER = maybe_delete
                                             )
 
         input_args = tool_opts_sDNA._asdict()
@@ -1275,14 +1274,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if (options.del_after_sDNA and 
             not options.strict_no_del and 
             not options.overwrite_shp and 
-            isinstance(options.input_file_deleter, ShapeFilesDeleter) and
-            hasattr(options.input_file_deleter, 'delete_files')):
+            isinstance(options.INPUT_FILE_DELETER, ShapeFilesDeleter) and
+            hasattr(options.INPUT_FILE_DELETER, 'delete_files')):
             #
-            options.input_file_deleter.delete_files(
+            options.INPUT_FILE_DELETER.delete_files(
                                                 delete = options.del_after_sDNA
                                                ,opts = opts
                                                )
-            opts['options'] = opts['options']._replace(input_file_deleter = None)
+            opts['options'] = opts['options']._replace(INPUT_FILE_DELETER = None)
 
 
         if has_keywords(self.nick_name, keywords = ('prepare',)):
@@ -1484,7 +1483,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                          )
 
         sc.doc = ghdoc 
-        self.logger.debug('retvals == %s ' % self.retvals)
+        self.logger.debug('retvals == %s ' % (self.retvals,))
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
@@ -1711,7 +1710,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                 # another pre-existing shapefile.
                 maybe_delete = ShapeFilesDeleter(f_name)
                 opts['options'] = opts['options']._replace(
-                                            input_file_deleter = maybe_delete
+                                            INPUT_FILE_DELETER = maybe_delete
                                             )
             else:
                 do_not_delete = NullDeleter() # Slight hack, so sDNA_tool knows
@@ -1722,7 +1721,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                                               # maybe making a 
                                               # ShapeFilesDeleter for it.
                 opts['options'] = opts['options']._replace(
-                                            input_file_deleter = do_not_delete
+                                            INPUT_FILE_DELETER = do_not_delete
                                             )
 
         self.logger.debug('f_name == %s' % f_name)
@@ -1891,13 +1890,13 @@ class ShapefileReader(sDNA_GH_Tool):
         if ((options.del_after_read and 
             not options.strict_no_del and 
             not options.overwrite_shp) and 
-            isinstance(options.output_file_deleter, ShapeFilesDeleter)):
+            isinstance(options.OUTPUT_FILE_DELETER, ShapeFilesDeleter)):
             #
-            options.output_file_deleter.delete_files(delete = options.del_after_read
+            options.OUTPUT_FILE_DELETER.delete_files(delete = options.del_after_read
                                                    ,opts = opts
                                                    )
             opts['options'] = opts['options']._replace(
-                                        output_file_deleter = None
+                                        OUTPUT_FILE_DELETER = None
                                         )
         retcode = 0
 
@@ -3035,14 +3034,10 @@ class ConfigManager(sDNA_GH_Tool):
                   )
 
 
-        if python:
-            opts['options'] = opts['options']._replace(python = python)
-            check_python(opts)
-        if sDNA_paths:
-            opts['metas'] = opts['metas']._replace(sDNA_paths = sDNA_paths)
-            import_sDNA(opts)
+        check_python(opts)
+        import_sDNA(opts)
 
-        self.logger.debug('options == %s ' % options)
+        self.logger.debug('options == %s ' % (opts['options'],))
 
         # self.logger.debug('opts == %s' % '\n\n'.join(str(item) 
         #                                      for item in opts.items()

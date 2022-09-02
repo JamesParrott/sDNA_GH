@@ -101,7 +101,7 @@ def connected_components(up_or_downstream, Params):
                                 ,connected[up_or_downstream]
                                 )
             ]
-    logging.debug(comps)
+    logger.debug(comps)
     return comps
 
 def downstream_components(Params):

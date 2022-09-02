@@ -72,7 +72,8 @@ Any option in a component can be read by adding an Output Param and renaming it 
 To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
 
 ##### Logging options
-The logger file is created before Input Params are created on components, so `working_folder`, `logs_dir` or `log_file` must be set in an installation wide config.toml file, e.g. by setting those options and `go` to true on Config component, and restarting Rhino.  Logging levels can be changed dynamically.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.
+If `log_file` is not an empty string, a log file is created before Input Params are created on components, so to have any effect, the options `propagate`, `working_folder`, `logs_dir` and `log_file` must be set in an installation wide config.toml file, e.g. by setting those options and `go` to true on Config component, and restarting Rhino.  Logging levels can be changed dynamically.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.  To suppress output from the `out` Output param entirely, set `log_console_level` to `CRITICAL`.  To propagate log messages higher than the sDNA_GH package's parent
+logger (which will most likely result in a lot of output), set `propagate` to true.
  
 ###### Options override priority order
 1. The component input Param options override options in a project specific options file (`config`).  

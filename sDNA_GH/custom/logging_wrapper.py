@@ -44,6 +44,7 @@ class LoggingOptions(object):
     default_path = __file__
     working_folder = os.path.dirname(default_path)
     logger_name = 'root'
+    propagate = False
     log_file = __name__ + '.log'
     log_file_mode = 'w'
     log_file_encoding = 'utf-8'
@@ -52,15 +53,14 @@ class LoggingOptions(object):
     log_console_level = 'INFO'
     #
     log_custom_level = 'INFO'
-    log_fmt_str = '%(name)s: %(levelname)s: %(message)s'
+    log_file_fmt_str = '%(name)s: %(levelname)s: %(message)s' #%(asctime)s 
+    log_console_fmt_str = '%(name)s: %(levelname)s: %(message)s'
     log_date_fmt = '%d-%m-%y %H:%M'
 
 
 
 
 
-# set a format which is simpler for console use
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
 
 
 def add_stream_handler_to_logger(logger
@@ -85,65 +85,59 @@ def set_handler_level(handler, level):
         handler.setLevel(level) 
 
 
-####################################################################################
-#
-# Core functionality from the python.org logging cookbook
-#
-def new_Logger(stream = None
-              ,options = LoggingOptions
-              ):
-    # type : (type[any]/namedtuple, stream, str) -> logging.Logger, logging.Handler, logging.Handler, logging.Handler
-    # stream is any'file-like object' supporting write() and flush() methods
-    """ Wrapper for Vinay Sajip's logger recipe with customisable
-        console output, configured via options in a class/namedtuple 
-        https://docs.python.org/2.7/howto/logging-cookbook.html#logging-cookbook """
 
-    dir_name = os.path.join(options.working_folder, options.logs_dir)
+def get_logger_and_handlers(stream = None
+                           ,options = LoggingOptions
+                           ):
+    # type : (stream, type[any]/namedtuple) -> logging.Logger, logging.Handler, logging.Handler, logging.Handler
+    """ Returns logger, and two or three handlers.   
 
-    if not os.path.isdir(dir_name):
-        os.mkdir(dir_name)
+        stream is any'file-like object' supporting write() and flush() methods
+    """
+    
+    logger = logging.getLogger(options.logger_name)
+    logger.setLevel('DEBUG')
+    logger.propagate = options.propagate
+    if options.log_file:
+        dir_name = os.path.join(options.working_folder, options.logs_dir)
 
-    file_name = os.path.join(dir_name, options.log_file)
+        if not os.path.isdir(dir_name):
+            os.mkdir(dir_name)
 
-    file_handler = logging.FileHandler(filename = file_name
-                                      ,mode = options.log_file_mode
-                                      ,encoding = options.log_file_encoding
-                                      )
-    file_logging_level = options.log_file_level.upper()
-    set_handler_level(file_handler, file_logging_level)
-    log_file_formatter = logging.Formatter(fmt = options.log_fmt_str
-                                          ,datefmt = options.log_date_fmt
-                                          )
-    file_handler.setFormatter(log_file_formatter)
+        file_name = os.path.join(dir_name, options.log_file)
+
+        file_handler = logging.FileHandler(filename = file_name
+                                        ,mode = options.log_file_mode
+                                        ,encoding = options.log_file_encoding
+                                        )
+        file_logging_level = options.log_file_level.upper()
+        set_handler_level(file_handler, file_logging_level)
+        log_file_formatter = logging.Formatter(fmt = options.log_file_fmt_str
+                                            ,datefmt = options.log_date_fmt
+                                            )
+        file_handler.setFormatter(log_file_formatter)
+        logger.addHandler(file_handler)
+    else:
+        file_handler = logging.NullHandler()
 
     # writes to stderr
     console_logging_level = options.log_console_level.upper()
     console_handler = logging.StreamHandler(sys.stdout)
     set_handler_level(console_handler, console_logging_level)
-    console_file_formatter = logging.Formatter(fmt = options.log_fmt_str)
-    console_handler.setFormatter(console_file_formatter)
+    console_formatter = logging.Formatter(fmt = options.log_console_fmt_str)
+    console_handler.setFormatter(console_formatter)
     
-    logger = logging.getLogger(options.logger_name)
-    logger.setLevel('DEBUG')
+
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
 
     if stream:            
         stream_handler = add_stream_handler_to_logger(logger, stream, options)
     else:
-        stream_handler = None
+        stream_handler = logging.NullHandler()
     
     return logger, file_handler, console_handler, stream_handler 
-#
-####################################################################################
 
 
-
-####################################################################################
-#
-# A factory for a class with logger attributes, that add in the class of the instance's
-# name (the subclass name) into the logging messages.  Uses multiple inheritance.
-#
 def make_self_logger(self, logger = None, module_name = '', name = None):
     if name is None:
         name = self.__class__.__name__
@@ -155,6 +149,7 @@ def make_self_logger(self, logger = None, module_name = '', name = None):
         logger = logging.getLogger(module_name + name)
     logger.addHandler(logging.NullHandler())
     return logger
+
 
 def make_log_message_maker(method
                           ,logger = None

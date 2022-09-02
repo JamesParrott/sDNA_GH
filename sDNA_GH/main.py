@@ -86,27 +86,27 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                     ): 
     # config from tools.ConfigManager.Metas
     DEFAULT_NAME_MAP = OrderedDict([('Read_Geom', 'get_Geom')
-                               ,('Read_Usertext', 'read_User_Text')
-                               ,('Write_Shp', 'write_shapefile')
-                               ,('Read_Shp', 'read_shapefile')
-                               ,('Write_Usertext', 'write_User_Text')
-                               ,('Parse_Data', 'parse_data')
-                               ,('Config', 'config')
-                               ,('Self_test', launcher.SELFTEST)
-                               #
-                               ,('sDNA_Integral', 'sDNAIntegral')
-                               ,('sDNA_Skim', 'sDNASkim')
-                               ,('sDNA_Int_From_OD', 'sDNAIntegralFromOD')
-                               ,('sDNA_Geodesics', 'sDNAGeodesics')
-                               ,('sDNA_Hulls', 'sDNAHulls')
-                               ,('sDNA_Net_Radii', 'sDNANetRadii')
-                               ,('sDNA_Access_Map', 'sDNAAccessibilityMap')
-                               ,('sDNA_Prepare', 'sDNAPrepare')
-                               ,('sDNA_Line_Measures', 'sDNALineMeasures')
-                               ,('sDNA_Learn', 'sDNALearn')
-                               ,('sDNA_Predict', 'sDNAPredict')
-                               ]
-                              )
+                                   ,('Read_Usertext', 'read_User_Text')
+                                   ,('Write_Shp', 'write_shapefile')
+                                   ,('Read_Shp', 'read_shapefile')
+                                   ,('Write_Usertext', 'write_User_Text')
+                                   ,('Parse_Data', 'parse_data')
+                                   ,('Config', 'config')
+                                   ,('Self_test', launcher.SELFTEST)
+                                   #
+                                   ,('sDNA_Integral', 'sDNAIntegral')
+                                   ,('sDNA_Skim', 'sDNASkim')
+                                   ,('sDNA_Int_From_OD', 'sDNAIntegralFromOD')
+                                   ,('sDNA_Geodesics', 'sDNAGeodesics')
+                                   ,('sDNA_Hulls', 'sDNAHulls')
+                                   ,('sDNA_Net_Radii', 'sDNANetRadii')
+                                   ,('sDNA_Access_Map', 'sDNAAccessibilityMap')
+                                   ,('sDNA_Prepare', 'sDNAPrepare')
+                                   ,('sDNA_Line_Measures', 'sDNALineMeasures')
+                                   ,('sDNA_Learn', 'sDNALearn')
+                                   ,('sDNA_Predict', 'sDNAPredict')
+                                   ]
+                                  )
 
     language_code = locale.getdefaultlocale()[0].lower()  # e.g. 'en_gb' or 'en_us'
 
@@ -117,7 +117,8 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
 
 
     DEFAULT_NAME_MAP[Recolour+'_Objects'] = 'recolour_objects' # tool name
-    
+
+    skip_caps = True
     add_new_opts = False
     cmpnts_change = False
     strict = True
@@ -129,7 +130,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                             # to run runsdnacommand.runsdnacommand in future 
                             # with an env, while being able to pipe 
                             # sDNA's stderr and stdout to the sDNA_GH logger
-    sDNA = ''  # Read only.  Auto updates from above.
+    SDNA = ''  # Read only.  Auto updates from above.
 
     update_path = True
     ##########################################################################
@@ -432,12 +433,7 @@ DEFAULT_OPTS = OrderedDict(metas = DEFAULT_METAS
 module_opts = DEFAULT_OPTS.copy()           
 setup_local_metas = DEFAULT_LOCAL_METAS
 
-output.debug(module_opts['options'].message)
-
-
-
-
-
+output.debug('message == %s ' % module_opts['options'].message)
 
 
 #########################################################################
@@ -515,7 +511,7 @@ def override_all_opts(local_opts #  mutated
     ###########################################################################
 
 
-    output.debug('overrides == %s' % overrides)
+    output.debug('overrides == %s' % (overrides,))
 
     overrides += [project_file_opts, args_dict]
 
@@ -546,6 +542,7 @@ def override_all_opts(local_opts #  mutated
                                                            ,metas_overrides
                                                            ,**metas._asdict()
                                                            )
+    output.debug('metas == %s' % (metas,))
 
     for override in overrides:
         tools.update_opts(current_opts = local_opts
@@ -575,7 +572,7 @@ if os.path.isfile(DEFAULT_METAS.config):
                                                 ,overrides = [installation_opts]
                                                 ,args_dict = {}  
                                                 )
-    output.debug(module_opts)
+    output.debug('module_opts == %s' % module_opts)
 
     output.debug("After override: opts['options'].message == %s" 
                 % module_opts['options'].message
@@ -605,40 +602,25 @@ else:
 
 #######################################################################
 #
-# Set up root logger
+# Set up parent logger
 #
-module_name = '.'.join([module_opts['options'].package_name 
-                    ,module_opts['options'].sub_module_name
-                    ]
-                    )
 
-if ( module_name in sys.modules
-    and hasattr(sys.modules[module_name], 'logger') ):  
-    #
-    # Unlikely?
-    #
-    logger = sys.modules[module_name].logger
-    #
-    logger.warning('Using sys.modules[%s].logger. ' % module_name
-                  +'Previous import failed?'
-                  )
-else:
+# wrapper_logging.logging.shutdown() # Ineffective in GH :(
 
-    # wrapper_logging.logging.shutdown() # Ineffective in GH :(
+# Create package self.logger.  All component launchers import this module, 
+# (or access it via Grasshopper's cache in sys.modules) but
+# all their loggers will be children of this module's logger:
+logger, log_file_handler, console_log_handler, __ = logging_wrapper.get_logger_and_handlers(
+                                             stream = None
+                                            ,options = module_opts['options']
+                                            ) 
 
-    # Create root logger.  All component launchers import this module, 
-    # (or access it via Grasshopper's cache in sys.modules) but
-    # all their loggers are children of this module's logger:
-    logger, log_file_handler, console_log_handler, _ = logging_wrapper.new_Logger(
-                                               stream = None
-                                              ,options = module_opts['options']
-                                              ) 
 
-     # Flushes cached log messages to above handlers
+logger.info('Logging set up in sDNA_GH package ')
 
-    logger.debug('Logging set up in sDNA_GH package ')
+output.set_logger(logger, flush = True)     
+# Flushes cached log messages to above handlers
 
-output.set_logger(logger, flush = True)
 
 ############################################################################
 
@@ -720,7 +702,7 @@ def cache_sDNA_tool(compnt # instead of self
                                       ,component = compnt
                                       )                                      
     tools_dict[nick_name] =  sDNA_tool
-    sDNA = compnt.opts['metas'].sDNA # updated by update_sDNA, when called by 
+    sDNA = compnt.opts['metas'].SDNA # updated by update_sDNA, when called by 
                                 # sDNA_ToolWrapper.update_tool_opts_and_syntax
     compnt.do_not_remove += tuple(sDNA_tool.defaults.keys()) 
     compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
@@ -756,7 +738,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                                               +'be set by '
                                                               +'try_to_update_nick_name'
                                                               )
-
+    logger = logger
 
     @property
     def metas(self):
@@ -783,7 +765,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         name_map = metas.name_map
         
-        logger.debug('Inserting tools... ')
+        self.logger.debug('Inserting tools... ')
 
         def is_class(Class):
             #type(type[any]) -> function
@@ -872,7 +854,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             tools = self.tools
 
 
-        logger.debug('Updating Params: %s ' % tools)
+        self.logger.debug('Updating Params: %s ' % tools)
 
         result = self.params_adder.add_tool_params(Params
                                                   ,tools
@@ -901,11 +883,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         # cache_sDNA_tool is defined in this module.  It is called
         # for any tool_name not in tools_dict, and then looks for 
         # that tool_name in sDNAUISpec.py .  
-        logger.debug(tools)
+        self.logger.debug(tools)
                 
 
-        #logger.debug(self.opts)
-        logger.debug('Tool opts == ' + '\n'.join('%s : %s' % (k, v)
+        #self.logger.debug(self.opts)
+        self.logger.debug('Tool opts == ' + '\n'.join('%s : %s' % (k, v)
                                                  for k, v in self.opts.items()
                                                  if k not in ('options','metas')
                                                 ) 
@@ -923,26 +905,26 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             new_name = self.Attributes.Owner.NickName 
             # If this is run before __init__ has run, there is no 
             # Attributes attribute yet (ghenv.Component can be used instead).
-            logger.debug('new_name == %s' % new_name)
+            self.logger.debug('new_name == %s' % new_name)
 
         if ( (isinstance(self.nick_name, options_manager.Sentinel)) 
               or (self.opts['metas'].cmpnts_change 
                   and self.nick_name != new_name )):  
             #
             self.nick_name = new_name
-            self.logger = logger.getChild(self.nick_name)
+            self.logger = self.logger.getChild(self.nick_name)
 
-            logger.info(' Component nick name changed to : ' 
+            self.logger.info(' Component nick name changed to : ' 
                        +self.nick_name
                        )
             return 'Name updated'
-        logger.debug('Old name kept == %s' % self.nick_name)
+        self.logger.debug('Old name kept == %s' % self.nick_name)
 
         return 'Old name kept'
 
 
     def __init__(self, *args, **kwargs):
-        logger.debug('Calling sDNA_GH_Components parent initialiser')
+        self.logger.debug('Calling sDNA_GH_Components parent initialiser')
         super(sDNA_GH_Component, self).__init__()
         self.ghdoc = ghdoc
         # self.update_sDNA() moved to cache_sDNA_tool
@@ -956,8 +938,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         # If this method is not intended to crash on a missing input param,
         # it needs to accept anything (or a lack thereof) to run in the 
         # meantime until the params can be updated.  kwargs enable this.
-        logger.debug('self.script started... \n')
-        #logger.debug(kwargs)
+        self.logger.debug('self.script started... \n')
+        #self.logger.debug(kwargs)
 
         go = smart_comp.first_item_if_seq(kwargs.pop('go', False), False) 
              # Input Params set 
@@ -981,11 +963,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                                                  )
                                                       ,EMPTY_NT
                                                       )
-        logger.debug(external_opts)
+        self.logger.debug(external_opts)
 
         gdm = smart_comp.first_item_if_seq(kwargs.get('gdm', {}))
 
-        logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
+        self.logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
         
         result = self.try_to_update_nick_name()
         nick_name = self.nick_name
@@ -1006,7 +988,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             if extra_params_added != 'No extra Params required. ':
                 # Extra Input Params are actually OK as RunScript has already 
                 # been called already by this point.
-                logger.debug('Output Params updated.  Returning None.  ')
+                self.logger.debug('Output Params updated.  Returning None.  ')
                 return (None,) * len(self.Params.Output)
                 # Grasshopper components can have a glitchy one off error if
                 # not-None outputs are given to params that 
@@ -1018,11 +1000,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # and saved should still run when the canvas loads. 
 
                     
-        logger.info('Tools == %s ' % self.tools)
+        self.logger.info('Tools == %s ' % self.tools)
 
         sync = self.local_metas.sync
         #######################################################################
-        logger.debug('kwargs.keys() == %s ' % kwargs.keys())
+        self.logger.debug('kwargs.keys() == %s ' % kwargs.keys())
         self.opts, self.local_metas = override_all_opts(
                                  local_opts = self.opts # mutated
                                 ,overrides = [self.tools_default_opts, external_opts]
@@ -1044,9 +1026,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             logging_wrapper.set_handler_level(handler, level)
 
 
-        logger.debug('Opts overridden....    ')
-        logger.debug(self.opts)
-        logger.debug(self.local_metas)
+        self.logger.debug('Opts overridden....    ')
+        self.logger.debug(self.opts)
+        self.logger.debug(self.local_metas)
         
         if (self.metas.update_path 
             or not os.path.isfile(self.options.path) ):
@@ -1061,11 +1043,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     self.opts = module_opts #re-sync
                 else:
                     self.opts = self.opts.copy() #de-sync
-                    # noisy sentinels and imported modules are in 
-                    # opts['options'].sDNA so best to avoid deep copying.
 
-        if tools.sDNA_key(self.opts) != self.opts['metas'].sDNA:
-            # If new sDNA module names are specified or metas.sDNA is None
+        if tools.sDNA_key(self.opts) != self.opts['metas'].SDNA:
+            # If new sDNA module names are specified or metas.SDNA is None
             has_any_sDNA_tools = False
             for tool in self.tools:
                 if isinstance(tool, tools.sDNA_ToolWrapper):
@@ -1082,7 +1062,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 self.update_Params()#self.Params, self.tools)
                 # to add in any new sDNA inputs to the component's Params
             
-                logger.info('sDNA has been updated.  '
+                self.logger.info('sDNA has been updated.  '
                            +'Returning None to allow new Params to be set. '
                            )
                 return (None,) * len(self.Params.Output)
@@ -1092,7 +1072,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                   nick_name.replace(' ','').replace('_','').lower() == 'config'):
                 #
                 tools.import_sDNA(opts = self.opts)
-                logger.info('Building missing sDNA components (if any). ')
+                self.logger.info('Building missing sDNA components (if any). ')
                 tools.build_missing_sDNA_components(opts = self.opts
                                                    ,category_abbrevs = self.metas.category_abbrevs
                                                    ,plug_in_name = dev_tools.plug_in_name #'sDNA'
@@ -1105,18 +1085,18 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
 
-        logger.debug(go)
+        self.logger.debug(go)
 
         if go is True: 
             if not hasattr(self, 'tools'):
                 msg = 'component name: %s unrecognised? ' % nick_name
                 msg += 'sDNA_GH has not found any tools to run.  '
                 msg += 'Change component name, or define tools for name in name_map.'
-                logger.error(msg)
+                self.logger.error(msg)
                 raise ValueError(msg)                
             if not isinstance(self.tools, list):
                 msg = 'self.tools is not a list'
-                logger.error(msg)
+                self.logger.error(msg)
                 raise TypeError(msg)
 
             invalid_tools = [tool for tool in self.tools 
@@ -1124,10 +1104,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                             ]
             if invalid_tools:
                 msg = ('Tools are not runner.RunnableTool : %s' % invalid_tools)
-                logger.error(msg)
+                self.logger.error(msg)
                 raise ValueError(msg)
 
-            logger.debug('my_tools == %s' % self.tools)
+            self.logger.debug('my_tools == %s' % self.tools)
 
 
 
@@ -1137,12 +1117,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
 
-            logger.debug('type(geom_data_map) == %s ' % type(geom_data_map))
+            self.logger.debug('type(geom_data_map) == %s ' % type(geom_data_map))
             
-            logger.debug('Before merge gdm[:3] == %s ' % gdm.items()[:3])
+            self.logger.debug('Before merge gdm[:3] == %s ' % gdm.items()[:3])
 
 
-            logger.debug('Before merge geom_data_map[:3] == %s ' 
+            self.logger.debug('Before merge geom_data_map[:3] == %s ' 
                         % geom_data_map.items()[:3]
                         )
 
@@ -1152,9 +1132,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                        ,self.opts['options'].merge_subdicts
                                        )
 
-            logger.debug('After merge type(gdm) == %s ' % type(gdm))
+            self.logger.debug('After merge type(gdm) == %s ' % type(gdm))
             
-            logger.debug('After merge gdm[:3] == %s ' % gdm.items()[:3])
+            self.logger.debug('After merge gdm[:3] == %s ' % gdm.items()[:3])
 
             kwargs['gdm'] = gdm
 
@@ -1163,7 +1143,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
             if isinstance(gdm, dict):
-                logger.debug('Converting gdm to Data and Geometry')
+                self.logger.debug('Converting gdm to Data and Geometry')
                 (NewData
                 ,NewGeometry
                 ) = gdm_from_GH_Datatree.dict_from_DataTree_and_lists(gdm)
@@ -1180,7 +1160,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
             tool_opts = self.opts
-            sDNA = self.opts['metas'].sDNA
+            sDNA = self.opts['metas'].SDNA
             if self.nick_name in self.opts:
                 tool_opts = self.opts[self.nick_name]
                 if isinstance(tool_opts, dict):
@@ -1194,7 +1174,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                         tmp.update(sub_tools_dict)
                     tool_opts = tmp
         else:
-            logger.debug('go == %s ' % go)
+            self.logger.debug('go == %s ' % go)
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
             tool_opts = {}
@@ -1202,7 +1182,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                                    # in another component
         ret_vals_dict['l_metas'] = self.local_metas #immutable
 
-        logger.debug('Returning from self.script. opts.keys() == %s ' % self.opts.keys() )
+        self.logger.debug('Returning from self.script. opts.keys() == %s ' % self.opts.keys() )
         locs = locals().copy()
         ret_args = self.component_Outputs( 
                               [  ret_vals_dict

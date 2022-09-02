@@ -103,7 +103,8 @@ def namedtuple_from_class(Class, name = None):
                                 if not attr.startswith('_')
                              )  
     factory = collections.namedtuple(name, fields_dict.keys(), rename = True)   
-    return factory(**fields_dict)
+    retval = factory(**fields_dict)
+    return retval
 
 
 
@@ -197,11 +198,14 @@ def override_dict_key_val_generator(d_lesser
                                    ,add_new_opts = False
                                    ,allow_containers = True
                                    ,hush_type_error = False
+                                   ,skip_caps = True
                                    ,**kwargs
                                    ):
-    #type: (dict, OrderedDict, bool, bool, bool, bool, bool, dict) -> tuple
+    #type: (dict, OrderedDict, bool, bool, bool, bool, bool, bool, dict) -> tuple
 
     for key in od_greater:
+        if skip_caps and isinstance(key, basestring) and key.isupper():
+            continue
         val = od_greater[key]  #we may change val, so don't loop over .items()
 
         if key not in d_lesser:
@@ -405,10 +409,10 @@ def override_namedtuple(nt_lesser
         msg += ', not a dictionary.  '
         if hasattr(override_funcs_dict, 'items'):
             msg += 'Relying on duck-typing.  '
-            logging.warning(msg)
+            logger.warning(msg)
         else:
             msg += '.items() method required.  '
-            logging.error(msg)
+            logger.error(msg)
             raise TypeError(msg)
     
     
@@ -417,7 +421,7 @@ def override_namedtuple(nt_lesser
         if isinstance(override, basestring):
             if override.endswith('.toml'):
                 msg = 'Call load_toml_file first and add dict to overrides'
-                logging.error(msg)
+                logger.error(msg)
                 raise NotImplementedError(msg)
 
         if isinstance(override, nt_lesser.__class__):
@@ -429,7 +433,7 @@ def override_namedtuple(nt_lesser
                 return val 
         
         if hasattr(override, '_asdict'):
-            logging.warning('Duck-typing override as namedtuple.  Calling' 
+            logger.warning('Duck-typing override as namedtuple.  Calling' 
                            +type(override).__name__ + '._asdict' 
                            +' to coerce to ordered dict.' 
                            )
@@ -437,7 +441,7 @@ def override_namedtuple(nt_lesser
 
         msg = 'Overrider func not found for override type: '
         msg += type(override).__name__
-        logging.error(msg)
+        logger.error(msg)
         raise NotImplementedError(msg)
 
 
