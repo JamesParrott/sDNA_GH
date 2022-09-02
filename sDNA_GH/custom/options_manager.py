@@ -172,10 +172,22 @@ def delistify_vals_if_not_list_in(d_lesser, d_greater):
             or not isinstance(d_lesser[key], list)  ):
             d_greater[key]=val[0]
 
+EQUIVALENT_CLASSES = {int : Number
+                     ,float : Number
+                     }
+
+NOT_EQUIVALENT_CLASSES = {int : bool
+                         ,float : bool
+                         }
+                         
+#True is famously an int, but it is also a number.Number Aaaaggghhhh!  Why?!
 
 def is_same_Class_as(x, y):
     #type: (type[any], type[any]) -> bool
-    return isinstance(x, y.__class__)
+    t = y.__class__
+    if t in NOT_EQUIVALENT_CLASSES and isinstance(x, NOT_EQUIVALENT_CLASSES[t]):
+        return False
+    return isinstance(x, EQUIVALENT_CLASSES.get(t, t))
 
 
 def is_same_Class_as_item_of(x, y):
