@@ -478,10 +478,11 @@ def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions)
         recs = r.records()
         shapes = r.shapes()
         bbox = r.bbox
+        shape_type = r.shapeType
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} 
     #               for shape, rec in zip(shapes, recs)  }
     
-    return fields, recs, shapes, bbox
+    return fields, recs, shapes, bbox, shape_type
 
 
 

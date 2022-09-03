@@ -160,22 +160,22 @@ Rhino_obj_adder_for_shape = dict(NULL = None
                                 # Unsupported.  Complicated.
                                 ,POLYLINE = 'AddPolyline'
                                 ,POLYGON = 'AddPolyline'   
-                                # check Pyshp closes them
+                                # Pyshp closes them
                                 ,MULTIPOINT = 'AddPoints'
                                 ,POINTZ = 'AddPoint'
                                 ,POLYLINEZ = 'AddPolyline'
                                 ,POLYGONZ = 'AddPolyline'   
-                                # check Pyshp closes them
+                                #  Pyshp closes them
                                 ,MULTIPOINTZ = 'AddPoints'
                                 ,POINTM = 'AddPoint'
                                 ,POLYLINEM = 'AddPolyline'
                                 ,POLYGONM = 'AddPolyline'    
-                                # check Pyshp closes them
+                                # Pyshp closes them
                                 ,MULTIPOINTM = 'AddPoints'
                                 )  
 
 
-def objs_maker_factory(
+def obj_makers(
        shp_type = 'POLYLINEZ'
       #,make_new_group = make_group
       #,add_objects_to_group = add_objs_to_group

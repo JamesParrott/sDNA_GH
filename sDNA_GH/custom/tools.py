@@ -1792,7 +1792,8 @@ class ShapefileReader(sDNA_GH_Tool):
         (shp_fields
         ,recs
         ,shapes
-        ,bbox ) = pyshp_wrapper.get_fields_recs_and_shapes( f_name )
+        ,bbox 
+        ,shape_type) = pyshp_wrapper.get_fields_recs_and_shapes( f_name )
 
         self.logger.debug('bbox == %s' % bbox)
 
@@ -1834,7 +1835,7 @@ class ShapefileReader(sDNA_GH_Tool):
              or len(gdm) != len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = rhino_gh_geom.objs_maker_factory(options.shp_type)
+            objs_maker = rhino_gh_geom.obj_makers(shape_type) #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
             shapes_to_output = (
                 str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)

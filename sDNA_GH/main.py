@@ -242,8 +242,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     auto_get_Geom = False
     auto_read_User_Text = False
-    auto_write_Shp = False
-    auto_read_Shp = False
+    auto_write_Shp = True
+    auto_read_Shp = True
     #auto_parse_data = False  # not used.  ObjectsRecolourer parses if req anyway
     auto_plot_data = False
     ###########################################################################
