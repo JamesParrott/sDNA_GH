@@ -70,7 +70,10 @@ OrderedDict = collections.OrderedDict
 
 def isnamedtuple(obj):
     #type(type[any]) -> bool
-    return isinstance(obj, tuple) and hasattr(obj, '_fields')
+    return (isinstance(obj, tuple) and 
+            hasattr(obj, '_fields') and 
+            hasattr(obj, '_asdict')
+           )
 
 def attrs(X):
     return [attr for attr in dir(X) if not attr.startswith('_')]
@@ -182,11 +185,20 @@ NOT_EQUIVALENT_CLASSES = {int : bool
                          
 #True is famously an int, but it is also a number.Number Aaaaggghhhh!  Why?!
 
-def is_same_Class_as(x, y):
-    #type: (type[any], type[any]) -> bool
+def is_same_Class_as(x, y, check_order = False):
+    #type: (type[any], type[any], bool) -> bool
+    
+    if isnamedtuple(y):
+        if not isnamedtuple(x):
+            return False
+        if check_order:
+            return x._fields == y._fields
+        return set(x._fields) == set(y._fields)
+
     t = y.__class__
     if t in NOT_EQUIVALENT_CLASSES and isinstance(x, NOT_EQUIVALENT_CLASSES[t]):
         return False
+
     return isinstance(x, EQUIVALENT_CLASSES.get(t, t))
 
 
@@ -436,8 +448,8 @@ def override_namedtuple(nt_lesser
                 logger.error(msg)
                 raise NotImplementedError(msg)
 
-        if isinstance(override, nt_lesser.__class__):
-            return override_namedtuple_with_namedtuple  
+        if is_same_Class_as(override, nt_lesser):
+            return override_namedtuple_with_namedtuple
 
         for key, val in override_funcs_dict.items():
             if isinstance(override, key):
@@ -445,7 +457,7 @@ def override_namedtuple(nt_lesser
                 return val 
         
         if hasattr(override, '_asdict'):
-            logger.warning('Duck-typing override as namedtuple.  Calling' 
+            logger.warning('Defaulting override to namedtuple.  Calling' 
                            +type(override).__name__ + '._asdict' 
                            +' to coerce to ordered dict.' 
                            )

@@ -1142,13 +1142,22 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             ret_vals_dict = runner.run_tools(self.tools, kwargs)
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
-            if isinstance(gdm, dict):
+            if (isinstance(gdm, (list, tuple, set)) and 
+               all(isinstance(item, dict) for item in gdm)):
+                #
+                self.logger.info('Converting gdms to Data Tree and Data Tree')
+                (NewData
+                ,NewGeometry
+                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_list_of_dicts(gdm)
+            elif isinstance(gdm, dict):
                 self.logger.debug('Converting gdm to Data and Geometry')
                 (NewData
                 ,NewGeometry
-                ) = gdm_from_GH_Datatree.dict_from_DataTree_and_lists(gdm)
-                                        
+                ) = gdm_from_GH_Datatree.DataTree_and_list_from_dict(gdm)               
             else:
+                logger.info('Cannot unpack Geom Data Mapping of type: %s' 
+                           %type(gdm)
+                           )
                 NewData, NewGeometry = None, None
 
             ret_vals_dict['Data'] = NewData

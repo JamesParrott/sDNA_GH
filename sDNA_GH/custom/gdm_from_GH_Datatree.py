@@ -59,17 +59,30 @@ logger.addHandler(logging.NullHandler())
 
 
 
-def make_gdm(main_iterable): 
-    #type(Iterable)-> dict   
-    """ A trivial function to define a geometry data mapping - DRY.
-
-        Anything building a gdm should refer to this for consistency.
-        main_iterable should return tuples of keys and values.  The keys
-        should be Rhino or Grasshopper geometric objects, or strings
+def make_gdm(keys_and_vals): 
+    #type(*Iterable)-> dict   
+    """ The keys should be Rhino or Grasshopper geometric objects, or strings
         matching the uuid pattern.  The values should also be a dictionary, 
         string keyed, containing associated data usable as for User Text.
     """
-    return OrderedDict(main_iterable)
+    return OrderedDict(keys_and_vals)
+
+
+def make_list_of_gdms(gdms):
+    #type(*Iterable) -> list
+    retval = []
+    iterable = iter(gdms)
+    for item in iterable:
+        if len(item) == 2:
+            if len(retval) == 0 or retval[-1] is not od:
+                od = OrderedDict()
+                retval.append(od)
+            key, val = item
+            od[key] = val
+        elif isinstance(item, OrderedDict):
+            retval.append(item)
+    return retval
+
 
     
 
@@ -87,26 +100,56 @@ def dict_from_key_val_lists(key_val_lists):
         return key_val_lists
 
 
-def dict_from_DataTree_and_lists(nested_dict):
-    # type(dict) -> DataTree
-    if all(isinstance(val, dict) for val in nested_dict.values()):    
-        User_Text_Keys = [ list(group_dict.keys()) # list() for Python 3
-                        for group_dict in nested_dict.values()
+def nested_lists_of_keys_and_values_or_values(dict_):
+    #type(dict) -> list
+    User_Text_Keys = [list(group_dict.keys()) # list() for Python 3
+                        for group_dict in dict_.values()
                         ]
-        #In the current source ghpythonlib.treehelpers.list_to_tree only uses len()
-        # and loops over the list.  Tested: Calling with a tuple returns a Datatree.
-        #It does not check it really is a list - any iterable with len should be fine.
-        #TODO!!!!!   Keys and Values???!!!  Just want the val from Data
-        User_Text_Values = [ list(group_dict.values()) # list() for Python 3
-                            for group_dict in nested_dict.values()
-                            ]
+    User_Text_Values = [list(group_dict.values()) # list() for Python 3
+                        for group_dict in dict_.values()
+                        ]
+    return [User_Text_Keys, User_Text_Values]
+
+
+
+def DataTree_and_list_from_dict(nested_dict):
+    # type(dict) -> DataTree, list
+    if all(isinstance(val, dict) for val in nested_dict.values()):    
+        # User_Text_Keys = [list(group_dict.keys()) # list() for Python 3
+        #                   for group_dict in nested_dict.values()
+        #                  ]
+        # #In the current source ghpythonlib.treehelpers.list_to_tree only uses len()
+        # # and loops over the list.  Tested: Calling with a tuple returns a Datatree.
+        # #It does not check it really is a list - any iterable with len should be fine.
+        # User_Text_Values = [list(group_dict.values()) # list() for Python 3
+        #                     for group_dict in nested_dict.values()
+        #                    ]
         
-        Data =  tree_helpers.list_to_tree([[User_Text_Keys, User_Text_Values]])
+        Data =  tree_helpers.list_to_tree([nested_lists_of_keys_and_values_or_values(nested_dict)])
     else:
         Data = nested_dict.values()
     Geometry = nested_dict.keys()  # Multi-polyline-groups aren't unpacked.
     return Data, Geometry
     #layerTree = []
+
+
+def Data_Tree_and_Data_Tree_from_dicts(dicts):
+    #type(Iterable[dict])-> DataTree, DataTree
+    if all(all(isinstance(val, dict) for val in dict_.values())
+           for dict_ in dicts):
+        #
+        Data = tree_helpers.list_to_tree(
+            [nested_lists_of_keys_and_values_or_values(dict_) 
+             for dict_ in dicts
+            ]
+        )
+    else:
+        Data = [list(dict_.values()) for dict_ in dicts]
+    Geometry = tree_helpers.list_to_tree([list(dict_.keys()) for dict_ in dicts])
+    return Data, Geometry
+        
+
+
 
 
 def override_gdm(lesser, override, merge_subdicts = True):  
@@ -214,7 +257,7 @@ def gdm_from_DataTree_and_list(Geom, Data):
 
 
 
-    geom_data_map = make_gdm(component_inputs_gen_exp ) 
+    geom_data_map = make_gdm(component_inputs_gen_exp) 
 
 
     return geom_data_map

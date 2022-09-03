@@ -475,10 +475,11 @@ class FieldRecsShapesOptions(object):
 def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions):
     with shp.Reader(shapefile_path, encoding = options.encoding) as r:
         fields = r.fields[1:] # skip first field (deletion flag)
-        recs = r.records()
+        recs = [record.as_dict() for record in r.records()]
         shapes = r.shapes()
         bbox = r.bbox
         shape_type = r.shapeType
+
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} 
     #               for shape, rec in zip(shapes, recs)  }
     

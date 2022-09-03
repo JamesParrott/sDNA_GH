@@ -141,3 +141,7 @@ def delete_file(path
     if os.path.isfile(path):
         logger.info('Deleting file: %s ' % path)
         os.remove(path)
+
+def list_of_lists(iterable):
+    #type(Iterable[Iterable]) -> list[list]
+    return [list(item) for item in iterable]

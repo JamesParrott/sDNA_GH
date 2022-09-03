@@ -1812,14 +1812,12 @@ class ShapefileReader(sDNA_GH_Tool):
                 self.logger.warning('No Geom objects in Geom Data Mapping.  ')
             return 1, f_name, gdm, None
 
-
         if not bbox:
             self.logger.warning('No Bounding Box in Shapefile: %s '
                                % f_name
                                +'Supply bbox manually or create '
                                +'rectangle to plot legend.'
                                )
-            
 
         fields = [ x[0] for x in shp_fields ]
 
@@ -1837,10 +1835,27 @@ class ShapefileReader(sDNA_GH_Tool):
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type) #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
-            shapes_to_output = (
-                str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
-                for shp in shapes 
-                )
+            def generator():
+                for shape, rec in itertools.izip(shapes, recs):
+                    parts = shape.parts
+                    if len(parts) >= 2:
+                        def sub_generator():
+                            end_indices = iter(parts)
+                            start = next(parts) 
+                            assert start == 0, "First shape doesn't start at first point"
+                            for end in end_indices:
+                                yield funcs.list_of_lists(shape.points[start:end]), rec
+                                start = end
+                        yield gdm_from_GH_Datatree.make_gdm(sub_generator())
+                    else:
+                        yield funcs.list_of_lists(shape.points), rec
+                # shp_file_gen_exp = itertools.izip(
+                #     (str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
+                #     for shp in shapes 
+                #     )
+                #     ,recs
+                #     )
+            gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
         else:
@@ -1850,18 +1865,18 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
-            shapes_to_output = list(gdm.keys()) 
+            gdm = gdm_from_GH_Datatree.make_gdm(itertools.izip(gdm.keys(), recs))
             #                  dict.keys() is a dict view in Python 3
 
 
 
-        shp_file_gen_exp  = itertools.izip(shapes_to_output
-                                          ,(rec.as_dict() for rec in recs)
-                                          )
+        # shp_file_gen_exp  = itertools.izip(shapes_to_output
+        #                                   ,(rec.as_dict() for rec in recs)
+        #                                   )
 
         if options.bake:
             sc.doc = Rhino.RhinoDoc.ActiveDoc
-        gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
+        # gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
         sc.doc = ghdoc 
 
         self.logger.debug('bbox == %s ' % bbox)
