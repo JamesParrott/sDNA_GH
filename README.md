@@ -66,7 +66,7 @@ Multiple sDNA_GH tools can be run from a single sDNA_GH component by setting any
 
 #### Options.  
 sDNA_GH is highly customisable.  This customisation is controlled by setting options.  To give an option a value, connect a Grasshopper Param or text panel containing that value, to the Param with that option name on any sDNA_GH component (except Unload_sDNA).  If a Param is subsequently disconnected, its latest value will be remembered.  Some Text Params can be cleared by connecting an empty Text Panel to them.
-Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Similarly, any option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other sDNA_GH components as well, via normal Grasshopper connections. 
+Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Options whose names are all in capitals are read only.  Any other option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other sDNA_GH components as well, via normal Grasshopper connections. 
 
 ##### Adding Component Input and Output Params.  
 To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
