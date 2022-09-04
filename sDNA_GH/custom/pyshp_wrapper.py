@@ -28,17 +28,17 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 """ Reads .shp files, and parses data and writes .shp files from any iterable.   
 """
 
 import os
+import abc
 import re
 import logging
 import locale
 from collections import OrderedDict
 from datetime import date
-import re
 import collections
 if hasattr(collections, 'Iterable'):
     Iterable = collections.Iterable 
@@ -49,6 +49,14 @@ else:
 
 
 from ..third_party.PyShp import shapefile as shp  
+
+if hasattr(abc, 'ABC'):
+    ABC = abc.ABC
+else:
+    class ABC(object):
+        __metaclass__ = abc.ABCMeta
+abstractmethod = abc.abstractmethod
+
 
 try:
     basestring #type: ignore
@@ -473,21 +481,185 @@ class FieldRecsShapesOptions(object):
 
 
 def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions):
+    # type(str, type[any]) -> list, Generator[dict], Generator[type[any]], list[Number], str, int
     with shp.Reader(shapefile_path, encoding = options.encoding) as r:
         fields = r.fields[1:] # skip first field (deletion flag)
-        recs = [record.as_dict() for record in r.records()]
-        shapes = r.shapes()
+        recs = (record.as_dict() for record in r.iterRecords())
+        shapes = r.iterShapes()
         bbox = r.bbox
         shape_type = shp.SHAPETYPE_LOOKUP[r.shapeType]
+        num_entries = len(r)
 
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} 
     #               for shape, rec in zip(shapes, recs)  }
     
-    return fields, recs, shapes, bbox, shape_type
+    return fields, recs, shapes, bbox, shape_type, num_entries
 
 
+def shp_meta_data(shapefile_path, options = FieldRecsShapesOptions):
+    # type(str, type[any]) -> list, list[Number], str, int
+    with shp.Reader(shapefile_path, encoding = options.encoding) as r:
+        fields = r.fields[1:] # skip first field (deletion flag)
+        bbox = r.bbox
+        shape_type = shp.SHAPETYPE_LOOKUP[r.shapeType]
+        num_entries = len(r)
+
+    #gdm = {shape : {k : v for k,v in zip(fields, rec)} 
+    #               for shape, rec in zip(shapes, recs)  }
+    
+    return fields, bbox, shape_type, num_entries
 
 
+def delete_file(path
+               ,logger = logger
+               ):
+    #type(str, type[any]) -> None
+    if os.path.isfile(path):
+        logger.info('Deleting file: %s ' % path)
+        os.remove(path)
+
+
+def name_matches(file_name, regexes = ()):
+    #type(str, Iterable) -> bool
+    if isinstance(regexes, basestring):
+        regexes = (regexes,)
+    return any(bool(re.match(regex, file_name)) for regex in regexes)
+
+
+def delete_shp_files_if_req(f_name
+                           ,logger = logger
+                           ,delete = True
+                           ,strict_no_del = False
+                           ,regexes = () # no file extension in regexes
+                           ):
+    #type(str, type[any], bool, str/tuple) -> None
+    logger.debug('strict_no_del == %s ' % strict_no_del)
+    if strict_no_del:
+        return
+
+    file_name_no_ext = os.path.splitext(f_name)[0]
+    logger.debug('delete == %s ' % delete)
+    if (delete or name_matches(file_name_no_ext, regexes)):
+        for ext in ('.shp', '.dbf', '.shx', '.shp.names.csv'):
+            path = file_name_no_ext + ext
+            delete_file(path, logger)
+
+
+class ShapeFilesDeleter(ABC):
+    
+    file_name = None
+
+    def __init__(self
+                ,file_name 
+                ):
+        self.file_name = file_name
+
+    def delete_files(self, delete, opts):
+        if isinstance(self.file_name, basestring):
+            #
+            delete_shp_files_if_req(f_name = self.file_name
+                                    ,delete = delete
+                                    ,strict_no_del = opts['options'].strict_no_del  
+                                    )
+
+class InputFileDeletionOptions(GetFileNameOptions):
+    del_after_sDNA = True
+    strict_no_del = False 
+    INPUT_FILE_DELETER = None
+
+class OutputFileDeletionOptions(GetFileNameOptions):
+    strict_no_del = InputFileDeletionOptions.strict_no_del 
+    del_after_read = True
+    OUTPUT_FILE_DELETER = None
+
+class NullDeleter(object):
+    pass
+ShapeFilesDeleter.register(NullDeleter)
+#assert issubclass(NullDeleter, ShapeFilesDeleter)
+
+
+class TmpFileDeletingReaderIteratorABC(ABC):
+    def __init__(self, reader, opts = None):
+        # type(shp.Reader, dict, dict) -> None
+        if opts is None:
+            opts = dict(options = OutputFileDeletionOptions)
+        self.opts = opts
+        if isinstance(reader, shp.Reader):
+            self.reader = reader
+            self.file_path = reader.shp.name
+        elif isinstance(reader, basestring) and os.path.isfile(reader):
+            encoding = opts['options'].encoding.replace('-','')
+            self.reader = shp.Reader(reader, encoding = encoding)
+            self.file_path = reader
+        else:
+            raise ValueError('No shapefile reader or file path supplied. ')
+        self.set_iterable()
+
+
+    @abstractmethod
+    def set_iterable(self):
+        """ e.g. self.iterator = self.reader.iterShapeRecords() """
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        try:
+            retval = next(self.iterator)
+            logger.debug('Read val: %s' % retval)
+        except StopIteration as e:
+            self.reader.close()
+            self.maybe_delete_file()
+            raise e
+        return retval
+
+    def __len__(self):
+        return len(self.reader)
+
+    def maybe_delete_file(self, *args):
+        options = self.opts['options']
+        if (options.del_after_read and 
+            not options.strict_no_del and 
+            not options.overwrite_shp and 
+            isinstance(options.OUTPUT_FILE_DELETER, ShapeFilesDeleter) and
+            self.file_path == options.OUTPUT_FILE_DELETER.file_name):
+            #
+            options.OUTPUT_FILE_DELETER.delete_files(
+                                                delete = options.del_after_read
+                                               ,opts = self.opts
+                                               )
+            self.opts['options'] = self.opts['options']._replace(
+                                                    OUTPUT_FILE_DELETER = None
+                                                    )
+
+
+class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
+    def set_iterable(self):
+        self.iterator = self.reader.iterShapeRecords()
+
+class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
+    def set_iterable(self):
+        self.iterator = (rec.as_dict() for rec in self.reader.iterRecords())
+
+
+# def shp_shapeRecords(shapefile_path, opts = None): 
+#     # type(str, type[any]) -> Generator[type[any]]
+#     if opts is None:
+#         opts = dict(options = FieldRecsShapesOptions)
+#     with TmpFileDeletingReader(shapefile_path, opts) as r:
+#         # No yield from in Iron Python 2 :(
+#         for shapeRecord in r.iterShapeRecords():
+#             yield shapeRecord
+
+
+# def shp_record_dicts(shapefile_path, opts = None):
+#     # type(str, type[any]) -> Generator[type[any]]
+#     if opts is None:
+#         opts = dict(options = FieldRecsShapesOptions)
+#     with TmpFileDeletingReader(shapefile_path, opts) as r:
+#         # No yield from in Iron Python 2 :(
+#         for record in r.iterRecords():
+#             yield record.as_dict()
 
 
 class ShpOptions(CoerceAndGetCodeOptions

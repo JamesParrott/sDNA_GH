@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 
 
 import logging
@@ -57,31 +57,127 @@ logger.addHandler(logging.NullHandler())
 
 
 
-
-
-def make_gdm(keys_and_vals): 
-    #type(*Iterable)-> dict   
-    """ The keys should be Rhino or Grasshopper geometric objects, or strings
-        matching the uuid pattern.  The values should also be a dictionary, 
-        string keyed, containing associated data usable as for User Text.
+class GeomDataMapping(OrderedDict):
+    """ Primary intermediate data structure of sDNA_GH, mapping 
+        strings of references to Rhino geometric objects, or 
+        actual Grasshopper geometric objects (uuids) to string 
+        keyed sub-dictionaries of data suitable for User Text.  
     """
-    return OrderedDict(keys_and_vals)
+    @staticmethod
+    def from_DataTree_and_list(Geom, Data):
+        # type (type[any], list, dict)-> dict
+        
+        if Geom in [None, [None]]:
+            logger.debug(' No Geom. Processing Data only ')
+            Geom = []
 
 
-def make_list_of_gdms(gdms):
-    #type(*Iterable) -> list
-    retval = []
-    iterable = iter(gdms)
-    for item in iterable:
-        if len(item) == 2:
-            if len(retval) == 0 or retval[-1] is not od:
-                od = OrderedDict()
-                retval.append(od)
-            key, val = item
-            od[key] = val
-        elif isinstance(item, OrderedDict):
-            retval.append(item)
-    return retval
+
+        if isinstance(Geom, basestring) or not isinstance(Geom, Iterable):
+            logger.debug('Listifying Geom.  ')
+            Geom = [Geom]
+        elif (isinstance(Geom, list) 
+            and len(Geom) >= 1 and
+            isinstance(Geom[0], list)):
+            if len(Geom) > 1:
+                logger.warning('List found in element 1 of Geom.  '
+                            +'Discarding Elements 2 onwards.'
+                            )
+            Geom = Geom[0]
+
+        # This check won't allow legend tags through. Later functions 
+        # must handle invalid geometry
+        # 
+        logger.debug(str(Data))
+        if (Data in [[], None, [None]] or
+            getattr(Data,'BranchCount',999)==0):
+            Data = OrderedDict()
+        elif (isinstance(Data, Grasshopper.DataTree[object]) 
+            and getattr(Data, 'BranchCount', 0) > 0):
+            logger.debug('Datatree inputted to Data.  Converting....  ')
+            Data = tree_helpers.tree_to_list(Data)
+        elif not isinstance(Data, list):
+            logger.debug('Listifying Data.  ')
+            Data = [Data]
+            # Tuples don't get split over multiple geometric objects
+
+        while len(Data)==1 and isinstance(Data[0], list):
+            Data=Data[0]
+        
+        if  ( len(Data) >= 2 and
+            isinstance(Data[0], list) and
+            isinstance(Data[1], list) and  # constructing keys and vals is possible
+            ( len(Data[0]) == len(Data[1]) == len(Geom) or  #clear obj-> (key, val) correspondence
+                len(Geom) != len(Data) ) # No possible 1-1 correspondence on all of Data
+            ):
+            if len(Data) > 2:
+                logger.warning('Data tree has more than two branches.  '
+                            +'Using first two for keys and vals.  '
+                            )
+            key_lists = Data[0]
+            val_lists = Data[1]
+            Data = [  OrderedDict(zip(key_list, val_list)) for key_list, val_list in 
+                                                itertools.izip(key_lists, val_lists)  
+                ]
+
+            # Else treat as a list of values
+            # with no keys, the
+            # same as any other list below:
+
+
+        logger.debug('len(Geom) == %s' % len(Geom))
+        logger.debug('len(Data) == %s' % len(Data))
+
+
+        if len(Geom) < len(Data):
+
+            component_inputs_gen_exp =  itertools.chain( itertools.izip(Geom
+                                                                    ,Data[:len(Geom)]
+                                                                    )
+                                                    ,[ (tuple(), Data[len(Geom):]) ]
+                                                    )
+            logger.warning('More Data than Geom.  Assigning list of surplus Data items to the empty tuple key. ')
+        else:
+            if len(Geom) > len(Data):
+                logger.debug('repeating OrderedDict() after Data... ')
+                Data = itertools.chain( Data,  itertools.repeat(OrderedDict()) )
+            else:
+                logger.debug( "Data and Geom equal length.  " )
+            component_inputs_gen_exp =  itertools.izip(Geom, Data)
+
+
+
+        return GeomDataMapping(component_inputs_gen_exp) 
+
+
+    def __init__(self, keys_and_vals=()): 
+        #type(*Iterable)-> dict   
+        """ The keys should be Rhino or Grasshopper geometric objects,
+            or strings matching the uuid pattern.  The values should 
+            also be a dictionary, string keyed, containing associated 
+            data usable as for User Text.
+
+            If keys_and_vals is a generator expression it should be 
+            exhausted (if creation of the actual Rhino/Grasshopper 
+            objects referred to by the keys is a desired side effect).
+        """
+        super(GeomDataMapping, self).__init__(keys_and_vals)
+
+
+# def make_list_of_gdms(gdms):
+#     #type(*Iterable) -> list
+#     retval = []
+#     iterable = iter(gdms)
+#     for item in iterable:
+#         if len(item) == 2:
+#             if len(retval) == 0 or retval[-1] is not od:
+#                 od = make_gdm()
+#                 retval.append(od)
+#             key, val = item
+#             od[key] = val
+#         elif isinstance(item, OrderedDict):
+#             retval.append(item)
+#     return retval
 
 
     
@@ -127,24 +223,34 @@ def DataTree_and_list_from_dict(nested_dict):
         
         Data =  tree_helpers.list_to_tree([nested_lists_of_keys_and_values_or_values(nested_dict)])
     else:
-        Data = nested_dict.values()
+        Data = list(nested_dict.values())
     Geometry = nested_dict.keys()  # Multi-polyline-groups aren't unpacked.
     return Data, Geometry
     #layerTree = []
 
+def keys_and_values_lists_if_nested_dict_else_values(dict_):
+    if all(isinstance(val, dict) for val in dict_.values()):
+        return nested_lists_of_keys_and_values_or_values(dict_) 
+    return list(dict_.values())
 
 def Data_Tree_and_Data_Tree_from_dicts(dicts):
     #type(Iterable[dict])-> DataTree, DataTree
-    if all(all(isinstance(val, dict) for val in dict_.values())
-           for dict_ in dicts):
-        #
-        Data = tree_helpers.list_to_tree(
-            [nested_lists_of_keys_and_values_or_values(dict_) 
-             for dict_ in dicts
-            ]
-        )
-    else:
-        Data = [list(dict_.values()) for dict_ in dicts]
+    if isinstance(dicts, dict):
+        dicts = [dicts]
+    # if all(all(isinstance(val, dict) for val in dict_.values())
+    #        for dict_ in dicts):
+    #     #
+    #     Data = tree_helpers.list_to_tree(
+    #         [nested_lists_of_keys_and_values_or_values(dict_) 
+    #          for dict_ in dicts_1
+    #         ]
+    #     )
+    # else:
+    #     Data = [list(dict_.values()) for dict_ in dicts]
+    Data = tree_helpers.list_to_tree( 
+                       [keys_and_values_lists_if_nested_dict_else_values(dict_)
+                        for dict_ in dicts
+                       ])
     Geometry = tree_helpers.list_to_tree([list(dict_.keys()) for dict_ in dicts])
     return Data, Geometry
         
@@ -174,93 +280,7 @@ def override_gdm(lesser, override, merge_subdicts = True):
     return lesser
 
 
-def gdm_from_DataTree_and_list(Geom, Data):
-    # type (type[any], list, dict)-> dict
-    
-    if Geom in [None, [None]]:
-        logger.debug(' No Geom. Processing Data only ')
-        Geom = []
 
-
-
-    if isinstance(Geom, basestring) or not isinstance(Geom, Iterable):
-        logger.debug('Listifying Geom.  ')
-        Geom = [Geom]
-    elif (isinstance(Geom, list) 
-          and len(Geom) >= 1 and
-          isinstance(Geom[0], list)):
-        if len(Geom) > 1:
-            logger.warning('List found in element 1 of Geom.  '
-                           +'Discarding Elements 2 onwards.'
-                           )
-        Geom = Geom[0]
-
-    # This check won't allow legend tags through. Later functions 
-    # must handle invalid geometry
-    # 
-    logger.debug(str(Data))
-    if (Data in [[], None, [None]] or
-        getattr(Data,'BranchCount',999)==0):
-        Data = OrderedDict()
-    elif (isinstance(Data, Grasshopper.DataTree[object]) 
-          and getattr(Data, 'BranchCount', 0) > 0):
-        logger.debug('Datatree inputted to Data.  Converting....  ')
-        Data = tree_helpers.tree_to_list(Data)
-    elif not isinstance(Data, list):
-        logger.debug('Listifying Data.  ')
-        Data = [Data]
-        # Tuples don't get split over multiple geometric objects
-
-    while len(Data)==1 and isinstance(Data[0], list):
-        Data=Data[0]
-    
-    if  ( len(Data) >= 2 and
-          isinstance(Data[0], list) and
-          isinstance(Data[1], list) and  # constructing keys and vals is possible
-          ( len(Data[0]) == len(Data[1]) == len(Geom) or  #clear obj-> (key, val) correspondence
-            len(Geom) != len(Data) ) # No possible 1-1 correspondence on all of Data
-        ):
-        if len(Data) > 2:
-            logger.warning('Data tree has more than two branches.  '
-                          +'Using first two for keys and vals.  '
-                          )
-        key_lists = Data[0]
-        val_lists = Data[1]
-        Data = [  OrderedDict(zip(key_list, val_list)) for key_list, val_list in 
-                                            itertools.izip(key_lists, val_lists)  
-               ]
-
-        # Else treat as a list of values
-        # with no keys, the
-        # same as any other list below:
-
-
-    logger.debug('len(Geom) == %s' % len(Geom))
-    logger.debug('len(Data) == %s' % len(Data))
-
-
-    if len(Geom) < len(Data):
-
-        component_inputs_gen_exp =  itertools.chain( itertools.izip(Geom
-                                                                   ,Data[:len(Geom)]
-                                                                   )
-                                                   ,[ (tuple(), Data[len(Geom):]) ]
-                                                   )
-        logger.warning('More Data than Geom.  Assigning list of surplus Data items to the empty tuple key. ')
-    else:
-        if len(Geom) > len(Data):
-            logger.debug('repeating OrderedDict() after Data... ')
-            Data = itertools.chain( Data,  itertools.repeat(OrderedDict()) )
-        else:
-            logger.debug( "Data and Geom equal length.  " )
-        component_inputs_gen_exp =  itertools.izip(Geom, Data)
-
-
-
-    geom_data_map = make_gdm(component_inputs_gen_exp) 
-
-
-    return geom_data_map
 
 def is_selected(obj):
     return rs.IsObjectSelected(obj)

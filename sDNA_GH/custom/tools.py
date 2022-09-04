@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 
 import os
 import sys
@@ -261,23 +261,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
 
 
 
-def delete_shp_files_if_req(f_name
-                           ,logger = logger
-                           ,delete = True
-                           ,strict_no_del = False
-                           ,regexes = () # no file extension in regexes
-                           ):
-    #type(str, type[any], bool, str/tuple) -> None
-    logger.debug('strict_no_del == %s ' % strict_no_del)
-    if strict_no_del:
-        return
 
-    file_name_no_ext = os.path.splitext(f_name)[0]
-    logger.debug('delete == %s ' % delete)
-    if (delete or funcs.name_matches(file_name_no_ext, regexes)):
-        for ext in ('.shp', '.dbf', '.shx', '.shp.names.csv'):
-            path = file_name_no_ext + ext
-            funcs.delete_file(path, logger)
             
 
 def has_keywords(nick_name, keywords = ('prepare',)):
@@ -818,38 +802,6 @@ def file_name_formats(base_name, duplicate_suffix):
 
 
 
-class ShapeFilesDeleter(ABC):
-    
-    file_name = None
-
-    def __init__(self
-                ,file_name 
-                ):
-        self.file_name = file_name
-
-    def delete_files(self, delete, opts):
-        if isinstance(self.file_name, basestring):
-            #
-            delete_shp_files_if_req(f_name = self.file_name
-                                    ,delete = delete
-                                    ,strict_no_del = opts['options'].strict_no_del  
-                                    )
-
-class NullDeleter(object):
-    pass
-ShapeFilesDeleter.register(NullDeleter)
-#assert issubclass(NullDeleter, ShapeFilesDeleter)
-
-class InputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
-    del_after_sDNA = True
-    strict_no_del = False 
-    INPUT_FILE_DELETER = None
-
-class OutputFileDeletionOptions(pyshp_wrapper.GetFileNameOptions):
-    strict_no_del = InputFileDeletionOptions.strict_no_del 
-    del_after_read = True
-    OUTPUT_FILE_DELETER = None
-
 class sDNA_ToolWrapper(sDNA_GH_Tool):
     """ Main sDNA_GH tool class for running sDNA tools externally.
     
@@ -908,8 +860,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         make_advanced = False
 
     class Options(PythonOptions
-                 ,InputFileDeletionOptions
-                 ,OutputFileDeletionOptions
+                 ,pyshp_wrapper.InputFileDeletionOptions
+                 ,pyshp_wrapper.OutputFileDeletionOptions
                  ):
         prepped_fmt = "{name}_prepped"
         output_fmt = "{name}_output"
@@ -1193,9 +1145,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             if (options.del_after_read and 
                 not options.strict_no_del and
                 not options.overwrite_shp and
-                isinstance(options.INPUT_FILE_DELETER, ShapeFilesDeleter)):
+                isinstance(options.INPUT_FILE_DELETER
+                          ,pyshp_wrapper.ShapeFilesDeleter)):
                 #
-                maybe_delete = ShapeFilesDeleter(output_file)
+                maybe_delete = pyshp_wrapper.ShapeFilesDeleter(output_file)
                 opts['options'] = opts['options']._replace(
                                             OUTPUT_FILE_DELETER = maybe_delete
                                             )
@@ -1258,10 +1211,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     )
         self.logger.info('sDNA command run = ' + command)
 
+        output_lines = ''
+
         try:
             output_lines = subprocess.check_output(command)
             retcode = 0 
         except subprocess.CalledProcessError as e:
+            self.logger.info(output_lines)
             self.logger.error('error.output == %s' % e.output)
             self.logger.error('error.returncode == %s' % e.returncode)
             raise e
@@ -1274,7 +1230,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if (options.del_after_sDNA and 
             not options.strict_no_del and 
             not options.overwrite_shp and 
-            isinstance(options.INPUT_FILE_DELETER, ShapeFilesDeleter) and
+            isinstance(options.INPUT_FILE_DELETER
+                      ,pyshp_wrapper.ShapeFilesDeleter) and
             hasattr(options.INPUT_FILE_DELETER, 'delete_files')):
             #
             options.INPUT_FILE_DELETER.delete_files(
@@ -1430,14 +1387,14 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         
         doc_layers = gdm_from_GH_Datatree.doc_layers
 
-        gdm = gdm_from_GH_Datatree.make_gdm( get_objs_and_OrderedDicts(
-                                                 only_selected = options.selected
-                                                ,layers = options.layer
-                                                ,shp_type = options.shp_type
-                                                ,include_groups = options.include_groups 
-                                                ,doc_layers = doc_layers
-                                                ) 
-                       )
+        gdm = gdm_from_GH_Datatree.GeomDataMapping(
+                    get_objs_and_OrderedDicts(only_selected = options.selected
+                                             ,layers = options.layer
+                                             ,shp_type = options.shp_type
+                                             ,include_groups = options.include_groups 
+                                             ,doc_layers = doc_layers
+                                             ) 
+                    )
         # lambda : {}, as User Text is read elsewhere, in read_Usertext
 
 
@@ -1571,7 +1528,9 @@ class UsertextReader(sDNA_GH_Tool):
 
 class ShapefileWriter(sDNA_GH_Tool):
 
-    class Options(InputFileDeletionOptions, pyshp_wrapper.ShpOptions):
+    class Options(pyshp_wrapper.InputFileDeletionOptions
+                 ,pyshp_wrapper.ShpOptions
+                 ):
         shp_type = 'POLYLINEZ'
         input_key_str = '{name}'
         path = __file__
@@ -1708,12 +1667,13 @@ class ShapefileWriter(sDNA_GH_Tool):
                 not options.overwrite_shp):
                 # Don't delete a shapefile that only just overwrote 
                 # another pre-existing shapefile.
-                maybe_delete = ShapeFilesDeleter(f_name)
+                maybe_delete = pyshp_wrapper.ShapeFilesDeleter(f_name)
                 opts['options'] = opts['options']._replace(
                                             INPUT_FILE_DELETER = maybe_delete
                                             )
             else:
-                do_not_delete = NullDeleter() # Slight hack, so sDNA_tool knows
+                do_not_delete = pyshp_wrapper.NullDeleter() 
+                                              # Slight hack, so sDNA_tool knows
                                               # f_name (input_file) is 
                                               # auto-generated, so it can tell 
                                               # if output_file is also
@@ -1763,7 +1723,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    class Options(OutputFileDeletionOptions):
+    class Options(pyshp_wrapper.OutputFileDeletionOptions):
         new_geom = True
         bake = False
         uuid_field = 'Rhino3D_'
@@ -1789,28 +1749,30 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
         self.logger.debug('Reading shapefile... ')
-        (shp_fields
-        ,recs
-        ,shapes
-        ,bbox 
-        ,shape_type) = pyshp_wrapper.get_fields_recs_and_shapes( f_name )
+        shp_fields, bbox,shape_type, num_entries = pyshp_wrapper.shp_meta_data(
+                                                                         f_name
+                                                                        ,options
+                                                                        )
 
         self.logger.debug('bbox == %s' % bbox)
 
         self.logger.debug('gdm == %s ' % (gdm.items()[:4] + gdm.items()[-4:],))
 
-        if len(recs) >= 1:
-            self.logger.debug('recs[0]== %s ' % recs[0])
+        # if len(recs) >= 1:
+        #     self.logger.debug('recs[0]== %s ' % recs[0])
 
-        if not recs:
-            self.logger.warning('No data read from Shapefile ' + f_name + ' ')
+        if num_entries == 0:
+            self.logger.warning('No entries in Shapefile: %s ' % f_name)
             return 1, f_name, gdm, None    
+        # if not recs:
+        #     self.logger.warning('No data read from Shapefile: %s ' % f_name)
+        #     return 1, f_name, gdm, None    
             
-        if not shapes:
-            self.logger.warning('No shapes in Shapefile ' + f_name + ' ')
-            if not gdm:
-                self.logger.warning('No Geom objects in Geom Data Mapping.  ')
-            return 1, f_name, gdm, None
+        # if not shapes:
+        #     self.logger.warning('No shapes in Shapefile: %s ' % f_name)
+        #     if not gdm:
+        #         self.logger.warning('No Geom objects in Geom Data Mapping.  ')
+        #     return 1, f_name, gdm, None
 
         if not bbox:
             self.logger.warning('No Bounding Box in Shapefile: %s '
@@ -1830,36 +1792,63 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('Testing existing geom data map.... ')
         if (options.new_geom or not gdm or not isinstance(gdm, dict) 
-             or len(gdm) != len(recs) ):
+             or len(gdm) != num_entries): #len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type)
+
             def add_geom(obj):
                 points_list = funcs.list_of_lists(obj)
                 return objs_maker(points_list)
                          #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
+
+            def is_multiple_shapes(shapeRecord):
+                return len(shapeRecord.shape.parts) >= 2
+
+            pairwise = data_cruncher.itertools.pairwise
+
             def generator():
-                for shape, rec in itertools.izip(shapes, recs):
-                    parts = shape.parts
-                    if len(parts) >= 2:
-                        def sub_generator():
-                            end_indices = iter(parts)
-                            start = next(end_indices) 
-                            assert start == 0, "First shape doesn't start at first point"
-                            for end in end_indices:
-                                yield add_geom(shape.points[start:end]), rec
-                                start = end
-                        yield gdm_from_GH_Datatree.make_gdm(sub_generator())
+                for key, group in itertools.groupby(
+                                pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(f_name, opts)
+                               ,is_multiple_shapes
+                               ):
+                    if key:  #assert all(is_multiple_shapes(x) for x in group)
+                        for shapeRecord in group:
+                            shp_shapes = shapeRecord.shape
+                            rec = shapeRecord.record
+                            parts, points = shp_shapes.parts, shp_shapes.points
+                            objs_and_rec = ((add_geom(points[start:end]), rec)
+                                            for start, end in pairwise(parts)
+                                           )
+                            yield gdm_from_GH_Datatree.GeomDataMapping(objs_and_rec)
                     else:
-                        yield add_geom(shape.points), rec
+                        yield gdm_from_GH_Datatree.GeomDataMapping(group)
+                
+
+                # for shape, rec in itertools.izip(shapes, recs):
+                #     parts = shape.parts
+                #     if len(parts) >= 2:
+                #         def sub_generator():
+                #             end_indices = iter(parts)
+                #             start = next(end_indices) 
+                #             assert start == 0, "First shape doesn't start at first point"
+                #             for end in end_indices:
+                #                 yield add_geom(shape.points[start:end]), rec
+                #                 start = end
+                #         yield gdm_from_GH_Datatree.make_gdm(sub_generator())
+                #     else:
+                #         yield add_geom(shape.points), rec
+
+
                 # shp_file_gen_exp = itertools.izip(
                 #     (str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
                 #     for shp in shapes 
                 #     )
                 #     ,recs
                 #     )
-            gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
+            gdm = generator()
+            # gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
         else:
@@ -1869,9 +1858,15 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
-            gdm = gdm_from_GH_Datatree.make_gdm(itertools.izip(gdm.keys(), recs))
+            gdm = gdm_from_GH_Datatree.GeomDataMapping(
+                    itertools.izip(
+                         gdm.keys()
+                        ,pyshp_wrapper.TmpFileDeletingRecordsIterator(f_name, opts)
+                        )
+                    )
             #                  dict.keys() is a dict view in Python 3
 
+        gdm.__len__ = lambda *args : num_entries
 
 
         # shp_file_gen_exp  = itertools.izip(shapes_to_output
@@ -1907,17 +1902,7 @@ class ShapefileReader(sDNA_GH_Tool):
             self.logger.info(msg)
 
 
-        if ((options.del_after_read and 
-            not options.strict_no_del and 
-            not options.overwrite_shp) and 
-            isinstance(options.OUTPUT_FILE_DELETER, ShapeFilesDeleter)):
-            #
-            options.OUTPUT_FILE_DELETER.delete_files(delete = options.del_after_read
-                                                   ,opts = opts
-                                                   )
-            opts['options'] = opts['options']._replace(
-                                        OUTPUT_FILE_DELETER = None
-                                        )
+
         retcode = 0
 
         locs = locals().copy()
@@ -2485,11 +2470,12 @@ class DataParser(sDNA_GH_Tool):
 
         self.logger.debug(legend_tags)
 
-        gdm = OrderedDict( (key, renormaliser(val)) 
-                           for key, val in itertools.chain(data.items()
-                                                          ,zip(legend_tags, mid_points)
-                                                          )
-                         )
+        gen_exp = ((key, renormaliser(val))
+                   for key, val in itertools.chain(data.items()
+                                                  ,zip(legend_tags, mid_points)
+                                                  )
+                  )
+        gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
         plot_min, plot_max = x_min, x_max
         
@@ -2718,7 +2704,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                               )
 
 
-        GH_objs_to_recolour = OrderedDict()
+        GH_objs_to_recolour = gdm_from_GH_Datatree.GeomDataMapping()
         recoloured_Rhino_objs = []
 
         # if hasattr(Rhino.Geometry, type(z).__name__):

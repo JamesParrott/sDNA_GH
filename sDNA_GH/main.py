@@ -43,11 +43,16 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 
 import sys
 import os
-from collections import namedtuple, OrderedDict
+import collections
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
+else:
+    import collections.abc
+    Iterable = collections.abc.Iterable
 import locale
 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
@@ -67,6 +72,8 @@ from .custom.skel import add_params
 from .custom import tools
 from .dev_tools import dev_tools
 
+
+namedtuple, OrderedDict = collections.namedtuple, collections.OrderedDict
 
 try:
     basestring #type: ignore
@@ -1111,9 +1118,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
 
-            geom_data_map = gdm_from_GH_Datatree.gdm_from_DataTree_and_list(Geom
-                                                                           ,Data
-                                                                           )
+            geom_data_map = (gdm_from_GH_Datatree.GeomDataMapping
+                                                 .from_DataTree_and_list(Geom
+                                                                        ,Data
+                                                                        )
+                            )
 
 
 
@@ -1142,18 +1151,23 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             ret_vals_dict = runner.run_tools(self.tools, kwargs)
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
-            if (isinstance(gdm, (list, tuple, set)) and 
-               all(isinstance(item, dict) for item in gdm)):
-                #
+            if isinstance(gdm, (Iterable, gdm_from_GH_Datatree.GeomDataMapping)):
                 self.logger.info('Converting gdms to Data Tree and Data Tree')
                 (NewData
                 ,NewGeometry
-                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm)
-            elif isinstance(gdm, dict):
-                self.logger.debug('Converting gdm to Data and Geometry')
-                (NewData
-                ,NewGeometry
-                ) = gdm_from_GH_Datatree.DataTree_and_list_from_dict(gdm)               
+                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm) 
+            # if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            #     self.logger.debug('Converting gdm to Data and Geometry')
+            #     (NewData
+            #     ,NewGeometry
+            #     ) = gdm_from_GH_Datatree.DataTree_and_list_from_dict(gdm)   
+            # elif (isinstance(gdm, Iterable) and not isinstance(gdm, basestring) and
+            #       all(isinstance(item, dict) for item in gdm)):
+            #     #
+            #     self.logger.info('Converting gdms to Data Tree and Data Tree')
+            #     (NewData
+            #     ,NewGeometry
+            #     ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm)
             else:
                 logger.info('Cannot unpack Geom Data Mapping of type: %s' 
                            %type(gdm)

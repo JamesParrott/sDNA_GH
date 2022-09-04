@@ -37,7 +37,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 
 import logging
 import warnings
@@ -54,7 +54,9 @@ OrderedDict, Counter = collections.OrderedDict, collections.Counter
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-if not hasattr(itertools, 'pairwise'):
+if hasattr(itertools, 'pairwise'):
+   pairwise = itertools.pairwise
+else:
     #https://docs.python.org/2.7/library/itertools.html
     def pairwise(iterable):
         "s -> (s0,s1), (s1,s2), (s2, s3), ..."

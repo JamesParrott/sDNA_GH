@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 __author__ = 'James Parrott'
-__version__ = '0.11'
+__version__ = '0.12'
 
 import os
 import logging
@@ -127,20 +127,10 @@ def make_regex(pattern):
     
 
 
-def name_matches(file_name, regexes = ()):
-    #type(str, Iterable) -> bool
-    if isinstance(regexes, basestring):
-        regexes = (regexes,)
-    return any(bool(re.match(regex, file_name)) for regex in regexes)
 
 
-def delete_file(path
-               ,logger = logger
-               ):
-    #type(str, type[any]) -> None
-    if os.path.isfile(path):
-        logger.info('Deleting file: %s ' % path)
-        os.remove(path)
+
+
 
 def list_of_lists(iterable):
     #type(Iterable[Iterable]) -> list[list]
