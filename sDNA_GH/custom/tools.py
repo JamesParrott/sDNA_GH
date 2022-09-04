@@ -1800,7 +1800,7 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug('gdm == %s ' % (gdm.items()[:4] + gdm.items()[-4:],))
 
         if len(recs) >= 1:
-            self.logger.debug('recs[0].as_dict() == %s ' % recs[0].as_dict())
+            self.logger.debug('recs[0]== %s ' % recs[0])
 
         if not recs:
             self.logger.warning('No data read from Shapefile ' + f_name + ' ')
@@ -1833,7 +1833,11 @@ class ShapefileReader(sDNA_GH_Tool):
              or len(gdm) != len(recs) ):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = rhino_gh_geom.obj_makers(shape_type) #options.shp_type)
+            objs_maker = rhino_gh_geom.obj_makers(shape_type)
+            def add_geom(obj):
+                points_list = funcs.list_of_lists(obj)
+                return objs_maker(points_list)
+                         #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
             def generator():
                 for shape, rec in itertools.izip(shapes, recs):
@@ -1841,14 +1845,14 @@ class ShapefileReader(sDNA_GH_Tool):
                     if len(parts) >= 2:
                         def sub_generator():
                             end_indices = iter(parts)
-                            start = next(parts) 
+                            start = next(end_indices) 
                             assert start == 0, "First shape doesn't start at first point"
                             for end in end_indices:
-                                yield funcs.list_of_lists(shape.points[start:end]), rec
+                                yield add_geom(shape.points[start:end]), rec
                                 start = end
                         yield gdm_from_GH_Datatree.make_gdm(sub_generator())
                     else:
-                        yield funcs.list_of_lists(shape.points), rec
+                        yield add_geom(shape.points), rec
                 # shp_file_gen_exp = itertools.izip(
                 #     (str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
                 #     for shp in shapes 

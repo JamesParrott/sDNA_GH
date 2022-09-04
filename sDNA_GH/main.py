@@ -1148,7 +1148,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 self.logger.info('Converting gdms to Data Tree and Data Tree')
                 (NewData
                 ,NewGeometry
-                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_list_of_dicts(gdm)
+                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm)
             elif isinstance(gdm, dict):
                 self.logger.debug('Converting gdm to Data and Geometry')
                 (NewData

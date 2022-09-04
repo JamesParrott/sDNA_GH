@@ -478,7 +478,7 @@ def get_fields_recs_and_shapes(shapefile_path, options = FieldRecsShapesOptions)
         recs = [record.as_dict() for record in r.records()]
         shapes = r.shapes()
         bbox = r.bbox
-        shape_type = r.shapeType
+        shape_type = shp.SHAPETYPE_LOOKUP[r.shapeType]
 
     #gdm = {shape : {k : v for k,v in zip(fields, rec)} 
     #               for shape, rec in zip(shapes, recs)  }
