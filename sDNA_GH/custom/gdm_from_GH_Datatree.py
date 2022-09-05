@@ -56,6 +56,14 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
+def remove_outer_length_one_lists(obj):
+    #type( type[any] -> type[any])
+    if not isinstance(obj, list):
+        return obj
+    while len(obj)==1 and isinstance(obj[0], list):
+        obj=obj[0]
+    return obj
+
 
 class GeomDataMapping(OrderedDict):
     """ Primary intermediate data structure of sDNA_GH, mapping 
@@ -101,8 +109,7 @@ class GeomDataMapping(OrderedDict):
             Data = [Data]
             # Tuples don't get split over multiple geometric objects
 
-        while len(Data)==1 and isinstance(Data[0], list):
-            Data=Data[0]
+        Data = remove_outer_length_one_lists(Data)
         
         if  ( len(Data) >= 2 and
             isinstance(Data[0], list) and
@@ -209,7 +216,7 @@ def nested_lists_of_keys_and_values_or_values(dict_):
 
 
 def DataTree_and_list_from_dict(nested_dict):
-    # type(dict) -> DataTree, list
+    # type(dict) -> Grasshopper.DataTree[object], list
     if all(isinstance(val, dict) for val in nested_dict.values()):    
         # User_Text_Keys = [list(group_dict.keys()) # list() for Python 3
         #                   for group_dict in nested_dict.values()
@@ -233,8 +240,13 @@ def keys_and_values_lists_if_nested_dict_else_values(dict_):
         return nested_lists_of_keys_and_values_or_values(dict_) 
     return list(dict_.values())
 
+def shallowest_data_tree(list_):
+    #type(list) -> Grasshopper.DataTree[object]
+    list_ = remove_outer_length_one_lists(list_)
+    return tree_helpers.list_to_tree(list_)
+
 def Data_Tree_and_Data_Tree_from_dicts(dicts):
-    #type(Iterable[dict])-> DataTree, DataTree
+    #type(Iterable[dict])-> Grasshopper.DataTree[object], Grasshopper.DataTree[object]
     if isinstance(dicts, dict):
         dicts = [dicts]
     # if all(all(isinstance(val, dict) for val in dict_.values())
@@ -247,12 +259,13 @@ def Data_Tree_and_Data_Tree_from_dicts(dicts):
     #     )
     # else:
     #     Data = [list(dict_.values()) for dict_ in dicts]
-    Data = tree_helpers.list_to_tree( 
-                       [keys_and_values_lists_if_nested_dict_else_values(dict_)
-                        for dict_ in dicts
-                       ])
-    Geometry = tree_helpers.list_to_tree([list(dict_.keys()) for dict_ in dicts])
-    return Data, Geometry
+    
+    Data = [keys_and_values_lists_if_nested_dict_else_values(dict_)
+            for dict_ in dicts
+           ]
+    Geometry = [list(dict_.keys()) for dict_ in dicts]
+
+    return shallowest_data_tree(Data), shallowest_data_tree(Geometry)
         
 
 
