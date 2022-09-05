@@ -719,7 +719,7 @@ def cache_sDNA_tool(compnt # instead of self
                                       ,nick_name = nick_name
                                       ,component = compnt
                                       )                                      
-    tools_dict[nick_name] =  sDNA_tool
+    tools_dict[nick_name] = sDNA_tool
     sDNA = tools.sDNA_key(compnt.opts)
     compnt.do_not_remove += sDNA_tool.default_named_tuples[sDNA]._fields 
     compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
@@ -984,7 +984,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
             extra_params_added = self.update_Params() #self.Params, self.tools)
 
-            if extra_params_added != 'No extra Params required. ':
+            if 'zero' not in extra_params_added.lower():
                 # Extra Input Params are actually OK as RunScript has already 
                 # been called already by this point.
                 self.logger.debug('Output Params updated.  Returning None.  ')
@@ -994,7 +994,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # have just been added, in the same RunScript call.  In our 
                 # design the user probably doesn't want the new tool and 
                 # updated component params to run before they've had chance to
-                # look at them, even if 'go' still is connected to True.  But 
+                # look at them, even if 'go' is still connected to True.  But 
                 # e.g. config, and anything there that they already configured
                 # and saved should still run when the canvas loads. 
 
@@ -1035,13 +1035,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             path = checkers.get_path(fallback = __file__,  inst = self)
             self.opts['options'] = self.opts['options']._replace(path = path)
 
-        if self.metas.cmpnts_change: 
-            
-            if self.local_metas.sync != sync:
-                if self.local_metas.sync:
-                    self.opts = module_opts #re-sync
-                else:
-                    self.opts = self.opts.copy() #de-sync
 
          
         any_sDNA_tools_updated = False
@@ -1049,7 +1042,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             if (isinstance(tool, tools.sDNA_ToolWrapper) and 
                 not tool.already_loaded(self.opts)):
                 #
-                tool.load_sDNA_tool(self.opts)
+                self.logger.debug('tool.already_loaded(self.opts) == False')
+                #tool.load_sDNA_tool(self.opts)
                 any_sDNA_tools_updated = True
                 # This isn't necessary just to run these tools later.
                 # They're just being updated now so they can get their 
@@ -1059,15 +1053,15 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if any_sDNA_tools_updated:
             #self.Params = 
-            self.update_Params()#self.Params, self.tools)
+            result = self.update_Params()#self.Params, self.tools)
             # to add in any new sDNA inputs to the component's Params
-        
-            self.logger.info('sDNA has been updated.  '
-                        +'Returning None to allow new Params to be set. '
-                        )
-            return (None,) * len(self.Params.Output)
-            # to allow running the component again, with any new inputs
-            # supplied as Params
+            if 'zero' not in result.lower():
+                self.logger.info('sDNA has been updated.  '
+                                +'Returning None to allow new Params to be set. '
+                                )
+                return (None,) * len(self.Params.Output)
+                # to allow running the component again, with any new inputs
+                # supplied as Params
         elif (self.metas.make_new_comps and
                 nick_name.replace(' ','').replace('_','').lower() == 'config'):
             #

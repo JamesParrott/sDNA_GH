@@ -159,19 +159,10 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     def __init__(self, opts):
         self.opts = opts
 
-    @property
-    def options(self):
-        return self.opts['options']
-
-    @property
-    def metas(self):
-        return self.opts['metas']
-
     def built_in_options(self, opts = None):
         if opts is None:
-            options, metas = self.options, self.metas
-        else:
-            options, metas = opts['options'], opts['metas']
+            opts = self.opts
+        options, metas = opts['options'], opts['metas']
         retval = options._asdict()
         retval.update(metas._asdict())
         return retval
@@ -292,16 +283,20 @@ def sDNA_key(opts):
 def nested_set_default_or_get(d, keys, last_default = None):
     #type(dict, Sequence(Hashable), type[any])
     
-    keys = list(keys)[:]
+    logger.debug('d == %s' % d)
+
+    keys = list(keys)
     last_key = keys.pop()
 
     for key in keys:
         d = d.setdefault(key, OrderedDict())
-    
+
     if last_default is None:
         d = d.get(last_key, None)
     else:
         d = d.setdefault(last_key, last_default)
+
+    logger.debug('before return, d == %s' % (d,))
 
     return d
 
@@ -309,7 +304,7 @@ def get_tool_opts(opts, nick_name, tool_name = None, sDNA = None, val = None):
     #type(dict, str, str, str, type[any])
     # might mutate opts
     keys = (nick_name,)
-    if tool_name and tool_name != nick_name:
+    if tool_name is not None and tool_name != nick_name:
         keys += (tool_name,)
     if sDNA is not None:
         keys += (sDNA,)
@@ -907,8 +902,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if sDNA is None:
             sDNA = sDNA_key(opts)
         return (sDNA in self.get_syntaxes and 
-                sDNA in self.default_named_tuples
-                and self.get_tool_opts(opts, val = None) is None)
+                sDNA in self.default_named_tuples and
+                self.get_tool_opts(opts, val = None) is not None)
 
     def load_sDNA_tool(self, opts = None):
         if opts is None:
@@ -1071,6 +1066,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                          %'\n'.join(OrderedDict(self.param_infos).keys())
                          )
 
+        if has_keywords(self.tool_name, keywords = ('prepare',)):
+            self.retvals += ('gdm',)
 
 
     
@@ -1149,6 +1146,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         input_args = tool_opts_sDNA._asdict()
         input_args.update(input = input_file, output = output_file)
 
+        f_name = output_file # File name to be outputted
+
         LIST_ARGS = ('radius'
                     ,'radii'
                     ,'preserve_absolute'
@@ -1186,19 +1185,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         else:
             self.logger.debug('Advanced command string == %s' % advanced)
 
-        f_name = output_file
+        syntax = get_syntax(input_args)
 
         command = (options.python
                   +' -u ' 
                   +'"' 
                   +os.path.join(os.path.dirname(sDNAUISpec.__file__)
                                ,'bin'
-                               ,get_syntax['command'] + '.py'  
+                               ,syntax['command'] + '.py'  
                                ) 
                   +'"'
-                  +' --im ' + run_sDNA.map_to_string(get_syntax["inputs"])
-                  +' --om ' + run_sDNA.map_to_string(get_syntax["outputs"])
-                  +' ' + get_syntax["config"]
+                  +' --im ' + run_sDNA.map_to_string(syntax["inputs"])
+                  +' --om ' + run_sDNA.map_to_string(syntax["outputs"])
+                  +' ' + syntax["config"]
                   )
         self.logger.info('sDNA command run: %s' % command)
 
@@ -1232,7 +1231,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             opts['options'] = opts['options']._replace(INPUT_FILE_DELETER = None)
 
 
-        if has_keywords(self.nick_name, keywords = ('prepare',)):
+        if has_keywords(self.tool_name, keywords = ('prepare',)):
             gdm = None
             # To overwrite any inputted gdm (already used) in vals_dict
             # to make sure a subsequent ShapefileReader adds new Geometry
@@ -1242,7 +1241,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     
-    retvals = 'retcode', 'f_name', 'gdm'
+    retvals = 'retcode', 'f_name'
     component_outputs = ('file',) # retvals[-1])
 
 
