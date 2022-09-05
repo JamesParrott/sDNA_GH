@@ -601,7 +601,7 @@ class TmpFileDeletingReaderIteratorABC(ABC):
         """ e.g. self.iterator = self.reader.iterShapeRecords() """
 
     def __iter__(self):
-        return self
+        return self.iterator
 
     def next(self):
         try:

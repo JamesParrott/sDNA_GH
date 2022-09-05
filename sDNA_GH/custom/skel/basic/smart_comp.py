@@ -156,7 +156,7 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
         key = key.lower()
         if support_whitespace:
             key = remove_whitespace(key)
-        return get_val(key.lower(), sources, True)
+        return get_val(key.lower(), sources, case_sensitive = True)
 
     # Whitespace is not stripped as valid python names, namedtuple fields
     # and class attributes cannot contain whitespace.  So dict keys with whitespace

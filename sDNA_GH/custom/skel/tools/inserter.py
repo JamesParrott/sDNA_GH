@@ -179,15 +179,11 @@ def already_inserted(up_or_downstream
 
 def insert_tool(before_or_after
                ,tools # mutated, by the inserted tool
-               ,Params
                ,tool_to_insert
                ,is_target
                ,not_a_target
-               ,tools_dict
-               ,name_map
-               ,already_inserted = already_inserted
                ):
-    #type(type[any], str, list, type[any], class, function, list) -> list
+    #type(str, Iterable, type[any], function, Sequence) -> None
     assert before_or_after in ('before', 'after')
     up_or_downstream = up_or_downstream_dict[before_or_after]
     offset = 1 if before_or_after == 'after' else 0
@@ -201,27 +197,18 @@ def insert_tool(before_or_after
         # than one downstream component?  The user may 
         # wish to do other stuff after the tool.
 
-    if  not already_inserted(up_or_downstream
-                            ,tool_to_insert
-                            ,tools_dict
-                            ,name_map
-                            ,Params
-                            ): 
-                            # check tool not already there in another 
-                            # component that will be executed next.
-                            # TODO: None in entire canvas is too strict?
-        for i, tool in enumerate(tools):
-            logger.debug('is_target(tool) : %s ' % is_target(tool))
-            logger.debug('tool : %s ' % tool)
-            if before_or_after == 'after':
-                tools_run_anyway = tools[i:] 
-            else:
-                tools_run_anyway = tools[:i] 
+    for i, tool in enumerate(tools):
+        logger.debug('is_target(tool) : %s ' % is_target(tool))
+        logger.debug('tool : %s ' % tool)
+        if before_or_after == 'after':
+            tools_run_anyway = tools[i:] 
+        else:
+            tools_run_anyway = tools[:i] 
 
-            if is_target(tool) and tool_to_insert not in tools_run_anyway:
-                        # check tool not already inserted 
-                        # in tools after specials
-                logger.info('Inserting tool : %s ' % tool_to_insert)
-                tools.insert(i + offset, tool_to_insert)
+        if is_target(tool) and tool_to_insert not in tools_run_anyway:
+                    # check tool not already inserted 
+                    # in tools after specials
+            logger.info('Inserting tool : %s ' % tool_to_insert)
+            tools.insert(i + offset, tool_to_insert)
 
     

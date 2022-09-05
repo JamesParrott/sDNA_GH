@@ -416,7 +416,7 @@ def override_namedtuple(nt_lesser
     
     Full function hierarchy kwargs
     kwargs: {make_nested_namedtuple : {strict = True, class_prefix = 'C_', convert_subdicts is False}
-             override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = True}
+             override_ordereddict_with_dict : {strict = True, check_types = False, delistify = True, add_new_opts = False}
              override_namedtuple_with_dict {strict = True, check_types = False, delistify = True}
              override_namedtuple_with_namedtuple{strict = True}
              override_namedtuple : {override_funcs_dict : None => { dict : override_namedtuple_with_dict 

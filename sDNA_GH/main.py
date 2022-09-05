@@ -137,7 +137,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                             # to run runsdnacommand.runsdnacommand in future 
                             # with an env, while being able to pipe 
                             # sDNA's stderr and stdout to the sDNA_GH logger
-    SDNA = ''  # Read only.  Auto updates from above.
 
     update_path = True
     ##########################################################################
@@ -375,10 +374,10 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
     num_classes = 7
     class_spacing = 'quantile' 
-    if class_spacing not in tools.DataParser.Options.valid_class_spacings:
+    if class_spacing not in tools.DataParser.Options.VALID_CLASS_SPACINGS:
         raise ValueError('%s must be in %s' 
                         %(class_spacing
-                         ,tools.DataParser.Options.valid_class_spacings
+                         ,tools.DataParser.Options.VALID_CLASS_SPACINGS
                          )
                         )
     first_leg_tag_str = 'below {upper}'
@@ -421,7 +420,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
 class HardcodedLocalMetas(object):
     sync = True    
-    read_only = True
+    read_only = False
     no_state = True
 
 
@@ -528,17 +527,29 @@ def override_all_opts(local_opts #  mutated
 
 
     if local_metas.sync:
+        output.debug('Using shared module_opts. ')
         local_opts = module_opts
     else:
         if local_metas.read_only: 
             overrides = [module_opts] + overrides
 
         if local_metas.no_state:
-            local_opts = {} # Clear the state
-            if not local_metas.read_only: 
-                installation_opts = options_manager.dict_from_toml_file(metas.config)
-                overrides = [DEFAULT_OPTS, installation_opts] + overrides # rebuild the state
+            output.debug('no_state == %s, resetting opts to hardcoded defaults' 
+                        % local_metas.no_state
+                        )
+            local_opts = DEFAULT_OPTS.copy() # Clear the state
+            if (not local_metas.read_only and 
+                os.path.isfile(DEFAULT_METAS.config)): 
+                #
+                output.debug('Adding installation wide config.toml file: %s '
+                            +'to overrides'
+                            %DEFAULT_METAS.config
+                            )
+                installation_opts = options_manager.dict_from_toml_file(
+                                                          DEFAULT_METAS.config)
+                overrides = [installation_opts] + overrides
         elif old_sync:  # Desynchronise
+            output.debug('Desynchronising opts to copy of module opts. ')
             local_opts = module_opts.copy()
 
 
@@ -709,9 +720,8 @@ def cache_sDNA_tool(compnt # instead of self
                                       ,component = compnt
                                       )                                      
     tools_dict[nick_name] =  sDNA_tool
-    sDNA = compnt.opts['metas'].SDNA # updated by update_sDNA, when called by 
-                                # sDNA_ToolWrapper.update_tool_opts_and_syntax
-    compnt.do_not_remove += tuple(sDNA_tool.defaults.keys()) 
+    sDNA = tools.sDNA_key(compnt.opts)
+    compnt.do_not_remove += sDNA_tool.default_named_tuples[sDNA]._fields 
     compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
 
             
@@ -757,14 +767,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
 
 
-    def auto_insert_tools(self, my_tools = None, Params = None):
+    def auto_insert_tools(self, my_tools = None):
         #type(type[any], list) -> None
         if my_tools is None:
             my_tools = self.my_tools
         my_tools = my_tools[:] if isinstance(my_tools, list) else [my_tools]
-
-        if Params is None:
-            Params = self.Params
 
         options = self.opts['options']
 
@@ -784,45 +791,33 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         if options.auto_write_Shp:
             inserter.insert_tool('before'
                                 ,my_tools
-                                ,Params
                                 ,tool_to_insert = write_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
                                 ,not_a_target = sDNA_GH_tools
-                                ,tools_dict = runner.tools_dict
-                                ,name_map = name_map
                                 )
 
         if options.auto_read_User_Text:
             inserter.insert_tool('before'
                                 ,my_tools
-                                ,Params
                                 ,tool_to_insert = read_User_Text
                                 ,is_target = is_class(tools.ShapefileWriter)
                                 ,not_a_target = []
-                                ,tools_dict = runner.tools_dict
-                                ,name_map = name_map
                                 )   
 
         if options.auto_get_Geom:
             inserter.insert_tool('before'
                                 ,my_tools
-                                ,Params
                                 ,tool_to_insert = get_Geom
                                 ,is_target = is_class(tools.UsertextReader)
                                 ,not_a_target = []
-                                ,tools_dict = runner.tools_dict
-                                ,name_map = name_map
                                 )   
 
         if options.auto_read_Shp:
             inserter.insert_tool('after'
                                 ,my_tools
-                                ,Params
                                 ,tool_to_insert = read_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
                                 ,not_a_target = sDNA_GH_tools
-                                ,tools_dict = runner.tools_dict
-                                ,name_map = name_map
                                 )
         
       
@@ -830,12 +825,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         if options.auto_plot_data: # already parses if Data not all colours
             inserter.insert_tool('after'                
                                 ,my_tools
-                                ,Params
                                 ,tool_to_insert = recolour_objects
                                 ,is_target = is_class(tools.ShapefileReader)
                                 ,not_a_target = []
-                                ,tools_dict = runner.tools_dict
-                                ,name_map = name_map
                                 ) 
                                           
         return my_tools
@@ -988,7 +980,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 nick_name = kwargs['tool']
             self.my_tools = self.update_tools(nick_name)
         
-            self.tools = self.auto_insert_tools(self.my_tools, self.Params)  
+            self.tools = self.auto_insert_tools(self.my_tools)  
 
             extra_params_added = self.update_Params() #self.Params, self.tools)
 
@@ -1051,44 +1043,45 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 else:
                     self.opts = self.opts.copy() #de-sync
 
-        if tools.sDNA_key(self.opts) != self.opts['metas'].SDNA:
-            # If new sDNA module names are specified or metas.SDNA is None
-            has_any_sDNA_tools = False
-            for tool in self.tools:
-                if isinstance(tool, tools.sDNA_ToolWrapper):
-                    has_any_sDNA_tools = True
-                    tool.update_tool_opts_and_syntax(opts = self.opts)
-                    # This isn't necessary just to run these tools later.
-                    # They're just being updated now so they can get their 
-                    # inputs from sDNAUISpec the next run, and so the 
-                    # component's input 
-                    # Params can be updated to reflect the new sDNA
-
-            if has_any_sDNA_tools:
-                #self.Params = 
-                self.update_Params()#self.Params, self.tools)
-                # to add in any new sDNA inputs to the component's Params
-            
-                self.logger.info('sDNA has been updated.  '
-                           +'Returning None to allow new Params to be set. '
-                           )
-                return (None,) * len(self.Params.Output)
-                # to allow running the component again, with any new inputs
-                # supplied as Params
-            elif (self.metas.make_new_comps and
-                  nick_name.replace(' ','').replace('_','').lower() == 'config'):
+         
+        any_sDNA_tools_updated = False
+        for tool in self.tools:
+            if (isinstance(tool, tools.sDNA_ToolWrapper) and 
+                not tool.already_loaded(self.opts)):
                 #
-                tools.import_sDNA(opts = self.opts)
-                self.logger.info('Building missing sDNA components (if any). ')
-                tools.build_missing_sDNA_components(opts = self.opts
-                                                   ,category_abbrevs = self.metas.category_abbrevs
-                                                   ,plug_in_name = dev_tools.plug_in_name #'sDNA'
-                                                   ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
-                                                   ,user_objects_location = tools.default_user_objects_location
-                                                   ,add_to_canvas = False
-                                                   ,overwrite = True
-                                                   ,move_user_objects = self.metas.move_user_objects
-                                                   )
+                tool.load_sDNA_tool(self.opts)
+                any_sDNA_tools_updated = True
+                # This isn't necessary just to run these tools later.
+                # They're just being updated now so they can get their 
+                # inputs from sDNAUISpec the next run, and so the 
+                # component's input 
+                # Params can be updated to reflect the new sDNA
+
+        if any_sDNA_tools_updated:
+            #self.Params = 
+            self.update_Params()#self.Params, self.tools)
+            # to add in any new sDNA inputs to the component's Params
+        
+            self.logger.info('sDNA has been updated.  '
+                        +'Returning None to allow new Params to be set. '
+                        )
+            return (None,) * len(self.Params.Output)
+            # to allow running the component again, with any new inputs
+            # supplied as Params
+        elif (self.metas.make_new_comps and
+                nick_name.replace(' ','').replace('_','').lower() == 'config'):
+            #
+            tools.import_sDNA(self.opts)
+            self.logger.info('Building missing sDNA components (if any). ')
+            tools.build_missing_sDNA_components(opts = self.opts
+                                               ,category_abbrevs = self.metas.category_abbrevs
+                                               ,plug_in_name = dev_tools.plug_in_name #'sDNA'
+                                               ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
+                                               ,user_objects_location = tools.default_user_objects_location
+                                               ,add_to_canvas = False
+                                               ,overwrite = True
+                                               ,move_user_objects = self.metas.move_user_objects
+                                               )
 
 
 
@@ -1180,40 +1173,33 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 ret_vals_dict['file'] = ret_vals_dict['f_name']
 
             ret_vals_dict['OK'] = ret_vals_dict.get('retcode', 0) == 0
+            
+            all_tool_opts = {}
+            for tool in self.tools:
+                if hasattr(tool, 'get_tool_opts'):
+                    tool_opts = tool.get_tool_opts(self.opts)
+                    tool_opts_dict = tool_opts._asdict()
+                    all_tool_opts.update(tool_opts_dict)
 
 
-            tool_opts = self.opts
-            sDNA = self.opts['metas'].SDNA
-            if self.nick_name in self.opts:
-                tool_opts = self.opts[self.nick_name]
-                if isinstance(tool_opts, dict):
-                    tmp = {}
-                    for tool_name in tool_opts:
-                        sub_tools_dict = tool_opts[tool_name]
-                        if sDNA in sub_tools_dict:
-                            sub_tools_dict = sub_tools_dict[sDNA]
-                        if hasattr(sub_tools_dict, '_asdict'):
-                            sub_tools_dict = sub_tools_dict._asdict()
-                        tmp.update(sub_tools_dict)
-                    tool_opts = tmp
         else:
             self.logger.debug('go == %s ' % go)
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
-            tool_opts = {}
+            all_tool_opts = {}
         ret_vals_dict['opts'] = [self.opts.copy()] # could become external_opts
                                                    # in another component
         ret_vals_dict['l_metas'] = self.local_metas #immutable
 
         self.logger.debug('Returning from self.script. opts.keys() == %s ' % self.opts.keys() )
-        locs = locals().copy()
+        locals_ = locals().copy()
         ret_args = self.component_Outputs( 
                               [  ret_vals_dict
                               ,  self.opts['metas']
                               ,  self.opts['options']
                               ,  self.local_metas
-                              ,  tool_opts
-                              ,  locs
+                              ,  all_tool_opts
+                              ,  locals_
                               ]
                              )
         return ret_args

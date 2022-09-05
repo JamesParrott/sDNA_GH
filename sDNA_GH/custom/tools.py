@@ -264,7 +264,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
 
             
 
-def has_keywords(nick_name, keywords = ('prepare',)):
+def has_keywords(nick_name, keywords = ('prepare', 'integral')):
     return any(substr in nick_name.strip().strip('_').lower() 
               for substr in keywords
               )
@@ -289,30 +289,31 @@ def sDNA_key(opts):
     return sDNA_KEY_FORMAT.format(sDNAUISPec = sDNA[0], runsdnacommand = sDNA[1])
 
 
-def nested_set_default(d, keys, last_default = None):
+def nested_set_default_or_get(d, keys, last_default = None):
     #type(dict, Sequence(Hashable), type[any])
     
+    keys = list(keys)[:]
+    last_key = keys.pop()
+
+    for key in keys:
+        d = d.setdefault(key, OrderedDict())
+    
     if last_default is None:
-        last_default = OrderedDict()
+        d = d.get(last_key, None)
+    else:
+        d = d.setdefault(last_key, last_default)
 
-    def generator():
-        for key in keys[:-1]:
-            yield key, OrderedDict()
-        yield keys[-1], last_default
-
-    for key, default in generator():
-        d = d.setdefault(key, default)
     return d
 
-def get_tool_opts(nick_name, opts, tool_name = None, sDNA = None, val = None):
-    #type(str, dict, str, str, type[any])
+def get_tool_opts(opts, nick_name, tool_name = None, sDNA = None, val = None):
+    #type(dict, str, str, str, type[any])
     # might mutate opts
     keys = (nick_name,)
     if tool_name and tool_name != nick_name:
         keys += (tool_name,)
     if sDNA is not None:
         keys += (sDNA,)
-    return nested_set_default(d = opts, keys = keys, last_default = val)
+    return nested_set_default_or_get(d = opts, keys = keys, last_default = val)
 
     # tool_opts = opts.setdefault(nick_name, {})
     # if tool_name and tool_name != nick_name:
@@ -446,6 +447,10 @@ class DefaultMetas(object):
                            if not attr.startswith('_')
                           )
 
+DEFAULT_METAS_NT = options_manager.namedtuple_from_class(Class = DefaultMetas
+                                                        ,name = 'DEFAULT_METAS'
+                                                        )
+
 
 def update_opts(current_opts
                ,override
@@ -485,7 +490,9 @@ def update_opts(current_opts
 
     if not kwargs:
         kwargs = {}
-    metas = kwargs.setdefault('metas', current_opts.get('metas', DefaultMetas))
+    metas = kwargs.setdefault('metas', current_opts.get('metas', DEFAULT_METAS_NT))
+    if 'add_new_opts' in kwargs:
+        metas = metas._replace(add_new_opts = kwargs['add_new_opts'])
     logger.debug('metas == %s' % (metas,))
                 #,strict 
                 #,check_types
@@ -811,6 +818,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     self.tool_name.  When the instance is called, the version of sDNA
     is looked up in opts['metas'], from its args. 
     """
+            
+    default_tool_opts = OrderedDict()
+    default_named_tuples = OrderedDict()
+    get_syntaxes = OrderedDict()
+
     sDNA = None
 
     sDNAUISpec = options_manager.error_raising_sentinel_factory(
@@ -855,7 +867,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                             )
 
     class Metas(sDNAMetaOptions):
-        SDNA = None
         show_all = True
         make_advanced = False
 
@@ -872,25 +883,34 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
-    def get_tool_opts(self, opts = None, val = None):
-        if val is None:
-            val = self.defaults_nt
+    def get_tool_opts(self, opts = None, sDNA = None, val = None):
         if opts is None:
-            return val
-        return get_tool_opts(nick_name = self.nick_name
-                            ,opts = opts
+            opts = self.default_tool_opts
+        if sDNA is None:
+            sDNA = sDNA_key(opts) # opts needs 'metas'
+        if val is None:
+            val = self.default_named_tuples.get(sDNA, None)
+        return get_tool_opts(opts = opts
+                            ,nick_name = self.nick_name
                             ,tool_name = self.tool_name
-                            ,sDNA = self.sDNA
+                            ,sDNA = sDNA
                             ,val = val
                             )
 
     def built_in_options(self, opts = None):
         retval = super(sDNA_ToolWrapper, self).built_in_options(opts)
-        tool_opts = self.get_tool_opts(opts)._asdict()
-        retval.update(tool_opts)
+        for default_tool_options in self.default_named_tuples.values():
+            retval.update(default_tool_options._asdict())
         return retval
 
-    def update_tool_opts_and_syntax(self, opts = None):
+    def already_loaded(self, opts, sDNA = None):
+        if sDNA is None:
+            sDNA = sDNA_key(opts)
+        return (sDNA in self.get_syntaxes and 
+                sDNA in self.default_named_tuples
+                and self.get_tool_opts(opts, val = None) is None)
+
+    def load_sDNA_tool(self, opts = None):
         if opts is None:
             opts = self.opts
         nick_name = self.nick_name
@@ -898,76 +918,70 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         check_python(opts)
 
-        if (isinstance(self.sDNAUISpec, options_manager.Sentinel) or
-            isinstance(self.run_sDNA, options_manager.Sentinel) or
-            sDNA_key(opts) != opts['metas'].SDNA):
-            # Do the sDNA modules in the opts need updating?
-            self.sDNAUISpec, self.run_sDNA = self.import_sDNA(
-                                                         opts
-                                                        ,logger = self.logger
-                                                        )
+        sDNAUISpec, run_sDNA = self.import_sDNA(opts, logger = self.logger)
 
-            sDNA = sDNA_key(opts)
-            opts['metas'] = opts['metas']._replace(SDNA = sDNA)
-            self.sDNA = sDNA
+        sDNA = sDNA_key(opts)
 
-
-        sDNA = self.sDNA
-
+        if self.already_loaded(opts, sDNA):
+            get_syntax = self.get_syntaxes[sDNA]
+            defaults = self.default_named_tuples[sDNA]._asdict()
+            return sDNAUISpec, run_sDNA, get_syntax, defaults
 
         try:
-            sDNA_Tool = getattr(self.sDNAUISpec, self.tool_name)()
+            sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
         except AttributeError:
             msg =   ('No tool called '
                     +self.tool_name
                     +' found in '
-                    +self.sDNAUISpec.__file__
+                    +sDNAUISpec.__file__
                     +'.  Rename tool_name or change sDNA version.  '
                     )
             self.logger.error(msg)
             raise ValueError(msg)
                             
-        self.input_spec = sDNA_Tool.getInputSpec()
-        self.get_syntax = sDNA_Tool.getSyntax
+        input_spec = sDNA_Tool.getInputSpec()
+        self.get_syntaxes[sDNA] = get_syntax = sDNA_Tool.getSyntax
 
-        self.defaults = OrderedDict((tuple_[0], tuple_[4]) 
-                                    for tuple_ in self.input_spec
-                                   )
-        # See below for field names in input_spec
+        defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
+        # varname : default.  See below for other names in tuple_ in input_spec
 
         nt_name = '_'.join([nick_name, tool_name, sDNA])
-        self.defaults_nt = options_manager.namedtuple_from_dict(
-                                                           d = self.defaults
+        defaults_NT = options_manager.namedtuple_from_dict(d = defaults
                                                           ,NT_name = nt_name
                                                           )
+        self.default_named_tuples[sDNA] = defaults_NT
 
-        self.default_tool_opts = OrderedDict()
-        self.get_tool_opts(opts = self.default_tool_opts)
-        # This feels weird, but minor repetition below, 
-        # is a lot easier than a deep copy / clone.
+        self.get_tool_opts(opts = self.default_tool_opts
+                          ,sDNA = sDNA
+                          ,val = defaults_NT
+                          )
+        # This feels weird, but minor repetition below is a lot easier than a 
+        # deep copy / clone.
 
-        default_tool_opts = OrderedDict()
+        new_tool_opts = OrderedDict()
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
-        self.get_tool_opts(opts = default_tool_opts)
-        self.logger.debug('default_tool_opts == %s ' % default_tool_opts)
+        self.get_tool_opts(opts = new_tool_opts # mutated
+                          ,sDNA = sDNA
+                          ,val = defaults_NT
+                          )
+        self.logger.debug('default_tool_opts == %s ' % self.default_tool_opts)
 
-        self.default_tool_opts = default_tool_opts.copy()
-
-        update_opts(current_opts = default_tool_opts # mutated
+        update_opts(current_opts = new_tool_opts # mutated again
                    ,override = opts # in case opts for this tool were already
-                                    # loaded before it was first placed, 
-                                    # e.g. loaded from a file or Param
+                                    # loaded from a file before its first 
+                                    # component was first placed
+                   ,add_new_opts = True
                    )
-        #override default tool opts with opts
+        #override new_tool_opts with opts
 
 
-        opts.update(default_tool_opts)
+        opts.update(new_tool_opts)
         # get the updated opts back into opts, via .update (have to mutate
         # as assignment will only affect the variable assigned to the local 
         # name of this method arg)
 
-        for varname, display_name, data_type, filter_, default, required in self.input_spec:  
+        for varname, display_name, data_type, filter_, default, required in input_spec:  
                       
             description = display_name +'. '
             description += 'Default value == %(' + varname + ')s.'
@@ -1015,10 +1029,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
 
-        if has_keywords(self.nick_name, keywords = ('prepare',)):
-            self.retvals += ('gdm',)
-
-        return 'Successfully updated syntax and tool_opts.  '
+        return sDNAUISpec, run_sDNA, get_syntax, defaults
 
 
 
@@ -1037,17 +1048,17 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.nick_name = nick_name
         self.component = component
         self.import_sDNA = import_sDNA
-        self.update_tool_opts_and_syntax(opts)
+        __, __, __, defaults = self.load_sDNA_tool(opts)
 
         if metas.show_all:
             new_keys = tuple(key 
-                             for key in self.defaults.keys() 
+                             for key in defaults
                              if key not in self.component_inputs
                             )
             if new_keys:
                 self.component_inputs += new_keys
 
-            if 'advanced' not in self.defaults:
+            if 'advanced' not in defaults:
                 msg = "'advanced' not in defaults_dict"
                 self.logger.warning(msg)
                 warnings.showwarning(message = msg
@@ -1076,33 +1087,15 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         if opts is None:
             opts = self.opts
 
-        sDNA = opts['metas'].SDNA
+        sDNAUISpec, run_sDNA, get_syntax, __ = self.load_sDNA_tool(opts)
 
+        if not hasattr(sDNAUISpec, self.tool_name): 
+            msg = self.tool_name + 'not found in ' + sDNAUISpec.__name__
+            self.logger.error(msg)
+            raise ValueError(msg)
 
-
-        if not hasattr(self.sDNAUISpec, self.tool_name): 
-            raise ValueError(self.tool_name + 'not found in ' + sDNA[0])
         options = opts['options']
         metas = opts['metas']
-
-        if self.sDNA != sDNA:  # last sDNA this tool has seen != metas.SDNA
-            outcome = self.update_tool_opts_and_syntax(opts)
-
-            # If sDNA has changed, the component really needs to be called again.
-            # The script method in main currently handles this, but if this tool
-            # is called from elsewhere this needs checking.  
-            # Return or raise Params update error / warning?
-
-            if outcome.lower().startswith('fail'):
-                msg = ('Tried to run tool with out of date sDNA tool options. '
-                      +'Tool opts and syntax require update, and sDNA modules'
-                      +' require (re)importing, but this tool cannot import '
-                      +' sDNA modules. '
-                      )
-                self.logger.error(msg)
-                raise ImportError(msg)
-
-        assert self.sDNA == sDNA, "Error updating %s.sDNA" % self.__class__
 
         tool_opts_sDNA = self.get_tool_opts(opts)
 
@@ -1193,23 +1186,21 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         else:
             self.logger.debug('Advanced command string == %s' % advanced)
 
-        syntax = self.get_syntax(input_args)
-
         f_name = output_file
 
-        command =   (options.python
-                    + ' -u ' 
-                    + '"' 
-                    + os.path.join(  os.path.dirname(self.sDNAUISpec.__file__)
-                            ,'bin'
-                            ,syntax['command'] + '.py'  
-                            ) 
-                    + '"'
-                    + ' --im ' + self.run_sDNA.map_to_string( syntax["inputs"] )
-                    + ' --om ' + self.run_sDNA.map_to_string( syntax["outputs"] )
-                    + ' ' + syntax["config"]
-                    )
-        self.logger.info('sDNA command run = ' + command)
+        command = (options.python
+                  +' -u ' 
+                  +'"' 
+                  +os.path.join(os.path.dirname(sDNAUISpec.__file__)
+                               ,'bin'
+                               ,get_syntax['command'] + '.py'  
+                               ) 
+                  +'"'
+                  +' --im ' + run_sDNA.map_to_string(get_syntax["inputs"])
+                  +' --om ' + run_sDNA.map_to_string(get_syntax["outputs"])
+                  +' ' + get_syntax["config"]
+                  )
+        self.logger.info('sDNA command run: %s' % command)
 
         output_lines = ''
 
@@ -1218,8 +1209,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             retcode = 0 
         except subprocess.CalledProcessError as e:
             self.logger.info(output_lines)
-            self.logger.error('error.output == %s' % e.output)
-            self.logger.error('error.returncode == %s' % e.returncode)
+            self.logger.error('error.output: %s' % e.output)
+            self.logger.error('error.returncode: %s' % e.returncode)
             raise e
 
 
@@ -1251,7 +1242,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     
-    retvals = 'retcode', 'f_name'
+    retvals = 'retcode', 'f_name', 'gdm'
     component_outputs = ('file',) # retvals[-1])
 
 
@@ -2090,7 +2081,7 @@ class DataParser(sDNA_GH_Tool):
                        ]
         # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
         class_spacing = 'quantile'
-        valid_class_spacings = data_cruncher.VALID_RE_NORMALISERS + tuple(QUANTILE_METHODS.keys())
+        VALID_CLASS_SPACINGS = data_cruncher.VALID_RE_NORMALISERS + tuple(QUANTILE_METHODS.keys())
 
         base = 10 # for Log and exp
         colour_as_class = False
@@ -2106,7 +2097,7 @@ class DataParser(sDNA_GH_Tool):
         suppress_class_overlap_error = False
         
         assert re_normaliser in data_cruncher.VALID_RE_NORMALISERS
-        assert class_spacing in valid_class_spacings
+        assert class_spacing in VALID_CLASS_SPACINGS
                         
     param_infos = sDNA_GH_Tool.param_infos + (
                    ('field', add_params.ParamInfo(
@@ -2144,7 +2135,7 @@ class DataParser(sDNA_GH_Tool):
                                            +'classify the data / calculate '
                                            +'the classes for the legend. '
                                            +'Allowed Values: '
-                                           +'%(valid_class_spacings)s.  ' 
+                                           +'%(VALID_CLASS_SPACINGS)s.  ' 
                                            +'Default: %(class_spacing)s'
                                            ) 
                             ))
@@ -2219,7 +2210,7 @@ class DataParser(sDNA_GH_Tool):
                                     for obj, val in gdm.items()
                                     if x_min <= select(val, field) <= x_max
                                   )
-            else: # exclude == False => cap and collar
+            else: # exclude == False => enforce bounds, cap and collar
                 data = OrderedDict( (obj, min(x_max, max(x_min, select(val, field)))) 
                                     for obj, val in gdm.items()
                                   )
