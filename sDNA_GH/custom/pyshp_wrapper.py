@@ -564,12 +564,12 @@ class ShapeFilesDeleter(ABC):
                                     ,strict_no_del = opts['options'].strict_no_del  
                                     )
 
-class InputFileDeletionOptions(GetFileNameOptions):
+class InputFileDeletionOptions(GetFileNameOptions, FieldRecsShapesOptions):
     del_after_sDNA = True
     strict_no_del = False 
     INPUT_FILE_DELETER = None
 
-class OutputFileDeletionOptions(GetFileNameOptions):
+class OutputFileDeletionOptions(GetFileNameOptions, FieldRecsShapesOptions):
     strict_no_del = InputFileDeletionOptions.strict_no_del 
     del_after_read = True
     OUTPUT_FILE_DELETER = None
@@ -580,37 +580,52 @@ ShapeFilesDeleter.register(NullDeleter)
 #assert issubclass(NullDeleter, ShapeFilesDeleter)
 
 
-class TmpFileDeletingReaderIteratorABC(ABC):
+class SizedIterator(ABC):
+    def __init__(self, iterator):
+        self.iterator = iterator
+        self.next = iterator.next
+    
+    def __iter__(self):
+        return self
+
+    @abstractmethod
+    def __len__(self):
+        """ Supply externally, e.g. from file metadata, without 
+            exhausting the iterator, else there's no point to this 
+            class.  
+        """
+
+
+class TmpFileDeletingReaderIteratorABC(SizedIterator):
     def __init__(self, reader, opts = None):
         # type(shp.Reader, dict, dict) -> None
         if opts is None:
             opts = dict(options = OutputFileDeletionOptions)
         self.opts = opts
         if isinstance(reader, shp.Reader):
-            self.reader = reader
             self.file_path = reader.shp.name
         elif isinstance(reader, basestring) and os.path.isfile(reader):
-            encoding = opts['options'].encoding.replace('-','')
-            self.reader = shp.Reader(reader, encoding = encoding)
             self.file_path = reader
+            encoding = opts['options'].encoding.replace('-','')
+            reader = shp.Reader(reader, encoding = encoding)
         else:
             raise ValueError('No shapefile reader or file path supplied. ')
-        self.set_iterable()
-
+        self.reader = reader
+        super(TmpFileDeletingReaderIteratorABC, self).__init__(
+                                                  iterator = self.generator()
+                                                  )
+        self.close = self.maybe_delete_file
 
     @abstractmethod
-    def set_iterable(self):
-        """ e.g. self.iterator = self.reader.iterShapeRecords() """
-
-    def __iter__(self):
-        return self.iterator
+    def generator(self):
+        """ Generator to process the shp file reader, used to produce the 
+            desired iterator that yields what ever is wanted.  """
 
     def next(self):
         try:
             retval = next(self.iterator)
         except StopIteration as e:
-            self.reader.close()
-            self.maybe_delete_file()
+            self.close()
             raise e
         return retval
 
@@ -633,17 +648,23 @@ class TmpFileDeletingReaderIteratorABC(ABC):
                                                     OUTPUT_FILE_DELETER = None
                                                     )
 
+    def close(self):
+        self.reader.close()
+        self.maybe_delete_file()
+
+
 def is_single_shape(shapeRecord):
     shape = getattr(shapeRecord, 'shape', shapeRecord)
-    if hasattr(shape, 'parts'):
-        return len(shape.parts) <= 1
-    else:
+    if not hasattr(shape, 'parts'):
         msg = ('shape has no attr "parts", the indices of sub-shapes '
               +'in shape.points.  Assuming it is a single shape. '
               )
         logger.warning(msg)
         warnings.warn(msg)
         return True
+    else:
+        return len(shape.parts) <= 1
+
 
 class ShapeRecordsOptions(OutputFileDeletionOptions):
     copy_dicts = False
@@ -652,38 +673,64 @@ class MultipleShapes(list):
     """ Trivial flag class. """
     pass
 
-class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
+def identity(*args):
+    return args
+
+class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorABC):
     def __init__(self, reader, extra_manglers = None, opts = None):
+        #type(shp.Reader, dict, dict)
         if opts is None:
             opts = dict(options = ShapeRecordsOptions)
         if extra_manglers is not None:
-            for key, val in self.manglers.items():
-                self.manglers[key] = funcs.compose(extra_manglers[key], val)
+            for key, val in extra_manglers.items():
+                if isinstance(val, list):
+                    new_manglers = tuple(val)
+                if isinstance(val, collections.Callable):
+                    new_manglers = (val,)
+                if key in self.manglers:
+                    new_manglers += (self.manglers[key],)
+                self.manglers[key] = funcs.compose(new_manglers)
+
         self.copy_dicts = opts['options'].copy_dicts
-        super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
+        super(TmpFileDeletingShapeRecordsGroupedIterator, self).__init__(reader, opts)
     
     @staticmethod
-    def shape_and_rec_as_dict(shape_records):
-        for shape_record in shape_records:
-            shape, record = shape_record.shape, shape_record.record
-            return shape, record.as_dict()
+    def shape_and_rec_as_dict(shape_record):
+        return shape_record.shape, shape_record.record.as_dict()
+
+    @classmethod
+    def shapes_and_recs_as_dicts(cls, shape_records):
+            return [cls.shape_and_rec_as_dict(shape_record)
+                    for shape_record in shape_records
+                   ]
     
     @staticmethod
     def points_and_rec(shape, record):
         return shape.points, record
 
+    @classmethod
+    def points_and_records(cls, shapes_and_records):
+        return [cls.points_and_rec(shape, record) 
+                for shape, record in shapes_and_records]
+
     def maybe_copy(self, dict_):
         return  dict_.copy() if self.copy_dicts else dict_
 
     def split_shp_points_by_parts_repeat_rec_as_dict(self, group):
+        retval = []
         for shape_record in group:
             shp_shapes, rec = self.shape_and_rec_as_dict(shape_record)
-            parts, points = shp_shapes.parts, shp_shapes.points
-            return [(points[start:end], self.maybe_copy(rec))
-                    for start, end in itertools.pairwise(parts)
-                   ]
+            points, _ = self.points_and_rec(shp_shapes, rec)
+            parts = shp_shapes.parts
+            rec = self.maybe_copy(rec)
+            retval.append([(points[start:end], rec)
+                           for start, end in itertools.pairwise(parts)
+                          ])
+        return retval
 
-    manglers = {True:  funcs.compose(points_and_rec, shape_and_rec_as_dict)
+    # manglers will be applied to groups of consecutive single shapes 
+    # and groups of consecutive multi-shape shp file entries
+    manglers = {True:  funcs.compose(points_and_records, shapes_and_recs_as_dicts)
                ,False: split_shp_points_by_parts_repeat_rec_as_dict
                }
 
@@ -693,6 +740,8 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
                                         ,key_func = is_single_shape
                                         ,manglers = self.manglers
                                         )
+ 
+
  
         # for key, group in itertools.groupby(self.reader.iterShapeRecords()
         #                                    ,is_single_shape
@@ -711,18 +760,16 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
         #                   ]
 
 
-    def set_iterable(self):
-        self.iterator = self.generator() 
 
 class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
-    def set_iterable(self):
-        self.iterator = (rec.as_dict() for rec in self.reader.iterRecords())
+    def generator(self):
+        return (record.as_dict() for record in self.reader.iterRecords())
 
 
 # def shp_shapeRecords(shapefile_path, opts = None): 
 #     # type(str, type[any]) -> Generator[type[any]]
 #     if opts is None:
-#         opts = dict(options = FieldRecsShapesOptions)
+#         opts = dict(options = FieldRecsShapesOptions)GetFileNameOptions
 #     with TmpFileDeletingReader(shapefile_path, opts) as r:
 #         # No yield from in Iron Python 2 :(
 #         for shapeRecord in r.iterShapeRecords():

@@ -41,6 +41,7 @@ import sys
 import abc
 import logging
 import itertools
+import functools
 import subprocess
 import re
 import string
@@ -1252,11 +1253,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 def get_objs_and_OrderedDicts(only_selected = False
                              ,layers = ()
                              ,shp_type = 'POLYLINEZ'
-                             ,include_groups = False
                              ,all_objs_getter = rhino_gh_geom.get_Rhino_objs
-                             ,group_getter = checkers.get_all_groups
-                             ,group_objs_getter = checkers.get_members_of_a_group
-                             ,OrderedDict_getter = checkers.get_OrderedDict()
+                             ,OrderedDict_getter = checkers.OrderedDict_from_User_Text_factory()
                              ,is_shape = rhino_gh_geom.is_shape
                              ,is_selected = gdm_from_GH_Datatree.is_selected
                              ,obj_layer = gdm_from_GH_Datatree.obj_layer
@@ -1270,34 +1268,6 @@ def get_objs_and_OrderedDicts(only_selected = False
 
     #type( type[any]) -> list, list
     #
-    # Groups first search.  If a special User Text key on member objects 
-    # is used to indicate groups, then an objects first search 
-    # is necessary instead, to test every object for membership
-    # and track the groups yielded to date, in place of group_getter
-    objs_already_yielded = []
-
-    if include_groups:
-        groups = group_getter()
-        for group in groups:
-            objs = group_objs_getter(group)
-            if not objs:
-                continue
-            if any(not is_shape(obj, shp_type) for obj in objs):                                                 
-                continue 
-            if layers and any(obj_layer(obj) not in layers for obj in objs):
-                continue 
-            if only_selected and any(not is_selected(obj) for obj in objs):
-                continue # Skip this group is any of the 4 conditions not met.  
-                            # Correct Polylines will be picked up individually
-                            # in the next code block, from the trawl from
-                            # rs.ObjectsByType
-
-            #Collate data and Yield group objs as group name.  
-            objs_already_yielded += objs
-            d = {}
-            for obj in objs:
-                d.update(OrderedDict_getter(obj))
-            yield group, d
 
     objs = all_objs_getter(shp_type) # Note!:  may include non-polylines, 
                                         # arcs etc. for geometry_type = 4
@@ -1306,8 +1276,6 @@ def get_objs_and_OrderedDicts(only_selected = False
                                         #                      ,state = 0
                                         #                      )
     for obj in objs:
-        if obj in objs_already_yielded:
-            continue 
         if not is_shape(obj, shp_type):                                                 
             continue 
 
@@ -1500,7 +1468,7 @@ class UsertextReader(sDNA_GH_Tool):
 
                 gdm[obj][key] = val
 
-        # read_Usertext_as_tuples = checkers.get_OrderedDict()
+        # read_Usertext_as_tuples = checkers.OrderedDict_from_User_Text_factory()
         # for obj in gdm:
         #     gdm[obj].update(read_Usertext_as_tuples(obj))
 
@@ -1794,53 +1762,65 @@ class ShapefileReader(sDNA_GH_Tool):
                          #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
 
-            def is_single_shape(item):
-                return isinstance(item, tuple) 
-                # else assume it's a list of tuples.
+            # def is_single_shape(item):
+            #     return isinstance(item, tuple) 
+            #     # else assume it's a list of tuples.
 
 
-            def generator():
-                """  The purpose of this generator is to defer 
-                     creation of new Rhino or Grasshopper 
-                     geometric objects until after we set 
-                     scriptcontext.doc to Rhino.RhinoDoc.ActiveDoc or
-                     leave it as ghdoc below
-                """
-                iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
-                                                                        f_name
-                                                                       ,opts
-                                                                       )
-                already_warned = False
-                for key, group in itertools.groupby(iterator, is_single_shape):
-                    if key: 
-                        #assert all(isinstance(item, tuple) for tuple in group)
-                        for points_list, data in group:
-                            yield add_geom(points_list), data
-                    else: #assert all(is_multiple_shapes(x) for x in group)
-                        if not already_warned:
-                            already_warned = True
-                            msg = ('Entry with multiple shapes per record found '
-                                  +'in shapefile. Geom will be a DataTree, not'
-                                  +'a list.'
-                                  )
-                            self.logger.warning(msg)
-                            warnings.warn(msg)
-                        for list_of_tuples in group:
-                            gen_exp = ((add_geom(points), data)
-                                       for points, data in list_of_tuples
-                                      )
-                            yield gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
+            # def generator():
+            #     """  The purpose of this generator is to defer 
+            #          creation of new Rhino or Grasshopper 
+            #          geometric objects until after we set 
+            #          scriptcontext.doc to Rhino.RhinoDoc.ActiveDoc or
+            #          leave it as ghdoc below
+            #     """
+            #     iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
+            #                                                             f_name
+            #                                                            ,opts
+            #                                                            )
+            #     already_warned = False
+            #     for key, group in itertools.groupby(iterator, is_single_shape):
+            #         if key: 
+            #             #assert all(isinstance(item, tuple) for tuple in group)
+            #             for points_list, data in group:
+            #                 yield add_geom(points_list), data
+            #         else: #assert all(is_multiple_shapes(x) for x in group)
+            #             if not already_warned:
+            #                 already_warned = True
+            #                 msg = ('Entry with multiple shapes per record found '
+            #                       +'in shapefile. Geom will be a DataTree, not'
+            #                       +'a list.'
+            #                       )
+            #                 self.logger.warning(msg)
+            #                 warnings.warn(msg)
+            #             for list_of_tuples in group:
+            #                 gen_exp = ((add_geom(points), data)
+            #                            for points, data in list_of_tuples
+            #                           )
+            #                 yield gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
-            gdm_iterator = generator()
+            # gdm_iterator = generator()
 
+            def gdm_of_new_geom_from_group(group):
+                return gdm_from_GH_Datatree.GeomDataMapping(
+                                                  (add_geom(x) for x in group)
+                                                  ) # obj, data = x
 
-            gdm_iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
-                    reader = f_name
-                    extra_manglers = {True : add_geom
-                                     ,False: lambda l: add_geom(x) for x in l
-                                     }
-                    ,opts = opts
-                    )
+            gdm_iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsGroupedIterator(
+                        reader = f_name
+                       ,extra_manglers = {
+                               True : gdm_of_new_geom_from_group  
+                               # if a single shape
+                               ,False: lambda l: [gdm_of_new_geom_from_group(x) 
+                                                  for x in l
+                                                 ]
+                               # if a multi-shape entry
+                               }
+                       ,opts = opts
+                       )
+
+            gdm_partial = functools.partial(list, gdm_iterator)
+                    
             # gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
@@ -1851,10 +1831,15 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
+            gdm
+
             gdm_iterator = itertools.izip(
                      gdm.keys()
                     ,pyshp_wrapper.TmpFileDeletingRecordsIterator(f_name, opts)
                     )
+            gdm_partial = functools.partial(gdm_from_GH_Datatree.GeomDataMapping
+                                           ,gdm_iterator
+                                           )
             #                  dict.keys() is a dict view in Python 3
 
 
@@ -1864,7 +1849,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
         if options.bake:
             sc.doc = Rhino.RhinoDoc.ActiveDoc
-        gdm = gdm_from_GH_Datatree.make_list_of_gdms(gdm_iterator)
+        gdm = gdm_partial()
         # Exhausts the above generator into a list
         sc.doc = ghdoc 
 
@@ -2182,6 +2167,9 @@ class DataParser(sDNA_GH_Tool):
             msg += ' gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
+
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            gdm = (gdm,)
 
         def select(val, field):
             #type( type[any], str) -> Number
@@ -2572,21 +2560,25 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             gdm = [gdm]
 
 
-        objs_to_parse = OrderedDict((k, v) 
-                                    for sub_gdm in gdm
-                                    for k, v in sub_gdm.items()
-                                    if isinstance(v, dict) and field in v   
-                                   )  # any geom with a normal gdm dict of keys / vals
+        objs_to_parse = gdm_from_GH_Datatree.GeomDataMapping(
+                                        (k, v) 
+                                        for sub_gdm in gdm
+                                        for k, v in sub_gdm.items()
+                                        if isinstance(v, dict) and field in v   
+                                        )  
+                                        # any geom with a normal gdm dict of 
+                                        # keys / vals containing field
 
         logger.debug('Objects to parse & fields == %s, ... , %s'
                     %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
                     )
 
-        objs_with_numbers = OrderedDict((k, v) 
-                                        for sub_gdm in gdm
-                                        for k, v in sub_gdm.items()
-                                        if isinstance(v, Number) 
-                                       )
+        objs_with_numbers = gdm_from_GH_Datatree.GeomDataMapping(
+                                                    (k, v) 
+                                                    for sub_gdm in gdm
+                                                    for k, v in sub_gdm.items()
+                                                    if isinstance(v, Number) 
+                                                    ) 
 
         logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
                     %(objs_with_numbers.items()[:5], objs_with_numbers.items()[-5:])
@@ -2668,11 +2660,12 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     bounded_colour += ( max(0, min(255, channel)), )
                 return rs.CreateColor(bounded_colour)
 
-        objs_to_recolour = OrderedDict( (k, v) 
+        objs_to_recolour = gdm_from_GH_Datatree.GeomDataMapping( 
+                                        (k, v) 
                                         for sub_gdm in gdm
                                         for k, v in sub_gdm.items()
-                                        if isinstance(v, System.Drawing.Color)  
-                                      )
+                                        if isinstance(v, System.Drawing.Color)
+                                        )
 
 
 

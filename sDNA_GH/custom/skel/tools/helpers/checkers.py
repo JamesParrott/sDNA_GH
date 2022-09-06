@@ -78,63 +78,6 @@ def get_path(fallback = None, inst = None):
     return None 
 
 
-def toggle_sc_doc():
-    #type() -> None
-    if sc.doc not in (Rhino.RhinoDoc.ActiveDoc, ghdoc): 
-        # ActiveDoc may change on Macs 
-        msg = 'sc.doc == %s , type == %s ' % (sc.doc, type(sc.doc))
-        logger.error(msg)
-        raise NameError(msg)
-    sc.doc = Rhino.RhinoDoc.ActiveDoc if sc.doc == ghdoc else ghdoc # type: ignore
-
-
-def change_line_thickness(obj, width, rel_or_abs = False):  
-    #type(str, Number, bool) -> None
-    #
-    # The default value in Rhino for wireframes is zero so rel_or_abs==True 
-    # will not be effective if the width has not already been increased.
-    #
-    # To make changes resulting from the function visible, it is necessary
-    # to change the view mode into PrintDisplay, e.g. by calling
-    # rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
-    #                +str(options.line_width)
-    #                +' _enter')
-    
-    x = rs.coercerhinoobject(obj, True, True)
-    x.Attributes.PlotWeightSource = Rhino.DocObjects.ObjectPlotWeightSource.PlotWeightFromObject
-    if rel_or_abs:
-        width = width * x.Attributes.PlotWeight
-    x.Attributes.PlotWeight = width
-    x.CommitChanges()
-
-
-def multi_context_checker(is_thing):
-    #type(function, function) -> function
-    def get_sc_doc_of_thing(x):
-        #type(str)-> bool  
-        if x:
-            if is_thing(x):
-                return sc.doc
-            else:
-                toggle_sc_doc()
-                if is_thing(x):
-                    return sc.doc
-            return False
-    return get_sc_doc_of_thing
-
-
-@multi_context_checker
-def get_sc_doc_of_obj(x):
-    #type(str) -> bool
-    return bool(sc.doc.Objects.FindGeometry(System.Guid(str(x)))) if x else False 
-
-
-@multi_context_checker
-def get_sc_doc_of_curve(x):
-    #type(str) -> bool
-    return rs.IsCurve(x) if x else False
- 
-
 def get_obj_keys(obj):
     # type(str) -> list
     return rs.GetUserText(obj)
@@ -145,23 +88,10 @@ def get_obj_val(obj, key):
     return rs.GetUserText(obj, key)
 
 
-def write_obj_val(obj, key, val):
-    # type(str, str) -> str
-    return rs.SetUserText(obj, key, val, False)
-
-
-def get_val_list(val_getter = get_obj_val):
-    # type(function) -> function
-    def f(obj, keys):
-        # type(str, list) -> list
-
-        return [val_getter(obj, key) for key in keys]
-    return f
-
-
-def get_OrderedDict( keys_getter = get_obj_keys
-                    ,val_getter = get_obj_val):
-    # type(function) -> function
+def OrderedDict_from_User_Text_factory(keys_getter = get_obj_keys
+                                      ,val_getter = get_obj_val
+                                      ):
+    # type(function, function) -> function
     def g(z):
         if hasattr(Rhino.Geometry, type(z).__name__):
             z_geom = z
@@ -180,19 +110,5 @@ def get_OrderedDict( keys_getter = get_obj_keys
 
 
 
-@multi_context_checker
-def get_sc_doc_of_group(x):
-    #type( str ) -> boolean
-    return rs.IsGroup(x) if x else False
-
-
-def get_all_groups():
-    #type( None ) -> list
-    return rs.GroupNames()
-
-
-def get_members_of_a_group(group):
-    #type(str) -> list
-    return rs.ObjectsByGroup(group)
 
 
