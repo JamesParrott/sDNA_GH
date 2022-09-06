@@ -36,6 +36,8 @@ import os
 import abc
 import re
 import logging
+import warnings
+import itertools
 import locale
 from collections import OrderedDict
 from datetime import date
@@ -606,7 +608,6 @@ class TmpFileDeletingReaderIteratorABC(ABC):
     def next(self):
         try:
             retval = next(self.iterator)
-            logger.debug('Read val: %s' % retval)
         except StopIteration as e:
             self.reader.close()
             self.maybe_delete_file()
@@ -632,10 +633,49 @@ class TmpFileDeletingReaderIteratorABC(ABC):
                                                     OUTPUT_FILE_DELETER = None
                                                     )
 
+def is_single_shape(shapeRecord):
+    shape = getattr(shapeRecord, 'shape', shapeRecord)
+    if hasattr(shape, 'parts'):
+        return len(shape.parts) <= 1
+    else:
+        msg = """shape has no attr 'parts', the indices of sub-shapes 
+                 in shape.points.  Assuming it is a single shape. 
+              """
+        logger.warning(msg)
+        warnings.warn(msg)
+        return True
+
+class ShapeRecordsOptions(OutputFileDeletionOptions):
+    copy_dicts = False
 
 class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
+    def __init__(self, reader, opts = None):
+        if opts is None:
+            opts = dict(options = ShapeRecordsOptions)
+        self.copy_dicts = opts['options'].copy_dicts
+        super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
+    
+    def generator(self):
+
+        for key, group in itertools.groupby(self.reader.iterShapeRecords()
+                                           ,is_single_shape
+                                           ):
+            if key: #assert all(len(sr.shape.parts) == 1 for sr in group)
+                for shape_record in group:
+                    shape, record = shape_record.shape, shape_record.record
+                    yield shape.points, record.as_dict()
+            else: #assert all(not is_single_shape(x) for x in group)
+                for shapeRecord in group:
+                    shp_shapes = shapeRecord.shape
+                    rec = shapeRecord.record.as_dict()
+                    parts, points = shp_shapes.parts, shp_shapes.points
+                    yield [(points[start:end], rec.copy() if self.copy_dicts else rec)
+                           for start, end in itertools.pairwise(parts)
+                          ]
+
+
     def set_iterable(self):
-        self.iterator = self.reader.iterShapeRecords()
+        self.iterator = self.generator() 
 
 class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
     def set_iterable(self):

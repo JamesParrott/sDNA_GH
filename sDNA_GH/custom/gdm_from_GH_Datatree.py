@@ -71,6 +71,21 @@ class GeomDataMapping(OrderedDict):
         actual Grasshopper geometric objects (uuids) to string 
         keyed sub-dictionaries of data suitable for User Text.  
     """
+
+    def __init__(self, keys_and_vals=()): 
+        #type(*Iterable)-> dict   
+        """ The keys should be Rhino or Grasshopper geometric objects,
+            or strings matching the uuid pattern.  The values should 
+            also be a dictionary, string keyed, containing associated 
+            data usable as for User Text.
+
+            If keys_and_vals is a generator expression it should be 
+            exhausted (if creation of the actual Rhino/Grasshopper 
+            objects referred to by the keys is a desired side effect).
+        """
+        super(GeomDataMapping, self).__init__(keys_and_vals)
+
+
     @staticmethod
     def from_DataTree_and_list(Geom, Data):
         # type (type[any], list, dict)-> dict
@@ -157,34 +172,21 @@ class GeomDataMapping(OrderedDict):
         return GeomDataMapping(component_inputs_gen_exp) 
 
 
-    def __init__(self, keys_and_vals=()): 
-        #type(*Iterable)-> dict   
-        """ The keys should be Rhino or Grasshopper geometric objects,
-            or strings matching the uuid pattern.  The values should 
-            also be a dictionary, string keyed, containing associated 
-            data usable as for User Text.
 
-            If keys_and_vals is a generator expression it should be 
-            exhausted (if creation of the actual Rhino/Grasshopper 
-            objects referred to by the keys is a desired side effect).
-        """
-        super(GeomDataMapping, self).__init__(keys_and_vals)
+def is_gdm(x):
+    return isinstance(x, GeomDataMapping)
 
-
-# def make_list_of_gdms(gdms):
-#     #type(*Iterable) -> list
-#     retval = []
-#     iterable = iter(gdms)
-#     for item in iterable:
-#         if len(item) == 2:
-#             if len(retval) == 0 or retval[-1] is not od:
-#                 od = make_gdm()
-#                 retval.append(od)
-#             key, val = item
-#             od[key] = val
-#         elif isinstance(item, OrderedDict):
-#             retval.append(item)
-#     return retval
+def make_list_of_gdms(items):
+    #type(Iterable) -> list
+    retval = []
+    keys_and_groups = itertools.groupby(items, is_gdm)
+    for key, group in keys_and_groups:
+        if key: 
+            # assert all(is_gdm(x) for x in group)
+            retval.extend(group) # group is iterable of gdms
+        else:
+            retval.append(GeomDataMapping(group))
+    return retval
 
 
     

@@ -40,8 +40,8 @@ import os
 import sys
 import abc
 import logging
+import itertools
 import subprocess
-from .data_cruncher import itertools #pairwise from recipe if we're in Python 2
 import re
 import string
 import warnings
@@ -89,6 +89,10 @@ from . import pyshp_wrapper
 from . import logging_wrapper
 from . import gdm_from_GH_Datatree
 from .. import launcher
+
+
+itertools = funcs.itertools #contains pairwise recipe if Python < 3.10
+
 
 if hasattr(abc, 'ABC'):
     ABC = abc.ABC
@@ -1713,7 +1717,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
 class ShapefileReader(sDNA_GH_Tool):
 
-    class Options(pyshp_wrapper.OutputFileDeletionOptions):
+    class Options(pyshp_wrapper.ShapeRecordsOptions):
         new_geom = True
         bake = False
         uuid_field = 'Rhino3D_'
@@ -1793,51 +1797,39 @@ class ShapefileReader(sDNA_GH_Tool):
                          #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
 
-            def is_multiple_shapes(shapeRecord):
-                return len(shapeRecord.shape.parts) >= 2
+            def is_single_shape(item):
+                return isinstance(item, tuple) 
+                # else assume it's a list of tuples.
 
             pairwise = data_cruncher.itertools.pairwise
 
+
+
             def generator():
-                for key, group in itertools.groupby(
-                                pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(f_name, opts)
-                               ,is_multiple_shapes
-                               ):
-                    if key:  #assert all(is_multiple_shapes(x) for x in group)
-                        for shapeRecord in group:
-                            shp_shapes = shapeRecord.shape
-                            rec = shapeRecord.record
-                            parts, points = shp_shapes.parts, shp_shapes.points
-                            objs_and_rec = ((add_geom(points[start:end]), rec)
-                                            for start, end in pairwise(parts)
-                                           )
-                            yield gdm_from_GH_Datatree.GeomDataMapping(objs_and_rec)
-                    else:
-                        yield gdm_from_GH_Datatree.GeomDataMapping(group)
-                
+                """  The purpose of this generator is to defer 
+                     creation of new Rhino or Grasshopper 
+                     geometric objects until after we set 
+                     scriptcontext.doc to Rhino.RhinoDoc.ActiveDoc or
+                     leave it as ghdoc below
+                """
+                iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
+                                                                        f_name
+                                                                       ,opts
+                                                                       )
 
-                # for shape, rec in itertools.izip(shapes, recs):
-                #     parts = shape.parts
-                #     if len(parts) >= 2:
-                #         def sub_generator():
-                #             end_indices = iter(parts)
-                #             start = next(end_indices) 
-                #             assert start == 0, "First shape doesn't start at first point"
-                #             for end in end_indices:
-                #                 yield add_geom(shape.points[start:end]), rec
-                #                 start = end
-                #         yield gdm_from_GH_Datatree.make_gdm(sub_generator())
-                #     else:
-                #         yield add_geom(shape.points), rec
+                for key, group in itertools.groupby(iterator, is_single_shape):
+                    if key: 
+                        #assert all(isinstance(item, tuple) for tuple in group)
+                        for points_list, data in group:
+                            yield add_geom(points_list), data
+                    else: #assert all(is_multiple_shapes(x) for x in group)
+                        for list_of_tuples in group:
+                            gen_exp = ((add_geom(points), data)
+                                       for points, data in list_of_tuples
+                                      )
+                            yield gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
-
-                # shp_file_gen_exp = itertools.izip(
-                #     (str(objs_maker(shp.points)) if options.bake else objs_maker(shp.points)
-                #     for shp in shapes 
-                #     )
-                #     ,recs
-                #     )
-            gdm = generator()
+            gdm_iterator = generator()
             # gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
@@ -1848,15 +1840,11 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
-            gdm = gdm_from_GH_Datatree.GeomDataMapping(
-                    itertools.izip(
-                         gdm.keys()
-                        ,pyshp_wrapper.TmpFileDeletingRecordsIterator(f_name, opts)
-                        )
+            gdm_iterator = itertools.izip(
+                     gdm.keys()
+                    ,pyshp_wrapper.TmpFileDeletingRecordsIterator(f_name, opts)
                     )
             #                  dict.keys() is a dict view in Python 3
-
-        gdm.__len__ = lambda *args : num_entries
 
 
         # shp_file_gen_exp  = itertools.izip(shapes_to_output
@@ -1865,7 +1853,8 @@ class ShapefileReader(sDNA_GH_Tool):
 
         if options.bake:
             sc.doc = Rhino.RhinoDoc.ActiveDoc
-        # gdm = gdm_from_GH_Datatree.make_gdm(shp_file_gen_exp)
+        gdm = gdm_from_GH_Datatree.make_list_of_gdms(gdm_iterator)
+        # Exhausts the above generator into a list
         sc.doc = ghdoc 
 
         self.logger.debug('bbox == %s ' % bbox)

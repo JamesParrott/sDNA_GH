@@ -31,7 +31,7 @@ __version__ = '0.12'
 
 import os
 import logging
-import re
+import itertools
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
@@ -126,12 +126,18 @@ def make_regex(pattern):
     return r'\A' + pattern + r'\Z'
     
 
-
-
-
-
-
-
 def list_of_lists(iterable):
     #type(Iterable[Iterable]) -> list[list]
     return [list(item) for item in iterable]
+
+
+if hasattr(itertools, 'pairwise'):
+   pairwise = itertools.pairwise
+else:
+    #https://docs.python.org/2.7/library/itertools.html
+    def pairwise(iterable):
+        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+        a, b = itertools.tee(iterable)
+        next(b, None)
+        return itertools.izip(a, b)
+    itertools.pairwise = pairwise

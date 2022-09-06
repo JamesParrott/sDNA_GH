@@ -55,6 +55,7 @@ class LoggingOptions(object):
     log_custom_level = 'INFO'
     log_file_fmt_str = '%(name)s: %(levelname)s: %(message)s' #%(asctime)s 
     log_console_fmt_str = '%(name)s: %(levelname)s: %(message)s'
+    log_custom_fmt_str = log_console_fmt_str
     log_date_fmt = '%d-%m-%y %H:%M'
 
 
@@ -63,15 +64,36 @@ class LoggingOptions(object):
 
 
 
-def add_stream_handler_to_logger(logger
-                                ,stream = None
-                                ,options = LoggingOptions
-                                ):
-    stream_handler=logging.StreamHandler(stream)
-    stream_handler.setLevel(getattr(logging, options.log_custom_level))
-    stream_handler.setFormatter(logging.Formatter(options.log_fmt_str))
-    logger.addHandler(stream_handler)
+def get_existing_stream_handler_or_add_new_one(logger
+                                              ,level = None
+                                              ,fmt = None
+                                              ,stream = sys.stdout
+                                              ,options = LoggingOptions
+                                              ):
+    #type(logging.Logger, str, str, Stream, LoggingOptions) -> logging.StreamHandler
+    # A Stream is a file-like object with flush and write methods.
+    if level is None:
+        level = options.log_console_level.upper()
+    if fmt is None:
+        fmt = options.log_console_fmt_str
+
+    for handler in logger.handlers:
+        if (isinstance(handler, logging.StreamHandler) and
+            not isinstance(handler, logging.FileHandler) and
+            handler.stream is stream):
+            #
+            stream_handler = handler
+            break
+    else:
+        stream_handler=logging.StreamHandler(stream)
+        logger.addHandler(stream_handler)
+
+    stream_handler.setLevel(level)
+    stream_formatter = logging.Formatter(fmt = fmt)
+    stream_handler.setFormatter(stream_formatter)
+    
     return stream_handler
+
 
 def set_handler_level(handler, level):
     #type(logging.Handler, str/int) -> None
@@ -83,6 +105,43 @@ def set_handler_level(handler, level):
     if isinstance(handler, logging.Handler) and handler.level != level:
         # allow custom numeric levels
         handler.setLevel(level) 
+
+
+def get_existing_file_handler_or_add_new_one(logger, options = LoggingOptions):
+    #type:(logging.Logger, LoggingOptions | tuple) -> logging.FileHandler
+    dir_name = os.path.join(options.working_folder, options.logs_dir)
+
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
+
+    file_name = os.path.join(dir_name, options.log_file)
+
+    for handler in logger.handlers:
+        if (isinstance(handler, logging.FileHandler) and
+            handler.baseFilename == file_name):
+            if (handler.mode != options.log_file_mode and 
+                handler.encoding != options.log_file_encoding):
+                #
+                handler.close()
+            else:
+                file_handler = handler
+                break
+    else:
+        file_handler = logging.FileHandler(filename = file_name
+                                          ,mode = options.log_file_mode
+                                          ,encoding = options.log_file_encoding
+                                          )
+        logger.addHandler(file_handler)
+
+
+    file_logging_level = options.log_file_level.upper()
+    set_handler_level(file_handler, file_logging_level)
+    log_file_formatter = logging.Formatter(fmt = options.log_file_fmt_str
+                                          ,datefmt = options.log_date_fmt
+                                          )
+    file_handler.setFormatter(log_file_formatter)
+
+    return file_handler
 
 
 
@@ -98,40 +157,31 @@ def get_logger_and_handlers(stream = None
     logger = logging.getLogger(options.logger_name)
     logger.setLevel('DEBUG')
     logger.propagate = options.propagate
+
+
+
     if options.log_file:
-        dir_name = os.path.join(options.working_folder, options.logs_dir)
-
-        if not os.path.isdir(dir_name):
-            os.mkdir(dir_name)
-
-        file_name = os.path.join(dir_name, options.log_file)
-
-        file_handler = logging.FileHandler(filename = file_name
-                                        ,mode = options.log_file_mode
-                                        ,encoding = options.log_file_encoding
-                                        )
-        file_logging_level = options.log_file_level.upper()
-        set_handler_level(file_handler, file_logging_level)
-        log_file_formatter = logging.Formatter(fmt = options.log_file_fmt_str
-                                            ,datefmt = options.log_date_fmt
-                                            )
-        file_handler.setFormatter(log_file_formatter)
-        logger.addHandler(file_handler)
+        file_handler = get_existing_file_handler_or_add_new_one(logger, options)
     else:
         file_handler = logging.NullHandler()
 
-    # writes to stderr
-    console_logging_level = options.log_console_level.upper()
-    console_handler = logging.StreamHandler(sys.stdout)
-    set_handler_level(console_handler, console_logging_level)
-    console_formatter = logging.Formatter(fmt = options.log_console_fmt_str)
-    console_handler.setFormatter(console_formatter)
-    
+    console_handler = get_existing_stream_handler_or_add_new_one(
+                                             logger
+                                            ,level = options.log_console_level
+                                            ,fmt = options.log_console_fmt_str
+                                            ,stream = sys.stdout
+                                            ,options = options
+                                            )
 
-    logger.addHandler(console_handler)
 
     if stream:            
-        stream_handler = add_stream_handler_to_logger(logger, stream, options)
+        stream_handler = get_existing_stream_handler_or_add_new_one(
+                                             logger
+                                            ,level = options.log_custom_level
+                                            ,fmt = options.log_custom_fmt_str
+                                            ,stream = stream
+                                            ,options = options
+                                            )
     else:
         stream_handler = logging.NullHandler()
     

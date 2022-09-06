@@ -46,6 +46,8 @@ import math
 from numbers import Number
 import collections
 
+from .skel.tools.helpers.funcs import itertools # for pairwise if Python < 3.10
+
 OrderedDict, Counter = collections.OrderedDict, collections.Counter
 
 
@@ -54,16 +56,7 @@ OrderedDict, Counter = collections.OrderedDict, collections.Counter
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-if hasattr(itertools, 'pairwise'):
-   pairwise = itertools.pairwise
-else:
-    #https://docs.python.org/2.7/library/itertools.html
-    def pairwise(iterable):
-        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-        a, b = itertools.tee(iterable)
-        next(b, None)
-        return itertools.izip(a, b)
-    itertools.pairwise = pairwise
+
 
 class OrderedCounter(Counter, OrderedDict):
      """Counter that remembers the order elements are first encountered.  
