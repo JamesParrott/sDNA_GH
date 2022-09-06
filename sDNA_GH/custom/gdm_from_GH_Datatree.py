@@ -40,6 +40,7 @@ if hasattr(collections, 'Iterable'):
 else:
     import collections.abc
     Iterable = collections.abc.Iterable
+import warnings
 
 import Grasshopper
 import rhinoscriptsyntax as rs
@@ -176,13 +177,24 @@ class GeomDataMapping(OrderedDict):
 def is_gdm(x):
     return isinstance(x, GeomDataMapping)
 
-def make_list_of_gdms(items):
-    #type(Iterable) -> list
+def make_list_of_gdms(items
+                     ,is_multiple_shapes = is_gdm
+                     ,prepare_object_and_data = lambda x : x
+                     ):
+    #type(Iterable, function, function) -> list
     retval = []
-    keys_and_groups = itertools.groupby(items, is_gdm)
+    keys_and_groups = itertools.groupby(items, is_multiple_shapes)
+    already_warned = False
     for key, group in keys_and_groups:
         if key: 
-            # assert all(is_gdm(x) for x in group)
+            # assert all(is_multiple_shapes(x) for x in group)
+            if not already_warned:
+                already_warned = True
+                msg = ('Entry with multiple shapes found. '
+                    +'Geom will be a DataTree, not a list.'
+                    )
+                logger.warning(msg)
+                warnings.warn(msg)
             retval.extend(group) # group is iterable of gdms
         else:
             retval.append(GeomDataMapping(group))

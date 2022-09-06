@@ -32,6 +32,8 @@ __version__ = '0.12'
 import os
 import logging
 import itertools
+import functools
+from collections import OrderedDict
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
@@ -141,3 +143,32 @@ else:
         next(b, None)
         return itertools.izip(a, b)
     itertools.pairwise = pairwise
+
+
+def classes_from_grouped_keyed_items(
+                     items
+                    ,key_func = lambda x : isinstance(x, tuple) and len(x) == 2
+                    ,manglers = {True : lambda x: [OrderedDict(x)]
+                                ,False: lambda x: [OrderedDict(y) for y in x]
+                                }
+                    ):
+    #type(Iterable, type[any] | function, function, dict) -> list
+    """ Manglers needs a function for each value of key_func takes for each of items. """
+    keys_and_groups = itertools.groupby(items, key_func)
+    for key, group in keys_and_groups:
+        yield manglers[key](group)
+
+
+def compose(*funcs):
+    #type(*functions) -> function
+    return functools.reduce(lambda f, g: lambda x: f(g(x)), funcs)
+
+# already_warned = False
+
+# if not already_warned:
+#     already_warned = True
+#     msg = ('Entry with multiple shapes found. '
+#         +'Geom will be a DataTree, not a list.'
+#         )
+#     logger.warning(msg)
+#     warnings.warn(msg)

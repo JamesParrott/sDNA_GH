@@ -48,9 +48,9 @@ else:
     import collections.abc
     Iterable = collections.abc.Iterable
 
+from ..third_party.PyShp import shapefile as shp
 
-
-from ..third_party.PyShp import shapefile as shp  
+from .skel.tools.helpers import funcs
 
 if hasattr(abc, 'ABC'):
     ABC = abc.ABC
@@ -638,9 +638,9 @@ def is_single_shape(shapeRecord):
     if hasattr(shape, 'parts'):
         return len(shape.parts) <= 1
     else:
-        msg = """shape has no attr 'parts', the indices of sub-shapes 
-                 in shape.points.  Assuming it is a single shape. 
-              """
+        msg = ('shape has no attr "parts", the indices of sub-shapes '
+              +'in shape.points.  Assuming it is a single shape. '
+              )
         logger.warning(msg)
         warnings.warn(msg)
         return True
@@ -648,30 +648,67 @@ def is_single_shape(shapeRecord):
 class ShapeRecordsOptions(OutputFileDeletionOptions):
     copy_dicts = False
 
+class MultipleShapes(list):
+    """ Trivial flag class. """
+    pass
+
 class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
-    def __init__(self, reader, opts = None):
+    def __init__(self, reader, extra_manglers = None, opts = None):
         if opts is None:
             opts = dict(options = ShapeRecordsOptions)
+        if extra_manglers is not None:
+            for key, val in self.manglers.items():
+                self.manglers[key] = funcs.compose(extra_manglers[key], val)
         self.copy_dicts = opts['options'].copy_dicts
         super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
     
-    def generator(self):
+    @staticmethod
+    def shape_and_rec_as_dict(shape_records):
+        for shape_record in shape_records:
+            shape, record = shape_record.shape, shape_record.record
+            return shape, record.as_dict()
+    
+    @staticmethod
+    def points_and_rec(shape, record):
+        return shape.points, record
 
-        for key, group in itertools.groupby(self.reader.iterShapeRecords()
-                                           ,is_single_shape
-                                           ):
-            if key: #assert all(len(sr.shape.parts) == 1 for sr in group)
-                for shape_record in group:
-                    shape, record = shape_record.shape, shape_record.record
-                    yield shape.points, record.as_dict()
-            else: #assert all(not is_single_shape(x) for x in group)
-                for shapeRecord in group:
-                    shp_shapes = shapeRecord.shape
-                    rec = shapeRecord.record.as_dict()
-                    parts, points = shp_shapes.parts, shp_shapes.points
-                    yield [(points[start:end], rec.copy() if self.copy_dicts else rec)
-                           for start, end in itertools.pairwise(parts)
-                          ]
+    def maybe_copy(self, dict_):
+        return  dict_.copy() if self.copy_dicts else dict_
+
+    def split_shp_points_by_parts_repeat_rec_as_dict(self, group):
+        for shape_record in group:
+            shp_shapes, rec = self.shape_and_rec_as_dict(shape_record)
+            parts, points = shp_shapes.parts, shp_shapes.points
+            return [(points[start:end], self.maybe_copy(rec))
+                    for start, end in itertools.pairwise(parts)
+                   ]
+
+    manglers = {True:  funcs.compose(points_and_rec, shape_and_rec_as_dict)
+               ,False: split_shp_points_by_parts_repeat_rec_as_dict
+               }
+
+    def generator(self):
+        return funcs.classes_from_grouped_keyed_items(
+                                         items = self.reader.iterShapeRecords()
+                                        ,key_func = is_single_shape
+                                        ,manglers = self.manglers
+                                        )
+ 
+        # for key, group in itertools.groupby(self.reader.iterShapeRecords()
+        #                                    ,is_single_shape
+        #                                    ):
+        #     if key: #assert all(len(sr.shape.parts) == 1 for sr in group)
+        #         for shape_record in group:
+        #             shape, record = shape_record.shape, shape_record.record
+        #             yield shape.points, record.as_dict()
+        #     else: #assert all(not is_single_shape(x) for x in group)
+        #         for shapeRecord in group:
+        #             shp_shapes = shapeRecord.shape
+        #             rec = shapeRecord.record.as_dict()
+        #             parts, points = shp_shapes.parts, shp_shapes.points
+        #             yield [(points[start:end], rec.copy() if self.copy_dicts else rec)
+        #                    for start, end in itertools.pairwise(parts)
+        #                   ]
 
 
     def set_iterable(self):

@@ -1268,66 +1268,64 @@ def get_objs_and_OrderedDicts(only_selected = False
         layers = (layers,) if layers in doc_layers() else None
 
 
-    def generator():
-        #type( type[any]) -> list, list
-        #
-        # Groups first search.  If a special User Text key on member objects 
-        # is used to indicate groups, then an objects first search 
-        # is necessary instead, to test every object for membership
-        # and track the groups yielded to date, in place of group_getter
-        objs_already_yielded = []
+    #type( type[any]) -> list, list
+    #
+    # Groups first search.  If a special User Text key on member objects 
+    # is used to indicate groups, then an objects first search 
+    # is necessary instead, to test every object for membership
+    # and track the groups yielded to date, in place of group_getter
+    objs_already_yielded = []
 
-        if include_groups:
-            groups = group_getter()
-            for group in groups:
-                objs = group_objs_getter(group)
-                if not objs:
-                    continue
-                if any(not is_shape(obj, shp_type) for obj in objs):                                                 
-                    continue 
-                if layers and any(obj_layer(obj) not in layers for obj in objs):
-                    continue 
-                if only_selected and any(not is_selected(obj) for obj in objs):
-                    continue # Skip this group is any of the 4 conditions not met.  
-                             # Correct Polylines will be picked up individually
-                             # in the next code block, from the trawl from
-                             # rs.ObjectsByType
-
-                #Collate data and Yield group objs as group name.  
-                objs_already_yielded += objs
-                d = {}
-                for obj in objs:
-                    d.update(OrderedDict_getter(obj))
-                yield group, d
-
-        objs = all_objs_getter(shp_type) # Note!:  may include non-polylines, 
-                                         # arcs etc. for geometry_type = 4
-                                         # e.g. rs.ObjectsByType(geometry_type = 4
-                                         #                      ,select = False
-                                         #                      ,state = 0
-                                         #                      )
-        for obj in objs:
-            if obj in objs_already_yielded:
-                continue 
-            if not is_shape(obj, shp_type):                                                 
-                continue 
-
-            if layers and obj_layer(obj) not in layers:
-                continue 
-            if only_selected and not is_selected(obj):
+    if include_groups:
+        groups = group_getter()
+        for group in groups:
+            objs = group_objs_getter(group)
+            if not objs:
                 continue
-            d = OrderedDict_getter(obj)
-            yield str(obj), d
-            # We take the str of Rhino geom obj reference (its uuid).
-            # This is because Grasshopper changes uuids between 
-            # connected components, even of 
-            # more static Rhino objects, reducing the usefulness of
-            # the original uuid.  
-            # Previously was:
-            # yield obj, d
-        return 
+            if any(not is_shape(obj, shp_type) for obj in objs):                                                 
+                continue 
+            if layers and any(obj_layer(obj) not in layers for obj in objs):
+                continue 
+            if only_selected and any(not is_selected(obj) for obj in objs):
+                continue # Skip this group is any of the 4 conditions not met.  
+                            # Correct Polylines will be picked up individually
+                            # in the next code block, from the trawl from
+                            # rs.ObjectsByType
 
-    return generator()
+            #Collate data and Yield group objs as group name.  
+            objs_already_yielded += objs
+            d = {}
+            for obj in objs:
+                d.update(OrderedDict_getter(obj))
+            yield group, d
+
+    objs = all_objs_getter(shp_type) # Note!:  may include non-polylines, 
+                                        # arcs etc. for geometry_type = 4
+                                        # e.g. rs.ObjectsByType(geometry_type = 4
+                                        #                      ,select = False
+                                        #                      ,state = 0
+                                        #                      )
+    for obj in objs:
+        if obj in objs_already_yielded:
+            continue 
+        if not is_shape(obj, shp_type):                                                 
+            continue 
+
+        if layers and obj_layer(obj) not in layers:
+            continue 
+        if only_selected and not is_selected(obj):
+            continue
+        d = OrderedDict_getter(obj)
+        yield str(obj), d
+        # We take the str of Rhino geom obj reference (its uuid).
+        # This is because Grasshopper changes uuids between 
+        # connected components, even of 
+        # more static Rhino objects, reducing the usefulness of
+        # the original uuid.  
+        # Previously was:
+        # yield obj, d
+    return 
+
 
 
 class RhinoObjectsReader(sDNA_GH_Tool):
@@ -1783,7 +1781,6 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug(fields) 
 
 
-
         self.logger.debug('Testing existing geom data map.... ')
         if (options.new_geom or not gdm or not isinstance(gdm, dict) 
              or len(gdm) != num_entries): #len(recs) ):
@@ -1791,18 +1788,15 @@ class ShapefileReader(sDNA_GH_Tool):
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type)
 
-            def add_geom(obj):
+            def add_geom(obj, *args):
                 points_list = funcs.list_of_lists(obj)
-                return objs_maker(points_list)
+                return (objs_maker(points_list),) + args
                          #options.shp_type)
                          # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
 
             def is_single_shape(item):
                 return isinstance(item, tuple) 
                 # else assume it's a list of tuples.
-
-            pairwise = data_cruncher.itertools.pairwise
-
 
 
             def generator():
@@ -1816,13 +1810,21 @@ class ShapefileReader(sDNA_GH_Tool):
                                                                         f_name
                                                                        ,opts
                                                                        )
-
+                already_warned = False
                 for key, group in itertools.groupby(iterator, is_single_shape):
                     if key: 
                         #assert all(isinstance(item, tuple) for tuple in group)
                         for points_list, data in group:
                             yield add_geom(points_list), data
                     else: #assert all(is_multiple_shapes(x) for x in group)
+                        if not already_warned:
+                            already_warned = True
+                            msg = ('Entry with multiple shapes per record found '
+                                  +'in shapefile. Geom will be a DataTree, not'
+                                  +'a list.'
+                                  )
+                            self.logger.warning(msg)
+                            warnings.warn(msg)
                         for list_of_tuples in group:
                             gen_exp = ((add_geom(points), data)
                                        for points, data in list_of_tuples
@@ -1830,6 +1832,15 @@ class ShapefileReader(sDNA_GH_Tool):
                             yield gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
             gdm_iterator = generator()
+
+
+            gdm_iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
+                    reader = f_name
+                    extra_manglers = {True : add_geom
+                                     ,False: lambda l: add_geom(x) for x in l
+                                     }
+                    ,opts = opts
+                    )
             # gdm = gdm_from_GH_Datatree.make_list_of_gdms(generator())
             #self.logger.debug('shapes == %s' % shapes)
             self.logger.debug('objs_maker == %s' % objs_maker)
@@ -2195,12 +2206,14 @@ class DataParser(sDNA_GH_Tool):
             x_min, x_max = plot_min, plot_max 
             if options.exclude:
                 data = OrderedDict( (obj, val[field]) 
-                                    for obj, val in gdm.items()
+                                    for sub_gdm in gdm
+                                    for obj, val in sub_gdm.items()                                    
                                     if x_min <= select(val, field) <= x_max
                                   )
             else: # exclude == False => enforce bounds, cap and collar
                 data = OrderedDict( (obj, min(x_max, max(x_min, select(val, field)))) 
-                                    for obj, val in gdm.items()
+                                    for sub_gdm in gdm
+                                    for obj, val in sub_gdm.items()                                    
                                   )
 
         else:
@@ -2208,7 +2221,8 @@ class DataParser(sDNA_GH_Tool):
                       +'No valid override found. '
                       )
             data = OrderedDict( (obj, select(val, field)) 
-                                for obj, val in gdm.items() 
+                                for sub_gdm in gdm
+                                for obj, val in sub_gdm.items()                                    
                               )
             x_min, x_max = min(data.values()), max(data.values())
             self.logger.debug('x_min == %s, x_max == %s' % (x_min, x_max))
@@ -2550,14 +2564,17 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         if not gdm:
             msg = 'No Geom objects to recolour. '
             msg += 'Connect list of objects to Geom. '
-            msg += ' gdm == %s' % gdm
+            msg += 'gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
 
+        if not isinstance(gdm, list):
+            gdm = [gdm]
 
 
-
-        objs_to_parse = OrderedDict((k, v) for k, v in gdm.items()
+        objs_to_parse = OrderedDict((k, v) 
+                                    for sub_gdm in gdm
+                                    for k, v in sub_gdm.items()
                                     if isinstance(v, dict) and field in v   
                                    )  # any geom with a normal gdm dict of keys / vals
 
@@ -2565,9 +2582,11 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
                     )
 
-        objs_with_numbers = OrderedDict( (k, v) for k, v in gdm.items()
-                                                if isinstance(v, Number) 
-                                        )
+        objs_with_numbers = OrderedDict((k, v) 
+                                        for sub_gdm in gdm
+                                        for k, v in sub_gdm.items()
+                                        if isinstance(v, Number) 
+                                       )
 
         logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
                     %(objs_with_numbers.items()[:5], objs_with_numbers.items()[-5:])
@@ -2650,7 +2669,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 return rs.CreateColor(bounded_colour)
 
         objs_to_recolour = OrderedDict( (k, v) 
-                                        for k, v in gdm.items()
+                                        for sub_gdm in gdm
+                                        for k, v in sub_gdm.items()
                                         if isinstance(v, System.Drawing.Color)  
                                       )
 
