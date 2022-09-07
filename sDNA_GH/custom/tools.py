@@ -1437,36 +1437,39 @@ class UsertextReader(sDNA_GH_Tool):
 
         self.debug('Starting read_Usertext...  Creating Class logger. ')
         self.logger.debug('type(gdm) == %s ' % type(gdm))
-        self.logger.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
         
         if not gdm:
             msg = 'No Geometric objects to read User Text from, gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
+
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            self.logger.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
+            gdm = [gdm]
         
         gdm = gdm.copy()
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
+        for sub_gdm in gdm:
+            for obj in sub_gdm:
+                try:
+                    keys = rs.GetUserText(obj)
+                except ValueError:
+                    keys =[]
+                for key in keys:
+                    val = rs.GetUserText(obj, key)
 
-        for obj in gdm:
-            try:
-                keys = rs.GetUserText(obj)
-            except ValueError:
-                keys =[]
-            for key in keys:
-                val = rs.GetUserText(obj, key)
-
-                # Expand/parse computed vals like:
-                #  %<CurveLength("ac4669e5-53a6-4c2b-9080-bbc67129d93e")>%
-                if (options.compute_vals and 
-                    val.startswith(r'%') and val.endswith(r'%') and
-                    re.search(funcs.uuid_pattern, val)):
-                    #
-                    coerced_obj = rs.coercerhinoobject(obj)
-                    val = Rhino.RhinoApp.ParseTextField(val, coerced_obj, None)
+                    # Expand/parse computed vals like:
+                    #  %<CurveLength("ac4669e5-53a6-4c2b-9080-bbc67129d93e")>%
+                    if (options.compute_vals and 
+                        val.startswith(r'%') and val.endswith(r'%') and
+                        re.search(funcs.uuid_pattern, val)):
+                        #
+                        coerced_obj = rs.coercerhinoobject(obj)
+                        val = Rhino.RhinoApp.ParseTextField(val, coerced_obj, None)
 
 
-                gdm[obj][key] = val
+                    sub_gdm[obj][key] = val
 
         # read_Usertext_as_tuples = checkers.OrderedDict_from_User_Text_factory()
         # for obj in gdm:
@@ -1924,7 +1927,52 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
 
+    def write_dict_to_UserText_on_Rhino_obj(cls
+                                           ,d
+                                           ,rhino_obj
+                                           ,time_stamp
+                                           ,logger = logger
+                                           ,options = None):
+        #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
+        if not isinstance(d, dict):
+            msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
+            logger.error(msg)
+            raise TypeError(msg)
+        
+        if options is None:
+            options = cls.Options
+        
+        #if is_an_obj_in_GH_or_Rhino(rhino_obj):
+            # Checker switches GH/ Rhino context
+                
+        existing_keys = rs.GetUserText(rhino_obj)
+        if options.uuid_field in d:
+            obj = d.pop( options.uuid_field )
+        
+        for key in d:
 
+            s = options.output_key_str
+            UserText_key_name = s.format(name = key
+                                        ,datetime = time_stamp
+                                        )
+            
+            if not options.overwrite_UserText:
+
+                for i in range(0, options.max_new_keys):
+                    tmp = UserText_key_name 
+                    tmp += options.dupe_key_suffix.format(i)
+                    if tmp not in existing_keys:
+                        break
+                UserText_key_name = tmp
+            else:
+                if not options.suppress_overwrite_warning:
+                    logger.warning( "UserText key == " 
+                                + UserText_key_name 
+                                +" overwritten on object with guid " 
+                                + str(rhino_obj)
+                                )
+
+            rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)          
 
 
 
@@ -1938,7 +1986,8 @@ class UsertextWriter(sDNA_GH_Tool):
         dupe_key_suffix = '_{}'
         suppress_overwrite_warning = False
 
-                        
+          
+              
 
     component_inputs = ('Geom', 'Data')
 
@@ -1959,7 +2008,10 @@ class UsertextWriter(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
 
-        if all(not value for value in gdm.values()):
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            gdm = [gdm]
+
+        if all(not value for sub_gdm in gdm for value in sub_gdm.values()):
             msg = 'No Data to write as User Text. '
             msg += 'Please connect data tree to Data. '
             msg += ' gdm == %s' % gdm
@@ -1969,59 +2021,19 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
-        def write_dict_to_UserText_on_Rhino_obj(d, rhino_obj):
-            #type(dict, str) -> None
-            if not isinstance(d, dict):
-                msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
-                self.logger.error(msg)
-                raise TypeError(msg)
-            
-            #if is_an_obj_in_GH_or_Rhino(rhino_obj):
-                # Checker switches GH/ Rhino context
-                 
-            existing_keys = rs.GetUserText(rhino_obj)
-            if options.uuid_field in d:
-                obj = d.pop( options.uuid_field )
-            
-            for key in d:
-
-                s = options.output_key_str
-                UserText_key_name = s.format(name = key
-                                            ,datetime = date_time_of_run
-                                            )
-                
-                if not options.overwrite_UserText:
-
-                    for i in range(0, options.max_new_keys):
-                        tmp = UserText_key_name 
-                        tmp += options.dupe_key_suffix.format(i)
-                        if tmp not in existing_keys:
-                            break
-                    UserText_key_name = tmp
-                else:
-                    if not options.suppress_overwrite_warning:
-                        self.logger.warning( "UserText key == " 
-                                    + UserText_key_name 
-                                    +" overwritten on object with guid " 
-                                    + str(rhino_obj)
-                                    )
-
-                rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)                    
-
-
-                #write_obj_val(rhino_obj, UserText_key_name, str( d[key] ))
-            # else:
-            #     self.logger.info('Object: ' 
-            #              + key[:10] 
-            #              + ' is neither a curve nor a group. '
-            #              )
         sc.doc = Rhino.RhinoDoc.ActiveDoc
-        
-        for key, val in gdm.items():
-            try:
-                write_dict_to_UserText_on_Rhino_obj(val, key)
-            except ValueError:
-                pass
+        for sub_gdm in gdm:
+            for key, val in sub_gdm.items():
+                try:
+                    self.write_dict_to_UserText_on_Rhino_obj(
+                                                 d = val
+                                                ,rhino_obj = key
+                                                ,time_stamp = date_time_of_run
+                                                ,logger = self.logger
+                                                ,options = options
+                                                )
+                except ValueError: # Tested when rs.SetUserText fails
+                    pass
 
         sc.doc = ghdoc  
         
@@ -2169,7 +2181,7 @@ class DataParser(sDNA_GH_Tool):
             raise ValueError(msg)
 
         if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
-            gdm = (gdm,)
+            gdm = [gdm]
 
         def select(val, field):
             #type( type[any], str) -> Number
@@ -2556,7 +2568,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
 
-        if not isinstance(gdm, list):
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
             gdm = [gdm]
 
 
