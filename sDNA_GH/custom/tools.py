@@ -1310,7 +1310,6 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         layer = ''
         shp_type = 'POLYLINEZ'
         merge_subdicts = True
-        include_groups = False
 
 
     param_infos = sDNA_GH_Tool.param_infos + (
@@ -1358,7 +1357,6 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                     get_objs_and_OrderedDicts(only_selected = options.selected
                                              ,layers = options.layer
                                              ,shp_type = options.shp_type
-                                             ,include_groups = options.include_groups 
                                              ,doc_layers = doc_layers
                                              ) 
                     )
@@ -1454,7 +1452,7 @@ class UsertextReader(sDNA_GH_Tool):
             self.logger.debug('gdm[:3] == %s ' % {key : gdm[key] for key in gdm.keys()[:3]} )
             gdm = [gdm]
         
-        gdm = gdm.copy()
+        gdm = [sub_gdm.copy() for sub_gdm in gdm]
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc
         for sub_gdm in gdm:
