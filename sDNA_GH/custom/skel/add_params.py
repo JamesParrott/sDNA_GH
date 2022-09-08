@@ -400,7 +400,7 @@ class ParamsToolAdder(object):
         if not missing_output_params and not missing_input_params:
             msg = 'Zero extra Params required. '
             logger.debug(msg)
-            return msg
+            return False # params_updated == False
         else:
             logger.debug('needed_output_params == %s ' % missing_output_params)
             logger.debug('needed_input_params == %s ' % missing_input_params)
@@ -426,5 +426,5 @@ class ParamsToolAdder(object):
         logger.debug('tools == %s' % tools)
 
 
-        return 'Tried to add extra Params. '
+        return True # params_updated == True
 

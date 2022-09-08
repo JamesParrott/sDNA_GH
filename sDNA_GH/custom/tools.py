@@ -93,6 +93,7 @@ from .. import launcher
 
 
 itertools = funcs.itertools #contains pairwise recipe if Python < 3.10
+                            #and zip_longest if Python > 2
 
 
 if hasattr(abc, 'ABC'):
@@ -625,6 +626,7 @@ def import_sDNA(opts
     if requested_sDNA[0] in sys.modules and requested_sDNA[1] in sys.modules:
         sDNAUISpec = sys.modules[requested_sDNA[0]]
         run_sDNA = sys.modules[requested_sDNA[1]]
+        logger.debug('sDNA: %s, %s already imported. ' % requested_sDNA)
         return sDNAUISpec, run_sDNA
 
     logger.info('Attempting import of sDNA '
@@ -688,6 +690,11 @@ def import_sDNA(opts
                 )
         logger.error(msg)
         raise ImportError(msg)
+
+    logger.info('Successfully imported sDNA: '
+               +'(sDNAUISpec == %s, runsdnacommand == %s)... ' % requested_sDNA
+               )
+
     return sDNAUISpec, run_sDNA
 
 
@@ -1591,17 +1598,38 @@ class ShapefileWriter(sDNA_GH_Tool):
             msg = 'No geometry and no data to write to shapefile, gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
+
+        if (isinstance(gdm, Iterable) and 
+            all(isinstance(item, gdm_from_GH_Datatree.GeomDataMapping) 
+                for item in gdm)):
+            #
+            # combine all objects into one dict - sDNA requires single 
+            # polyline links
+            #
+            all_keys_and_vals = ((key, val) 
+                                 for sub_gdm in gdm 
+                                 for key, val in sub_gdm.items()
+                                )
+            gdm = gdm_from_GH_Datatree.GeomDataMapping(all_keys_and_vals)
+
+        if not isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            msg = ('Geometry or Data in unsupported format. type(gdm) == %s '
+                  +'provided, not a GeomDataMapping. gdm == %s' 
+                  )
+            msg %= (type(gdm), gdm)
+            self.logger.error(msg)
+            raise TypeError(msg)
+
+        bad_shapes = [obj for obj in gdm if not rhino_gh_geom.is_shape(obj, shp_type)]
+        if bad_shapes:
+            msg = 'Shape(s): %s cannot be converted to shp_type: %s' 
+            msg %= (bad_shapes, shp_type)
+            self.logger.error(msg)
+            raise TypeError(msg)
         else:
-            bad_shapes = [obj for obj in gdm if not rhino_gh_geom.is_shape(obj, shp_type)]
-            if bad_shapes:
-                msg = 'Shape(s): %s cannot be converted to shp_type: %s' 
-                msg %= (bad_shapes, shp_type)
-                self.logger.error(msg)
-                raise TypeError(msg)
-            else:
-                self.logger.debug('Points for obj 0: %s ' 
-                                 % get_list_of_list_of_pts_from_obj(gdm.keys()[0]) 
-                                 )
+            self.logger.debug('Points for obj 0: %s ' 
+                                % get_list_of_list_of_pts_from_obj(gdm.keys()[0]) 
+                                )
 
         def shape_IDer(obj):
             return obj #tupl[0].ToString() # uuid
@@ -1711,8 +1739,8 @@ class ShapefileReader(sDNA_GH_Tool):
             raise ValueError(msg)
 
 
-        self.logger.debug('Reading shapefile... ')
-        shp_fields, bbox,shape_type, num_entries = pyshp_wrapper.shp_meta_data(
+        self.logger.debug('Reading shapefile meta data... ')
+        shp_fields, bbox, shape_type, num_entries = pyshp_wrapper.shp_meta_data(
                                                                          f_name
                                                                         ,options
                                                                         )
@@ -1834,12 +1862,15 @@ class ShapefileReader(sDNA_GH_Tool):
 
             self.logger.debug('Geom data map matches shapefile.  ')
 
-            gdm
-
-            gdm_iterator = itertools.izip(
+            gdm_iterator = itertools.zip_longest( # instead of izip to raise 
+                                                  # StopIteration in
+                                                  # TmpFileDeletingRecordsIterator
                      gdm.keys()
-                    ,pyshp_wrapper.TmpFileDeletingRecordsIterator(f_name, opts)
+                    ,pyshp_wrapper.TmpFileDeletingRecordsIterator(reader = f_name
+                                                                 ,opts = opts
+                                                                 )
                     )
+            
             gdm_partial = functools.partial(gdm_from_GH_Datatree.GeomDataMapping
                                            ,gdm_iterator
                                            )
@@ -1855,8 +1886,10 @@ class ShapefileReader(sDNA_GH_Tool):
         gdm = gdm_partial()
         # Exhausts the above generator into a list
         sc.doc = ghdoc 
+        
+        #gdm_iterator.close()  # Triggers file deleter.
 
-        self.logger.debug('bbox == %s ' % bbox)
+        self.logger.debug('gdm defined.  sc.doc == ghdoc.  ')
 
 
         file_name = os.path.splitext(f_name)[0]
@@ -1925,72 +1958,68 @@ class ShapefileReader(sDNA_GH_Tool):
                         ))      
                                              )
 
+class UsertextWriterOptions(object):
+    uuid_field = 'Rhino3D_'
+    output_key_str = 'sDNA output={name} run time={datetime}'
+    overwrite_UserText = True
+    max_new_keys = 10
+    dupe_key_suffix = '_{}'
+    suppress_overwrite_warning = False
 
-
-    def write_dict_to_UserText_on_Rhino_obj(cls
-                                           ,d
-                                           ,rhino_obj
-                                           ,time_stamp
-                                           ,logger = logger
-                                           ,options = None):
-        #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
-        if not isinstance(d, dict):
-            msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
-            logger.error(msg)
-            raise TypeError(msg)
-        
-        if options is None:
-            options = cls.Options
-        
-        #if is_an_obj_in_GH_or_Rhino(rhino_obj):
-            # Checker switches GH/ Rhino context
-                
-        existing_keys = rs.GetUserText(rhino_obj)
-        if options.uuid_field in d:
-            obj = d.pop( options.uuid_field )
-        
-        for key in d:
-
-            s = options.output_key_str
-            UserText_key_name = s.format(name = key
-                                        ,datetime = time_stamp
-                                        )
+def write_dict_to_UserText_on_Rhino_obj(d
+                                       ,rhino_obj
+                                       ,time_stamp
+                                       ,logger = logger
+                                       ,options = None
+                                       ):
+    #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
+    if not isinstance(d, dict):
+        msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
+        logger.error(msg)
+        raise TypeError(msg)
+    
+    if options is None:
+        options = UsertextWriterOptions
+    
+    #if is_an_obj_in_GH_or_Rhino(rhino_obj):
+        # Checker switches GH/ Rhino context
             
-            if not options.overwrite_UserText:
+    existing_keys = rs.GetUserText(rhino_obj)
+    if options.uuid_field in d:
+        obj = d.pop( options.uuid_field )
+    
+    for key in d:
 
-                for i in range(0, options.max_new_keys):
-                    tmp = UserText_key_name 
-                    tmp += options.dupe_key_suffix.format(i)
-                    if tmp not in existing_keys:
-                        break
-                UserText_key_name = tmp
-            else:
-                if not options.suppress_overwrite_warning:
-                    logger.warning( "UserText key == " 
-                                + UserText_key_name 
-                                +" overwritten on object with guid " 
-                                + str(rhino_obj)
-                                )
+        s = options.output_key_str
+        UserText_key_name = s.format(name = key
+                                    ,datetime = time_stamp
+                                    )
+        
+        if not options.overwrite_UserText:
 
-            rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)          
+            for i in range(0, options.max_new_keys):
+                tmp = UserText_key_name 
+                tmp += options.dupe_key_suffix.format(i)
+                if tmp not in existing_keys:
+                    break
+            UserText_key_name = tmp
+        else:
+            if not options.suppress_overwrite_warning:
+                logger.warning( "UserText key == " 
+                            + UserText_key_name 
+                            +" overwritten on object with guid " 
+                            + str(rhino_obj)
+                            )
+
+        rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)          
 
 
 
 class UsertextWriter(sDNA_GH_Tool):
 
-    class Options(object):
-        uuid_field = 'Rhino3D_'
-        output_key_str = 'sDNA output={name} run time={datetime}'
-        overwrite_UserText = True
-        max_new_keys = 10
-        dupe_key_suffix = '_{}'
-        suppress_overwrite_warning = False
-
-          
-              
+    Options = UsertextWriterOptions
 
     component_inputs = ('Geom', 'Data')
-
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -2052,10 +2081,6 @@ QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
                        )
 
 class DataParser(sDNA_GH_Tool):
-
-
-
-
 
     class Options(data_cruncher.SpikeIsolatingQuantileOptions):
         field = 'BtEn'
@@ -2882,7 +2907,8 @@ if tuple in toml_no_tuples:
 #Internally in sDNA_GH opts, tuples are read only.
 
 bare_key_chars = string.ascii_letters + string.digits + '_-' 
-#https://toml.io/en/v1.0.0#keys
+# allowed chars in "bare keys" in Toml. https://toml.io/en/v1.0.0#keys
+# "quoted keys" support an extended character set
 
 
 

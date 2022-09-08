@@ -581,19 +581,18 @@ ShapeFilesDeleter.register(NullDeleter)
 
 
 class SizedIterator(ABC):
-    def __init__(self, iterator):
+    def __init__(self, iterator, length):
         self.iterator = iterator
-        self.next = iterator.next
+        #self.length = length
+    
+    def next(self):
+        return next(self.iterator)
     
     def __iter__(self):
         return self
 
-    @abstractmethod
     def __len__(self):
-        """ Supply externally, e.g. from file metadata, without 
-            exhausting the iterator, else there's no point to this 
-            class.  
-        """
+        return self.length
 
 
 class TmpFileDeletingReaderIteratorABC(SizedIterator):
@@ -602,19 +601,20 @@ class TmpFileDeletingReaderIteratorABC(SizedIterator):
         if opts is None:
             opts = dict(options = OutputFileDeletionOptions)
         self.opts = opts
-        if isinstance(reader, shp.Reader):
-            self.file_path = reader.shp.name
-        elif isinstance(reader, basestring) and os.path.isfile(reader):
+        if isinstance(reader, basestring) and os.path.isfile(reader):
             self.file_path = reader
             encoding = opts['options'].encoding.replace('-','')
             reader = shp.Reader(reader, encoding = encoding)
-        else:
+        elif isinstance(reader, shp.Reader):
             raise ValueError('No shapefile reader or file path supplied. ')
         self.reader = reader
+        self.file_path = reader.shp.name
+
         super(TmpFileDeletingReaderIteratorABC, self).__init__(
-                                                  iterator = self.generator()
+                                                   iterator = self.generator()
+                                                  ,length = len(reader)
                                                   )
-        self.close = self.maybe_delete_file
+        
 
     @abstractmethod
     def generator(self):
@@ -625,14 +625,14 @@ class TmpFileDeletingReaderIteratorABC(SizedIterator):
         try:
             retval = next(self.iterator)
         except StopIteration as e:
+            logger.debug('Iterator exhausted.  Closing...')
             self.close()
             raise e
+    
         return retval
 
-    def __len__(self):
-        return len(self.reader)
-
     def maybe_delete_file(self, *args):
+        logger.debug('maybe_delete_file called.')
         options = self.opts['options']
         if (options.del_after_read and 
             not options.strict_no_del and 
@@ -649,7 +649,9 @@ class TmpFileDeletingReaderIteratorABC(SizedIterator):
                                                     )
 
     def close(self):
+        logger.debug('Closing reader: %s' % self.reader)
         self.reader.close()
+        logger.debug('Attempting to delete file: %s ' % self.file_path)
         self.maybe_delete_file()
 
 

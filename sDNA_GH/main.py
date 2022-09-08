@@ -221,6 +221,23 @@ if (not isinstance(HardcodedMetas.config, basestring)
 
 FILE_TO_WORK_FROM = checkers.get_path(fallback = __file__)
 
+class AutoRunToolOptions(object):
+    auto_get_Geom = False
+    auto_read_User_Text = False
+    auto_write_Shp = True
+    auto_read_Shp = True
+    #auto_parse_data = False  # not used.  ObjectsRecolourer parses if req anyway
+    auto_plot_data = False
+
+DEFAULT_AUTOS = options_manager.namedtuple_from_class(AutoRunToolOptions,'Autos')
+
+def auto_run_tool_options(options):
+    retval = tuple((name, getattr(options, name)) 
+                 for name in dir(AutoRunToolOptions)
+                 if name in DEFAULT_AUTOS._fields and not name.startswith('_')
+                )
+    return retval
+
 class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.RhinoObjectsReader.Options
                       ,tools.UsertextReader.Options
@@ -231,6 +248,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.ObjectsRecolourer.Options
                       ,tools.sDNA_ToolWrapper.Options
                       ,tools.ConfigManager.Options
+                      ,AutoRunToolOptions
                       ):            
     ###########################################################################
     #System
@@ -738,14 +756,14 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     # Options from module, from defaults and installation config.toml
     opts = module_opts  
     local_metas = setup_local_metas   # immutable.  controls syncing /
-                                              # de-syncing / read / write of the
-                                              # above (opts).
-                                              # Although local, it can be set on 
-                                              # groups of components using the 
-                                              # default section of a project 
-                                              # config.toml, or passed as a
-                                              # Grasshopper parameter between
-                                              # components.
+                                      # de-syncing / read / write of the
+                                      # above (opts).
+                                      # Although local, it can be set on 
+                                      # groups of components using the 
+                                      # default section of a project 
+                                      # config.toml, or passed as a
+                                      # Grasshopper parameter between
+                                      # components.
     tools_default_opts = {}
     #sDNA_GH_path = sDNA_GH_path
     #sDNA_GH_package = sDNA_GH_package
@@ -765,13 +783,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
     def options(self):
         return self.opts['options']
 
+    old_autos = auto_run_tool_options(opts['options'])
 
-
-    def auto_insert_tools(self, my_tools = None):
+    def auto_insert_tools(self):
         #type(type[any], list) -> None
-        if my_tools is None:
-            my_tools = self.my_tools
-        my_tools = my_tools[:] if isinstance(my_tools, list) else [my_tools]
+        my_tools = self.my_tools
+        self.tools = my_tools[:] if isinstance(my_tools, list) else [my_tools]
 
         options = self.opts['options']
 
@@ -790,7 +807,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_write_Shp:
             inserter.insert_tool('before'
-                                ,my_tools
+                                ,self.tools
                                 ,tool_to_insert = write_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
                                 ,not_a_target = sDNA_GH_tools
@@ -798,7 +815,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_read_User_Text:
             inserter.insert_tool('before'
-                                ,my_tools
+                                ,self.tools
                                 ,tool_to_insert = read_User_Text
                                 ,is_target = is_class(tools.ShapefileWriter)
                                 ,not_a_target = []
@@ -806,7 +823,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_get_Geom:
             inserter.insert_tool('before'
-                                ,my_tools
+                                ,self.tools
                                 ,tool_to_insert = get_Geom
                                 ,is_target = is_class(tools.UsertextReader)
                                 ,not_a_target = []
@@ -814,7 +831,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         if options.auto_read_Shp:
             inserter.insert_tool('after'
-                                ,my_tools
+                                ,self.tools
                                 ,tool_to_insert = read_shapefile
                                 ,is_target = is_class(tools.sDNA_ToolWrapper)
                                 ,not_a_target = sDNA_GH_tools
@@ -824,13 +841,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         
         if options.auto_plot_data: # already parses if Data not all colours
             inserter.insert_tool('after'                
-                                ,my_tools
+                                ,self.tools
                                 ,tool_to_insert = recolour_objects
                                 ,is_target = is_class(tools.ShapefileReader)
                                 ,not_a_target = []
                                 ) 
-                                          
-        return my_tools
 
 
 
@@ -855,14 +870,15 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         self.logger.debug('Updating Params: %s ' % tools)
 
-        result = self.params_adder.add_tool_params(Params
-                                                  ,tools
-                                                  ,do_not_add
-                                                  ,do_not_remove
-                                                  ,wrapper = self.script
-                                                  )
+        params_updated = self.params_adder.add_tool_params(
+                                                         Params
+                                                        ,tools
+                                                        ,do_not_add
+                                                        ,do_not_remove
+                                                        ,wrapper = self.script
+                                                        )
 
-        return result
+        return params_updated
 
 
     def update_tools(self, nick_name = None):
@@ -886,10 +902,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 
 
         #self.logger.debug(self.opts)
-        self.logger.debug('Tool opts == ' + '\n'.join('%s : %s' % (k, v)
+        self.logger.debug('Tool opts == ' + '\n'.join(
+                                                 '%s : %s' % (k, v)
                                                  for k, v in self.opts.items()
                                                  if k not in ('options','metas')
-                                                ) 
+                                                 ) 
                     )
 
         return tools
@@ -957,11 +974,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 
-        external_local_metas = smart_comp.first_item_if_seq(kwargs.pop('local_metas'
+        external_local_metas = smart_comp.first_item_if_seq(kwargs.pop(
+                                                                  'local_metas'
                                                                  ,EMPTY_NT
                                                                  )
-                                                      ,EMPTY_NT
-                                                      )
+                                                           ,EMPTY_NT
+                                                           )
         self.logger.debug(external_opts)
 
         gdm = smart_comp.first_item_if_seq(kwargs.get('gdm', {}))
@@ -980,11 +998,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 nick_name = kwargs['tool']
             self.my_tools = self.update_tools(nick_name)
         
-            self.tools = self.auto_insert_tools(self.my_tools)  
+            self.auto_insert_tools()  
 
-            extra_params_added = self.update_Params() #self.Params, self.tools)
+            params_updated = self.update_Params() #self.Params, self.tools)
 
-            if 'zero' not in extra_params_added.lower():
+            if params_updated:
                 # Extra Input Params are actually OK as RunScript has already 
                 # been called already by this point.
                 self.logger.debug('Output Params updated.  Returning None.  ')
@@ -1040,10 +1058,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         any_sDNA_tools_updated = False
         for tool in self.tools:
             if (isinstance(tool, tools.sDNA_ToolWrapper) and 
-                not tool.already_loaded(self.opts)):
+                not tool.already_loaded(self.opts)): # already loaded sDNA
                 #
                 self.logger.debug('tool.already_loaded(self.opts) == False')
-                #tool.load_sDNA_tool(self.opts)
+                tool.load_sDNA_tool(self.opts)
                 any_sDNA_tools_updated = True
                 # This isn't necessary just to run these tools later.
                 # They're just being updated now so they can get their 
@@ -1051,12 +1069,17 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # component's input 
                 # Params can be updated to reflect the new sDNA
 
-        if any_sDNA_tools_updated:
-            #self.Params = 
-            result = self.update_Params()#self.Params, self.tools)
+        autos_changed = self.old_autos != auto_run_tool_options(self.options)
+        if any_sDNA_tools_updated or autos_changed:
+            if autos_changed:
+                self.auto_insert_tools()
+                self.old_autos = auto_run_tool_options(self.options)
+                self.logger.info('Tools == %s ' % self.tools)
+
+            params_updated = self.update_Params()#self.Params, self.tools)
             # to add in any new sDNA inputs to the component's Params
-            if 'zero' not in result.lower():
-                self.logger.info('sDNA has been updated.  '
+            if params_updated:
+                self.logger.info('Params have been updated.  '
                                 +'Returning None to allow new Params to be set. '
                                 )
                 return (None,) * len(self.Params.Output)
@@ -1139,6 +1162,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             ##################################################################
             gdm = ret_vals_dict.get('gdm', {})
             if isinstance(gdm, (Iterable, gdm_from_GH_Datatree.GeomDataMapping)):
+                #
                 self.logger.info('Converting gdms to Data Tree and Data Tree')
                 (NewData
                 ,NewGeometry

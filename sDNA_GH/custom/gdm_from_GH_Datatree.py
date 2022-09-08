@@ -292,7 +292,7 @@ def override_gdm(lesser, override, merge_subdicts = True):
 
 
     if not lesser:
-        lesser = OrderedDict()
+        lesser = GeomDataMapping()
     if merge_subdicts:# :
         logger.debug('Merging gdms.  ')
         for key in override:

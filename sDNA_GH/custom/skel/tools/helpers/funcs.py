@@ -132,6 +132,8 @@ def list_of_lists(iterable):
     #type(Iterable[Iterable]) -> list[list]
     return [list(item) for item in iterable]
 
+if not hasattr(itertools, 'zip_longest'):
+   itertools.zip_longest = itertools.izip_longest
 
 if hasattr(itertools, 'pairwise'):
    pairwise = itertools.pairwise
