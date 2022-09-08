@@ -33,7 +33,13 @@ import os
 import logging
 import itertools
 import functools
+import collections
 from collections import OrderedDict
+if hasattr(collections, 'Callable'):
+    Callable = collections.Callable
+else:
+    import collections.abc  
+    Callable = collections.abc.Callable
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
@@ -163,6 +169,17 @@ def classes_from_grouped_keyed_items(
 
 def compose(*funcs):
     #type(*functions) -> function
+    if len(funcs) <= 1:
+        msg = 'Need two or more functions to compose.'
+        logger.error(msg)
+        raise ValueError(msg)
+    bad_funcs = [func for func in funcs 
+                      if not isinstance(func, Callable)] 
+    if bad_funcs:
+        msg = 'Can only compose callables, e.g. functions.  Not callable: %s'
+        msg %= bad_funcs
+        logger.error(msg)
+        raise TypeError(msg)
     return functools.reduce(lambda f, g: lambda x: f(g(x)), funcs)
 
 # already_warned = False

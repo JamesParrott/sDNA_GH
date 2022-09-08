@@ -44,9 +44,11 @@ from datetime import date
 import collections
 if hasattr(collections, 'Iterable'):
     Iterable = collections.Iterable 
+    Callable = collections.Callable
 else:
     import collections.abc
     Iterable = collections.abc.Iterable
+    Callable = collections.abc.Callable
 
 from ..third_party.PyShp import shapefile as shp
 
@@ -580,7 +582,27 @@ ShapeFilesDeleter.register(NullDeleter)
 #assert issubclass(NullDeleter, ShapeFilesDeleter)
 
 
-class SizedIterator(ABC):
+class SizedIterator(object):
+    """ An wrapper for iterator that knows its own length.
+    
+        Instances can yield the same values as from an iterator
+        from any generator function, but can also be duck-typed 
+        for lists and tuples that require a length (but that are 
+        still only iterated over, i.e. that don't have __getitem__ 
+        or other list methods called on them, such as:
+        ghpythonlib.treehelpers.list_to_tree
+        https://gist.github.com/piac/ef91ac83cb5ee92a1294#file-list_to_tree-py ). 
+        
+        Class instances are initialised with any iterator and 
+        a length.  The intended usage case is for generator 
+        functions, for whom a length may still be known by other 
+        trusted means e.g. from reliable file meta-data (or whose 
+        value is unimportant as long as it's non-zero).  The iterators 
+        returned by generator functions do not have lengths, as such 
+        a 'length', the number yield statements executed, depends 
+        dynamically on the code in the generator function's body.  
+    """
+
     def __init__(self, iterator, length):
         self.iterator = iterator
         #self.length = length
@@ -615,11 +637,10 @@ class TmpFileDeletingReaderIteratorABC(SizedIterator):
                                                   ,length = len(reader)
                                                   )
         
-
-    @abstractmethod
     def generator(self):
         """ Generator to process the shp file reader, used to produce the 
             desired iterator that yields what ever is wanted.  """
+        return self.reader.iterShapes()
 
     def next(self):
         try:
@@ -668,6 +689,19 @@ def is_single_shape(shapeRecord):
         return len(shape.parts) <= 1
 
 
+class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
+    """ If zipping another iterator that is shorter or the same length
+        with this one (e.g. that yields 
+        existing shapes), to ensure the temporary file deleter is 
+        called when this iterator is used up, be sure to zip it with
+        zip_longest or, izip_longest, make an iterator the same size
+        artificially longer.  Otherwise the file deleter's
+        delete_files method must be called directly.
+    """
+    def generator(self):
+        return (record.as_dict() for record in self.reader.iterRecords())
+
+
 class ShapeRecordsOptions(OutputFileDeletionOptions):
     copy_dicts = False
 
@@ -678,57 +712,81 @@ class MultipleShapes(list):
 def identity(*args):
     return args
 
+
+def clone_dicts(group):
+    return [[(obj, dict_.copy()) for obj, dict_ in list_] for list_ in group]
+
+    
+def shape_and_rec_as_dict(shape_record):
+    return shape_record.shape, shape_record.record.as_dict()
+
+def shapes_and_recs_as_dicts(shape_records):
+        return [shape_and_rec_as_dict(shape_record)
+                for shape_record in shape_records
+                ]
+
+def points_and_rec(shape, record):
+    return shape.points, record
+
+def points_and_records(shapes_and_records):
+    return [points_and_rec(shape, record) 
+            for shape, record in shapes_and_records]
+
+
+def split_shp_points_by_parts_repeat_rec_as_dict(group):
+    retval = []
+    for shape_record in group:
+        shp_shapes, rec = shape_and_rec_as_dict(shape_record)
+        points, _ = points_and_rec(shp_shapes, rec)
+        parts = shp_shapes.parts
+        retval.append([(points[start:end], rec)
+                        for start, end in itertools.pairwise(parts)
+                        ])
+    return retval
+
+
 class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorABC):
     def __init__(self, reader, extra_manglers = None, opts = None):
         #type(shp.Reader, dict, dict)
         if opts is None:
             opts = dict(options = ShapeRecordsOptions)
-        if extra_manglers is not None:
+        
+        self.manglers = self.manglers.copy()
+
+        copy_dicts = opts['options'].copy_dicts
+
+        if extra_manglers is not None or copy_dicts:
+
+            if extra_manglers is None:
+                extra_manglers = {False : [clone_dicts]}
+            else:
+                if isinstance(extra_manglers[False], Callable):
+                    extra_manglers[False] = [extra_manglers[False]]
+                extra_manglers[False].insert(0, clone_dicts)
+
+
             for key, val in extra_manglers.items():
-                if isinstance(val, list):
-                    new_manglers = tuple(val)
-                if isinstance(val, collections.Callable):
-                    new_manglers = (val,)
+                new_manglers = [val] if isinstance(val, Callable) else val
+                    
                 if key in self.manglers:
-                    new_manglers += (self.manglers[key],)
-                self.manglers[key] = funcs.compose(new_manglers)
+                    new_manglers += [self.manglers[key]]
+                
+                logger.debug('new_manglers == %s' % (new_manglers,))
+                
+                new_mangler = funcs.compose(*new_manglers)
+                logger.debug('new_mangler == %s' % (new_mangler,))
 
-        self.copy_dicts = opts['options'].copy_dicts
+
+                self.manglers[key] = new_mangler
+
+        for mangler in self.manglers.values():
+            if not isinstance(mangler, Callable):
+                msg = 'mangler == %s not Callable' % (mangler,)
+                logger.error(msg)
+                raise ValueError(msg)
+
         super(TmpFileDeletingShapeRecordsGroupedIterator, self).__init__(reader, opts)
-    
-    @staticmethod
-    def shape_and_rec_as_dict(shape_record):
-        return shape_record.shape, shape_record.record.as_dict()
 
-    @classmethod
-    def shapes_and_recs_as_dicts(cls, shape_records):
-            return [cls.shape_and_rec_as_dict(shape_record)
-                    for shape_record in shape_records
-                   ]
-    
-    @staticmethod
-    def points_and_rec(shape, record):
-        return shape.points, record
-
-    @classmethod
-    def points_and_records(cls, shapes_and_records):
-        return [cls.points_and_rec(shape, record) 
-                for shape, record in shapes_and_records]
-
-    def maybe_copy(self, dict_):
-        return  dict_.copy() if self.copy_dicts else dict_
-
-    def split_shp_points_by_parts_repeat_rec_as_dict(self, group):
-        retval = []
-        for shape_record in group:
-            shp_shapes, rec = self.shape_and_rec_as_dict(shape_record)
-            points, _ = self.points_and_rec(shp_shapes, rec)
-            parts = shp_shapes.parts
-            rec = self.maybe_copy(rec)
-            retval.append([(points[start:end], rec)
-                           for start, end in itertools.pairwise(parts)
-                          ])
-        return retval
 
     # manglers will be applied to groups of consecutive single shapes 
     # and groups of consecutive multi-shape shp file entries
@@ -744,48 +802,7 @@ class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorAB
                                         )
  
 
- 
-        # for key, group in itertools.groupby(self.reader.iterShapeRecords()
-        #                                    ,is_single_shape
-        #                                    ):
-        #     if key: #assert all(len(sr.shape.parts) == 1 for sr in group)
-        #         for shape_record in group:
-        #             shape, record = shape_record.shape, shape_record.record
-        #             yield shape.points, record.as_dict()
-        #     else: #assert all(not is_single_shape(x) for x in group)
-        #         for shapeRecord in group:
-        #             shp_shapes = shapeRecord.shape
-        #             rec = shapeRecord.record.as_dict()
-        #             parts, points = shp_shapes.parts, shp_shapes.points
-        #             yield [(points[start:end], rec.copy() if self.copy_dicts else rec)
-        #                    for start, end in itertools.pairwise(parts)
-        #                   ]
 
-
-
-class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
-    def generator(self):
-        return (record.as_dict() for record in self.reader.iterRecords())
-
-
-# def shp_shapeRecords(shapefile_path, opts = None): 
-#     # type(str, type[any]) -> Generator[type[any]]
-#     if opts is None:
-#         opts = dict(options = FieldRecsShapesOptions)GetFileNameOptions
-#     with TmpFileDeletingReader(shapefile_path, opts) as r:
-#         # No yield from in Iron Python 2 :(
-#         for shapeRecord in r.iterShapeRecords():
-#             yield shapeRecord
-
-
-# def shp_record_dicts(shapefile_path, opts = None):
-#     # type(str, type[any]) -> Generator[type[any]]
-#     if opts is None:
-#         opts = dict(options = FieldRecsShapesOptions)
-#     with TmpFileDeletingReader(shapefile_path, opts) as r:
-#         # No yield from in Iron Python 2 :(
-#         for record in r.iterRecords():
-#             yield record.as_dict()
 
 
 class ShpOptions(CoerceAndGetCodeOptions
@@ -797,15 +814,4 @@ class ShpOptions(CoerceAndGetCodeOptions
                 ):
                 shp_type = 'POLYLINEZ'
 
-                 # e.g. 'fr', 'cn', 'pl'. IETF RFC1766,  ISO 3166 Alpha-2 code
-    #
-    # coerce_and_get_code
-
-    #
-    # get_filename
-
-    #
-
-    #
-    # write_iterable_to_shp 
 

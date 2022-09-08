@@ -1834,7 +1834,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
             def gdm_of_new_geom_from_group(group):
                 return gdm_from_GH_Datatree.GeomDataMapping(
-                                                  (add_geom(x) for x in group)
+                                                  (add_geom(*x) for x in group)
                                                   ) # obj, data = x
 
             gdm_iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsGroupedIterator(
