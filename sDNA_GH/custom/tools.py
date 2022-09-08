@@ -1713,7 +1713,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 class ShapefileReader(sDNA_GH_Tool):
 
     class Options(pyshp_wrapper.ShapeRecordsOptions):
-        new_geom = True
+        new_geom = False
         bake = False
         uuid_field = 'Rhino3D_'
         sDNA_names_fmt = '{name}.shp.names.csv'
@@ -1777,10 +1777,13 @@ class ShapefileReader(sDNA_GH_Tool):
                          )
         self.logger.debug(fields) 
 
+        existing_geom_compatible = (gdm and 
+                                    isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping) and 
+                                    len(gdm) != num_entries
+                                   )
 
         self.logger.debug('Testing existing geom data map.... ')
-        if (options.new_geom or not gdm or not isinstance(gdm, dict) 
-             or len(gdm) != num_entries): #len(recs) ):
+        if options.new_geom or not existing_geom_compatible: 
             #shapes_to_output = ([shp.points] for shp in shapes )
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type)
@@ -1788,47 +1791,7 @@ class ShapefileReader(sDNA_GH_Tool):
             def add_geom(obj, *args):
                 points_list = funcs.list_of_lists(obj)
                 return (objs_maker(points_list),) + args
-                         #options.shp_type)
-                         # this is rs.AddPolyline for shp_type = 'POLYLINEZ'
 
-            # def is_single_shape(item):
-            #     return isinstance(item, tuple) 
-            #     # else assume it's a list of tuples.
-
-
-            # def generator():
-            #     """  The purpose of this generator is to defer 
-            #          creation of new Rhino or Grasshopper 
-            #          geometric objects until after we set 
-            #          scriptcontext.doc to Rhino.RhinoDoc.ActiveDoc or
-            #          leave it as ghdoc below
-            #     """
-            #     iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsIterator(
-            #                                                             f_name
-            #                                                            ,opts
-            #                                                            )
-            #     already_warned = False
-            #     for key, group in itertools.groupby(iterator, is_single_shape):
-            #         if key: 
-            #             #assert all(isinstance(item, tuple) for tuple in group)
-            #             for points_list, data in group:
-            #                 yield add_geom(points_list), data
-            #         else: #assert all(is_multiple_shapes(x) for x in group)
-            #             if not already_warned:
-            #                 already_warned = True
-            #                 msg = ('Entry with multiple shapes per record found '
-            #                       +'in shapefile. Geom will be a DataTree, not'
-            #                       +'a list.'
-            #                       )
-            #                 self.logger.warning(msg)
-            #                 warnings.warn(msg)
-            #             for list_of_tuples in group:
-            #                 gen_exp = ((add_geom(points), data)
-            #                            for points, data in list_of_tuples
-            #                           )
-            #                 yield gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
-
-            # gdm_iterator = generator()
 
             def gdm_of_new_geom_from_group(group):
                 return gdm_from_GH_Datatree.GeomDataMapping(
@@ -1924,12 +1887,22 @@ class ShapefileReader(sDNA_GH_Tool):
     param_infos = sDNA_GH_Tool.param_infos + (
             ('bake', add_params.ParamInfo(
                            param_Class = Param_Boolean
-                          ,Description = ('If Geom is connected, does nothing.'
-                                         +' Otherwise, true: bakes '
+                          ,Description = ('If new shapes are created, then'
+                                         +'true: bakes '
                                          +'the shapefile polylines to Rhino.  '
                                          +'false: creates Grasshopper '
                                          +'polylines only. '
                                          +'Default: %(bake)s'
+                                         )
+                          ))
+            ,('new_geom', add_params.ParamInfo(
+                           param_Class = Param_Boolean
+                          ,Description = ('True: Always create new shapes. '
+                                         +'False: Create new shapes only if '
+                                         +'the number of supplied shapes does '
+                                         +'not match the number of data '
+                                         +'records in the shape file. '
+                                         +'Default: %(new_geom)s'
                                          )
                           ))
             ,('abbrevs', add_params.ParamInfo(
