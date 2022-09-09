@@ -765,4 +765,9 @@ def spike_isolating_quantile(data
     return inter_class_bounds
     
             
-
+def max_and_min_are_valid(max_, min_):
+    #type(type[any], type[any]) -> bool
+    return (isinstance(max_, Number) and 
+            isinstance(min_, Number) and 
+            max_ > min_ 
+           )

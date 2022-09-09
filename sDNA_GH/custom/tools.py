@@ -1745,7 +1745,7 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('bbox == %s' % bbox)
 
-        self.logger.debug('gdm == %s ' % (gdm.items()[:4] + gdm.items()[-4:],))
+        self.logger.debug('gdm == %s, ..., %s ' % (gdm.items()[:2], gdm.items()[-2:]))
 
         # if len(recs) >= 1:
         #     self.logger.debug('recs[0]== %s ' % recs[0])
@@ -1777,6 +1777,13 @@ class ShapefileReader(sDNA_GH_Tool):
                          )
         self.logger.debug(fields) 
 
+        if hasattr(options, 'field') and options.field not in fields:
+            msg = 'field: %s not found in shape file fields: %s' 
+            msg %= (options.field, fields)
+            self.logger.warning(msg)
+            warnings.warn(msg)
+
+
         existing_geom_compatible = (gdm and 
                                     isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping) and 
                                     len(gdm) != num_entries
@@ -1798,18 +1805,13 @@ class ShapefileReader(sDNA_GH_Tool):
                                                   (add_geom(*x) for x in group)
                                                   ) # obj, data = x
 
-            gdm_iterator = pyshp_wrapper.TmpFileDeletingShapeRecordsGroupedIterator(
-                        reader = f_name
-                       ,extra_manglers = {
-                               True : gdm_of_new_geom_from_group  
-                               # if a single shape
-                               ,False: lambda l: [gdm_of_new_geom_from_group(x) 
-                                                  for x in l
-                                                 ]
-                               # if a multi-shape entry
-                               }
-                       ,opts = opts
-                       )
+            gdm_iterator = (gdm_of_new_geom_from_group(x) 
+                            for x in pyshp_wrapper
+                                          .TmpFileDeletingShapeRecordsIterator(
+                                                                 reader = f_name
+                                                                ,opts = opts
+                                                                )
+                            )
 
             gdm_partial = functools.partial(list, gdm_iterator)
                     
@@ -1851,7 +1853,6 @@ class ShapefileReader(sDNA_GH_Tool):
         #gdm_iterator.close()  # Triggers file deleter.
 
         self.logger.debug('gdm defined.  sc.doc == ghdoc.  ')
-
 
         file_name = os.path.splitext(f_name)[0]
         csv_f_name = options.sDNA_names_fmt.format(name = file_name)
@@ -2151,12 +2152,7 @@ class DataParser(sDNA_GH_Tool):
     # objects.
     #
 
-    def max_and_min_are_valid(self, plot_max, plot_min):
-        #type(type[any], type[any]) -> bool
-        return (isinstance(plot_max, Number)  
-                and isinstance(plot_min, Number) 
-                and plot_max > plot_min 
-               )
+
 
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
@@ -2195,7 +2191,7 @@ class DataParser(sDNA_GH_Tool):
             return val[field]
 
         plot_min, plot_max = options.plot_min, options.plot_max
-        if self.max_and_min_are_valid(plot_max, plot_min):
+        if data_cruncher.max_and_min_are_valid(plot_max, plot_min):
             #
             self.logger.info('Valid max and min override will be used. ')
             #
@@ -2402,7 +2398,7 @@ class DataParser(sDNA_GH_Tool):
             mid_points = [0.5*(x_min + x_max)]
         self.logger.debug(mid_points)
 
-        locale.setlocale(locale.LC_ALL,  options.locale)
+        locale.setlocale(locale.LC_ALL, options.locale)
 
         def format_number(x, format_str):
             #type(Number, str) -> str
@@ -2500,6 +2496,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                        +'sDNA_GH unless overridden.  '
                                        ) 
         # [xmin, ymin, xmax, ymax]
+        suppress_no_data_error = False
 
 
     GH_Gradient_preset_names = {0 : 'EarthlyBrown'
@@ -2572,14 +2569,10 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                         (k, v) 
                                         for sub_gdm in gdm
                                         for k, v in sub_gdm.items()
-                                        if isinstance(v, dict) and field in v   
+                                        if isinstance(v, dict) and field in v
                                         )  
                                         # any geom with a normal gdm dict of 
                                         # keys / vals containing field
-
-        logger.debug('Objects to parse & fields == %s, ... , %s'
-                    %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
-                    )
 
         objs_with_numbers = gdm_from_GH_Datatree.GeomDataMapping(
                                                     (k, v) 
@@ -2587,17 +2580,48 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                     for k, v in sub_gdm.items()
                                                     if isinstance(v, Number) 
                                                     ) 
+        objs_to_recolour = gdm_from_GH_Datatree.GeomDataMapping( 
+                                        (k, v) 
+                                        for sub_gdm in gdm
+                                        for k, v in sub_gdm.items()
+                                        if isinstance(v, System.Drawing.Color)
+                                        )
 
-        logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
-                    %(objs_with_numbers.items()[:5], objs_with_numbers.items()[-5:])
-                    )
 
-        if self.parse_data.max_and_min_are_valid(plot_max, plot_min):
+        self.logger.debug('Objects to parse & fields == %s, ... , %s'
+                         %(objs_to_parse.items()[:2], objs_to_parse.items()[-2:])
+                         )
+
+        self.logger.debug('Objects already parsed & parsed vals == %s, ... , %s'
+                         %(objs_with_numbers.items()[:5], objs_with_numbers.items()[-5:])
+                         )
+
+        self.logger.debug('Objects that already have colours == %s, ... , %s'
+                         %(objs_to_recolour.items()[:5], objs_to_recolour.items()[-5:])
+                         )
+        
+        if data_cruncher.max_and_min_are_valid(plot_max, plot_min):
             objs_to_get_colour = objs_with_numbers
         else:
             objs_to_get_colour = OrderedDict()
             objs_to_parse.update(objs_with_numbers)
 
+
+        if not objs_to_parse and not objs_with_numbers and not objs_to_recolour:
+            msg = 'No data to recolour. Supply raw numbers or colours in Data '
+            supported_fields = set(field for sub_gdm in gdm
+                                      for val in sub_gdm.values() 
+                                      for field in val
+                                      if isinstance(val, dict)
+                                  )
+            if supported_fields:
+                msg += 'or set field to one of: %s ' % supported_fields
+            if options.suppress_no_data_error:
+                self.logger.warning(msg)
+                warnings.warn(msg)
+            else:
+                self.logger.error(msg)
+                raise ValueError(msg)
 
         if objs_to_parse:
             #
@@ -2617,15 +2641,22 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         self.logger.debug('x_max == %s ' % x_max)
 
 
-        objs_to_get_colour.update(gdm_in)  # no key clashes possible unless some x
-                                        # isinstance(x, dict) 
-                                        # and isinstance(x, Number)
+        objs_to_get_colour.update(gdm_in)  # no key clashes possible unless for 
+                                           # some x both isinstance(x, dict) 
+                                           # and isinstance(x, Number)
         logger.debug('Objects to get colours & vals == %s, ... , %s'
                     %(objs_to_get_colour.items()[:5], objs_to_get_colour.items()[-5:])
                     )
 
-
-        if options.Col_Grad:
+        if not objs_to_get_colour:
+            self.logger.debug('No objects need colours to be created. ')
+        elif not data_cruncher.max_and_min_are_valid(x_max, x_min):
+            msg = ('Cannot create colours for data without a valid '
+                  +'max: %s and min: %s to refer to' % (x_max, x_min)
+                  )
+            self.logger.error(msg)
+            raise NotImplementedError(msg)
+        elif options.Col_Grad:
             grad = getattr( GH_Gradient()
                         ,self.GH_Gradient_preset_names[options.Col_Grad_num])
             def get_colour(x):
@@ -2644,7 +2675,9 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                             ,1 #0.82
                                                             )
                                       )
+        #elif not 
         elif x_max - x_min < options.tol:
+            #
             get_colour = lambda x : tuple(options.rgb_mid)
         else:
             def get_colour(x):
@@ -2667,14 +2700,6 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 for channel in rgb_col:
                     bounded_colour += ( max(0, min(255, channel)), )
                 return rs.CreateColor(bounded_colour)
-
-        objs_to_recolour = gdm_from_GH_Datatree.GeomDataMapping( 
-                                        (k, v) 
-                                        for sub_gdm in gdm
-                                        for k, v in sub_gdm.items()
-                                        if isinstance(v, System.Drawing.Color)
-                                        )
-
 
 
         if not objs_to_get_colour and not objs_to_recolour:

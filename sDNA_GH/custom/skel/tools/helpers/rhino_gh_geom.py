@@ -124,8 +124,8 @@ def is_shape(obj, shp_type):   #e.g. polyline
     allowers = Rhino_obj_checkers_for_shape[shp_type]
     if isinstance(allowers, basestring):
         allowers = [allowers] 
-    logger.debug('type(obj) == %s, obj == %s' % (type(obj), obj))
-    logger.debug('type(geom) == %s, geom == %s' % (type(geom), geom))
+    logger.log(level = 1, msg = 'type(obj) == %s, obj == %s' % (type(obj), obj))
+    logger.log(level = 1, msg = 'type(geom) == %s, geom == %s' % (type(geom), geom))
     return any( getattr(rs, allower )( geom ) for allower in allowers)
 
 Rhino_obj_code_for_shape = dict(NULL = None

@@ -1072,6 +1072,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         autos_changed = self.old_autos != auto_run_tool_options(self.options)
         if any_sDNA_tools_updated or autos_changed:
             if autos_changed:
+                self.logger.info('New auto options found.  Re-updating tools. ')
                 self.auto_insert_tools()
                 self.old_autos = auto_run_tool_options(self.options)
                 self.logger.info('Tools == %s ' % self.tools)
@@ -1164,9 +1165,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             if isinstance(gdm, (Iterable, gdm_from_GH_Datatree.GeomDataMapping)):
                 #
                 self.logger.info('Converting gdms to Data Tree and Data Tree')
-                (NewData
-                ,NewGeometry
-                ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm) 
+                NewData ,NewGeometry = (gdm_from_GH_Datatree
+                                            .Data_Tree_and_Data_Tree_from_dicts(gdm)
+                                       )  
             # if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
             #     self.logger.debug('Converting gdm to Data and Geometry')
             #     (NewData

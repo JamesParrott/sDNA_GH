@@ -98,13 +98,16 @@ def get_existing_stream_handler_or_add_new_one(logger
 def set_handler_level(handler, level):
     #type(logging.Handler, str/int) -> None
     if isinstance(level, basestring):
-        level = level.upper()
-        if not hasattr(logging, level):
-            raise ValueError('Unsupported logging level: %s' % level)
-        level = getattr(logging, level)
+        if level.isnumeric():
+            level = int(level)
+        else:    
+            level = level.upper()
+            if not hasattr(logging, level):
+                raise ValueError('Unsupported logging level: %s' % level)
+            level = getattr(logging, level)
     if isinstance(handler, logging.Handler) and handler.level != level:
         # allow custom numeric levels
-        handler.setLevel(level) 
+        handler.setLevel(level)
 
 
 def get_existing_file_handler_or_add_new_one(logger, options = LoggingOptions):

@@ -733,19 +733,14 @@ def points_and_records(shapes_and_records):
             for shape, record in shapes_and_records]
 
 
-def split_shp_points_by_parts_repeat_rec_as_dict(group):
-    retval = []
-    for shape_record in group:
-        shp_shapes, rec = shape_and_rec_as_dict(shape_record)
-        points, _ = points_and_rec(shp_shapes, rec)
-        parts = shp_shapes.parts
-        retval.append([(points[start:end], rec)
-                        for start, end in itertools.pairwise(parts)
-                        ])
-    return retval
+def unpack_multi_shape_entry_repeat_rec_as_dict(multi_shape_record):
+    shapes, rec = shape_and_rec_as_dict(multi_shape_record)
+    points, _ = points_and_rec(shapes, rec)
+    parts = shapes.parts
+    return ((points[start:end], rec) for start, end in itertools.pairwise(parts))
 
 
-class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorABC):
+class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
     def __init__(self, reader, extra_manglers = None, opts = None):
         #type(shp.Reader, dict, dict)
         if opts is None:
@@ -757,9 +752,9 @@ class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorAB
 
         if extra_manglers is not None or copy_dicts:
 
-            if extra_manglers is None:
+            if extra_manglers is None: # assert copy_dicts
                 extra_manglers = {False : [clone_dicts]}
-            else:
+            elif copy_dicts:
                 if isinstance(extra_manglers[False], Callable):
                     extra_manglers[False] = [extra_manglers[False]]
                 extra_manglers[False].insert(0, clone_dicts)
@@ -785,21 +780,23 @@ class TmpFileDeletingShapeRecordsGroupedIterator(TmpFileDeletingReaderIteratorAB
                 logger.error(msg)
                 raise ValueError(msg)
 
-        super(TmpFileDeletingShapeRecordsGroupedIterator, self).__init__(reader, opts)
+        super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
 
 
     # manglers will be applied to groups of consecutive single shapes 
     # and groups of consecutive multi-shape shp file entries
     manglers = {True:  funcs.compose(points_and_records, shapes_and_recs_as_dicts)
-               ,False: split_shp_points_by_parts_repeat_rec_as_dict
+               ,False: unpack_multi_shape_entry_repeat_rec_as_dict
                }
 
     def generator(self):
-        return funcs.classes_from_grouped_keyed_items(
+        return funcs.multi_item_unpacking_iterator(
                                          items = self.reader.iterShapeRecords()
-                                        ,key_func = is_single_shape
+                                        ,is_single_item = is_single_shape
                                         ,manglers = self.manglers
                                         )
+
+
  
 
 

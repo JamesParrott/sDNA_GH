@@ -153,18 +153,19 @@ else:
     itertools.pairwise = pairwise
 
 
-def classes_from_grouped_keyed_items(
+def multi_item_unpacking_iterator(
                      items
-                    ,key_func = lambda x : isinstance(x, tuple) and len(x) == 2
-                    ,manglers = {True : lambda x: [OrderedDict(x)]
-                                ,False: lambda x: [OrderedDict(y) for y in x]
-                                }
+                    ,is_single_item
+                    ,manglers
                     ):
-    #type(Iterable, type[any] | function, function, dict) -> list
-    """ Manglers needs a function for each value of key_func takes for each of items. """
-    keys_and_groups = itertools.groupby(items, key_func)
+    #type(Iterable, Callable, dict) -> list
+    keys_and_groups = itertools.groupby(items, key = is_single_item)
     for key, group in keys_and_groups:
-        yield manglers[key](group)
+        if key: #assert all(is_single_item(x) for x in group)
+            yield manglers[key](group) # group of single items
+        else: #assert all(not is_single_item(x) for x in group)
+            for sub_group in group:
+                yield manglers[key](sub_group)
 
 
 def compose(*funcs):
