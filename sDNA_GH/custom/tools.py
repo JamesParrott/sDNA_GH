@@ -222,9 +222,14 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                             ))
                    ,('gdm', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
-                            ,Description = ('Geometry and Data Mapping.  '
+                            ,Description = ('Geometry and Data Mapping(s).  '
                                            +'Internal combination of Geom and '
-                                           +'Data.  Python dictionary.'
+                                           +'Data. Python Ordered Dictionary  '
+                                           +'(or Iterable thereof) '
+                                           +'mapping objects to their own '
+                                           +'key/val data dictionary, keys '
+                                           +'corresponding to User Text keys '
+                                           +'or shape file field names. '
                                            )
                             ))   
                    ,('config', add_params.ParamInfo(
