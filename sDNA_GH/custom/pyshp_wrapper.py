@@ -330,6 +330,7 @@ def write_iterable_to_shp(my_iterable
                          ,shape_code # e.g. 'POLYLINEZ'
                          ,options = WriteIterableToShpOptions
                          ,field_names = None
+                         ,AttributeTablesClass = None
                          ):
     #type(type[Iterable]
     #    ,str
@@ -388,8 +389,11 @@ def write_iterable_to_shp(my_iterable
                                       )
                           }
                          )
-
-    attribute_tables = OrderedDict()
+    
+    if AttributeTablesClass is None:
+        attribute_tables = OrderedDict()
+    else:
+        attribute_tables = AttributeTablesClass()
 
     if field_names is None or options.cache_iterable: 
         

@@ -1346,7 +1346,10 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc 
         
         #rhino_groups_and_objects = make_gdm(get_objs_and_OrderedDicts(options))
-        tmp_gdm = gdm if gdm else OrderedDict()
+        user_gdms = gdm if gdm else [gdm_from_GH_Datatree.GeomDataMapping()]
+
+        if isinstance(user_gdms, gdm_from_GH_Datatree.GeomDataMapping):
+            user_gdms = [gdm_from_GH_Datatree.GeomDataMapping()]
 
         self.logger.debug('options.selected == %s' % options.selected)
         self.logger.debug('options.layer == %s' % options.layer)
@@ -1372,12 +1375,13 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         if gdm:
             self.logger.debug('type(gdm[0]) == ' + type(gdm.keys()[0]).__name__ )
 
-
-        if tmp_gdm:
-            gdm = gdm_from_GH_Datatree.override_gdm(gdm
-                                                   ,tmp_gdm
-                                                   ,options.merge_subdicts
-                                                   )
+        for sub_gdm in user_gdms:
+            if sub_gdm:
+                self.logger.debug('Overriding provided gdm. ')
+                gdm = gdm_from_GH_Datatree.override_gdm(gdm
+                                                       ,sub_gdm
+                                                       ,options.merge_subdicts
+                                                       )
 
         if not gdm:
             msg = 'Was unable to read any Rhino Geometry.  '
@@ -1405,6 +1409,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
                          )
 
         sc.doc = ghdoc 
+        self.logger.debug('type(gdm) == %s'  % type(gdm))
         self.logger.debug('retvals == %s ' % (self.retvals,))
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
@@ -1688,7 +1693,8 @@ class ShapefileWriter(sDNA_GH_Tool):
                                             ,value_demangler = get_data_item 
                                             ,shape_code = shp_type 
                                             ,options = options
-                                            ,field_names = None 
+                                            ,field_names = None
+                                            ,AttributeTablesClass = gdm_from_GH_Datatree.GeomDataMapping
                                             )
         
         if (isinstance(prj, basestring) and 
@@ -1745,23 +1751,13 @@ class ShapefileReader(sDNA_GH_Tool):
 
         self.logger.debug('bbox == %s' % bbox)
 
-        self.logger.debug('gdm == %s, ..., %s ' % (gdm.items()[:2], gdm.items()[-2:]))
 
-        # if len(recs) >= 1:
-        #     self.logger.debug('recs[0]== %s ' % recs[0])
+
 
         if num_entries == 0:
             self.logger.warning('No entries in Shapefile: %s ' % f_name)
             return 1, f_name, gdm, None    
-        # if not recs:
-        #     self.logger.warning('No data read from Shapefile: %s ' % f_name)
-        #     return 1, f_name, gdm, None    
-            
-        # if not shapes:
-        #     self.logger.warning('No shapes in Shapefile: %s ' % f_name)
-        #     if not gdm:
-        #         self.logger.warning('No Geom objects in Geom Data Mapping.  ')
-        #     return 1, f_name, gdm, None
+
 
         if not bbox:
             self.logger.warning('No Bounding Box in Shapefile: %s '
@@ -1783,13 +1779,24 @@ class ShapefileReader(sDNA_GH_Tool):
             self.logger.warning(msg)
             warnings.warn(msg)
 
-
-        existing_geom_compatible = (gdm and 
-                                    isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping) and 
-                                    len(gdm) != num_entries
-                                   )
-
         self.logger.debug('Testing existing geom data map.... ')
+
+        if (isinstance(gdm, Iterable) and len(gdm) == 1 and 
+            isinstance(gdm[0], gdm_from_GH_Datatree.GeomDataMapping)):
+                #
+                gdm = gdm[0]
+
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+
+            self.logger.debug('gdm == %s, ..., %s ' % (gdm.items()[:2], gdm.items()[-2:]))
+
+            existing_geom_compatible = len(gdm) == num_entries
+        else:
+            existing_geom_compatible = False
+            msg = 'Shape file is incompatible with existing gdm: %s' % str(gdm)[:50]
+            logger.debug(msg)
+
+
         if options.new_geom or not existing_geom_compatible: 
             #shapes_to_output = ([shp.points] for shp in shapes )
             
@@ -2675,7 +2682,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             raise NotImplementedError(msg)
         elif options.Col_Grad:
             grad = getattr( GH_Gradient()
-                        ,self.GH_Gradient_preset_names[options.Col_Grad_num])
+                          ,self.GH_Gradient_preset_names[options.Col_Grad_num]
+                          )
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)
                 # May need either rhinoscriptsyntax.CreateColor
@@ -2780,22 +2788,26 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                     rs.ObjectColor(obj, new_colour)
                     recoloured_Rhino_objs.append(obj)
                 except ValueError:
+                    self.logger.debug('Error recolouring obj: %s to colour %s: ' 
+                                     % (obj, new_colour)
+                                     )
                     GH_objs_to_recolour[obj] = new_colour 
                     
         sc.doc = ghdoc
             
+        self.logger.debug('recoloured_Rhino_objs: %s' % recoloured_Rhino_objs)
 
-
-        keys = recoloured_Rhino_objs
-        if keys:
-            sc.doc = Rhino.RhinoDoc.ActiveDoc                             
-            rs.ObjectColorSource(keys, 1)  # 1 => colour from object
-            rs.ObjectPrintColorSource(keys, 2)  # 2 => colour from object
-            rs.ObjectPrintWidthSource(keys, 1)  # 1 => logger.debug width from object
-            rs.ObjectPrintWidth(keys, options.line_width) # width in mm
-            rs.Command('_PrintDisplay _State=_On Color=Display Thickness='
-                    +str(options.line_width)
-                    +' _enter')
+        if recoloured_Rhino_objs:
+            sc.doc = Rhino.RhinoDoc.ActiveDoc
+            self.logger.debug('Setting Rhino colour sources and line width.')                 
+            rs.ObjectColorSource(recoloured_Rhino_objs, 1)  # 1 => colour from object
+            rs.ObjectPrintColorSource(recoloured_Rhino_objs, 2)  # 2 => colour from object
+            rs.ObjectPrintWidthSource(recoloured_Rhino_objs, 1)  # 1 => logger.debug width from object
+            rs.ObjectPrintWidth(recoloured_Rhino_objs, options.line_width) # width in mm
+            rs.Command('_PrintDisplay _State=_On Color=Display Thickness=%s '
+                      %options.line_width
+                      +' _enter'
+                      )
             #sc.doc.Views.Redraw()
             sc.doc = ghdoc
 

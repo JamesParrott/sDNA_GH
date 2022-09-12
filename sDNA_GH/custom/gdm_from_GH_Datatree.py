@@ -301,7 +301,7 @@ def override_gdm(lesser, override, merge_subdicts = True):
                 and isinstance(lesser[key], dict)   ):
                 lesser[key].update(override[key])
             else:
-                lesser[key] = override[key]
+                lesser[key] = override[key].copy()
     else:
         lesser.update(**override)
     return lesser
