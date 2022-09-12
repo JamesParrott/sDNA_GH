@@ -1937,6 +1937,7 @@ class UsertextWriterOptions(object):
     max_new_keys = 10
     dupe_key_suffix = '_{}'
     suppress_overwrite_warning = False
+    suppress_write_failure_error = True
 
 def write_dict_to_UserText_on_Rhino_obj(d
                                        ,rhino_obj
@@ -1945,6 +1946,14 @@ def write_dict_to_UserText_on_Rhino_obj(d
                                        ,options = None
                                        ):
     #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
+    
+    if sc.doc == ghdoc:
+        msg = 'Ensure sc.doc == %s is a Rhino Document before calling ' % sc.doc
+        msg += 'this function.  '
+        msg += 'Writing User Text to GH objects is not supported.'
+        logger.error(msg)
+        raise NotImplementedError(msg)
+
     if not isinstance(d, dict):
         msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
         logger.error(msg)
@@ -2033,8 +2042,16 @@ class UsertextWriter(sDNA_GH_Tool):
                                                 ,logger = self.logger
                                                 ,options = options
                                                 )
-                except ValueError: # Tested when rs.SetUserText fails
-                    pass
+                except ValueError as e: # Tested when rs.SetUserText fails
+                    msg = 'Writing dict: %s as User Text to obj: %s failed '
+                    msg %= (val, key)
+                    msg += 'with error message: %s ' % e.message
+                    msg += 'and args: %s' % e.args
+                    logger.error(msg)
+                    if options.suppress_write_failure_error:
+                        warnings.warn(msg)
+                    else:
+                        raise e
 
         sc.doc = ghdoc  
         
