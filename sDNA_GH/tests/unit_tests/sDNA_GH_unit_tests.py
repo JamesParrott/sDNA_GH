@@ -92,7 +92,6 @@ class TestStringMethods(unittest.TestCase):
     
     def test_split(self):
         s = 'hello world'
-        #print(s)
         self.assertEqual(s.split(), ['hello', 'world'])
         
         # check that s.split fails when the separator is not a string
@@ -203,6 +202,21 @@ class TestDataCruncher(unittest.TestCase):
         test_data = [#'expected' : 'input_'  
                      ([], ([2,]*9, 7))
                     ,([0.3333333, 1.5], ([0,0] +[1]*9 + [2] * 9,7))
+                    ,(""" >>> dc.spike_isolating_quantile(data, 7)                                                                                                                  
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 741, in spike_isolating_quantile  
+  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 764, in spike_isolating_quantile
+  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 562, in quantile_l_to_r
+NotImplementedError:  highest lower bound search failed, or  hlb was at or below previous bound,  but should have had  data_point_below - previous_bound >= tol.   
+data_point_below - previous_bound == 0.00757575035 and tol == 4.8e-16""" 
+                     ,([2.24242424965, 2.25757575035, 2.25757575035 
+                       ,2.2727272510500001, 2.2727272510500001, 2.3333332538599998
+                       ,2.34848499298, 2.34848499298, 2.34848499298, 2.34848499298
+                       ,2.6212122440300001, 2.6363637447400001, 2.6363637447400001
+                       ,2.7373735904699998, 2.7373735904699998, 3.2525253295900001, 
+                       3.5303030014000001
+                       ], 7))
                     ]
 
 

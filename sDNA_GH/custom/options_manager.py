@@ -453,7 +453,7 @@ def override_namedtuple(nt_lesser
 
         for key, val in override_funcs_dict.items():
             if isinstance(override, key):
-                #print('returning val == %s' % val)
+                #logger.debug('returning val == %s' % val)
                 return val 
         
         if hasattr(override, '_asdict'):

@@ -316,7 +316,7 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
 
 def highest_strict_LB(data_point, data):
     #type(Number, Iterable[Number]) -> Number
-    """ Highest strict upper bound of an 
+    """ Highest strict lower bound of an 
     element in an Iterable.  data may be unsorted and
     need not be a Sequence (i.e. as well as a list/tupl,
     it can be a set or even a dict too, as 
@@ -327,7 +327,7 @@ def highest_strict_LB(data_point, data):
 
 def lowest_strict_UB(data_point, data):
     #type(Number, Iterable[Number]) -> Number
-    """ Highest strict upper bound of an 
+    """ Lowest strict upper bound of an 
     element in an Iterable.  data may be unsorted and
     need not be a Sequence (i.e. as well as a list/tupl,
     it can be a set or even a dict too, as 
@@ -349,13 +349,13 @@ def search_one_way_only_from_index(search_direction):
         If no item
         satisfying condition(element, item) is True is found
         in the specified search direction, the first return value 
-        (the variable success) is False. 
+         is False. 
     """
     if search_direction.lower() == 'ascending': 
         def make_range(data, index):
             return range(index + 1, len(data)) 
     elif search_direction.lower() == 'descending':
-        def make_range(data, index):
+        def make_range(__, index):
             return reversed(range(0, index))
     else:
         msg = ('Unsupported search direction: ' 
@@ -381,13 +381,11 @@ def search_one_way_only_from_index(search_direction):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            success, lub = False, None
             for i in make_range(data, index):   
                 if condition(data[i], data_point, **kwargs):
-                    success, lub = True, data[i]
-                    break
-            
-            return success, lub, i
+                    return True, data[i], i
+            return False, None, None
+
         return searcher
     return decorator
 
@@ -498,21 +496,37 @@ def quantile_l_to_r(data
         ,data_point_above) = data_point_midpoint_and_next(data
                                                          ,data_point_below_index
                                                          )
-        logger.debug('candidate_bound == %s' % candidate_bound)
+        
+        logger.debug('num_classes_wanted == %s' % num_classes_wanted)
+        logger.debug('data_point_below == %s' % data_point_below
+                    +', candidate_bound == %s, ' % candidate_bound
+                    +', data_point_above == %s' % data_point_above
+                    )
 
         if data_point_above - candidate_bound < options.tol:
             # data is sorted so we don't need abs() < tol
             # data_point_below is in the class for this candidate bound
             # so we don't need to test it against candidate_bound
-            if previous_bound is None or data_point_below - previous_bound < options.tol:
+            # if previous_bound is not None:
+            hlb_found, hlb, hlb_index = indexed_highest_strict_LB(
+                                                        data_point_below
+                                                    ,data
+                                                    ,data_point_below_index
+                                                    ,tol = options.tol
+                                                    )
+            if (previous_bound is None or 
+                not hlb_found or
+                hlb <= previous_bound or
+                data_point_below - previous_bound < options.tol):
                 # the data point just below candidate_bound, not the one just
                 # below previous_bound
-                success, lub, lub_index = indexed_lowest_strict_UB(data_point_below
-                                                                  ,data
-                                                                  ,data_point_below_index
-                                                                  ,tol = options.tol
-                                                                  )
-                if not success:
+                lub_found, lub, lub_index = indexed_lowest_strict_UB(
+                                                         data_point_below
+                                                        ,data
+                                                        ,data_point_below_index
+                                                        ,tol = options.tol
+                                                        )
+                if not lub_found:
                     # all further items are the same (tol - indistinguishable) 
                     # until the end of data so can't place any more 
                     # inter-class bounds.
@@ -529,7 +543,7 @@ def quantile_l_to_r(data
                                         ,lineno = 979
                                         )
                     break
-                # assert success # !
+                # assert lub_found # !
 
                 # Need this to update num_data_points_left in next iteration.
                 data_point_below_index = lub_index - 1
@@ -538,28 +552,48 @@ def quantile_l_to_r(data
                 # the class and its lowest upper bound in data.
                 (data_point_below
                 ,candidate_bound
-                ,data_point_above) = data_point_midpoint_and_next(data
-                                                                 ,data_point_below_index
-                                                                 )
+                ,data_point_above) = data_point_midpoint_and_next(
+                                                         data
+                                                        ,data_point_below_index
+                                                        )
             else:
-                success, hlb, hlb_index = indexed_highest_strict_LB(data_point_below
-                                                                   ,data
-                                                                   ,data_point_below_index
-                                                                   ,tol = options.tol
-                                                                   )
-                if not success or ( previous_bound is not None 
-                                    and hlb <= previous_bound ):
-                    msg = (' highest lower bound search failed, or '
-                          +' hlb was at or below previous bound, '
-                          +' but should have had '
-                          +' data_point_below - previous_bound >= tol.  '
-                          +' data_point_below - previous_bound == '
-                          + str(data_point_below - previous_bound)
-                          +' and tol == '
-                          + str(options.tol)
-                          )
-                    logger.error(msg)
-                    raise NotImplementedError(msg)
+                # hlb_found, hlb, hlb_index = indexed_highest_strict_LB(
+                #                                          data_point_below
+                #                                         ,data
+                #                                         ,data_point_below_index
+                #                                         ,tol = options.tol
+                #                                         )
+                # if not hlb_found or ( previous_bound is not None 
+                #                     and hlb <= previous_bound ):
+                #     msg = ('highest lower bound search failed, or '
+                #           +'hlb was at or above previous bound, '
+                #           +'but should have had '
+                #           +'data_point_below - previous_bound >= tol.  '
+                #           +'hlb_found == %s'
+                #           +', data_point_below - previous_bound == %s'
+                #           +', tol == %s, data_point_below == %s'
+                #           +', candidate_bound == %s, data_point_above == %s'
+                #           +', previous_bound == %s'
+                #           +', hlb == %s, hlb_index == %s'
+                #           +', data_point_below_index == %s'
+                #           +', data == %s'
+                #           +', class_bounds == %s'
+                #           )
+                #     msg %= (hlb_found
+                #            ,data_point_below - previous_bound
+                #            ,options.tol
+                #            ,data_point_below
+                #            ,candidate_bound
+                #            ,data_point_above
+                #            ,previous_bound
+                #            ,hlb
+                #            ,hlb_index
+                #            ,data_point_below_index
+                #            ,data
+                #            ,class_bounds
+                #            )
+                #     logger.error(msg)
+                #     raise NotImplementedError(msg)
 
                 # update candidate_bound to a lower value, that splits the 
                 # data_point_below the previous candidate_bound and its 
