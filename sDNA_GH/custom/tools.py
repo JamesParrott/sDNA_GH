@@ -1807,6 +1807,9 @@ class ShapefileReader(sDNA_GH_Tool):
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type)
 
+            if options.bake:
+                objs_maker = funcs.compose(str, objs_maker)
+
             def add_geom(obj, *args):
                 points_list = funcs.list_of_lists(obj)
                 return (objs_maker(points_list),) + args

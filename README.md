@@ -112,9 +112,11 @@ If not using a `config.toml` file, then e.g. when using a config component to se
 
 
 ###### Read_Geom (get_Geom)
-Reads in references to Rhino polylines to provide them in the required form for subsequent sDNA_GH tools.  Set the option `selected` to true, to only from objects that the user has selected.  Similarly, specify `layer` = your_layer_name to only read from a specific layer.  To go back to selecting all layers, set `layer` to any value that is not the name of a layer.
+Gets strings of the uuid references to Rhino polylines for subsequent sDNA_GH tools..  
 
-The UUIDs of Rhino objects are converted to strings to preserve the references to them.  
+Set `selected` to true, to only read objects that are selected.  Similarly, specify `layer` to the name of a layer, to only read objects from that layer.  If the component has `sync = false`, an input Params that has had its value set, when subsequently disconnected will fallback to whatever its previous value was. If `sync = True` it will remember its previous setting, in which case to go back to selecting all layers, `layer` must be set to any value that is not the name of a layer.  Similarly, to go back to selecting everything (not just selected geometry) set `selected = false`.
+
+
 
 
 ##### Shapefile tools
@@ -128,7 +130,8 @@ Reads in polylines and associated data records from a shapefile of polylines.  C
 
 ##### Plotting tools
 ###### Parse_Data (parse_data)
-Parse the data in a Data Tree of numerical data (in `Data`) from a specified `field`, for subsequent colouring and plotting.  Be sure to supply the list of the data's associated geometric objects (in `Geom`), as legend tags and parsed values are appended to the output `Data` list and `Geom` list.  Some classifiers sort the data into ascending order (if supplied, the geometry objects will then be reordered too, preserving their correspondence).  To force a sort, according to `field` regardless, set `sort_data` to true.  To make each parsed data point, take the same value as its class midpoint, set `colour_as_class` to true.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden (in `plot_max` and `plot_min`).  
+Parse the data in a Data Tree of numerical data (in `Data`) from a specified `field`, for subsequent colouring and plotting.  If browsing different results fields, to reset `plot_max` and `plot_min` between different data sets, set `sync` to false on a Parse_Data component.
+Be sure to supply the list of the data's associated geometric objects (in `Geom`), as legend tags and class midpoint values are appended to the outputted `Geom` and `Data` lists respectively.  Some classifiers sort the data into ascending order (if supplied, the geometry objects will then be reordered too, preserving their correspondence).  To force a sort, according to `field` regardless, set `sort_data` to true.  To make each parsed data point, take the same value as its class midpoint, set `colour_as_class` to true.  Use this component separately from Recolour_Objects to calculate colours with a visible Grasshopper Colour Gradient component.  Max and Min bounds can be overridden (in `plot_max` and `plot_min`).  
 **WARNING!  Parsing is for the purpose of colourisation, e.g. in order to produce the desired result from Recolour_Objects.  Therefore, although the inputted Data is not changed, the Data outputted almost certainly will be changed, so should be assumed to be false.**  
 After parsing, the legend tags are the definitive reference for what each colour means, not the outputted data values. In particular, if `colour_as_class` = true, the parsed data will take far fewer distinct values than the number of polylines in a large network.  To parse numerical data that uses a numerical format different to your system's normal setting (e.g. with a different radix character: ',' or '.' or thousands separator: ',' or '_'), set `locale` to the corresponding IETF RFC1766,  ISO 3166 Alpha-2 code (e.g. `fr`, `cn`, `pl`).  
 
@@ -160,7 +163,7 @@ If after one of the above classification methods (especially `simple`), inter-cl
 Finally, the errors raised if there are small classes or class overlaps can be suppressed by setting `suppress_small_classes_error` or `suppress_class_overlap_error` to true respectively.
 
 ###### Recolour_Objects (recolour_objects)
-Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (as RGB triples).  If unparsed data is inputted, Parse_Data is first called.  Custom colour curves are supported using a 3D quadratic spline between the triples of numbers: `rgb_min`, `rgb_mid` and `rgb_max`.  Otherwise, use the Grasshopper Colour Gradient internally (via Node In Code) by setting `Col_Grad` to true and picking a setting from 0 to 7 for `Col_Grad_num` (0 : 'EarthlyBrown', 1 : 'Forest', 2 : 'GreyScale', 3 : 'Heat', 4 : 'Pink', 5 : 'Spectrum', 6 : 'Traffic', 7 : 'Zebra').  Set `line_width` to control the width of the line of Rhino geom objects  (the default is 4).
+Recolour objects (and legend tags) based on pre-parsed and pre-normalised data, or already calculated colours (as RGB triples).  Recolouring Rhino Geometry can be much slower than recolouring Grasshopper Geometry (custom preview component required for the latter).  If unparsed data is inputted, Parse_Data is first called.  Custom colour curves are supported using a 3D quadratic spline between the triples of numbers: `rgb_min`, `rgb_mid` and `rgb_max`.  Otherwise, use the Grasshopper Colour Gradient internally (via Node In Code) by setting `Col_Grad` to true and picking a setting from 0 to 7 for `Col_Grad_num` (0 : 'EarthlyBrown', 1 : 'Forest', 2 : 'GreyScale', 3 : 'Heat', 4 : 'Pink', 5 : 'Spectrum', 6 : 'Traffic', 7 : 'Zebra').  Set `line_width` to control the width of the line of Rhino geom objects  (the default is 4).
 
 Create a legend by connecting `leg_cols`, `leg_tags` and `leg_frame` to a Grasshopper Legend component.  The coordinates of the corners of the Rectangle provided in `leg_frame` may be overridden by specifying `leg_extent` (xmin, ymin, xmax, ymax); alternatively any rectangle object can be passed into `leg_frame` on the GH Legend component itself.  Custom legend tag templates and class boundaries are supported via four format strings (`first_leg_tag_str`, `gen_leg_tag_str`, `last_leg_tag_str` and `num_format`) as per Parse_Data.  
 
