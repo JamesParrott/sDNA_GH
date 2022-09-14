@@ -183,12 +183,7 @@ def compose(*funcs):
         raise TypeError(msg)
     return functools.reduce(lambda f, g: lambda x: f(g(x)), funcs)
 
-# already_warned = False
-
-# if not already_warned:
-#     already_warned = True
-#     msg = ('Entry with multiple shapes found. '
-#         +'Geom will be a DataTree, not a list.'
-#         )
-#     logger.warning(msg)
-#     warnings.warn(msg)
+def first_of_each(seqs):
+    #type(Iterable) -> Iterable
+    """ Returns the first item of each tuple from an iterable of Sequences. """
+    return (seq[0] for seq in seqs)

@@ -201,6 +201,14 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
              # a component running this tool
 
     # Can be both inputs and outputs
+    # param_infos is a tuple of key/val pairs so sub classes and 
+    # instances need only self.param_infos += tuple_of_extras.  It 
+    # can later be made 
+    # into a dictionary where needed.  This avoids making a 
+    # copy of a list or dictionary for each subclass and 
+    # each instance to avoid everything changing the parent 
+    # class's variable, to separate concerns and support 
+    # customisation.
     param_infos = (('file', add_params.ParamInfo(
                              param_Class = Param_FilePath
                             ,Description = 'File path of the shape file.'
@@ -831,10 +839,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     is looked up in opts['metas'], from its args. 
     """
             
-    default_tool_opts = OrderedDict()
-    default_named_tuples = OrderedDict()
-    get_syntaxes = OrderedDict()
-
     sDNA = None
 
     sDNAUISpec = options_manager.error_raising_sentinel_factory(
@@ -920,7 +924,14 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             sDNA = sDNA_key(opts)
         return (sDNA in self.get_syntaxes and 
                 sDNA in self.default_named_tuples and
-                self.get_tool_opts(opts, val = None) is not None)
+                self.get_tool_opts(opts, val = None) is not None and
+                sDNA in self.input_specs and
+                (set(funcs.first_of_each(self.param_info_list))
+                       .issuperset(funcs.first_of_each(self.input_specs[sDNA]))
+                )
+               )
+
+                
 
     def load_sDNA_tool(self, opts = None):
         if opts is None:
@@ -938,7 +949,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             get_syntax = self.get_syntaxes[sDNA]
             defaults = self.default_named_tuples[sDNA]._asdict()
             return sDNAUISpec, run_sDNA, get_syntax, defaults
-
+        print('Loading sDNA info for tool: %s' % tool_name)
         try:
             sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
         except AttributeError:
@@ -951,7 +962,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
                             
-        input_spec = sDNA_Tool.getInputSpec()
+        self.input_specs[sDNA] = input_spec = sDNA_Tool.getInputSpec()
         self.get_syntaxes[sDNA] = get_syntax = sDNA_Tool.getSyntax
 
         defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
@@ -1037,10 +1048,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 )  # Tuple of only one element 
                                    # (a tuple of a tuple of two). 
 
-
-
-
-
         return sDNAUISpec, run_sDNA, get_syntax, defaults
 
 
@@ -1060,6 +1067,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.nick_name = nick_name
         self.component = component
         self.import_sDNA = import_sDNA
+
+        self.default_tool_opts = OrderedDict()
+        self.default_named_tuples = OrderedDict()
+        self.get_syntaxes = OrderedDict()
+        self.input_specs = OrderedDict()
+
         __, __, __, defaults = self.load_sDNA_tool(opts)
 
         if metas.show_all:
@@ -2682,6 +2695,11 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
         if not objs_to_get_colour:
             self.logger.debug('No objects need colours to be created. ')
+        elif (isinstance(x_max, Number) and 
+              isinstance(x_min, Number) and
+              abs(x_max - x_min) < options.tol):
+            #
+            get_colour = lambda x : tuple(options.rgb_mid)
         elif not data_cruncher.max_and_min_are_valid(x_max, x_min):
             msg = ('Cannot create colours for data without a valid '
                   +'max: %s and min: %s to refer to' % (x_max, x_min)
@@ -2709,9 +2727,6 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                                                             )
                                       )
         #elif not 
-        elif x_max - x_min < options.tol:
-            #
-            get_colour = lambda x : tuple(options.rgb_mid)
         else:
             def get_colour(x):
                 # Number-> Tuple(Number, Number, Number)

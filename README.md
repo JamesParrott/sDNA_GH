@@ -83,9 +83,9 @@ logger (which will most likely result in a lot of output), set `propagate` to tr
 [note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
 
 ##### Local meta options.
-By default all sDNA_GH components share (and may change) the same global `opts` (module options, tool options, and *meta* options) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users. 
+By default all sDNA_GH components, across all Grasshopper canvases in the same Rhino process, share (and may change) the same global `opts` (module options, tool options, and *meta* options) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users. 
 
-Advanced users may give sDNA_GH components different options to the others, by de-synchronising from the global options.  De-syncing occurs if a component's *local meta option* `sync` is false (if `read_only` is true, it will still read them but not update the global options).  *local metas* are like any other option, except a) they are shared using `l_metas` instead of `opts`, and b) they are not updated automatically from the global module options (as this would defeat their entire purpose).
+To give an sDNA_GH component different options to another of the same type using the shared global options, it must de-synchronise from the global options.  De-syncing occurs if a component's *local meta option* `sync` is false (if `read_only` is true, it will still read from but not update the global options).  *local metas* are like any other option, except a) they are shared using `l_metas` instead of `opts`, and b) they are not updated automatically from the global module options (as this would defeat their entire purpose).
 
 Components referring to the global options share their settings.  This means they do not know if a particular setting in the global
 options came from a different component sharing with it, or from itself previously.  Shared states mean even a component in isolation has its own historical state.  To use components without any options sharing and a minimum of state, set `sync` to false and `no_state` to true (its default). 
