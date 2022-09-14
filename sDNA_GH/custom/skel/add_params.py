@@ -100,7 +100,7 @@ class ParamInfo(dict, ParamInfoABC):
         self.param_Class = param_Class
         if TypeHint is None and param_Class == Param_ScriptVariable:
             TypeHint = GhPython.Component.GhDocGuidHint()
-        self.TypeHint = TypeHint
+        self.TypeHint = TypeHint  # None handled below
         if Description is None:
             Description = NickName
         if Access in self.valid_access_methods:

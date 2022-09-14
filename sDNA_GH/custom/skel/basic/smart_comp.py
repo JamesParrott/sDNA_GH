@@ -151,12 +151,12 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
             return getattr(source, key)
     #logger.debug('No variable or field: ' + key + ' found. ')
     if case_sensitive or key.islower():
-        return 'No variable or field: ' + key + ' found. '
+        return 'No variable or field: %s found' % key
     else:
         key = key.lower()
         if support_whitespace:
             key = remove_whitespace(key)
-        return get_val(key.lower(), sources, case_sensitive = True)
+        return get_val(key, sources, case_sensitive = True)
 
     # Whitespace is not stripped as valid python names, namedtuple fields
     # and class attributes cannot contain whitespace.  So dict keys with whitespace
@@ -212,7 +212,7 @@ def prepare_args(function
                 ,prioritise_kwargs = True
                 ,add_unrecognised_names_to_pos_args = False
                 ):
-    #type(function) -> tuple, dict
+    #type(function, dict, list, list, bool, bool) -> tuple, dict
     argspec = get_args_spec(function)
     logger.debug('argspec(function) == %s ' % argspec)
 
@@ -308,13 +308,18 @@ def prepare_args(function
             logger.debug('Unallocated param keys: %s ' % params_dict.keys())
 
 
-    pos_args_tupl = (tuple(pos_args[arg] for arg in argspec.args if arg in pos_args) 
-                     + unnamed_pos_args)
+    pos_args_tupl = (tuple(pos_args[arg] 
+                           for arg in argspec.args 
+                           if arg in pos_args
+                          ) 
+                    +unnamed_pos_args
+                    )
 
     #logger.debug('pos_args == %s ' % pos_args_tupl))
     #logger.debug('args_dict == %s ' % args_dict))
 
     return pos_args_tupl, args_dict
+
 
 def delistify(l):
     if isinstance(l, list) and len(l) == 1:

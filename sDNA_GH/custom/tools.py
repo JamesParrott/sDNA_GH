@@ -60,6 +60,7 @@ import GhPython
 import System
 import System.Drawing #.Net / C# Class
             #System is also available in IronPython, but System.Drawing isn't
+import Grasshopper
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Colour  
@@ -191,14 +192,16 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
     @property
     @abstractmethod
     def component_inputs(self):
-        pass # Iterable of strings, the names of the input Params required on
-             # a component running this tool
+        """ Iterable of strings, the names of the input Params required on
+           a component running this tool
+        """
 
     @property
     @abstractmethod
     def component_outputs(self):
-        pass # Iterable of strings, the names of the output Params required on
-             # a component running this tool
+         """ Iterable of strings, the names of the output Params required on
+             a component running this tool
+         """
 
     # Can be both inputs and outputs
     # param_infos is a tuple of key/val pairs so sub classes and 
@@ -214,11 +217,13 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                             ,Description = 'File path of the shape file.'
                             ))                           
                    ,('Geom', add_params.ParamInfo(
-                             param_Class = Param_ScriptVariable
+                             param_Class = Param_Guid
                             ,Description = ('A list of geometric objects, '
                                            +'that must all be polylines for '
                                            +'sDNA tools, read_Shp and write_Shp'
                                            )
+                            ,TypeHint = Grasshopper.Kernel.Parameters.Hints.GH_GuidHint
+                            ,Access = 'list'
                             ))  
                    ,('Data', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
@@ -936,6 +941,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def load_sDNA_tool(self, opts = None):
         if opts is None:
             opts = self.opts
+        metas = opts['metas']
         nick_name = self.nick_name
         tool_name = self.tool_name
 
@@ -966,6 +972,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntaxes[sDNA] = get_syntax = sDNA_Tool.getSyntax
 
         defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
+                              
         # varname : default.  See below for other names in tuple_ in input_spec
 
         nt_name = '_'.join([nick_name, tool_name, sDNA])
@@ -1048,6 +1055,28 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 )  # Tuple of only one element 
                                    # (a tuple of a tuple of two). 
 
+        if metas.show_all:
+            new_keys = tuple(key 
+                             for key in defaults
+                             if key not in self.component_inputs
+                            )
+            if new_keys:
+                self.component_inputs += new_keys
+
+            if 'advanced' not in defaults:
+                msg = "'advanced' not in defaults_dict"
+                self.logger.warning(msg)
+                warnings.showwarning(message = msg
+                    ,category = UserWarning
+                    ,filename = __file__ + self.__class__.__name__
+                    ,lineno = 253
+                    )
+
+        self.logger.debug('Params added to component_inputs for args '
+                         +'in input spec:\n %s' 
+                         %'\n'.join(OrderedDict(self.param_infos).keys())
+                         )
+
         return sDNAUISpec, run_sDNA, get_syntax, defaults
 
 
@@ -1073,28 +1102,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntaxes = OrderedDict()
         self.input_specs = OrderedDict()
 
-        __, __, __, defaults = self.load_sDNA_tool(opts)
+        #__, __, __, defaults = 
+        
+        self.load_sDNA_tool(opts)
 
-        if metas.show_all:
-            new_keys = tuple(key 
-                             for key in defaults
-                             if key not in self.component_inputs
-                            )
-            if new_keys:
-                self.component_inputs += new_keys
-
-            if 'advanced' not in defaults:
-                msg = "'advanced' not in defaults_dict"
-                self.logger.warning(msg)
-                warnings.showwarning(message = msg
-                    ,category = UserWarning
-                    ,filename = __file__ + self.__class__.__name__
-                    ,lineno = 253
-                    )
-
-        self.logger.debug('Params built for args from input spec:\n %s' 
-                         %'\n'.join(OrderedDict(self.param_infos).keys())
-                         )
+        self.not_shared = ('input', 'output', 'advanced')
+        
 
         if has_keywords(self.tool_name, keywords = ('prepare',)):
             self.retvals += ('gdm',)
@@ -1108,6 +1121,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     def __call__(self # the tool instance not the GH component.
                 ,f_name
                 ,opts
+                ,input = None
+                ,output = None
+                ,advanced = None
                 ,**kwargs
                 ):
         #type(str, dict, dict) -> int, str
@@ -1126,8 +1142,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         tool_opts_sDNA = self.get_tool_opts(opts)
 
+        input_file = input # the builtin function input doesn't 
+                           # work in a GhPython component and input is a
+                           # method argument so there is no namespace issue
+        #input_file = tool_opts_sDNA.input 
 
-        input_file = tool_opts_sDNA.input
         
 
         #if (not isinstance(input_file, basestring)) or not isfile(input_file): 
@@ -1150,8 +1169,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
          
 
 
-        output_file = tool_opts_sDNA.output
-        if output_file == '':
+        output_file = output # tool_opts_sDNA.output
+        if not output_file:
             if self.tool_name == 'sDNAPrepare':
                 output_file = options.prepped_fmt.format(name = os.path.splitext(input_file)[0])
             else:
@@ -1173,8 +1192,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                             OUTPUT_FILE_DELETER = maybe_delete
                                             )
 
-        input_args = tool_opts_sDNA._asdict()
-        input_args.update(input = input_file, output = output_file)
+        tool_opts = tool_opts_sDNA._asdict()
+        tool_opts.update(input = input_file, output = output_file)
 
         f_name = output_file # File name to be outputted
 
@@ -1188,12 +1207,13 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     ,'reglambda'
                     )
 
-        for key, val in input_args.items():
+        for key, val in tool_opts.items():
             if  key in LIST_ARGS and isinstance(val, list) and len(val) >= 2:
-                input_args[key] = ','.join(str(element) for element in val)
-                self.logger.info('Converted list to str: %s' % input_args[key])
+                tool_opts[key] = ','.join(str(element) for element in val)
+                self.logger.info('Converted list to str: %s' % tool_opts[key])
 
-        advanced = input_args.get('advanced', None)
+        if advanced is None:
+            advanced = tool_opts.get('advanced', None)
         if metas.make_advanced and not advanced:
             user_inputs = self.component.params_adder.user_inputs
             # We need this reference because some args this tool doesn't 
@@ -1210,12 +1230,20 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                     key not in self.built_in_options(opts)
                                    )
                                )
-            input_args['advanced'] = advanced
+            tool_opts['advanced'] = advanced
             self.logger.info('Advanced command string == %s' % advanced)
+            sDNA = sDNA_key(opts)
+            all_sDNA_tool_opts = get_tool_opts(opts
+                                              ,nick_name = self.nick_name
+                                              ,tool_name = self.tool_name
+                                              ,sDNA = None
+                                              ,val = None
+                                              )
+            all_sDNA_tool_opts[sDNA] = tool_opts._replace(advanced = advanced)
         else:
             self.logger.debug('Advanced command string == %s' % advanced)
 
-        syntax = get_syntax(input_args)
+        syntax = get_syntax(tool_opts)
 
         command = (options.python
                   +' -u ' 

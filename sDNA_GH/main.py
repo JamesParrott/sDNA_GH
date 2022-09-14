@@ -464,20 +464,21 @@ output.debug('message == %s ' % module_opts['options'].message)
 #
 def override_all_opts(local_opts #  mutated
                      ,overrides
-                     ,args_dict
+                     ,params
                      ,local_metas = DEFAULT_LOCAL_METAS
                      ,external_local_metas = EMPTY_NT
+                     ,not_shared = ()
                      ):
-    #type(dict, list, dict, namedtuple, namedtuple) -> dict, namedtuple
+    #type(dict, list, dict, namedtuple, namedtuple, tuple) -> dict, namedtuple
     """    
     The options override function for sDNA_GH.  
 
-    1) args_dict is a flat dict, e.g. from Input Params on the component.
+    1) params is a flat dict, e.g. from Input Params on the component.
 
     2) Local_opts needs to be, and external_opts may be, a string keyed
        nested dict of namedtuples   
     
-    3) Only primary metas (config.toml files) in args_dict are loaded.  
+    3) Only primary metas (config.toml files) in params are loaded.  
 
     4) The nested dict from config.toml will be a nested dict of dicts and
        possibly other general data fields.
@@ -491,23 +492,25 @@ def override_all_opts(local_opts #  mutated
 
     metas = local_opts['metas']
 
-    args_dict = OrderedDict((key, value) 
-                            for key, value in args_dict.items() 
-                            if value is not None
-                           )
+    params = params.copy()# OrderedDict((key, value) 
+    local_only = OrderedDict()
+
+    for key, value in params.items() :
+        if value is None or key in not_shared:
+            local_only[key] = params.pop(key)
 
 
 
 
     project_file_opts = {}
-    if (args_dict and 
-        'config' in args_dict and 
-        isinstance(args_dict['config'], basestring)):
+    if (params and 
+        'config' in params and 
+        isinstance(params['config'], basestring)):
         #
-        project_file_opts = options_manager.dict_from_toml_file(args_dict['config'])
+        project_file_opts = options_manager.dict_from_toml_file(params['config'])
     else:
-        msg = 'No config specified in args_dict'
-        output.debug(msg + ' == %s' % args_dict.keys())
+        msg = 'No config specified in params'
+        output.debug(msg + ' == %s' % params.keys())
 
 
     ext_local_metas_dict = external_local_metas._asdict()
@@ -523,7 +526,7 @@ def override_all_opts(local_opts #  mutated
                                    if 'local_metas' in override_
                                   ]
     local_metas_overrides_list += [project_file_opts.get('local_metas',{})
-                                  ,args_dict
+                                  ,params
                                   ]
 
     local_metas = options_manager.override_namedtuple(local_metas
@@ -537,7 +540,7 @@ def override_all_opts(local_opts #  mutated
 
     output.debug('overrides == %s' % (overrides,))
 
-    overrides += [project_file_opts, args_dict]
+    overrides += [project_file_opts, params]
 
     output.debug('overrides == %s' 
                 % [override_.keys() for override_ in overrides]
@@ -588,6 +591,8 @@ def override_all_opts(local_opts #  mutated
         output.debug('override.keys() == %s' % override.keys())
         output.debug('local_opts.keys() == %s' % local_opts.keys())
 
+    
+
 
     #output.debug('local_opts (opts) == %s' % local_opts)
 
@@ -606,7 +611,7 @@ if os.path.isfile(DEFAULT_METAS.config):
     module_opts, setup_local_metas = override_all_opts(
                                                  local_opts = module_opts
                                                 ,overrides = [installation_opts]
-                                                ,args_dict = {}  
+                                                ,params = {}  
                                                 )
     output.debug('module_opts == %s' % module_opts)
 
@@ -741,6 +746,7 @@ def cache_sDNA_tool(compnt # instead of self
     sDNA = tools.sDNA_key(compnt.opts)
     compnt.do_not_remove += sDNA_tool.default_named_tuples[sDNA]._fields 
     compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
+    compnt.not_shared.update(sDNA_tool.not_shared)
 
             
 
@@ -764,10 +770,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                       # config.toml, or passed as a
                                       # Grasshopper parameter between
                                       # components.
-    tools_default_opts = {}
-    #sDNA_GH_path = sDNA_GH_path
-    #sDNA_GH_package = sDNA_GH_package
-    do_not_remove = do_not_remove
     nick_name = options_manager.error_raising_sentinel_factory('No name yet'
                                                               ,'nick_name should'
                                                               +'be set by '
@@ -943,7 +945,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         self.logger.debug('Calling sDNA_GH_Components parent initialiser')
         super(sDNA_GH_Component, self).__init__()
         self.ghdoc = ghdoc
-        # self.update_sDNA() moved to cache_sDNA_tool
+        self.tools_default_opts = {}
+        self.not_shared = set()
+        #sDNA_GH_path = sDNA_GH_path
+        #sDNA_GH_package = sDNA_GH_package
+        self.do_not_remove = do_not_remove
 
 
 
@@ -1025,9 +1031,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         self.opts, self.local_metas = override_all_opts(
                                  local_opts = self.opts # mutated
                                 ,overrides = [self.tools_default_opts, external_opts]
-                                ,args_dict = kwargs
+                                ,params = kwargs
                                 ,local_metas = self.local_metas 
                                 ,external_local_metas = external_local_metas
+                                ,not_shared = self.not_shared
                                 )
         #######################################################################
         kwargs['opts'] = self.opts
@@ -1193,24 +1200,27 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
             ret_vals_dict['OK'] = ret_vals_dict.get('retcode', 0) == 0
             
-            all_tool_opts = {}
-            for tool in self.tools:
-                if hasattr(tool, 'get_tool_opts'):
-                    tool_opts = tool.get_tool_opts(self.opts)
-                    tool_opts_dict = tool_opts._asdict()
-                    all_tool_opts.update(tool_opts_dict)
+
 
 
         else:
             self.logger.debug('go == %s ' % go)
             ret_vals_dict = {}
             ret_vals_dict['OK'] = False
-            all_tool_opts = {}
         ret_vals_dict['opts'] = [self.opts.copy()] # could become external_opts
                                                    # in another component
         ret_vals_dict['l_metas'] = self.local_metas #immutable
 
         self.logger.debug('Returning from self.script. opts.keys() == %s ' % self.opts.keys() )
+
+        all_tool_opts = {}
+        for tool in self.tools:
+            if hasattr(tool, 'get_tool_opts'):
+                tool_opts = tool.get_tool_opts(self.opts)
+                tool_opts_dict = tool_opts._asdict()
+                all_tool_opts.update(tool_opts_dict)
+
+
         locals_ = locals().copy()
         ret_args = self.component_Outputs( 
                               [  ret_vals_dict
