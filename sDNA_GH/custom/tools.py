@@ -926,7 +926,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 sDNA in self.default_named_tuples and
                 self.get_tool_opts(opts, val = None) is not None and
                 sDNA in self.input_specs and
-                (set(funcs.first_of_each(self.param_info_list))
+                (set(funcs.first_of_each(self.param_infos))
                        .issuperset(funcs.first_of_each(self.input_specs[sDNA]))
                 )
                )
