@@ -152,8 +152,16 @@ def list_of_param_infos(param_names
         retvals.append(param_info)
     return retvals
 
+# def inst_of_all_in(module, parent = Grasshopper.Kernel.Parameters.IGH_TypeHint):
+#     #type(str, Module) ->  list
+#     return [getattr(module, cls)() 
+#             for cls in dir(module) 
+#             if issubclass(getattr(module, cls), parent)
+#            ]
 
+# from System.Collections.Generic import List
 
+# TypeHintList = List[Grasshopper.Kernel.Parameters.IGH_TypeHint]
 
 class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogger):
 
@@ -217,13 +225,34 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                             ,Description = 'File path of the shape file.'
                             ))                           
                    ,('Geom', add_params.ParamInfo(
-                             param_Class = Param_Guid
-                            ,Description = ('A list of geometric objects, '
-                                           +'that must all be polylines for '
-                                           +'sDNA tools, read_Shp and write_Shp'
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('A list of geometric objects. '
+                                           +'Requires Guids of Rhino objects '
+                                           +'or native/embedded Grasshopper '
+                                           +'geometry. To use Rhino objects '
+                                           +'referenced from '
+                                           +'Grasshopper parameter objects '
+                                           +'(instead of '
+                                           +'their Grasshopper versions which '
+                                           +'are often obscured unless the '
+                                           +'Rhino shapes are set to Hidden) '
+                                           +'run the output of the '
+                                           +'Geometry (Geo) or Curve (Crv) '
+                                           +'through a Guid (ID) parameter '
+                                           +'object first. '
+                                           +'Note: For sDNA tools all the '
+                                           +'geometric objects must all be '
+                                           +'polylines. For write_Shp all the '
+                                           +'objects must be of the type in '
+                                           +'shp_type (default: %(shp_type)s).'
                                            )
-                            ,TypeHint = Grasshopper.Kernel.Parameters.Hints.GH_GuidHint
-                            ,Access = 'list'
+                            # ,Hints = TypeHintList(
+                            #  (Grasshopper.Kernel.Parameters.Hints.GH_GuidHint()
+                            #  ,GhPython.Component.GhDocGuidHint()
+                            #  ))
+                            # ,ShowHints = True
+                            #,TypeHint = Grasshopper.Kernel.Parameters.Hints.GH_GuidHint()
+                            #,Access = 'tree'
                             ))  
                    ,('Data', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
@@ -2727,7 +2756,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
               isinstance(x_min, Number) and
               abs(x_max - x_min) < options.tol):
             #
-            get_colour = lambda x : tuple(options.rgb_mid)
+            default_colour = rs.CreateColor(options.rgb_mid)
+            get_colour = lambda x : default_colour
         elif not data_cruncher.max_and_min_are_valid(x_max, x_min):
             msg = ('Cannot create colours for data without a valid '
                   +'max: %s and min: %s to refer to' % (x_max, x_min)
@@ -2938,7 +2968,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
         gdm = GH_objs_to_recolour
         leg_cols = list(legend_tags.values())
         leg_tags = list(legend_tags.keys())  #both are used by smart component
-
+        self.logger.debug('gdm == %s' % gdm)
 
         sc.doc =  ghdoc 
         sc.doc.Views.Redraw()

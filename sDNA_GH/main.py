@@ -1172,27 +1172,15 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             if isinstance(gdm, (Iterable, gdm_from_GH_Datatree.GeomDataMapping)):
                 #
                 self.logger.info('Converting gdms to Data Tree and Data Tree')
-                NewData ,NewGeometry = (gdm_from_GH_Datatree
+                NewData, NewGeometry = (gdm_from_GH_Datatree
                                             .Data_Tree_and_Data_Tree_from_dicts(gdm)
                                        )  
-            # if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
-            #     self.logger.debug('Converting gdm to Data and Geometry')
-            #     (NewData
-            #     ,NewGeometry
-            #     ) = gdm_from_GH_Datatree.DataTree_and_list_from_dict(gdm)   
-            # elif (isinstance(gdm, Iterable) and not isinstance(gdm, basestring) and
-            #       all(isinstance(item, dict) for item in gdm)):
-            #     #
-            #     self.logger.info('Converting gdms to Data Tree and Data Tree')
-            #     (NewData
-            #     ,NewGeometry
-            #     ) = gdm_from_GH_Datatree.Data_Tree_and_Data_Tree_from_dicts(gdm)
+
             else:
                 logger.info('Cannot unpack Geom Data Mapping of type: %s' 
                            %type(gdm)
                            )
                 NewData, NewGeometry = None, None
-
             ret_vals_dict['Data'] = NewData
             ret_vals_dict['Geom'] = NewGeometry
             if 'f_name' in ret_vals_dict:
@@ -1223,12 +1211,12 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         locals_ = locals().copy()
         ret_args = self.component_Outputs( 
-                              [  ret_vals_dict
-                              ,  self.opts['metas']
-                              ,  self.opts['options']
-                              ,  self.local_metas
-                              ,  all_tool_opts
-                              ,  locals_
+                              [ret_vals_dict
+                              ,self.opts['metas']
+                              ,self.opts['options']
+                              ,self.local_metas
+                              ,all_tool_opts
+                              ,locals_
                               ]
                              )
         return ret_args

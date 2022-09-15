@@ -278,8 +278,9 @@ def Data_Tree_and_Data_Tree_from_dicts(dicts):
             for dict_ in dicts
            ]
     Geometry = [list(dict_.keys()) for dict_ in dicts]
+    ret = shallowest_data_tree(Data)
 
-    return shallowest_data_tree(Data), shallowest_data_tree(Geometry)
+    return ret, shallowest_data_tree(Geometry)
         
 
 
