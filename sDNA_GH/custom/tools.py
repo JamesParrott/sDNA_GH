@@ -122,7 +122,6 @@ ClassLogger = logging_wrapper.class_logger_factory(logger = logger
                                                   ,module_name = __name__
                                                   )
 
-
 def list_of_param_infos(param_names
                        ,param_infos
                        ,descriptions = None

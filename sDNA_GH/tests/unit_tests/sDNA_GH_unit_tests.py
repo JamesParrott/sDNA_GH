@@ -274,7 +274,7 @@ class TestCreateGeomDataMapping(unittest.TestCase):
                       ]
    
     def conv_opts(self, x):
-        return gdm_from_GH_Datatree.gdm_from_DataTree_and_list(x[0], x[1])
+        return gdm_from_GH_Datatree.GeomDataMapping.from_DataTree_and_list(x[0], x[1])
     def get_expected_and_actual(self, f, l):
         return [x[1] for x in l], [f(x[0]) for x in l]
 
