@@ -450,7 +450,7 @@ def write_iterable_to_shp(my_iterable
 
 
     
-    with shp.Writer(os.path.normpath( shapefile_path )
+    with shp.Writer(os.path.normpath(shapefile_path)
                    ,getattr(shp, shape_code)
                    ,encoding = options.encoding
                    ) as w:
@@ -461,7 +461,7 @@ def write_iterable_to_shp(my_iterable
 
         logger.debug(str(fields))
 
-        add_geometric_object = getattr( w,  pyshp_writer_method[shape_code] )
+        add_geometric_object = getattr(w,  pyshp_writer_method[shape_code])
         # e.g. add_geometric_object = w.linez
 
         for shape, attribute_table in attribute_tables.items():
@@ -474,10 +474,10 @@ def write_iterable_to_shp(my_iterable
             list_of_shapes = shape_mangler(shape)
             if list_of_shapes:
 
-                add_geometric_object( list_of_shapes ) 
+                add_geometric_object(list_of_shapes) 
                 #e.g. w.linez(list_of_shapes)  
 
-                w.record( **attribute_table )    
+                w.record(**attribute_table)    
 
 
 

@@ -42,6 +42,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 from ...basic.ghdoc import ghdoc
+from . import rhino_gh_geom
 
 try:
     basestring #type: ignore
@@ -87,25 +88,29 @@ def get_obj_val(obj, key):
     # type(str, str) -> str
     return rs.GetUserText(obj, key)
 
-
 def OrderedDict_from_User_Text_factory(keys_getter = get_obj_keys
                                       ,val_getter = get_obj_val
                                       ):
     # type(function, function) -> function
-    def g(z):
-        if hasattr(Rhino.Geometry, type(z).__name__):
-            z_geom = z
-        else:
-            z = System.Guid(str(z))
-            z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
-            if not z_geom:
-                z_geom = ghdoc.Objects.FindGeometry(z)
+    def g(obj):
+        # if hasattr(Rhino.Geometry, type(z).__name__):
+        #     z_geom = z
+        # else:
+        #     z = System.Guid(str(z))
+        #     z_geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(z)
+        #     if not z_geom:
+        #         z_geom = ghdoc.Objects.FindGeometry(z)
+        
+        #TODO: Delete. Only Called in Read_Geom, on objects from rs.ObjectsByType
+        geom, __ = rhino_gh_geom.get_geom_and_source_else_leave(obj)
+
         # if hasattr(z_geom,'TryGetPolyline'):
         #     z_geom = z_geom.TryGetPolyline()[1]
-        name_val_map = z_geom.GetUserStrings() #.Net str only dict
+        name_val_map = geom.GetUserStrings() #.Net str only dict
         # assert isinstance(name_val_map, System.Collections.Specialized.NameValueCollection)
-        return OrderedDict( [  (key, name_val_map.Get(key)) 
-                                    for key in name_val_map.AllKeys  ] )
+        return OrderedDict((key, name_val_map.Get(key)) 
+                           for key in name_val_map.AllKeys
+                          )
     return g
 
 

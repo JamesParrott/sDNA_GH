@@ -34,7 +34,8 @@ __version__ = '0.13'
 
 import os
 import logging
-from collections import OrderedDict
+import itertools
+from collections import namedtuple
 import System  #.Net from IronPython
 
 import Rhino
@@ -42,6 +43,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 
 from ...basic.ghdoc import ghdoc
+from . import funcs
 
 try:
     basestring #type: ignore
@@ -110,23 +112,90 @@ Rhino_obj_checkers_for_shape = dict(NULL = [None]
                                    # see MULTIPOINT
                                    )  
 
+
+SOURCES = namedtuple('SOURCES', 'IS_ALREADY_GEOM STRING')(0,1)
+
+
+
+def get_geom_and_source_else_leave(obj):
+    #type(type[any])-> type[any], type[any]
+    """ Leaves Geometric objects and non-guid strings alone.
+        Otherwise searches Rhino doc and ghdoc with obj as guid.
+    """
+    if hasattr(Rhino.Geometry, type(obj).__name__):
+        return obj, SOURCES.IS_ALREADY_GEOM
+        # So that we can call it on curves and it will leave them alone
+
+    if isinstance(obj, basestring):
+        # To leave legend tags, group names and layer names alone
+        try:
+            obj = System.Guid(str(obj))
+        except: # (TypeError, ValueError):
+            return obj, SOURCES.STRING
+
+    for source in (Rhino.RhinoDoc.ActiveDoc, ghdoc):
+        geom = source.Objects.FindGeometry(obj)
+        if geom is not None:
+            return geom, source
+    else:
+        msg = 'Type: %s, val: %s, not supported by get_geom_and_source_else_leave' 
+        msg %= (type(obj), obj)
+        logger.error(msg)
+        raise NotImplementedError
+
+
+
+# def try_to_get_Rhino_GH_geom_obj_else_leave(obj):
+#     #type(type[any])-> type[any]
+#     if hasattr(Rhino.Geometry, type(obj).__name__):
+#         return obj
+#     if isinstance(obj, basestring) and not funcs.is_uuid(obj):
+#         # To leave legend tags, group names and layer names alone
+#         return obj
+#     obj = System.Guid(str(obj))
+#     geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
+#     if geom is not None:
+#         return geom
+#     return ghdoc.Objects.FindGeometry(obj)
+
+
+# One call in Read_Geom, 3 calls in Write_Shp
 def is_shape(obj, shp_type):   #e.g. polyline
     # type(type[any], str) -> bool
 
-    if hasattr(Rhino.Geometry, type(obj).__name__):
-        geom = obj
-    else:
-        obj = System.Guid(str(obj))
-        geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
-        if not geom:
-            geom = ghdoc.Objects.FindGeometry(obj)
+    # if hasattr(Rhino.Geometry, type(obj).__name__):
+    #     geom = obj
+    # else:
+    #     obj = System.Guid(str(obj))
+    #     geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
+    #     if not geom:
+    #         geom = ghdoc.Objects.FindGeometry(obj)
+    geom, source = get_geom_and_source_else_leave(obj)
+
+    logger.log(level = 1, msg = 'type(obj): %s, obj: %s' % (type(obj), obj)) 
+    logger.log(level = 1, msg = 'type(geom): %s, geom: %s' % (type(geom), geom))
+    logger.log(level = 1, msg = 'source: %s' % source)
+
+    #rs.IsPolyLine etc. need to be called on guids, not geom objects or strings
+    if hasattr(Rhino.Geometry, type(obj).__name__): 
+        msg = 'Call is_shape on Rhino or Grasshopper Guid, '
+        msg += 'not object Geometry: %s, obj: %s ' % (type(obj), obj)
+        raise NotImplementedError(msg) 
+    
+    if not funcs.is_uuid(obj):
+        return False
+        #We might have legend tags, group names or layer names in the gdm
 
     allowers = Rhino_obj_checkers_for_shape[shp_type]
     if isinstance(allowers, basestring):
         allowers = [allowers] 
-    logger.log(level = 1, msg = 'type(obj) == %s, obj == %s' % (type(obj), obj))
-    logger.log(level = 1, msg = 'type(geom) == %s, geom == %s' % (type(geom), geom))
-    return any( getattr(rs, allower )( geom ) for allower in allowers)
+    # logging.DEBUG == 10
+    # This module logger, the package logger, and one of its handlers need to 
+    # be set to level 1 to see these log messages
+    sc.doc = source
+    retval = any( getattr(rs, allower )( obj ) for allower in allowers)
+    sc.doc = ghdoc
+    return retval
 
 Rhino_obj_code_for_shape = dict(NULL = None
                                ,POINT = 1         

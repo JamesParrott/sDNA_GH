@@ -226,7 +226,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                    ,('Geom', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('A list of geometric objects. '
-                                           +'Requires Guids of Rhino objects '
+                                           +'Requires GUIDs of Rhino objects '
                                            +'or native/embedded Grasshopper '
                                            +'geometry. To use Rhino objects '
                                            +'referenced from '
@@ -1321,6 +1321,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             gdm = None
             # To overwrite any inputted gdm (already used) in vals_dict
             # to make sure a subsequent ShapefileReader adds new Geometry
+            #
+            # TODO add in names of other tools that change the network
 
 
         locs = locals().copy()
@@ -1343,6 +1345,10 @@ def get_objs_and_OrderedDicts(only_selected = False
                              ):
     #type(bool, tuple, str, bool, function, function, function, function, 
     #                             function, function, function) -> function
+    """ Generator for creating GDMs of Rhino geometry.  
+    
+        Use with sc.doc = Rhino.RhinoDoc.ActiveDoc 
+    """
     if layers and isinstance(layers, basestring):
         layers = (layers,) if layers in doc_layers() else None
 
@@ -1351,11 +1357,12 @@ def get_objs_and_OrderedDicts(only_selected = False
     #
 
     objs = all_objs_getter(shp_type) # Note!:  may include non-polylines, 
-                                        # arcs etc. for geometry_type = 4
-                                        # e.g. rs.ObjectsByType(geometry_type = 4
-                                        #                      ,select = False
-                                        #                      ,state = 0
-                                        #                      )
+                                     # arcs etc. for geometry_type = 4
+                                     # e.g. rs.ObjectsByType(geometry_type = 4
+                                     #                      ,select = False
+                                     #                      ,state = 0
+                                     #                      )
+
     for obj in objs:
         if not is_shape(obj, shp_type):                                                 
             continue 
@@ -1632,7 +1639,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         options = opts['options']
         self.debug('Creating Class Logger.  ')
 
-
+        self.logger.debug('gdm == %s' % gdm)
         shp_type = options.shp_type            
 
 
@@ -1646,19 +1653,25 @@ class ShapefileWriter(sDNA_GH_Tool):
 
         def get_list_of_points_from_obj(obj):
             #type: (type[any]) -> list
-            if hasattr(Rhino.Geometry, type(obj).__name__):
-                geom = obj
-            else:
-                obj = System.Guid(str(obj))
-                geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
-                if not geom:
-                    geom = ghdoc.Objects.FindGeometry(obj)
 
-            if not rhino_gh_geom.is_shape(geom, shp_type):
+            if not rhino_gh_geom.is_shape(obj, shp_type):
                 msg = 'Shape: %s cannot be converted to shp_type: %s' 
-                msg %= (geom, shp_type)
+                msg %= (obj, shp_type)
                 self.logger.error(msg)
                 raise TypeError(msg)
+
+            geom, __ = rhino_gh_geom.get_geom_and_source_else_leave(obj)
+            #TODO: Delete.  Already converted in wrapper.
+
+            # if hasattr(Rhino.Geometry, type(obj).__name__):
+            #     geom = obj
+            # else:
+            #     obj = System.Guid(str(obj))
+            #     geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(obj)
+            #     if not geom:
+            #         geom = ghdoc.Objects.FindGeometry(obj)
+
+
 
             points = rhino_gh_geom.get_points_from_obj(geom, shp_type)
 
@@ -2867,7 +2880,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 try:
                     rs.ObjectColor(obj, new_colour)
                     recoloured_Rhino_objs.append(obj)
-                except ValueError:
+                    self.logger.debug('Recoloured: %s' % obj)
+                except (ValueError, TypeError):
                     self.logger.debug('Error recolouring obj: %s to colour %s: ' 
                                      % (obj, new_colour)
                                      )
@@ -2894,22 +2908,21 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
 
-        if (bbox or not isinstance(options.leg_extent
-                                  ,(options_manager.Sentinel, type(None))
-                                  )
-                 or not isinstance(options.bbox
-                                  ,(options_manager.Sentinel, type(None))
-                                  )):
+        if (bbox or
+           (options.leg_extent is not None and 
+            not isinstance(options_manager.Sentinel)) or
+           (options.bbox is not None and 
+            not isinstance(options.bbox, options_manager.Sentinel))):
             #
-            if (not isinstance(options.leg_extent, options_manager.Sentinel) 
-                and options.leg_extent):
+            if (options.leg_extent is not None and 
+                not isinstance(options.leg_extent, options_manager.Sentinel)):
                 #
                 [legend_xmin
                 ,legend_ymin
                 ,legend_xmax
                 ,legend_ymax] = options.leg_extent
                 self.logger.debug('legend extent == %s ' % options.leg_extent)
-            else: 
+            else:
                 if bbox:
                     self.logger.debug('Using bbox from args')
                     [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax] = bbox

@@ -42,9 +42,13 @@ else:
     Iterable = collections.abc.Iterable
 import warnings
 
+import Rhino
 import Grasshopper
 import rhinoscriptsyntax as rs
 from ghpythonlib import treehelpers as tree_helpers
+
+from .skel.tools.helpers import rhino_gh_geom
+
 
 try:
     basestring #type: ignore
@@ -64,6 +68,16 @@ def remove_outer_length_one_lists(obj):
     while len(obj)==1 and isinstance(obj[0], list):
         obj=obj[0]
     return obj
+
+
+def str_Rhino_objs(Geom):
+    for obj in Geom:
+        geom_obj, source = rhino_gh_geom.get_geom_and_source_else_leave(obj)
+        if source is Rhino.RhinoDoc.ActiveDoc:
+            yield str(obj)
+        else:
+            yield obj
+
 
 
 class GeomDataMapping(OrderedDict):
@@ -139,9 +153,9 @@ class GeomDataMapping(OrderedDict):
                             )
             key_lists = Data[0]
             val_lists = Data[1]
-            Data = [  OrderedDict(zip(key_list, val_list)) for key_list, val_list in 
-                                                itertools.izip(key_lists, val_lists)  
-                ]
+            Data = [OrderedDict(zip(key_list, val_list)) 
+                    for key_list, val_list in itertools.izip(key_lists, val_lists)  
+                   ]
 
             # Else treat as a list of values
             # with no keys, the
@@ -153,20 +167,43 @@ class GeomDataMapping(OrderedDict):
 
 
         if len(Geom) < len(Data):
-
-            component_inputs_gen_exp =  itertools.chain( itertools.izip(Geom
-                                                                    ,Data[:len(Geom)]
-                                                                    )
-                                                    ,[ (tuple(), Data[len(Geom):]) ]
-                                                    )
-            logger.warning('More Data than Geom.  Assigning list of surplus Data items to the empty tuple key. ')
+            logger.warning('Less Geom: %s than Data: %s. ' 
+                          %(len(Geom), len(Data))
+                          +'Assigning list of surplus Data '
+                          +'items to the empty tuple key. '
+                          )
+            fill_value = tuple()
         else:
             if len(Geom) > len(Data):
-                logger.debug('repeating OrderedDict() after Data... ')
-                Data = itertools.chain( Data,  itertools.repeat(OrderedDict()) )
-            else:
-                logger.debug( "Data and Geom equal length.  " )
-            component_inputs_gen_exp =  itertools.izip(Geom, Data)
+                logger.info('More Geom: %s than Data: %s. ' 
+                           %(len(Geom), len(Data))
+                           +'Setting values for Geom with '
+                           +'no Data to OrderedDict()'
+                           )
+
+            fill_value = OrderedDict()
+
+        component_inputs_gen_exp = itertools.zip_longest(str_Rhino_objs(Geom)
+                                                        ,Data
+                                                        ,fillvalue = fill_value
+                                                        )
+        # if len(Geom) < len(Data):
+
+        #     component_inputs_gen_exp =  itertools.chain( 
+        #                                          itertools.izip(Geom
+        #                                                        ,Data[:len(Geom)]
+        #                                                        )
+        #                                         ,[(tuple(), Data[len(Geom):])]
+        #                                         )
+        #     logger.warning('More Data than Geom.  Assigning list of '
+        #                   +'surplus Data items to the empty tuple key. ')
+        # else:
+        #     if len(Geom) > len(Data):
+        #         logger.debug('repeating OrderedDict() after Data... ')
+        #         Data = itertools.chain( Data,  itertools.repeat(OrderedDict()) )
+        #     else:
+        #         logger.debug( "Data and Geom equal length.  " )
+        #     component_inputs_gen_exp =  itertools.izip(Geom, Data)
 
 
 
