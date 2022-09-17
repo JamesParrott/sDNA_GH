@@ -42,24 +42,22 @@ import locale
 from collections import OrderedDict
 from datetime import date
 import collections
+
 if hasattr(collections, 'Iterable'):
-    Iterable = collections.Iterable 
-    Callable = collections.Callable
+    Iterable, Callable = collections.Iterable, collections.Callable
 else:
     import collections.abc
-    Iterable = collections.abc.Iterable
-    Callable = collections.abc.Callable
-
-from ..third_party.PyShp import shapefile as shp
-
-from .skel.tools.helpers import funcs
+    Iterable, Callable = collections.abc.Iterable, collections.abc.Callable
 
 if hasattr(abc, 'ABC'):
     ABC = abc.ABC
 else:
     class ABC(object):
         __metaclass__ = abc.ABCMeta
-abstractmethod = abc.abstractmethod
+
+from ..third_party.PyShp import shapefile as shp
+
+from .skel.tools.helpers import funcs
 
 
 try:
@@ -553,7 +551,7 @@ def delete_shp_files_if_req(f_name
             delete_file(path, logger)
 
 
-class ShapeFilesDeleter(ABC):
+class ShapeFilesDeleter(ABC):  # ABC for register
     
     file_name = None
 
@@ -609,7 +607,7 @@ class SizedIterator(object):
 
     def __init__(self, iterator, length):
         self.iterator = iterator
-        #self.length = length
+        self.length = length
     
     def next(self):
         return next(self.iterator)
@@ -621,7 +619,18 @@ class SizedIterator(object):
         return self.length
 
 
-class TmpFileDeletingReaderIteratorABC(SizedIterator):
+class TmpFileDeletingIterator(SizedIterator):
+    """ Iterator wrapper for a file object that calls 
+        self.close and thence self.maybe_delete_file 
+        when the iterator is exhausted.
+
+        This is fine just to safely delete a temporary 
+        shape file.  In general there are many issues 
+        with this pattern, e.g.
+        if the user breaks out of the for loop early, 
+        clean up will not happen automatically for them.  
+        https://peps.python.org/pep-0533/ 
+    """
     def __init__(self, reader, opts = None):
         # type(shp.Reader, dict, dict) -> None
         if opts is None:
@@ -636,7 +645,7 @@ class TmpFileDeletingReaderIteratorABC(SizedIterator):
         self.reader = reader
         self.file_path = reader.shp.name
 
-        super(TmpFileDeletingReaderIteratorABC, self).__init__(
+        super(TmpFileDeletingIterator, self).__init__(
                                                    iterator = self.generator()
                                                   ,length = len(reader)
                                                   )
@@ -693,7 +702,7 @@ def is_single_shape(shapeRecord):
         return len(shape.parts) <= 1
 
 
-class TmpFileDeletingRecordsIterator(TmpFileDeletingReaderIteratorABC):
+class TmpFileDeletingRecordsIterator(TmpFileDeletingIterator):
     """ If zipping another iterator that is shorter or the same length
         with this one (e.g. that yields 
         existing shapes), to ensure the temporary file deleter is 
@@ -744,7 +753,7 @@ def unpack_multi_shape_entry_repeat_rec_as_dict(multi_shape_record):
     return ((points[start:end], rec) for start, end in itertools.pairwise(parts))
 
 
-class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingReaderIteratorABC):
+class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
     def __init__(self, reader, extra_manglers = None, opts = None):
         #type(shp.Reader, dict, dict)
         if opts is None:

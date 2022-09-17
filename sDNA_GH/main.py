@@ -193,6 +193,7 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
     category_abbrevs = {'Analysis geometry' : 'Geom'}
     make_new_comps = True
     move_user_objects = False
+    make_advanced = False
 
 
 #######################################################################################
@@ -437,7 +438,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
 
 class HardcodedLocalMetas(object):
-    sync = True    
+    sync = False    
     read_only = False
     no_state = True
 
@@ -467,7 +468,7 @@ def override_all_opts(local_opts #  mutated
                      ,params
                      ,local_metas = DEFAULT_LOCAL_METAS
                      ,external_local_metas = EMPTY_NT
-                     ,not_shared = ()
+                     ,not_shared = ('advanced', 'input', 'output')
                      ):
     #type(dict, list, dict, namedtuple, namedtuple, tuple) -> dict, namedtuple
     """    
@@ -498,6 +499,12 @@ def override_all_opts(local_opts #  mutated
     for key, value in params.items() :
         if value is None or key in not_shared:
             local_only[key] = params.pop(key)
+            #
+            # advanced is handled in the sDNA tools, as it can be 
+            # automatically built from user added input Params.
+            #
+            # input and output will cause clashes between sDNA tools
+            # so have been made function args not options.
 
 
 
@@ -574,7 +581,7 @@ def override_all_opts(local_opts #  mutated
             local_opts = module_opts.copy()
 
 
-    metas_overrides = map(lambda x : x.pop('metas', x), overrides)
+    metas_overrides = [override.pop('metas', override) for override in overrides]
 
     metas = local_opts['metas'] = options_manager.override_namedtuple(
                                                             local_opts['metas']
@@ -1175,7 +1182,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 NewData, NewGeometry = (gdm_from_GH_Datatree
                                             .Data_Tree_and_Data_Tree_from_dicts(gdm)
                                        )  
-
+                if isinstance(gdm, (gdm_from_GH_Datatree.GeomDataMapping)):
+                    ret_vals_dict['gdm'] = [gdm]
             else:
                 logger.info('Cannot unpack Geom Data Mapping of type: %s' 
                            %type(gdm)
@@ -1208,6 +1216,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 tool_opts_dict = tool_opts._asdict()
                 all_tool_opts.update(tool_opts_dict)
 
+        self.logger.debug('all_tool_opts: %s '  % all_tool_opts)
 
         locals_ = locals().copy()
         ret_args = self.component_Outputs( 

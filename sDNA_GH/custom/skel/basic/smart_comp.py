@@ -142,15 +142,15 @@ def get_val(key, sources, case_sensitive = False, support_whitespace = False):
     for source in sources:
         #logger.debug('Fetching : '+ str(key))
         if isinstance(source, dict) and key in source:
-            #logger.debug('Fetching : '+ str(source[key]))
+            logger.debug('Fetching %s : %s ' % (key, source[key]))
 
             return source[key]
         elif hasattr(source, key):
-            #logger.debug('Fetching : '+ str(getattr(source, key)))
+            logger.debug('Fetching %s : %s ' % (key, getattr(source, key)))
 
             return getattr(source, key)
-    #logger.debug('No variable or field: ' + key + ' found. ')
     if case_sensitive or key.islower():
+        logger.debug('No variable or field: ' + key + ' found. ')
         return 'No variable or field: %s found' % key
     else:
         key = key.lower()
@@ -197,7 +197,8 @@ def custom_retvals(retval_names
 
 def component_Outputs(self, sources):
     names = [param.NickName for param in self.Params.Output]
-    return custom_retvals([param.NickName for param in self.Params.Output] # param.NickName
+    print('names: %s' % names)
+    return custom_retvals(names
                          ,sources
                          ,return_locals = True
                          ,frames_back = 2

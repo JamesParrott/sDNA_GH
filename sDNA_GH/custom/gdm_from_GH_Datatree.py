@@ -71,12 +71,18 @@ def remove_outer_length_one_lists(obj):
 
 
 def str_Rhino_objs(Geom):
+    #type(Iterable -> Iterator)
     for obj in Geom:
-        geom_obj, source = rhino_gh_geom.get_geom_and_source_else_leave(obj)
+        if isinstance(obj, basestring):
+            yield obj
+            continue
+
+        __, source = rhino_gh_geom.get_geom_and_source_else_leave(obj)
         if source is Rhino.RhinoDoc.ActiveDoc:
             yield str(obj)
-        else:
-            yield obj
+            continue
+
+        yield obj
 
 
 

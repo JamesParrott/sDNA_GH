@@ -129,7 +129,7 @@ def get_geom_and_source_else_leave(obj):
     if isinstance(obj, basestring):
         # To leave legend tags, group names and layer names alone
         try:
-            obj = System.Guid(str(obj))
+            obj = System.Guid(obj)
         except: # (TypeError, ValueError):
             return obj, SOURCES.STRING
 

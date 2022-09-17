@@ -61,6 +61,7 @@ logger.addHandler(logging.NullHandler())
 class OrderedCounter(Counter, OrderedDict):
      """Counter that remembers the order elements are first encountered.  
         https://docs.python.org/2.7/library/collections.html#collections.OrderedDict
+        https://rhettinger.wordpress.com/2011/05/26/super-considered-super/
      """
 
      def __repr__(self):

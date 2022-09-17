@@ -932,11 +932,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 # http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
-    def get_tool_opts(self, opts = None, sDNA = None, val = None):
-        if opts is None:
-            opts = self.default_tool_opts
+    def get_tool_opts(self, opts, sDNA = None, val = None):
         if sDNA is None:
-            sDNA = sDNA_key(opts) # opts needs 'metas'
+            sDNA = sDNA_key(opts) # opts requires 'metas'
         if val is None:
             val = self.default_named_tuples.get(sDNA, None)
         return get_tool_opts(opts = opts
@@ -957,7 +955,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             sDNA = sDNA_key(opts)
         return (sDNA in self.get_syntaxes and 
                 sDNA in self.default_named_tuples and
-                self.get_tool_opts(opts, val = None) is not None and
+                self.get_tool_opts(opts, sDNA, val = None) is not None and
                 sDNA in self.input_specs and
                 (set(funcs.first_of_each(self.param_infos))
                        .issuperset(funcs.first_of_each(self.input_specs[sDNA]))
@@ -1009,20 +1007,24 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                                           )
         self.default_named_tuples[sDNA] = defaults_NT
 
-        self.get_tool_opts(opts = self.default_tool_opts
-                          ,sDNA = sDNA
-                          ,val = defaults_NT
-                          )
-        # This feels weird, but minor repetition below is a lot easier than a 
-        # deep copy / clone.
+        # self.get_tool_opts(opts = self.default_tool_opts
+        #                   ,sDNA = sDNA
+        #                   ,val = defaults_NT
+        #                   )
+
 
         new_tool_opts = OrderedDict()
         # builds the tool opts structure in default_tool_opts,
         # using nested_set_default
-        self.get_tool_opts(opts = new_tool_opts # mutated
-                          ,sDNA = sDNA
-                          ,val = defaults_NT
-                          )
+        for new_opts in (self.default_tool_opts, new_tool_opts):
+            self.get_tool_opts(opts = new_opts # mutated
+                              ,sDNA = sDNA
+                              ,val = defaults_NT
+                              )
+        # This feels weird, but minor repetition is a lot easier than a 
+        # deep copy / clone.
+
+
         self.logger.debug('default_tool_opts == %s ' % self.default_tool_opts)
 
         update_opts(current_opts = new_tool_opts # mutated again
@@ -1036,8 +1038,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         opts.update(new_tool_opts)
         # get the updated opts back into opts, via .update (have to mutate
-        # as assignment will only affect the variable assigned to the local 
-        # name of this method arg)
+        # to cause an intentional lasting side effect, assignment will only 
+        # affect the local name)
 
         for varname, display_name, data_type, filter_, default, required in input_spec:  
                       
@@ -1154,7 +1156,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,advanced = None
                 ,**kwargs
                 ):
-        #type(str, dict, dict) -> int, str
+        #type(str, dict, str, str, str, dict) -> int, str
         if opts is None:
             opts = self.opts
 
@@ -1168,16 +1170,16 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         options = opts['options']
         metas = opts['metas']
 
-        tool_opts_sDNA = self.get_tool_opts(opts)
+        sDNA = sDNA_key(opts)
+
+        tool_opts_sDNA = self.get_tool_opts(opts, sDNA = sDNA)
 
         input_file = input # the builtin function input doesn't 
                            # work in a GhPython component and input is a
                            # method argument so there is no namespace issue
-        #input_file = tool_opts_sDNA.input 
 
         
 
-        #if (not isinstance(input_file, basestring)) or not isfile(input_file): 
         if (isinstance(f_name, basestring) and os.path.isfile(f_name)
             and os.path.splitext(f_name)[1] in ['.shp','.dbf','.shx']):  
             input_file = f_name
@@ -1197,7 +1199,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
          
 
 
-        output_file = output # tool_opts_sDNA.output
+        output_file = output 
         if not output_file:
             if self.tool_name == 'sDNAPrepare':
                 output_file = options.prepped_fmt.format(name = os.path.splitext(input_file)[0])
@@ -1219,11 +1221,18 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 opts['options'] = opts['options']._replace(
                                             OUTPUT_FILE_DELETER = maybe_delete
                                             )
+        else:
+            output = ''  # returned, to stop subsequent sDNA components 
+                         # using the same name and overwriting it.
 
         tool_opts = tool_opts_sDNA._asdict()
         tool_opts.update(input = input_file, output = output_file)
 
         f_name = output_file # File name to be outputted
+        input = input_file # Can be safely returned for informational
+                           # purposes as the f_name/file 
+                           # just defined will take priority in a 
+                           # subsequent second sDNA tool.
 
         LIST_ARGS = ('radius'
                     ,'radii'
@@ -1259,17 +1268,20 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                    )
                                )
             tool_opts['advanced'] = advanced
-            self.logger.info('Advanced command string == %s' % advanced)
-            sDNA = sDNA_key(opts)
-            all_sDNA_tool_opts = get_tool_opts(opts
-                                              ,nick_name = self.nick_name
-                                              ,tool_name = self.tool_name
-                                              ,sDNA = None
-                                              ,val = None
-                                              )
-            all_sDNA_tool_opts[sDNA] = tool_opts._replace(advanced = advanced)
+            self.logger.info('Built advanced config string: %s' % advanced)
+
         else:
-            self.logger.debug('Advanced command string == %s' % advanced)
+            self.logger.debug('Advanced config string: %s' % advanced)
+
+        # user needs to set sync = false to avoid sharing advanced.
+        all_sDNA_tool_opts = get_tool_opts(opts
+                                          ,nick_name = self.nick_name
+                                          ,tool_name = self.tool_name
+                                          ,sDNA = None
+                                          ,val = None
+                                          )
+        all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = advanced)
+
 
         syntax = get_syntax(tool_opts)
 
@@ -1329,7 +1341,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     
-    retvals = 'retcode', 'f_name'
+    retvals = 'retcode', 'f_name', 'input', 'output', 'advanced'
     component_outputs = ('file',) # retvals[-1])
 
 
@@ -1337,7 +1349,7 @@ def get_objs_and_OrderedDicts(only_selected = False
                              ,layers = ()
                              ,shp_type = 'POLYLINEZ'
                              ,all_objs_getter = rhino_gh_geom.get_Rhino_objs
-                             ,OrderedDict_getter = checkers.OrderedDict_from_User_Text_factory()
+                             ,OrderedDict_getter = lambda *args : OrderedDict()
                              ,is_shape = rhino_gh_geom.is_shape
                              ,is_selected = gdm_from_GH_Datatree.is_selected
                              ,obj_layer = gdm_from_GH_Datatree.obj_layer
@@ -1661,7 +1673,6 @@ class ShapefileWriter(sDNA_GH_Tool):
                 raise TypeError(msg)
 
             geom, __ = rhino_gh_geom.get_geom_and_source_else_leave(obj)
-            #TODO: Delete.  Already converted in wrapper.
 
             # if hasattr(Rhino.Geometry, type(obj).__name__):
             #     geom = obj
@@ -3200,10 +3211,10 @@ class ConfigManager(sDNA_GH_Tool):
 
 
         parsed_dict = parse_values_for_toml(opts)   
-        del parsed_dict['metas']['config'] # no nested options files
+        parsed_dict['metas'].pop('config') # no nested options files
 
         if 'sDNA' in parsed_dict['metas']:
-            del parsed_dict['metas']['sDNA'] # read only.  auto-updated.
+            parsed_dict['metas'].pop('sDNA') # read only.  auto-updated.
 
         # self.logger.debug('parsed_dict == %s' % '\n\n'.join(str(item) 
         #                                              for item in parsed_dict.items()
@@ -3225,10 +3236,10 @@ class ConfigManager(sDNA_GH_Tool):
             self.logger.warning('Saving opts to installation wide '
                                +'file: %s' % save_to
                                )
-            del parsed_dict['options']['path'] # no project-specific paths are
+            parsed_dict['options'].pop('path') # no project-specific paths are
                                                # saved to the installation wide 
                                                # config file's options
-            del parsed_dict['options']['working_folder']
+            parsed_dict['options'].pop('working_folder')
             parsed_dict['options']['message'] = 'Installation wide user options file. '
         else:
             parsed_dict['options']['message'] = 'Project specific user options file. '
