@@ -3185,7 +3185,7 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'show_all'
                        )
 
-    def __call__(self, opts):
+    def __call__(self, opts, local_metas):
         self.debug('Starting class logger')
 
         metas = opts['metas']
@@ -3211,6 +3211,7 @@ class ConfigManager(sDNA_GH_Tool):
 
 
         parsed_dict = parse_values_for_toml(opts)   
+        parsed_dict['local_metas'] = parse_values_for_toml(local_metas)   
         parsed_dict['metas'].pop('config') # no nested options files
 
         if 'sDNA' in parsed_dict['metas']:

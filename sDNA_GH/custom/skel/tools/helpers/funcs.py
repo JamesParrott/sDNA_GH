@@ -183,7 +183,22 @@ def compose(*funcs):
         raise TypeError(msg)
     return functools.reduce(lambda f, g: lambda x: f(g(x)), funcs)
 
+
 def first_of_each(seqs):
     #type(Iterable) -> Iterable
     """ Returns the first item of each tuple from an iterable of Sequences. """
     return (seq[0] for seq in seqs)
+
+
+def get_main_else_get_aliases(dict_, main, aliases, fallback_value = None, mangler = None):
+    #type(dict, Hashable, *Hashable, type[any]) -> type[any]
+    """ Returns mangler(value) in dict_ for a key's main name, if in dict_.  
+        Otherwise returns mangler(value) for any alias key in aliases in dict_.  
+        Otherwise returns fallback_value.  """
+    import itertools
+    if mangler is None:
+        mangler = lambda *args : args  # Identity function
+    for key in itertools.chain([main], aliases):
+        if key in dict_:
+            return mangler(dict_[key])
+    return fallback_value # intentionally un-mangled.

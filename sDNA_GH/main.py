@@ -65,6 +65,7 @@ from .custom import gdm_from_GH_Datatree
 from .custom.skel.basic import smart_comp
 from .custom.skel.basic.ghdoc import ghdoc #GhPython 'magic' global variable
 from .custom.skel.tools.helpers import checkers                         
+from .custom.skel.tools.helpers import funcs                         
 from .custom.skel.tools import inserter 
 from .custom.skel.tools import runner
 from .custom.skel.tools import name_mapper
@@ -569,9 +570,9 @@ def override_all_opts(local_opts #  mutated
             if (not local_metas.read_only and 
                 os.path.isfile(DEFAULT_METAS.config)): 
                 #
-                output.debug('Adding installation wide config.toml file: %s '
-                            +'to overrides'
-                            %DEFAULT_METAS.config
+                output.debug('Adding installation wide config.toml '
+                            +'file: %s to overrides'
+                            % DEFAULT_METAS.config
                             )
                 installation_opts = options_manager.dict_from_toml_file(
                                                           DEFAULT_METAS.config)
@@ -755,7 +756,6 @@ def cache_sDNA_tool(compnt # instead of self
     compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
     compnt.not_shared.update(sDNA_tool.not_shared)
 
-            
 
 
 
@@ -978,22 +978,32 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         Data = kwargs.pop('Data', None)
         Geom = kwargs.pop('Geom', None)
 
-        if  'file' in kwargs:
-            kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['file'], '')
-        elif 'f_name' not in kwargs:
-             kwargs['f_name'] = ''
-        else:
-             kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['f_name'], '')
+        # if 'file' in kwargs:
+        #     kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['file'], '')
+        # elif 'f_name' not in kwargs:
+        #      kwargs['f_name'] = ''
+        # else:
+        #      kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['f_name'], '')
+
+        kwargs['f_name'] = funcs.get_main_else_get_aliases(
+                                         dict_ = kwargs
+                                        ,main = 'file'
+                                        ,aliases = ('f_name',)
+                                        ,fallback_value = ''
+                                        ,mangler = smart_comp.first_item_if_seq
+                                        )
 
         external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 
-        external_local_metas = smart_comp.first_item_if_seq(kwargs.pop(
-                                                                  'local_metas'
-                                                                 ,EMPTY_NT
-                                                                 )
-                                                           ,EMPTY_NT
-                                                           )
         self.logger.debug(external_opts)
+
+        external_local_metas = funcs.get_main_else_get_aliases(
+                                         dict_ = kwargs
+                                        ,main = 'local_metas'
+                                        ,aliases = ('l_metas',)
+                                        ,fallback_value = EMPTY_NT
+                                        ,mangler = smart_comp.first_item_if_seq
+                                        )
 
         gdm = smart_comp.first_item_if_seq(kwargs.get('gdm', {}))
 
@@ -1032,7 +1042,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     
         self.logger.info('Tools == %s ' % self.tools)
 
-        sync = self.local_metas.sync
         #######################################################################
         self.logger.debug('kwargs.keys() == %s ' % kwargs.keys())
         self.opts, self.local_metas = override_all_opts(
@@ -1045,7 +1054,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                 )
         #######################################################################
         kwargs['opts'] = self.opts
-        kwargs['l_metas'] = self.local_metas
+        kwargs['local_metas'] = self.local_metas
 
         for handler, level in ((console_log_handler
                                ,self.opts['options'].log_console_level

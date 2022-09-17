@@ -51,6 +51,24 @@ sDNA_GH:
 
 ### Usage.  
 #### Components.
+##### Shared state vs desynchronised components.
+sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  By default, components are desynchronised.  A few useful features are available from synchronised components, but
+they may behave in unexpected ways, and may even feel buggy and glitchy.
+*Desynchronised components* (`sync` = true):
+ -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
+ -Plot min and plot max will be automatically calculated anew each time, if viewing multiple results fields.
+ -Input params will be revert to their defaults when disconnected.
+ -Config components cannot affect the behaviour of desynchronised components, or save their options to `config.toml` files.  
+ -If sDNA components are run with `auto_write_Shp` = false or `auto_read_Shp` = false, deletion of temporary files requires opts to be connected between the sDNA component and write_Shp and read_Shp component.
+*Synchronised* (`sync` = true) 
+ -are affected by relevant `auto_` rules set on a Config component.  
+ -can have their options saved to `config.toml` files.
+ -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
+
+The recommended usage is to undertake a one off setup process, and thereafter use all components as desynchronised, as follows: 
+ -on first usage set all common and shared options and those that will seldom be changed on synchronised components, and save these to an installation wide `config.toml` file.  Desynchronised 
+ options may still read defaults from an installation wide `config.toml` file
+ -Either set the synchronised components to `sync` = false after their shared options have been saved, or place new components.
 ##### Automatic multi-tools.
 Each sDNA tool has its own Grasshopper component.  To run a tool, a true value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, if an `auto_` option is set to true, some components also automatically run other tools before and after they run their own tools (if components for those tools are not connected to it).  For example, this allows an entire sDNA process to be run on Rhino Geometry from a single sDNA tool component.  
 When an sDNA_GH component is first placed on the canvas, or a grasshopper file with an sDNA_GH component on the canvas is first loaded, each component adds in Params for all its required Input and Output arguments (if the Params are not already present).  These added Params include those of any extra automatically added tools if an `auto_` option is true, that would other wise require separate components.  Extra customisation can be carried out by adding in user specified Params too, that have the correct name of a supported option.  Similarly any Params not being specified can be removed.  
