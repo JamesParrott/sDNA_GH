@@ -162,6 +162,7 @@ class GeomDataMapping(OrderedDict):
             Data = [OrderedDict(zip(key_list, val_list)) 
                     for key_list, val_list in itertools.izip(key_lists, val_lists)  
                    ]
+            print(len(Data))
 
             # Else treat as a list of values
             # with no keys, the
@@ -172,44 +173,27 @@ class GeomDataMapping(OrderedDict):
         logger.debug('len(Data) == %s' % len(Data))
 
 
+
         if len(Geom) < len(Data):
-            logger.warning('Less Geom: %s than Data: %s. ' 
-                          %(len(Geom), len(Data))
-                          +'Assigning list of surplus Data '
-                          +'items to the empty tuple key. '
-                          )
-            fill_value = tuple()
+
+            component_inputs_gen_exp =  itertools.chain( 
+                                                itertools.izip(str_Rhino_objs(Geom)
+                                                              ,Data[:len(Geom)]
+                                                              )
+                                               ,[(tuple(), Data[len(Geom):])]
+                                               )
+            logger.warning('More Data than Geom.  Assigning list of '
+                          +'surplus Data items to the empty tuple key. ')
         else:
             if len(Geom) > len(Data):
-                logger.info('More Geom: %s than Data: %s. ' 
-                           %(len(Geom), len(Data))
-                           +'Setting values for Geom with '
-                           +'no Data to OrderedDict()'
-                           )
-
-            fill_value = OrderedDict()
-
-        component_inputs_gen_exp = itertools.zip_longest(str_Rhino_objs(Geom)
-                                                        ,Data
-                                                        ,fillvalue = fill_value
-                                                        )
-        # if len(Geom) < len(Data):
-
-        #     component_inputs_gen_exp =  itertools.chain( 
-        #                                          itertools.izip(Geom
-        #                                                        ,Data[:len(Geom)]
-        #                                                        )
-        #                                         ,[(tuple(), Data[len(Geom):])]
-        #                                         )
-        #     logger.warning('More Data than Geom.  Assigning list of '
-        #                   +'surplus Data items to the empty tuple key. ')
-        # else:
-        #     if len(Geom) > len(Data):
-        #         logger.debug('repeating OrderedDict() after Data... ')
-        #         Data = itertools.chain( Data,  itertools.repeat(OrderedDict()) )
-        #     else:
-        #         logger.debug( "Data and Geom equal length.  " )
-        #     component_inputs_gen_exp =  itertools.izip(Geom, Data)
+                logger.debug('repeating OrderedDict() after Data... ')
+            else:
+                logger.debug( "Data and Geom equal length.  " )
+            component_inputs_gen_exp =  itertools.zip_longest(
+                                                     str_Rhino_objs(Geom)
+                                                    ,Data
+                                                    ,fillvalue = OrderedDict()
+                                                    )
 
 
 

@@ -219,6 +219,7 @@ data_point_below - previous_bound == 0.00757575035 and tol == 4.8e-16"""
                        ], 7))
                     ]
 
+GDM = gdm_from_GH_Datatree.GeomDataMapping
 
 class TestCreateGeomDataMapping(unittest.TestCase):
 
@@ -234,19 +235,19 @@ class TestCreateGeomDataMapping(unittest.TestCase):
     #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
 
     input_discrete_expected = [  
-        ( ([], [[[],[]],[[],[]],[[],[]]])          , OrderedDict([((),  [OrderedDict(), OrderedDict()])]) )
-        ,( (None, None)                             , OrderedDict() )
-        ,( (list('abcd'),[[[],[]]]*4 + [1,2,3]) , OrderedDict(izip(list('abcd'), repeat(OrderedDict()) )) )
-        ,((uuids, None)                               , OrderedDict(izip(uuids, repeat(OrderedDict()) ))  )
+        ( ([], [[[],[]],[[],[]],[[],[]]])          , GDM([((),  [OrderedDict(), OrderedDict()])]) )
+        ,( (None, None)                             , GDM() )
+        ,( (list('abcd'),[[[],[]]]*4 + [1,2,3]) , GDM(izip(list('abcd'), repeat(OrderedDict()) )) )
+        ,((uuids, None)                               , GDM(izip(uuids, repeat(OrderedDict()) ))  )
         ,( (None, [[['a','b','c'],['x','y','z'],[2,3,4]],[[1,2,3],[7,6.0,'A2'],['p','q','r']]]),
-                     OrderedDict([((), [ OrderedDict([('a',1),('b',2),('c',3)])
+                     GDM([((), [ OrderedDict([('a',1),('b',2),('c',3)])
                                         ,OrderedDict([('x',7),('y',6.0),('z','A2')])
                                         ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
                                         ])]) 
           )
           ,(  ( uuids , [[['a','b','c'],['x','y','z'],[2,3,4]],[[1,2,3],[7,6.0,'A2'],['p','q','r']]] 
               ),   
-                               OrderedDict( zip(uuids, [ OrderedDict([('a',1),('b',2),('c',3)])
+                               GDM( zip(uuids, [ OrderedDict([('a',1),('b',2),('c',3)])
                                         ,OrderedDict([('x',7),('y',6.0),('z','A2')])
                                         ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
                                         ,OrderedDict()]) )                           
@@ -256,53 +257,62 @@ class TestCreateGeomDataMapping(unittest.TestCase):
     input_almost_expected = [ ( ( []
                                  ,[12,34,23,68,45,23,3.0]
                                  )
-                                ,OrderedDict( [( ()
-                                                ,[12, 34, 23, 68, 45, 23, 3.0] 
-                                               )
-                                              ]
+                                ,GDM(   [( ()
+                                        ,[12, 34, 23, 68, 45, 23, 3.0] 
+                                        )
+                                        ]
                                             ) 
                               )
 
                             ]
 
-    input_not_equal = [ ( (None, [[['a','b','c'],[1,2,3]],[['x','y','z'],[7,6.0,'A2']],[[2,3,4],['p','q','r']]]),
-                     OrderedDict([((), [ OrderedDict(a=1,b=2,c=2)
-                                        ,OrderedDict(x=7,y=6.0,z='A2')
-                                        ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
-                                        ])]) #type: ignore
+    input_not_equal = [ ((None
+                         ,[[['a','b','c'],[1,2,3]]
+                          ,[['x','y','z'],[7,6.0,'A2']]
+                          ,[[2,3,4],['p','q','r']]
+                          ]
+                         )
+                        ,GDM([((), [OrderedDict(a=1,b=2,c=2)
+                                   ,OrderedDict(x=7,y=6.0,z='A2')
+                                   ,OrderedDict([(2,'p'),(3,'q'),(4,'r')])
+                                   ])]) #type: ignore
                         )
                       ]
    
     def conv_opts(self, x):
         return gdm_from_GH_Datatree.GeomDataMapping.from_DataTree_and_list(x[0], x[1])
     def get_expected_and_actual(self, f, l):
-        return [x[1] for x in l], [f(x[0]) for x in l]
+        for x in l:
+            yield x[1], f(x[0])
 
     def test_discrete_input(self):
-        self.assertEqual(  *self.get_expected_and_actual(self.conv_opts
-                                                        ,self.input_discrete_expected
-                                                        )
-                        )
+        self.assertEqual(*zip(*list(self.get_expected_and_actual(
+                                                 self.conv_opts
+                                                ,self.input_discrete_expected
+                                                ))))
+
+
     def test_floating_point_input(self):
-        self.assertAlmostEqual(  *self.get_expected_and_actual(self.conv_opts
-                                                              ,self.input_almost_expected
-                                                              )
-                              )
+        for expected, actual in self.get_expected_and_actual(
+                                                     self.conv_opts
+                                                    ,self.input_almost_expected
+                                                    ):
+            self.assertEqual(expected, actual)
 
     def test_not_equal(self):
-        self.assertNotEqual(  *self.get_expected_and_actual(self.conv_opts
+        self.assertNotEqual(*zip(*list(self.get_expected_and_actual(
+                                                            self.conv_opts
                                                            ,self.input_not_equal
-                                                           )
-                           )
+                                                           ))))
 
 def test_empty_DataTree(self):
         
         #inputs = list(tuple(tuple(Geom_input, Data_input), expected_output))
     self.input_data_tree = [(([None], treehelpers.list_to_tree(None)), OrderedDict())]
-    self.assertEqual(  *self.get_expected_and_actual(self.conv_opts
+    self.assertEqual(*zip(*list(self.get_expected_and_actual(
+                                                 self.conv_opts
                                                 ,self.input_data_tree
-                                                )
-                    )
+                                                ))))
 
 #if GH_env_exists:
 TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
