@@ -74,6 +74,7 @@ from .custom import tools
 from .dev_tools import dev_tools
 
 
+
 namedtuple, OrderedDict = collections.namedtuple, collections.OrderedDict
 
 try:
@@ -280,7 +281,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     # Also used by ShapefileWriter, ShapefileReader
     working_folder = os.path.dirname(path)
     logger_name = package_name
-    log_file = logger_name + '.log'
+    log_file = '' # logger_name + '.log'
     logs_dir = 'logs'
     log_file_level = 'DEBUG'
     log_console_level = 'INFO'
@@ -1122,6 +1123,8 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
             path = checkers.get_path(fallback = __file__,  inst = self)
             self.opts['options'] = self.opts['options']._replace(path = path)
+
+
 
 
          

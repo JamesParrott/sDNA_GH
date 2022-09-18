@@ -1387,6 +1387,8 @@ def get_objs_and_OrderedDicts(only_selected = False
         layers = (layers,) if layers in doc_layers() else None
 
 
+
+
     #type( type[any]) -> list, list
     #
 
@@ -1397,6 +1399,7 @@ def get_objs_and_OrderedDicts(only_selected = False
                                      #                      ,state = 0
                                      #                      )
 
+
     for obj in objs:
         if not is_shape(obj, shp_type):                                                 
             continue 
@@ -1405,6 +1408,7 @@ def get_objs_and_OrderedDicts(only_selected = False
             continue 
         if only_selected and not is_selected(obj):
             continue
+
         d = OrderedDict_getter(obj)
         yield str(obj), d
         # We take the str of Rhino geom obj reference (its uuid).
@@ -1456,6 +1460,7 @@ class RhinoObjectsReader(sDNA_GH_Tool):
         self.debug('Creating Class Logger.  ')
 
         options = opts['options']
+
 
 
         sc.doc = Rhino.RhinoDoc.ActiveDoc 

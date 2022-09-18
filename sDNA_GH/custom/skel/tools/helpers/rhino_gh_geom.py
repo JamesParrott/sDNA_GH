@@ -172,10 +172,10 @@ def is_shape(obj, shp_type):   #e.g. polyline
     #         geom = ghdoc.Objects.FindGeometry(obj)
     geom, source = get_geom_and_source_else_leave(obj)
 
-    logger.log(level = 1, msg = 'type(obj): %s, obj: %s' % (type(obj), obj)) 
-    logger.log(level = 1, msg = 'type(geom): %s, geom: %s' % (type(geom), geom))
-    logger.log(level = 1, msg = 'source: %s' % source)
-
+    logger.log(level = 1,msg = 'type(obj): %s, obj: %s' % (type(obj), obj)) 
+    logger.log(level = 1,msg = 'type(geom): %s, geom: %s' % (type(geom), geom))
+    logger.log(level = 1,msg = 'source: %s' % source)
+    #logger.log(level = 1, 
     #rs.IsPolyLine etc. need to be called on guids, not geom objects or strings
     if hasattr(Rhino.Geometry, type(obj).__name__): 
         msg = 'Call is_shape on Rhino or Grasshopper Guid, '
@@ -192,9 +192,11 @@ def is_shape(obj, shp_type):   #e.g. polyline
     # logging.DEBUG == 10
     # This module logger, the package logger, and one of its handlers need to 
     # be set to level 1 to see these log messages
+    tmp = sc.doc
     sc.doc = source
     retval = any( getattr(rs, allower )( obj ) for allower in allowers)
-    sc.doc = ghdoc
+    sc.doc = tmp
+    
     return retval
 
 Rhino_obj_code_for_shape = dict(NULL = None
