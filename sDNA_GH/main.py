@@ -1035,14 +1035,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         Data = kwargs.pop('Data', None)
         Geom = kwargs.pop('Geom', None)
 
-        # if 'file' in kwargs:
-        #     kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['file'], '')
-        # elif 'f_name' not in kwargs:
-        #      kwargs['f_name'] = ''
-        # else:
-        #      kwargs['f_name'] = smart_comp.first_item_if_seq(kwargs['f_name'], '')
-
-        kwargs['f_name'] = funcs.get_main_else_get_aliases(
+        f_name = funcs.get_main_else_get_aliases(
                                          dict_ = kwargs
                                         ,main = 'file'
                                         ,aliases = ('f_name',)
@@ -1232,6 +1225,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             self.logger.debug('After merge gdm[:3] == %s ' % gdm.items()[:3])
 
             kwargs['gdm'] = gdm
+            kwargs['f_name'] = f_name # put back in here so it doesn't go in opts
 
             ##################################################################
             ret_vals_dict = runner.run_tools(self.tools, kwargs)
