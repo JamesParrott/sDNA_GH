@@ -214,10 +214,10 @@ class ToolWithParams(ToolwithParamsABC):
 
     component_outputs = ()  # tuple of strings of input Param names
 
-    def input_params(self):
+    def input_params(self, *args):
         return self.params_list(self.component_inputs)
     
-    def output_params(self):
+    def output_params(self, *args):
         return self.params_list(self.component_outputs)
 
 def check_IO(IO):
@@ -353,9 +353,13 @@ class ParamsToolAdder(object):
                        ,do_not_add
                        ,do_not_remove
                        ,wrapper = None
+                       ,interpolations = None
                        ):
         #type(type[any], list[ToolwithParamsABC], list, list, function) -> type[any]
         
+        if interpolations is None:
+            interpolations = {}
+
         logger.debug('self.current_outputs == %s ' % self.current_outputs)
         
         logger.debug('self.current_inputs == %s ' % self.current_inputs)
@@ -369,24 +373,22 @@ class ParamsToolAdder(object):
 
         self.needed_outputs = [output.NickName
                                for tool in output_tools
-                               for output in tool.output_params
+                               for output in tool.output_params()
                               ]
         self.needed_inputs = [input.NickName
                               for tool in input_tools 
-                              for input in tool.input_params
+                              for input in tool.input_params()
                              ]
         # .NickName searches output['NickName'] for ParamInfo instances as
         # ParamInfo.__getattr__ is dict.__getitem__
 
-        # .output_params may be a computed @property or iterable.
-
-        missing_output_params = [ output for tool in reversed(output_tools)
-                                 for output in tool.output_params
+        missing_output_params = [output for tool in reversed(output_tools)
+                                 for output in tool.output_params(interpolations)
                                  if output.NickName not in self.current_outputs]
 
 
-        missing_input_params = [ input for tool in input_tools 
-                                for input in tool.input_params
+        missing_input_params = [input for tool in input_tools 
+                                for input in tool.input_params(interpolations)
                                 if input.NickName not in self.current_inputs ]
                             
         # if wrapper:

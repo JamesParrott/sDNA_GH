@@ -51,24 +51,7 @@ sDNA_GH:
 
 ### Usage.  
 #### Components.
-##### Shared state vs desynchronised components.
-sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  By default, components are desynchronised.  A few useful features are available from synchronised components, but
-they may behave in unexpected ways, and may even feel buggy and glitchy.
-*Desynchronised components* (`sync` = true):
- -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
- -Plot min and plot max will be automatically calculated anew each time, if viewing multiple results fields.
- -Input params will be revert to their defaults when disconnected.
- -Config components cannot affect the behaviour of desynchronised components, or save their options to `config.toml` files.  
- -If sDNA components are run with `auto_write_Shp` = false or `auto_read_Shp` = false, deletion of temporary files requires opts to be connected between the sDNA component and write_Shp and read_Shp component.
-*Synchronised* (`sync` = true) 
- -are affected by relevant `auto_` rules set on a Config component.  
- -can have their options saved to `config.toml` files.
- -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
 
-The recommended usage is to undertake a one off setup process, and thereafter use all components as desynchronised, as follows: 
- -on first usage set all common and shared options and those that will seldom be changed on synchronised components, and save these to an installation wide `config.toml` file.  Desynchronised 
- options may still read defaults from an installation wide `config.toml` file
- -Either set the synchronised components to `sync` = false after their shared options have been saved, or place new components.
 ##### Automatic multi-tools.
 Each sDNA tool has its own Grasshopper component.  To run a tool, a true value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, if an `auto_` option is set to true, some components also automatically run other tools before and after they run their own tools (if components for those tools are not connected to it).  For example, this allows an entire sDNA process to be run on Rhino Geometry from a single sDNA tool component.  
 When an sDNA_GH component is first placed on the canvas, or a grasshopper file with an sDNA_GH component on the canvas is first loaded, each component adds in Params for all its required Input and Output arguments (if the Params are not already present).  These added Params include those of any extra automatically added tools if an `auto_` option is true, that would other wise require separate components.  Extra customisation can be carried out by adding in user specified Params too, that have the correct name of a supported option.  Similarly any Params not being specified can be removed.  
@@ -108,6 +91,39 @@ To give an sDNA_GH component different options to another of the same type using
 Components referring to the global options share their settings.  This means they do not know if a particular setting in the global
 options came from a different component sharing with it, or from itself previously.  Shared states mean even a component in isolation has its own historical state.  To use components without any options sharing and a minimum of state, set `sync` to false and `no_state` to true (its default). 
 
+##### Shared state vs desynchronised components.
+sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python 2.7 run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
+ -on first usage set all common and shared options and those that will seldom be changed on synchronised components, and save these to an installation wide `config.toml` file.  Desynchronised 
+ options may still read defaults from an installation wide `config.toml` file.
+ -Either set the synchronised components to `sync` = false after their shared options have been saved, or place new components.
+
+To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
+This writes `sync` = true to the installation wide options file (`config.toml`).  As long as no higher priority options source (Params, project specific options files, or local metas from other components) sets `sync` = false, all desynchronised components will then resynchronise the next time they run.
+
+To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
+a) Restart Rhino, 
+b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
+c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
+
+###### Desynchronised components (`sync` = false):
+ -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
+ -Plot min and plot max will be automatically calculated anew each time, if viewing multiple results fields.
+ -Input params will be revert to their defaults when disconnected.
+ -Config components cannot affect the behaviour of desynchronised components, or save their options to `config.toml` files.  
+ -If sDNA components are run with `auto_write_Shp` = false or `auto_read_Shp` = false, deletion of temporary files requires opts to be connected between the sDNA component and write_Shp and read_Shp component.
+ -Read all the defaults in the override order on every run, so respond dynamically to changes in the installation wide `config.toml` options file.
+ -Support multiple project specific `.toml` files.
+ -Require the `.toml` file to be set on a `config` Input on every desynchronised component that refers to it.  
+
+###### Synchronised components (`sync` = true): 
+ -are affected by relevant `auto_` rules set on a Config component.  
+ -can have their options saved to `config.toml` files.
+ -only require one project specific `.toml` file to be set to a `config` Input between all of them.
+ -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
+ -only once read the installation wide `config.toml` file user options file, when the first sDNA_GH component is placed (synchronised or desynchronised).  
+
+The following Inputs and Outputs are never shared when not connected in Grasshopper: `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
+
 
 #### Tools.
 ##### Common component input and output Params
@@ -119,7 +135,7 @@ options came from a different component sharing with it, or from itself previous
 **Geom** Accepts a list of geometric objects (Guids of Rhino objects or native Grasshopper objects).  Data trees of objects need to be flattened into lists. To use Rhino objects referenced from Grasshopper parameter objects (instead of their Grasshopper versions which are often obscured unless the Rhino shapes are set to Hidden) run the output of the Geometry (Geo) or Curve (Crv)through a Guid (ID) parameter object first. 
 **gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the UUIDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
 **opts** Accepts an options data structure (a nested dictionary of named tuples) from another sDNA_GH component.  Only of use if they are not synced to the global module options.
-**config** The path of a TOML file (e.g. `config.toml`) to be read in containing sDNA_GH options settings. 
+**config** The path of a TOML file (e.g. `config.toml`) to be read in containing sDNA_GH options settings. Shared between synchronised components.
 
 ##### Support tools
 ###### Config (config)

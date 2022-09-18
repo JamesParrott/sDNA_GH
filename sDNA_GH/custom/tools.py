@@ -162,12 +162,15 @@ def list_of_param_infos(param_names
 
 # TypeHintList = List[Grasshopper.Kernel.Parameters.IGH_TypeHint]
 
-class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogger):
+class sDNA_GH_Tool(runner.RunnableTool
+                  ,add_params.ToolwithParamsABC
+                  ,ClassLogger
+                  ):
 
     """ General base class for all tools, that is runnable (should have
         retvals implemented), has params (input_params and output_params
-        should be implemented), and containing a class logger that adds the subclass
-        name to logging messages. 
+        should be implemented), and containing a class logger that adds 
+        the subclass name to logging messages. 
     """
 
     def __init__(self, opts):
@@ -182,19 +185,24 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
         return retval
 
 
-    def param_info_list(self, param_names):
+    def param_info_list(self, param_names, extras = None):
+        interpolations = self.built_in_options()
+        if extras is not None:
+            interpolations.update(extras)
         return list_of_param_infos(param_names
                                   ,self.param_infos
-                                  ,interpolations = self.built_in_options()
+                                  ,interpolations = interpolations 
                                   )
 
-    @property
-    def input_params(self):
-        return self.param_info_list(self.component_inputs)
+    def input_params(self, interpolations = None):
+        return self.param_info_list(self.component_inputs
+                                   ,extras = interpolations
+                                   )
 
-    @property    
-    def output_params(self):
-        return self.param_info_list(self.component_outputs)
+    def output_params(self, interpolations = None):
+        return self.param_info_list(self.component_outputs
+                                   ,extras = interpolations
+                                   )
 
     @property
     @abstractmethod
@@ -276,7 +284,7 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                    ,('config', add_params.ParamInfo(
                              param_Class = Param_FilePath
                             ,Description = ('File path to sDNA_GH options '
-                                           +'file, e.g. config.toml'
+                                           +'file. Default: %(config)s '
                                            )
                             ))   
                    ,('local_metas', add_params.ParamInfo(
@@ -294,7 +302,17 @@ class sDNA_GH_Tool(runner.RunnableTool, add_params.ToolwithParamsABC, ClassLogge
                                            +'sDNA_GH options. Python named '
                                            +'tuple.'
                                            )
-                            ))  
+                            ))
+                   ,('sync', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('false: desynchronise from other '
+                                           +"components' options.  true: "
+                                           +'synchronise with other '
+                                           +'synchronised components, sharing '
+                                           +'the global sDNA_GH options. '
+                                           +'Default: %(sync)s'
+                                           )
+                            )) 
                   )                     
 
 
@@ -407,8 +425,12 @@ class MissingPythonError(Exception):
 def check_python(opts):
     #type(dict) -> None 
     """ Searches opts['options'].python_paths, updating opts['options'].python 
-        until it is a file.  Mutates opts.  Raises MissingPythonError if no
-        valid file found.
+        until it is a file.  
+        
+        Mutates: opts
+        Returns: None
+        
+        Raises MissingPythonError if no valid file found.
     """
 
     options = opts['options']
@@ -1601,6 +1623,7 @@ class ShapefileWriter(sDNA_GH_Tool):
         input_key_str = '{name}'
         path = __file__
         output_shp = '' 
+        prj = ''
 
 
     param_infos = sDNA_GH_Tool.param_infos + (
@@ -1610,6 +1633,7 @@ class ShapefileWriter(sDNA_GH_Tool):
                                  ,Description = ('File path of the projection '
                                                 +'file (.prj) to use for the '
                                                 +'new shapefile. '
+                                                +'Default : %(prj)s'
                                                 )
                                  )
                                 ),
@@ -1644,7 +1668,7 @@ class ShapefileWriter(sDNA_GH_Tool):
 
     component_inputs = ('Geom', 'Data', 'file', 'prj', 'input_key_str', 'config') 
 
-    def __call__(self, f_name, gdm, prj = None, opts = None):
+    def __call__(self, f_name, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
@@ -1795,6 +1819,8 @@ class ShapefileWriter(sDNA_GH_Tool):
                                             ,AttributeTablesClass = gdm_from_GH_Datatree.GeomDataMapping
                                             )
         
+        prj = options.prj
+
         if (isinstance(prj, basestring) and 
             prj.endswith('.prj') and 
             os.path.isfile(prj)):
@@ -3086,9 +3112,9 @@ class ConfigManager(sDNA_GH_Tool):
 
     class Metas(sDNAMetaOptions):
         config = os.path.join(launcher.USER_INSTALLATION_FOLDER
-                              ,launcher.PACKAGE_NAME  
-                              ,'config.toml'
-                              )
+                             ,launcher.PACKAGE_NAME  
+                             ,'config.toml'
+                             )
 
     class Options(PythonOptions):
         pass
@@ -3183,6 +3209,7 @@ class ConfigManager(sDNA_GH_Tool):
                        ,'auto_read_Shp'
                        ,'auto_plot_data'
                        ,'show_all'
+                       ,'sync'
                        )
 
     def __call__(self, opts, local_metas):

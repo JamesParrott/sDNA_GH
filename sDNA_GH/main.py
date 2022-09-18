@@ -349,6 +349,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     input_key_str = '{name}'
     #30,000 characters tested.
     output_shp = ''
+    prj = ''
     ###########################################################################
     #
     # Overrides for ShapefileReader
@@ -439,7 +440,9 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
 
 
 class HardcodedLocalMetas(object):
-    sync = False    
+    sync = False # Can be set globally to true in installation wide config.toml
+                 # This really should be False here as it's more laborious for 
+                 # the user to desynchronise all sync == True components
     read_only = False
     no_state = True
 
@@ -468,7 +471,6 @@ def override_all_opts(local_opts #  mutated
                      ,overrides
                      ,params
                      ,local_metas = DEFAULT_LOCAL_METAS
-                     ,external_local_metas = EMPTY_NT
                      ,not_shared = ('advanced', 'input', 'output')
                      ):
     #type(dict, list, dict, namedtuple, namedtuple, tuple) -> dict, namedtuple
@@ -477,17 +479,13 @@ def override_all_opts(local_opts #  mutated
 
     1) params is a flat dict, e.g. from Input Params on the component.
 
-    2) Local_opts needs to be, and external_opts may be, a string keyed
+    2) Local_opts needs to be, and items in overrides may be, a string keyed
        nested dict of namedtuples   
     
-    3) Only primary metas (config.toml files) in params are loaded.  
-
-    4) The nested dict from config.toml will be a nested dict of dicts and
-       possibly other general data fields.
-
-    5) The named tuple Local metas will be overridden with external_local_metas 
-       if present, and is returned.
-    
+    3) The nested dict from config.toml can contain other general data 
+       fields at higher levels.  These are applied to all tools below them 
+       in the tree.
+   
     Mutates: local_opts
     Returns: local_metas, local_opts
     """
@@ -521,37 +519,54 @@ def override_all_opts(local_opts #  mutated
         output.debug(msg + ' == %s' % params.keys())
 
 
+    external_local_metas = funcs.get_main_else_get_aliases(
+                                         dict_ = params # mutated - val popped
+                                        ,main = 'local_metas'
+                                        ,aliases = ('l_metas',)
+                                        ,fallback_value = EMPTY_NT
+                                        ,mangler = smart_comp.first_item_if_seq
+                                        )
+
+
     ext_local_metas_dict = external_local_metas._asdict()
+
+    overrides += [project_file_opts
+                 ,{'local_metas' : ext_local_metas_dict}
+                 ,params
+                 ]
+
+    output.debug('overrides == %s' % (overrides,))
 
     old_sync = local_metas.sync
 
     ###########################################################################
     # Update syncing / de-syncing controls in local_metas
     #
-    local_metas_overrides_list = [ext_local_metas_dict]
-    local_metas_overrides_list += [override_['local_metas'] 
-                                   for override_ in overrides
-                                   if 'local_metas' in override_
-                                  ]
-    local_metas_overrides_list += [project_file_opts.get('local_metas',{})
-                                  ,params
-                                  ]
+    # local_metas_overrides_list += [override.pop('local_metas', override)
+    #                                for override in overrides
+    #                               ]
+    # We probably could put this in overrides, and also apply it 
+    # to override local_opts, but probably best not to risk a 
+    # name clash.
 
-    local_metas = options_manager.override_namedtuple(local_metas
-                                                     ,local_metas_overrides_list
-                                                     ,**metas._asdict()
-                                                     ) 
+    # local metas override order
+    # local_metas <- overrides <- project_file_opts <- ext_local_metas_dict <- params
+
+    local_metas = options_manager.override_nt_with_vals_for_key_else_dict(
+                                                             local_metas
+                                                            ,overrides
+                                                            ,'local_metas'
+                                                            ,**metas._asdict()
+                                                            ) 
 
 
     ###########################################################################
 
 
-    output.debug('overrides == %s' % (overrides,))
 
-    overrides += [project_file_opts, params]
 
     output.debug('overrides == %s' 
-                % [override_.keys() for override_ in overrides]
+                % [override.keys() for override in overrides]
                 )
 
 
@@ -577,19 +592,37 @@ def override_all_opts(local_opts #  mutated
                 installation_opts = options_manager.dict_from_toml_file(
                                                           DEFAULT_METAS.config)
                 overrides = [installation_opts] + overrides
+
+                local_metas = (options_manager
+                                    .override_nt_with_vals_for_key_else_dict(
+                                                             local_metas
+                                                            ,overrides
+                                                            ,'local_metas'
+                                                            ,**metas._asdict()
+                                                            )
+                              ) 
+                # Repeat of previous call.  The double update is to allow the
+                # user to change sync to True in all components in which 
+                # it is False, by setting sync = true in the installation wide 
+                # config.toml.  To switch all components with sync == True 
+                # back to False again is harder, e.g. Rhino must be restarted.
+                # so they start off False by default.
+
         elif old_sync:  # Desynchronise
             output.debug('Desynchronising opts to copy of module opts. ')
             local_opts = module_opts.copy()
 
 
-    metas_overrides = [override.pop('metas', override) for override in overrides]
-
-    metas = local_opts['metas'] = options_manager.override_namedtuple(
+    metas = options_manager.override_nt_with_vals_for_key_else_dict(
                                                             local_opts['metas']
-                                                           ,metas_overrides
+                                                           ,overrides
+                                                           ,'metas'
                                                            ,**metas._asdict()
                                                            )
+
     output.debug('metas == %s' % (metas,))
+
+    local_opts['metas'] = metas
 
     for override in overrides:
         tools.update_opts(current_opts = local_opts
@@ -762,6 +795,29 @@ def cache_sDNA_tool(compnt # instead of self
 sDNA_GH_tools = list(runner.tools_dict.values())
 
 
+param_infos = (('OK', add_params.ParamInfo(
+                            param_Class = Param_Boolean
+                        ,Description = ('true: tools ran successfully.  '
+                                        +'false: tools did not run, or '
+                                        +'there was an error.'
+                                        )
+                        ))
+                ,('go', add_params.ParamInfo(
+                            param_Class = Param_Boolean
+                        ,Description = ('true: runs tools.  false: do not '
+                                        +'run tools but still read other '
+                                        +'Params.'
+                                        )
+                        ))
+                ,('opts', add_params.ParamInfo(
+                            param_Class = Param_ScriptVariable
+                        ,Description = ('sDNA_GH options data structure. '
+                                        +'Python dictionary.'
+                                        )
+                        ))
+                )   
+
+
 class sDNA_GH_Component(smart_comp.SmartComponent):
 
     """ The main sDNA_GH Grasshopper Component class.  
@@ -879,13 +935,16 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         self.logger.debug('Updating Params: %s ' % tools)
 
+        interpolations = self.local_metas._asdict()
+
         params_updated = self.params_adder.add_tool_params(
-                                                         Params
-                                                        ,tools
-                                                        ,do_not_add
-                                                        ,do_not_remove
-                                                        ,wrapper = self.script
-                                                        )
+                                             Params
+                                            ,tools
+                                            ,do_not_add
+                                            ,do_not_remove
+                                            ,wrapper = self.script
+                                            ,interpolations = interpolations
+                                            )
 
         return params_updated
 
@@ -919,9 +978,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                     )
 
         return tools
-
-
-
 
 
 
@@ -997,14 +1053,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
         self.logger.debug(external_opts)
 
-        external_local_metas = funcs.get_main_else_get_aliases(
-                                         dict_ = kwargs
-                                        ,main = 'local_metas'
-                                        ,aliases = ('l_metas',)
-                                        ,fallback_value = EMPTY_NT
-                                        ,mangler = smart_comp.first_item_if_seq
-                                        )
-
         gdm = smart_comp.first_item_if_seq(kwargs.get('gdm', {}))
 
         self.logger.debug(('gdm from start of RunScript == %s' % gdm)[:80])
@@ -1049,7 +1097,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                 ,overrides = [self.tools_default_opts, external_opts]
                                 ,params = kwargs
                                 ,local_metas = self.local_metas 
-                                ,external_local_metas = external_local_metas
                                 ,not_shared = self.not_shared
                                 )
         #######################################################################
@@ -1144,7 +1191,9 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                   if not isinstance(tool, runner.RunnableTool)
                             ]
             if invalid_tools:
-                msg = ('Tools are not runner.RunnableTool : %s' % invalid_tools)
+                msg = ('Tools are not runner.RunnableTool instances : %s' 
+                      % invalid_tools
+                      )
                 self.logger.error(msg)
                 raise ValueError(msg)
 
@@ -1238,30 +1287,11 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                               ]
                              )
         return ret_args
+    script.input_params = lambda *args : tools.list_of_param_infos(['go', 'opts'], param_infos)
+    script.output_params = lambda *args : tools.list_of_param_infos(['OK', 'opts'], param_infos)
 
-    param_infos = (('OK', add_params.ParamInfo(
-                             param_Class = Param_Boolean
-                            ,Description = ('true: tools ran successfully.  '
-                                           +'false: tools did not run, or '
-                                           +'there was an error.'
-                                           )
-                            ))
-                  ,('go', add_params.ParamInfo(
-                             param_Class = Param_Boolean
-                            ,Description = ('true: runs tools.  false: do not '
-                                           +'run tools but still read other '
-                                           +'Params.'
-                                           )
-                            ))
-                  ,('opts', add_params.ParamInfo(
-                             param_Class = Param_ScriptVariable
-                            ,Description = ('sDNA_GH options data structure. '
-                                           +'Python dictionary.'
-                                           )
-                            ))
-                  )                                          
-    script.input_params = tools.list_of_param_infos(['go', 'opts'], param_infos)
-    script.output_params = tools.list_of_param_infos(['OK', 'opts'], param_infos)
+
+
 
 
 

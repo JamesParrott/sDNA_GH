@@ -194,11 +194,14 @@ def get_main_else_get_aliases(dict_, main, aliases, fallback_value = None, mangl
     #type(dict, Hashable, *Hashable, type[any]) -> type[any]
     """ Returns mangler(value) in dict_ for a key's main name, if in dict_.  
         Otherwise returns mangler(value) for any alias key in aliases in dict_.  
-        Otherwise returns fallback_value.  """
+        Otherwise returns fallback_value.  
+        
+        Mutates: dict_"""
     import itertools
-    if mangler is None:
-        mangler = lambda *args : args  # Identity function
     for key in itertools.chain([main], aliases):
         if key in dict_:
-            return mangler(dict_[key])
+            retval = dict_.pop(key)
+            if mangler is not None:
+                retval = mangler(retval)
+            return mangler(retval) # intentional pop - f_name back in dict
     return fallback_value # intentionally un-mangled.

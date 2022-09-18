@@ -477,6 +477,26 @@ def override_namedtuple(nt_lesser
 
     return nt_lesser
 
+
+def override_nt_with_vals_for_key_else_dict(nt, overrides, key, **kwargs):
+    #type(namedtuple, Iterable[dict], str, dict) -> namedtuple
+    """ Returns a namedtuple from overriding the namedtuple nt 
+        with the list of values, if any, in each
+        dict corresponding to key, else the dict itself.
+
+        Mutates: overrides.
+
+        Returns: namedtuple
+    """
+    override_vals_from_key += [override.pop(key, override)
+                               for override in overrides
+                              ]
+    return override_namedtuple(nt
+                              ,override_vals_from_key
+                              ,**kwargs
+                              ) 
+
+
 class Sentinel(object):
     def __init__(self, message):
         self.message = message
@@ -484,6 +504,8 @@ class Sentinel(object):
         return 'Sentinel("' + self.message + '")'
 
 #TODO:  Make bool(Sentinel) False optionally, and fail louder on iteration.
+
+
 
 def error_raising_sentinel_factory(warning
                                   ,message
