@@ -1015,6 +1015,10 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         #sDNA_GH_package = sDNA_GH_package
         self.do_not_remove = do_not_remove
 
+        if not self.local_metas.sync:
+            self.opts = self.opts.copy()
+        #else all synchronised instances can share the class variable
+
 
 
 
