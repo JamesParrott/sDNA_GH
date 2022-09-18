@@ -2952,7 +2952,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
         if (bbox or
            (options.leg_extent is not None and 
-            not isinstance(options_manager.Sentinel)) or
+            not isinstance(options.leg_extent, options_manager.Sentinel)) or
            (options.bbox is not None and 
             not isinstance(options.bbox, options_manager.Sentinel))):
             #
