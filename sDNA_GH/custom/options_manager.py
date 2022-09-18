@@ -488,9 +488,9 @@ def override_nt_with_vals_for_key_else_dict(nt, overrides, key, **kwargs):
 
         Returns: namedtuple
     """
-    override_vals_from_key += [override.pop(key, override)
-                               for override in overrides
-                              ]
+    override_vals_from_key = [override.pop(key, override)
+                              for override in overrides
+                             ]
     return override_namedtuple(nt
                               ,override_vals_from_key
                               ,**kwargs

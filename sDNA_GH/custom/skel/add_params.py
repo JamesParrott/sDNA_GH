@@ -373,12 +373,15 @@ class ParamsToolAdder(object):
 
         self.needed_outputs = [output.NickName
                                for tool in output_tools
-                               for output in tool.output_params()
+                               for output in tool.output_params(interpolations)
                               ]
         self.needed_inputs = [input.NickName
                               for tool in input_tools 
-                              for input in tool.input_params()
+                              for input in tool.input_params(interpolations)
                              ]
+        # Used later, e.g. by sDNA tools when constructing advanced,
+        # to deduce any Params not in here are User Params
+        #
         # .NickName searches output['NickName'] for ParamInfo instances as
         # ParamInfo.__getattr__ is dict.__getitem__
 
@@ -406,8 +409,8 @@ class ParamsToolAdder(object):
             logger.debug(msg)
             return False # params_updated == False
         else:
-            logger.debug('needed_output_params == %s ' % missing_output_params)
-            logger.debug('needed_input_params == %s ' % missing_input_params)
+            logger.debug('missing_output_params == %s ' % missing_output_params)
+            logger.debug('missing_input_params == %s ' % missing_input_params)
 
 
         ParamsSyncObj = Params.EmitSyncObject()
