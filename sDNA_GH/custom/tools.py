@@ -1271,38 +1271,39 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 tool_opts[key] = ','.join(str(element) for element in val)
                 self.logger.info('Converted list to str: %s' % tool_opts[key])
 
-        if advanced is None:
-            advanced = tool_opts.get('advanced', None)
-        if metas.make_advanced and not advanced:
-            user_inputs = self.component.params_adder.user_inputs
-            # We need this reference because some args this tool doesn't 
-            # recognise, may have been added to the component, by another
-            # tool on it.
+        if 'advanced' in tool_opts:
+            if advanced is None:
+                advanced = tool_opts['advanced']
+            if metas.make_advanced and not advanced:
+                user_inputs = self.component.params_adder.user_inputs
+                # We need this reference because some args this tool doesn't 
+                # recognise, may have been added to the component, by another
+                # tool on it.
 
-            self.logger.debug('user_inputs == %s' % user_inputs)
-            self.logger.debug('needed_inputs == %s' 
-                             % self.component.params_adder.needed_inputs
-                             )
-            advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
-                                for key, val in kwargs.items()
-                                if (key in user_inputs and 
-                                    key not in self.built_in_options(opts)
-                                   )
-                               )
-            tool_opts['advanced'] = advanced
-            self.logger.info('Built advanced config string: %s' % advanced)
+                self.logger.debug('user_inputs == %s' % user_inputs)
+                self.logger.debug('needed_inputs == %s' 
+                                % self.component.params_adder.needed_inputs
+                                )
+                advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
+                                    for key, val in kwargs.items()
+                                    if (key in user_inputs and 
+                                        key not in self.built_in_options(opts)
+                                    )
+                                )
+                tool_opts['advanced'] = advanced
+                self.logger.info('Built advanced config string: %s' % advanced)
 
-        else:
-            self.logger.debug('Advanced config string: %s' % advanced)
+            else:
+                self.logger.debug('Advanced config string: %s' % advanced)
 
-        # user needs to set sync = false to avoid sharing advanced.
-        all_sDNA_tool_opts = get_tool_opts(opts
-                                          ,nick_name = self.nick_name
-                                          ,tool_name = self.tool_name
-                                          ,sDNA = None
-                                          ,val = None
-                                          )
-        all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = advanced)
+            # user needs to set sync = false to avoid sharing advanced.
+            all_sDNA_tool_opts = get_tool_opts(opts
+                                            ,nick_name = self.nick_name
+                                            ,tool_name = self.tool_name
+                                            ,sDNA = None
+                                            ,val = None
+                                            )
+            all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = advanced)
 
 
         syntax = get_syntax(tool_opts)

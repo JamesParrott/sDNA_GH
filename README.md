@@ -314,6 +314,8 @@ The file must be formatted correctly, see Creating a zone table or matrix file. 
 
 
 ###### [sDNA_Access_Map](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#specific-origin-accessibility-maps) (sDNAAccessibilityMap)
+This tool may produce an entire copy of the network for each origin, all in the same Data Tree layer - take care when interpreting plotted data. 
+
 Outputs accessibility maps for specific origins, including metric between each origin-destination, Euclidean path length and absolute diversion (difference between Euclidean path length and crow flight path length, similar to circuity, notated here as 'Div').
 
 The accessibility map tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output maps for all origins.  If outputting "maps" for multiple origins, these will be output in the same feature class as overlapping polylines. It may be necessary to split the result by origin link ID in order to display results correctly.
