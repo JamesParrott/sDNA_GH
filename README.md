@@ -377,7 +377,8 @@ To use sDNA's advanced config options in sDNA_GH, add in an input Param to an sD
 
 
 ###### [sDNA_Net_Radii](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#network-radii) (sDNANetRadii)
-Outputs the network radii used in Integral Analysis. 
+Outputs the network radii used in Integral Analysis.  This tool will return a Data Tree in Geom of all the sub networks for 
+each origin.  The cluster component, Unpack_Network_Radii in sDNA/Extras can assist plotting and interpreting this.
 
 The network radii tool also allows a list of origin polyline IDs to be supplied (separated by commas). Leave this parameter blank to output radii for all origins.
 

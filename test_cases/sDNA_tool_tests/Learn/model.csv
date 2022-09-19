@@ -1,7 +1,0 @@
-sDNA regression model
-Target shift,0
-Target lambda,1
-Intercept,1.5219753105488428e-06
-
-Variable,Shift,Lambda,Coeff,StdCoeff
-TPBtEn,0,1,257.0000002965202,0.999999999999999
