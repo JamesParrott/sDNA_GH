@@ -36,6 +36,9 @@ sDNA_GH:
 8. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
 9. Copy `sDNA_GH.zip` to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
 10. Unzip `sDNA_GH.zip` to this location (in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a single subfolder called `sDNA_GH` should have been created.
+
+If you have downloaded sdnagh.zip from food4rhino, rename the folder "sdnagh" to "sDNA_GH" in %appdata%\Grasshopper\UserObjects\
+
 11. Restart Rhino and Grasshopper.
 12. The sDNA_GH plug in components should now be available under a new "sDNA" tab in the ribbon amongst the tabs for any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
 13. To use sDNA with sDNA_GH, if no preferences are specified, sDNA_GH will search for sDNA and Python 2.7 installations automatically, using the first one of each it finds.  To ensure sDNA_GH uses a particular version of sDNA and the correct Python 2.7 interpreter it is recommended on first usage to:
