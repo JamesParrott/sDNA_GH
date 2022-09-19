@@ -136,9 +136,9 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
 
     if options.decimal:
         import decimal as dec
+    x = str(x)  # To convert False to 'False' and 0 to '0'
     dec.getcontext().prec = options.precision #if else options.precision    # significant figures,  >= # decimal places
-    if      x in [True, False] or (hasattr(x, 'lower')
-        and x.lower() in ['true','false']):   # if isinstance(x,bool):.  Don't test coercion with bool() first or everything truthy will be 'L'
+    if  x.lower() in ['true','false']:   
         return x, SHP_FIELD_CODES[bool]   # i.e. 'L'
     try:
         y = int(x)   # if isinstance(x,int):  # Bool test needs to come before this as int(True) == 1

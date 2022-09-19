@@ -1003,7 +1003,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             get_syntax = self.get_syntaxes[sDNA]
             defaults = self.default_named_tuples[sDNA]._asdict()
             return sDNAUISpec, run_sDNA, get_syntax, defaults
-        print('Loading sDNA info for tool: %s' % tool_name)
+        self.logger.info('Loading sDNA info for tool: %s' % tool_name)
         try:
             sDNA_Tool = getattr(sDNAUISpec, self.tool_name)()
         except AttributeError:

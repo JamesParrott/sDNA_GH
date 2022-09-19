@@ -13,6 +13,9 @@
 .shx
 .csv
 
+#sDNA
+.names.csv
+
 #Rhino lock file
 .3dm.rhl
 

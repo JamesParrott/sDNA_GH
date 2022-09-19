@@ -257,7 +257,6 @@ def obj_makers(
     #return rhino_obj_maker
     # e.g. rhino_obj_maker = rs.AddPolyline
     def f(x):
-        print('Calling rhino_obj_maker with: %s' % x)
         return rhino_obj_maker(x)
     return f
 

@@ -162,7 +162,6 @@ class GeomDataMapping(OrderedDict):
             Data = [OrderedDict(zip(key_list, val_list)) 
                     for key_list, val_list in itertools.izip(key_lists, val_lists)  
                    ]
-            print(len(Data))
 
             # Else treat as a list of values
             # with no keys, the

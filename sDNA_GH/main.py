@@ -1039,7 +1039,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
              # list container
         Data = kwargs.pop('Data', None)
         Geom = kwargs.pop('Geom', None)
-        print(kwargs)
         f_name = funcs.get_main_else_get_aliases(
                      dict_ = kwargs
                     ,main = 'file'
