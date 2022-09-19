@@ -121,6 +121,7 @@ c) Set the `config` on each component to be resynchronised to the file path of t
  -only require one project specific `.toml` file to be set to a `config` Input between all of them.
  -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
  -only once read the installation wide `config.toml` file user options file, when the first sDNA_GH component is placed (synchronised or desynchronised).  
+ -in one `.gh` file are affected by the global options set by other synchronised sDNA_GH components in previous `.gh` files opened in the same Rhino session.
 
 The following Inputs and Outputs are never shared when not connected in Grasshopper: `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
 
@@ -359,7 +360,7 @@ This tool can be useful for checking and debugging spatial networks. In particul
 
 ##### Geometric analysis tools
 ###### [sDNA_Geodesics](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#geodesics) (sDNAGeodesics)
-Outputs the geodesics (shortest paths) used by Integral Analysis. 
+Outputs the geodesics (shortest paths) used by Integral Analysis.  Geodesics can appear different to the original network so to make sure the changes are visible, ensure the pre existing network is hidden to avoid obscuring the new one.
 
 The geodesics tool also allows a list of origin and destination polyline IDs to be supplied (separated by commas). Leave the origin or destination parameter blank to output geodesics for all origins or destinations. (Caution: this can produce a very large amount of data).
 

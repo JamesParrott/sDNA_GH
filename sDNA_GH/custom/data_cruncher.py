@@ -37,7 +37,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '0.13'
+__version__ = '1.0'
 
 import logging
 import warnings
