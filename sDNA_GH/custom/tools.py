@@ -1855,6 +1855,7 @@ class ShapefileReader(sDNA_GH_Tool):
         sDNA_names_fmt = '{name}.shp.names.csv'
         prepped_fmt = '{name}_prepped'
         output_fmt = '{name}_output'
+        ensure_3D = True
                         
     component_inputs = ('file', 'Geom', 'bake') # existing 'Geom', otherwise new 
                                                 # objects need to be created
@@ -1931,6 +1932,10 @@ class ShapefileReader(sDNA_GH_Tool):
             #shapes_to_output = ([shp.points] for shp in shapes )
             
             objs_maker = rhino_gh_geom.obj_makers(shape_type)
+            #e.g. rs.AddPolyline for shp_type = 'POLYLINEZ'
+
+            if options.ensure_3D:
+                objs_maker = funcs.compose(objs_maker, funcs.ensure_3D)
 
             if options.bake:
                 objs_maker = funcs.compose(str, objs_maker)

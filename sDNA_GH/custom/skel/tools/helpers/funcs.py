@@ -138,6 +138,20 @@ def list_of_lists(iterable):
     #type(Iterable[Iterable]) -> list[list]
     return [list(item) for item in iterable]
 
+
+def ensure_3D(lists):
+    #type(List[List[Number]]) -> List[List[Number]]
+    """ Appends 0 to lists of two numbers in a list of list of numbers. 
+    
+        Mutates: lists 
+        Returns: lists
+    """
+    for list_ in lists:
+        if len(list_) == 2:
+            list_.append(0)
+    return lists
+
+
 if not hasattr(itertools, 'zip_longest'):
    itertools.zip_longest = itertools.izip_longest
 
