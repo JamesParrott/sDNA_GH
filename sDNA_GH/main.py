@@ -53,6 +53,7 @@ if hasattr(collections, 'Iterable'):
 else:
     import collections.abc
     Iterable = collections.abc.Iterable
+import functools
 import locale
 
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
@@ -1038,14 +1039,16 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
              # list container
         Data = kwargs.pop('Data', None)
         Geom = kwargs.pop('Geom', None)
-
+        print(kwargs)
         f_name = funcs.get_main_else_get_aliases(
-                                         dict_ = kwargs
-                                        ,main = 'file'
-                                        ,aliases = ('f_name',)
-                                        ,fallback_value = ''
-                                        ,mangler = smart_comp.first_item_if_seq
-                                        )
+                     dict_ = kwargs
+                    ,main = 'file'
+                    ,aliases = ('f_name',)
+                    ,fallback_value = ''
+                    ,mangler = functools.partial(smart_comp.first_item_if_seq
+                                                ,null_container = ''
+                                                )
+                    )
 
         external_opts = smart_comp.first_item_if_seq(kwargs.pop('opts', {}), {})
 

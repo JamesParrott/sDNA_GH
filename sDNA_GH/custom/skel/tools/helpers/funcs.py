@@ -199,9 +199,10 @@ def get_main_else_get_aliases(dict_, main, aliases, fallback_value = None, mangl
         Mutates: dict_"""
     import itertools
     for key in itertools.chain([main], aliases):
-        if key in dict_:
-            retval = dict_.pop(key)
+        if key in dict_ and dict_[key] is not None:
+            retval = dict_.pop(key) # intentional pop - f_name back in dict
             if mangler is not None:
+                print('retval = %s' % retval)
                 retval = mangler(retval)
-            return mangler(retval) # intentional pop - f_name back in dict
+            return retval 
     return fallback_value # intentionally un-mangled.
