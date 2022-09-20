@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '1.0'
+__version__ = '2.0'
 
 import sys
 import os
@@ -201,15 +201,9 @@ class TestDataCruncher(unittest.TestCase):
         #input data must be sorted in ascending order
         test_data = [#'expected' : 'input_'  
                      ([], ([2,]*9, 7))
-                    ,([0.3333333, 1.5], ([0,0] +[1]*9 + [2] * 9,7))
-                    ,(""" >>> dc.spike_isolating_quantile(data, 7)                                                                                                                  
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 741, in spike_isolating_quantile  
-  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 764, in spike_isolating_quantile
-  File "C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\sDNA_GH\custom\data_cruncher.py", line 562, in quantile_l_to_r
-NotImplementedError:  highest lower bound search failed, or  hlb was at or below previous bound,  but should have had  data_point_below - previous_bound >= tol.   
-data_point_below - previous_bound == 0.00757575035 and tol == 4.8e-16""" 
+                    ,([0.5, 1.5], ([0,0] +[1]*9 + [2] * 9,7))
+                    ,([[2.2651515007, 2.3030302524549997, 2.3409091234199999
+                       ,2.4848486185050001, 2.6868686676050002, 2.99494946003]]
                      ,([2.24242424965, 2.25757575035, 2.25757575035 
                        ,2.2727272510500001, 2.2727272510500001, 2.3333332538599998
                        ,2.34848499298, 2.34848499298, 2.34848499298, 2.34848499298

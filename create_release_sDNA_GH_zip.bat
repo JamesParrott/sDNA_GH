@@ -1,11 +1,18 @@
 @ECHO OFF
 
-copy README.md sDNA_GH
-copy README.pdf sDNA_GH
-copy license.md sDNA_GH
-cd sDNA_GH
-tar -caf ..\sDNA_GH.zip *
-del README.md
-del README.pdf
-del license.md
+set zip_name=sdna-gh
+set package_name=sDNA_GH
+
+mkdir %zip_name%
+copy README.md %zip_name%
+copy README.pdf %zip_name%
+copy license.md %zip_name%
+xcopy %package_name% %zip_name%\%package_name% /I /S /E /Y
+cd %zip_name%
+tar -caf ..\%zip_name%.zip *
+cd ..
+rmdir /s /q %zip_name%
+rem del README.md
+rem del README.pdf
+rem del license.md
 

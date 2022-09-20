@@ -13,6 +13,8 @@ sDNA_GH:
  - Displays the results from sDNA by colouring a new layer of new polylines or the original ones.
 
 ## User manual.  
+__version__ = '2.0'
+
 ### System Requirements. 
 #### Software
 1. Windows 10 or 8.1 (not tested in Windows 11) 
@@ -30,14 +32,12 @@ sDNA_GH:
 2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0] or [Python 2.7.18](https://www.python.org/downloads/release/python-2718/)  that can run sDNA correctly from the command line, with pip for sDNA Learn.  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced (it is not possible to access the Iron Python shipped with Rhino from the command line, in any case).  
 3. sDNA Learn requires numpy.  Numpy can be added after installing Python 2.7.18 by opening a `cmd` window and typing: `cd C:\Python27\Scripts` and `pip2.7 install numpy`
 4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA itself may require the 64 bit (x64) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ) ).  The closed source "free as in beer" version of [sDNA](https://sdna.cardiff.ac.uk/sdna/software/software/) and sDNA+ may also require the 32 bit (x86) Visual Studio 2008 redistributable available or [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe) in order to unlock sDNA with a serial number.
-5. Download `sDNA_GH.zip` from (food4rhino)[https://www.food4rhino.com/en/app/sdnagh] or the [sDNA_GH releases page on Github](https://github.com/JamesParrott/sDNA_GH/releases).
-6. Ensure `sDNA_GH.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files in the zip archive.  If any files still need to be unblocked, a [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) script is provided in the zip file: `\sDNA_GH\dev_tools\batch_files\unblock_all_files_powershell.bat`[^2]   Please do not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
+5. Download `sdna-gh.zip` from (food4rhino)[https://www.food4rhino.com/en/app/sdnagh] or the [sDNA_GH releases page on Github](https://github.com/JamesParrott/sDNA_GH/releases).
+6. Ensure `sdna-gh.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files in the zip archive.  Please do not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
 7. Open Rhino and Grasshopper.
 8. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
-9. Copy `sDNA_GH.zip` to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sDNA_GH.zip`).
-10. Unzip `sDNA_GH.zip` to this location (in Windows 10 right click `sDNA_GH.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a single subfolder called `sDNA_GH` should have been created.
-
-If you have downloaded sdnagh.zip from food4rhino, rename the folder "sdnagh" to "sDNA_GH" in %appdata%\Grasshopper\UserObjects\
+9. Copy `sdna-gh.zip` to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sdna-gh.zip`).
+10. Unzip `sdna-gh.zip` to this location (in Windows 10 right click `sdna-gh.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a new folder called `sdna-gh` should have been created, itself containing a subfolder called `sDNA_GH` (plus license.md and copies of these readme files).
 
 11. Restart Rhino and Grasshopper.
 12. The sDNA_GH plug in components should now be available under a new "sDNA" tab in the ribbon amongst the tabs for any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
@@ -82,7 +82,7 @@ logger (which will most likely result in a lot of output), set `propagate` to tr
 ###### Options override priority order
 1. The component input Param options override options in a project specific options file (`config`).  
 2. A project specific options file (specified in `config`) overrides options from another sDNA_GH component (connected in `opts`).  
-3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml`).  
+3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml`).  
 4. On start up only (and every time thereafter if `sync = false`, `no_state = true` and `read_only = false`) the installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
 [note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
 
@@ -106,7 +106,7 @@ This writes `sync` = true to the installation wide options file (`config.toml`).
 To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
 a) Restart Rhino, 
 b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
-c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
+c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
 
 ###### Desynchronised components (`sync` = false):
  -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
@@ -483,7 +483,7 @@ grasshopper.sdna@gmail.com
 
 ### Dependencies.
 ####
- To bulk unblock files, to avoid unblocking every file manually it is necessary to install [Powershell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell).  Otherwise no additional dependencies are required.  sDNA_GH is shipped with files from the following python packages included:
+sDNA_GH is shipped with files from the following python packages included:
 [PyShp (MIT License) "version: 2.2.0"](https://github.com/GeospatialPython/pyshp/blob/master/shapefile.py)
 [Toml (MIT License)](https://github.com/uiri/toml/blob/master/toml/decoder.py)  Latest commit 230f0c9 on 30 Oct 2020 
 
@@ -492,20 +492,20 @@ grasshopper.sdna@gmail.com
 1. If sDNA_GH has not automatically found the sDNA installation you wish to build components for, place a Config component (the one with a lightbulb icon) and add its path to `sDNA_paths`.
 2. Run `build_components.bat` (if necessary open it and adjust the paths to your local folders, and the paths in `\dev\sDNA_build_components.gh`).
 3. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: [print, PD Consulting  VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print).  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
-4. Manually create `Unload_sDNA_GH` and `Readme.txt` components if required. 
+4. Manually create `Unload_sDNA_GH` and `Readme.txt` components if required (the latter can use `readme_component.gh`; the former is in `sDNA_build_components.gh`), and the cluster components in `Shp_Data_Tree_component.gh` and `unpack_network_radii.gh`.  Copy these to `\sDNA_GH\components\manually_built`.
 5. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
 6. Note:  The components are only GhPython launchers with different names and different docstrings.  As much code as possible has been shifted into the python package and the other sDNA_GH Python package files.  If no changes to the launcher code have been made and no new components/tools are required, a new release can simply reuse the .ghuser files from an old release, and the new release's zip files can be created simply by re running `create_release_sDNA_GH_zip.bat`.
   
 #### To build new sDNA components.
 sDNA_GH will attempt to automatically build components and user objects for the sDNA tools in an `sDNAUISpec.py`, that it doesn't already have .ghuser GH component / User Object file for.  It will also look for an .png icon file with the same name as the tool Class in sDNAUISPec in `\sDNA_GH\components\icons`, and will parse this very file (`README.md`) for a tool description, to swap in as the launcher code's docstring (which will become the User Object and component descriptions, and its mouse over text).  Therefore:
-- for each new component: Add a description to this file, `README.md` starting on the line after (`tool Class name`) in brackets, ending in two blank lines to this very file.  Save it to `%appdata%\Grasshopper\UserObjects\sDNA_GH\README.md` (overwriting the previous one). 
-- for each new component: Prepare an icon file and save it to `%appdata%\Grasshopper\UserObjects\sDNA_GH\components\icons`. 24x24 is recommended by the Grasshopper developers, but it seems fairly flexible - see sDNA_Integral.  A format compatible with .Net's `System.Drawing.Bitmap` Class is required. `.png` has been tested.
+- for each new component: Add a description to `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\README.md` starting on the line after (`tool Class name`) in brackets, ending in two blank lines.  Save it to `README.md` (overwriting the previous one in the User Objects folder). 
+- for each new component: Prepare an icon file and save it to `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\components\icons`. 24x24 is recommended by the Grasshopper developers, but it seems fairly flexible - see sDNA_Integral.  A format compatible with .Net's `System.Drawing.Bitmap` Class is required. `.png` has been tested.
 - Open a new Grasshopper canvas with sDNA_GH installed.
 - Place an sDNA_GH Config component. 
 - Setup sDNA_GH to use the new version of sDNA by specifying it in `sDNA_folders` (following Installation step 13 above).
 - Ensure `make_new_comps` is true.
 - If necessary Recompute the sheet - press F5.
-- The new user objects for the new components will be automatically created, and added to the sDNA section of the Grasshopper Plug-ins Ribbon.  Copy the relevant `.ghuser` file(s) from `%appdata%\Grasshopper\UserObjects\`, and paste them in `\sDNA_GH\components\automatically_built` in the repo.  Place copies of the updated README.md file and new icon files in there too for posterity. 
+- The new user objects for the new components will be automatically created, and added to the sDNA section of the Grasshopper Plug-ins Ribbon.  Copy the relevant `.ghuser` file(s) from `%appdata%\Grasshopper\UserObjects\`, and paste them in `\sDNA_GH\components\automatically_built` in the repo.  Place copies of the updated README.md file and new icon files in there too for posterity.  If wished, move the new `.ghuser` file(s) from `%appdata%\Grasshopper\UserObjects\` to `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\components\automatically_built`
 
 The supported data types for inputs (forced to lower case) are in sDNA_ToolWrapper.sDNA_types_to_Params in tools.py: 
 - fc = Param_FilePath
@@ -531,9 +531,7 @@ Select GHPython component.   Optionally compile to .ghpy.  File -> Create User O
 
 [^0] The Python 2.7 download can be verified using this [certificate](https://www.python.org/ftp/python/2.7.3/python-2.7.3.msi.asc) and [Gpg4win](https://gpg4win.org/download.html).
 
-[^1] The entire source code for sDNA_GH is visible on [Github](http:\\www.github.com).  All the source code is also visible in the download itself as the component launcher and Python package is visible, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  It is a little repetitive, but see the Build Instructions above to build them for yourself from the source code.   
-
-[^2]  This script is largely code from Ed Wilson of Microsoft's [Dev Blog](https://devblogs.microsoft.com/scripting/easily-unblock-all-files-in-a-directory-using-powershell/) or try this [alternative method](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.2)) 
+[^1] The entire source code for sDNA_GH is visible on [Github](https://github.com/JamesParrott/sDNA_GH/).  All the source code is also visible in the download itself as the component launcher and Python package is visible, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  See the Build Instructions above to build them for yourself from the source code.   
 
 
 

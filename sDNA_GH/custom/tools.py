@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '1.0'
+__version__ = '2.0'
 
 import os
 import sys
@@ -766,7 +766,7 @@ def import_sDNA(opts
     return sDNAUISpec, run_sDNA
 
 
-default_user_objects_location = os.path.join(launcher.USER_INSTALLATION_FOLDER
+sDNA_GH_user_objects_location = os.path.join(launcher.USER_INSTALLATION_FOLDER
                                             ,launcher.PACKAGE_NAME
                                             ,builder.ghuser_folder
                                             )
@@ -778,7 +778,7 @@ def build_sDNA_GH_components(**kwargs):
     
     
     user_objects_location = kwargs.setdefault('user_objects_location'
-                                             ,default_user_objects_location
+                                             ,sDNA_GH_user_objects_location
                                              )
 
     sDNA_GH_path = user_objects_location
@@ -821,7 +821,7 @@ def build_missing_sDNA_components(opts
     # = opts['options'].sDNAUISpec
 
     user_objects_location = kwargs.setdefault('user_objects_location'
-                                             ,default_user_objects_location  
+                                             ,sDNA_GH_user_objects_location  
                                              )
 
     def ghuser_file_path(name, folder = user_objects_location):
@@ -829,7 +829,7 @@ def build_missing_sDNA_components(opts
         return os.path.join(folder, name + '.ghuser') 
 
     components_folders = (user_objects_location
-                         ,default_user_objects_location
+                         ,sDNA_GH_user_objects_location
                          ,launcher.USER_INSTALLATION_FOLDER
                          )
 

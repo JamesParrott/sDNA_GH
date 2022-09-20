@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 __author__ = 'James Parrott'
-__version__ = '1.0'
+__version__ = '2.0'
 
 import logging
 import collections
