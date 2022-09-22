@@ -11,7 +11,6 @@
 .shp
 .dbf
 .shx
-.csv
 
 #sDNA
 .names.csv
@@ -136,7 +135,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-*.dbf
-*.shp
-*.shx
+
 
