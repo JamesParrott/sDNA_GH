@@ -208,9 +208,8 @@ def strict_import(module_name = ''
         Avoids name clashes and casual hijack attempts.  In some 
         environments supporting a Python implementation (such as 
         GhPython in Grasshopper) it may not be desirable to ask the user 
-        to set PYTHONPATH.  Hence here, we save sys.path to a tmp 
-        variable, set sys.path to the specified folders, attempt the 
-        import in a try: block, and restore sys.path in a finally: block
+        to set PYTHONPATH.  Hence here, we insert the specified folder
+        into sys.path (if they are not already in there).
     """
     if not module_name or not isinstance(module_name, basestring):
         raise ModuleNameError(module_name = module_name
