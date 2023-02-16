@@ -511,8 +511,8 @@ def error_raising_sentinel_factory(warning
                                   ,message
                                   ,extra_dunders = ('call','getitem','setitem'
                                                    , 'hash','len','iter'
-                                                   ,'delattr','delete'
-                                                   #,'get', 'set', 'setattr'
+                                                   ,'delattr',
+                                                   #'setattr'
                                                    )
                                   ,leave_alone = ('init','repr','message'
                                                  # leaving repr the same as 
@@ -523,6 +523,17 @@ def error_raising_sentinel_factory(warning
                                                  ,'subclasshook','mro','bases'
                                                  ,'getattr','getattribute'
                                                  ,'dir','isabstractmethod'
+
+                                                 # Hypothesis for sDNA_GH bug fix: in
+                                                 # a version 
+                                                 # of GhPython or Iron Python, when 
+                                                 # isinstance is called on an instance
+                                                 # variable, it looks
+                                                 # for these methods to see if it's
+                                                 # a data descriptor.  So we need to
+                                                 # allow them to be accessed even if 
+                                                 # calling them won't do anything.
+                                                 ,'get', 'set', 'delete'
                                                  )
                                   ):
     #type(str, str, tuple, tuple) -> type[any]
