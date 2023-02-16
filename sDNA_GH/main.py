@@ -203,23 +203,23 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
 if (not isinstance(HardcodedMetas.config, basestring) 
     or not os.path.isfile(HardcodedMetas.config)):
     output.warning('Config file: %s not found. ' % HardcodedMetas.config 
-                +'If no sDNA install or Python is automatically found (or to '
-                +'choose a different one), or to create an options file '
-                +' please place a Config component.  '
-                +'To use sDNA_GH with a specific sDNA installation, firstly '
-                +'ensure sDNA_paths contains only your sDNA folder, and secondly set '
-                +'sdnauispec and runsdnacommand to the names of the sdnauispec.py and '
-                +'runsdnacommand.py files respectively (to use more than one sDNA you '
-                +'must rename these files in any extra versions).  '
-                +'To use sDNA_GH with a specific python.exe, set python to its path or '
-                +'to search for it ensure python_exes only '
-                +'contains its name, and python_paths only contains the path of its '
-                +' folder.  '
-                +'To save these and any other options, set go to true on the Config '
-                +'component. '
-                +'If no project options file is specified in save_to, an '
-                +'installation wide options file (config.toml) will be created. '
-                )  
+                 +'If no sDNA install or Python is automatically found (or to '
+                 +'choose a different one), or to create an options file '
+                 +' please place a Config component.  '
+                 +'To use sDNA_GH with a specific sDNA installation, firstly '
+                 +'ensure sDNA_paths contains only your sDNA folder, and secondly set '
+                 +'sdnauispec and runsdnacommand to the names of the sdnauispec.py and '
+                 +'runsdnacommand.py files respectively (to use more than one sDNA you '
+                 +'must rename these files in any extra versions).  '
+                 +'To use sDNA_GH with a specific python.exe, set python to its path or '
+                 +'to search for it ensure python_exes only '
+                 +'contains its name, and python_paths only contains the path of its '
+                 +' folder.  '
+                 +'To save these and any other options, set go to true on the Config '
+                 +'component. '
+                 +'If no project options file is specified in save_to, an '
+                 +'installation wide options file (config.toml) will be created. '
+                 )  
 #######################################################################################
 
 
