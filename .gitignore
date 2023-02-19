@@ -138,3 +138,6 @@ dmypy.json
 
 
 *.zip
+*.shx
+*.dbf
+*.shp
