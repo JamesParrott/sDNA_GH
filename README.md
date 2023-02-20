@@ -550,7 +550,9 @@ grasshopper.sdna@gmail.com
 ### Dependencies.
 ####
 sDNA_GH is shipped with files from the following python packages included:
+
 [PyShp (MIT License) "version: 2.2.0"](https://github.com/GeospatialPython/pyshp/blob/master/shapefile.py)
+
 [Toml (MIT License)](https://github.com/uiri/toml/blob/master/toml/decoder.py)  Latest commit 230f0c9 on 30 Oct 2020 
 
 
