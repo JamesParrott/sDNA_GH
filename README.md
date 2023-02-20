@@ -191,13 +191,20 @@ The following Inputs and Outputs are never shared when not connected in Grasshop
 #### Tools.
 ##### Common component input and output Params
 **OK** This output is true when a component has executed successfully.
+
 **go** Set this input to true (e.g. from a boolean toggle component) to run a component's tool.
+
 **file** Specifies the path of a file to write to, or that was written to.
+
 **Data**
 `Data` must be a Data Tree 2 branches deep at the first level: a branch each for keys {0;0} and values {0;1}.  The two nodes of this structure should have a branch for each geometric object (so the nth's keys and values should have paths {0;0;n} and {0;1;n}).  The lists at these nodes must be of equal length.  The mth key and value of the nth geometric object should be {0;0;n}[m] and {0;1;n}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or from a Shapefile.  Grasshopper's path tools can be used to adjust compatible Data Trees into this format.  
+
 **Geom** Accepts a list of geometric objects (Guids of Rhino objects or native Grasshopper objects).  Data trees of objects need to be flattened into lists. To use Rhino objects referenced from Grasshopper parameter objects (instead of their Grasshopper versions which are often obscured unless the Rhino shapes are set to Hidden) run the output of the Geometry (Geo) or Curve (Crv)through a Guid (ID) parameter object first. 
+
 **gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the UUIDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
+
 **opts** Accepts an options data structure (a nested dictionary of named tuples) from another sDNA_GH component.  Only of use if they are not synced to the global module options.
+
 **config** The path of a TOML file (e.g. `config.toml`) to be read in containing sDNA_GH options settings. Shared between synchronised components.
 
 ##### Support tools
