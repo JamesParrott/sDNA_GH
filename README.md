@@ -496,10 +496,6 @@ Unload the sDNA_GH Python package and all sDNA modules, by removing them from Gr
 The next sDNA_GH component to run after this one (that's not also an Unload_sDNA) will then reload the sDNA_GH Python package and installation-wide options file (config.toml), and any specified options including a project specific config.toml, without otherwise having to restart Rhino to clear Grasshopper's cache.  sDNA tools will also try to load an sDNA installation. 
 
 
-###### sDNA_General (sDNA_General)
-Run any other component by feeding the name of it into the "tool" input param.  
-
-
 ###### Self_test (selftest)
 Runs the unit tests of the sDNA_GH module and launcher.py.  
 

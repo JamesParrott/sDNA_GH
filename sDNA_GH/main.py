@@ -187,7 +187,6 @@ class HardcodedMetas(tools.sDNA_ToolWrapper.Metas
                  ,'write_User_Text'  : 'Data'
                  ,'parse_data'       : 'Plot'
                  ,'recolour_objects' : 'Plot'
-                 ,'sDNA_General'     : 'Dev'
                  ,'Unload_sDNA'      : 'Dev'
                  ,launcher.SELFTEST  : 'Dev'
                  ,'config'           : 'Extra'
@@ -717,7 +716,6 @@ write_User_Text = tools.UsertextWriter(opts = module_opts)
 parse_data = tools.DataParser(opts = module_opts)
 recolour_objects = tools.ObjectsRecolourer(opts = module_opts)
 build_components = dev_tools.sDNA_GH_Builder(opts = module_opts)
-sDNA_General_dummy_tool = tools.sDNA_GeneralDummyTool(opts = module_opts)
 config = tools.ConfigManager(opts = module_opts)
 
 runner.tools_dict.update(get_Geom = get_Geom
@@ -728,7 +726,6 @@ runner.tools_dict.update(get_Geom = get_Geom
                         ,parse_data = parse_data
                         ,recolour_objects = recolour_objects 
                         ,Build_components = build_components
-                        ,sDNA_General = sDNA_General_dummy_tool
                         ,config = config
                         )
 

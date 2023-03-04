@@ -3139,15 +3139,6 @@ class ObjectsRecolourer(sDNA_GH_Tool):
 
 
 
-class sDNA_GeneralDummyTool(sDNA_GH_Tool):
-
-    component_inputs = ('tool',)
-
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError('this function should never run '
-                                 +'(there is a problem with sDNA_General).'
-                                 )
-    component_outputs = ()
 
 
 toml_no_tuples = options_manager.toml_types[:]
