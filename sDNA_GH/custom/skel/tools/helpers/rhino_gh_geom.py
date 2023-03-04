@@ -244,7 +244,81 @@ Rhino_obj_adder_for_shape = dict(NULL = None
                                 # Pyshp closes them
                                 ,MULTIPOINTM = 'AddPoints'
                                 )  
+('POLYLINE', 'POLYGON')
 
+def L2(X, Y):
+    retval = 0
+    for x, y in zip(X,Y):
+        retval += (x - y)**2
+    return retval**0.5
+
+TOL = 1e-15  # 2e-17 is near machine eps on my machine
+
+class InvalidPolyline(list):
+    """ Criteria from: https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Polyline_IsValid.htm
+    
+    "Valid polylines have at least one segment, no Invalid points and no zero length segments.
+
+    Closed polylines with only two segments are also not considered valid.    "
+    """
+
+
+    @classmethod
+    def from_points(cls, points_list, num):
+    #type(InvalidPolyline, list(list(Number), ...) -> bool)
+
+        instance = cls()
+
+        instance.append('Shape number: ' % num)
+
+        if not points_list:
+            instance.append('Zero-length (or falsey) list of points. \n')
+
+        if len(points_list) == 1:
+            instance.append('Polylines must have at least one segment. '
+                           +' Only one point in list. \n'
+                           )
+
+        d_ = {0: 'x', 1: 'y', 2: 'z'}
+
+        # https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Point3d_IsValid.htm
+        # "Each coordinate of the point must pass the IsValidDouble(Double) test "
+
+        invalid_points = ['%s: %s, point number %s' % (d_[j], coord, i)
+                          for i, point in enumerate(points_list)
+                          for j, coord in enumerate(point)
+                          if not Rhino.RhinoMath.IsValidDouble(coord)
+                         ]
+
+        if invalid_points:
+            instance.append('The following points are invalid: %s ' 
+                           +'(Rhino.RhinoMath.IsValidDouble(coord) is False) \n'
+                           % str(invalid_points)
+                           )
+
+        zero_length_segments = ['point num %s, %s too close to num %s, %s' % (i, x, i+1, points_list[i+1])
+                                for i, x in enumerate(points_list[:-1])
+                                if L2(x, points_list[i+1]) < TOL
+                               ] 
+        
+        if zero_length_segments:
+            instance.append('The following pairs of points are too close: %s '
+                           +'(sqrt of sum of squares of diffs, TOL = %s) \n' 
+                           % (str(zero_length_segments), TOL)
+                           )
+
+        if not zero_length_segments and len(points_list) == 3:
+            start = points_list[0]
+            mid = points_list[1]
+            end = points_list[2]
+            tol = 100*TOL
+            if L2(start, end) < tol:
+                instance.append('Valid closed polylines must have more than two segments. '
+                               +'start = %s and end = %s may be too close (mid = %s). \n'
+                               % (start, end, mid)
+                               )
+
+        return instance
 
 def obj_makers(
        shp_type = 'POLYLINEZ'
