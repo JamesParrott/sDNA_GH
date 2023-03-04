@@ -762,6 +762,7 @@ def shapes_and_recs_as_dicts(shape_records):
                 ]
 
 
+
 class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
 
     def is_3D_shape_type(self):
@@ -785,22 +786,18 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
         parts = shapes.parts
         return ((points[start:end], rec) for start, end in itertools.pairwise(parts))
 
-    def __init__(self, reader, extra_manglers = None, opts = None):
-        #type(shp.Reader, dict, dict)
-        if opts is None:
-            opts = dict(options = ShapeRecordsOptions)
-        
-        
-        self.points_and_rec = self.points_and_rec_3D if self.is_3D_shape_type() else self.points_and_rec_2D
-
-
+    def setup_manglers(
+                    self
+                    ,extra_manglers
+                    ,copy_dicts = ShapeRecordsOptions.copy_dicts
+                    ):
         # manglers will be applied to groups of consecutive single shapes 
         # and groups of consecutive multi-shape shp file entries
+
+
         self.manglers = {True:  funcs.compose(self.points_and_records, shapes_and_recs_as_dicts)
                         ,False: self.unpack_multi_shape_entry_repeat_rec_as_dict
                         }
-
-        copy_dicts = opts['options'].copy_dicts
 
         if extra_manglers is not None or copy_dicts:
 
@@ -832,7 +829,21 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
                 logger.error(msg)
                 raise ValueError(msg)
 
+
+    def __init__(self, reader, extra_manglers = None, opts = None):
+        #type(shp.Reader, dict, dict)
+
+        if opts is None:
+            opts = dict(options = ShapeRecordsOptions)
+
+        self.setup_manglers(
+                         extra_manglers
+                        ,copy_dicts = opts['options'].copy_dicts
+                        )
+
         super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
+
+        self.points_and_rec = self.points_and_rec_3D if self.is_3D_shape_type() else self.points_and_rec_2D
 
 
 
