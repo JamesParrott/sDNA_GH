@@ -1858,10 +1858,11 @@ class ShapefileReader(sDNA_GH_Tool):
         output_fmt = '{name}_output'
         ensure_3D = True
                         
-    component_inputs = ('file', 'Geom', 'bake') # existing 'Geom', otherwise new 
+    component_inputs = ('file', 'Geom', 'bake', 'ignore_invalid') 
+                                                # existing 'Geom', otherwise new 
                                                 # objects need to be created
 
-    def __call__(self, f_name, gdm, opts = None):
+    def __call__(self, f_name, gdm, ignore_invalid, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
@@ -1884,8 +1885,11 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug('bbox == %s' % bbox)
 
         invalid = []
-        handler = rhino_gh_geom.InvalidPolyline.from_points if shape_type is else None
-
+        objs_maker = rhino_gh_geom.obj_makers(shape_type)
+        invalid_obj_handler = rhino_gh_geom.Rhino_obj_adder_invalid_handlers.get(
+                                                                        shape_type
+                                                                       ,None
+                                                                       )
 
         if num_entries == 0:
             self.logger.warning('No entries in Shapefile: %s ' % f_name)
@@ -1936,7 +1940,6 @@ class ShapefileReader(sDNA_GH_Tool):
         if options.new_geom or not existing_geom_compatible: 
             #shapes_to_output = ([shp.points] for shp in shapes )
             
-            objs_maker = rhino_gh_geom.obj_makers(shape_type)
             #e.g. rs.AddPolyline for shp_type = 'POLYLINEZ'
 
             if options.ensure_3D:
@@ -1958,48 +1961,37 @@ class ShapefileReader(sDNA_GH_Tool):
                 points = get_points(obj, *args)
                 return add_geom(points, obj, *args)
 
-            def polyline_geom_generator(group):
+            error_msg = ('The error: {{ %s }}  occurred '
+                        +'when adding shape number: %s.'
+                        )
+
+            def added_geom_generator(group):
                 for x in group:
+                          # obj, *data = x 
                     points = get_points(*x)
                     try:
                         yield add_geom(points, *x)
                     except Exception as e:
-                        rhino_gh_geom.InvalidPolyline.from_points
-                        if handler:
-                            invalid.append(handler(points, self.shape_num))
-
                         # The error of interest inside rhinoscriptsyntax.AddPolyline comes from:
                         #
                         # if rc==System.Guid.Empty: raise Exception("Unable to add polyline to document")
                         # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L563
 
-                        msg = ('\n The error: \n {{ %s }} \n occurred '
-                            +'when adding shape number: %s from shapefile: %s \n'
-                            +' (the first is number 1, not number 0)'
-                            )
-                        msg %= (str(e), self.shape_num, f_name)
-                        logger.error(msg)
+
+                        if invalid_obj_handler:
+                            why_invalid = invalid_obj_handler(points, self.shape_num, e)
+                        else:
+                            why_invalid =  error_msg % (e, self.shape_num)
+
+                        invalid.append(why_invalid)
+
 
 
 
             def gdm_of_new_geom_from_group(group):
-                try:
-                    return gdm_from_GH_Datatree.GeomDataMapping(
-                                                    (add_geom_from_obj(*x) for x in group)
-                                                    ) # obj, *data = x 
-                except Exception as e:
-                    # The error of interest inside rhinoscriptsyntax.AddPolyline comes from:
-                    #
-                    # if rc==System.Guid.Empty: raise Exception("Unable to add polyline to document")
-                    # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L563
+                return gdm_from_GH_Datatree.GeomDataMapping(
+                                                added_geom_generator(group))
 
-                    msg = ('\n The error: \n {{ %s }} \n occurred '
-                          +'when adding shape number: %s from shapefile: %s \n'
-                          +' (the first is number 1, not number 0)'
-                          )
-                    msg %= (str(e), self.shape_num, f_name)
-                    logger.error(msg)
-                    raise ShapefileReaderAddShapeError(msg)
 
 
             gdm_iterator = (gdm_of_new_geom_from_group(group) 
@@ -2047,7 +2039,13 @@ class ShapefileReader(sDNA_GH_Tool):
         # Exhausts the above generator into a list
         sc.doc = ghdoc 
         
-        #gdm_iterator.close()  # Triggers file deleter.
+        if invalid:
+            msg = '\n %s \n\n' % invalid
+            if ignore_invalid:
+                logger.warning(msg)
+            else:
+                logger.error(msg)
+                raise ShapefileReaderAddShapeError(msg)
 
         self.logger.debug('gdm defined.  sc.doc == ghdoc.  ')
 
