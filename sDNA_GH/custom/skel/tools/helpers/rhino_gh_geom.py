@@ -258,12 +258,15 @@ TOL = 1e-15  # 2e-17 is near machine eps on my machine
 
 
 class InvalidPolyline(list):
-    """ Criteria from: https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Polyline_IsValid.htm
+    """ Criteria from: rhino_url
     
         "Valid polylines have at least one segment, no Invalid points and no zero length segments.
 
         Closed polylines with only two segments are also not considered valid.    "
     """
+
+    rhino_url = 'https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Polyline_IsValid.htm'
+    sDNA_url = 'https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/network_preparation.html#connectivity-errors-at-key-locations'
 
 
     @classmethod
@@ -272,8 +275,9 @@ class InvalidPolyline(list):
 
         instance = cls()
 
-        instance.append('While adding shape number: %s error: {{ %s }} occurred' 
-                       % (num, error)
+        instance.append(('While adding shape number: %s error: {{ %s }} occurred, '
+                       +' possibly due to not meeting the criteria here: %s'  )
+                       % (num, error, cls.rhino_url)
                        )
 
         if not points_list:
@@ -318,9 +322,13 @@ class InvalidPolyline(list):
             end = points_list[2]
             tol = 100*TOL
             if L2(start, end) < tol:
-                instance.append('** Valid closed polylines must have more than two segments. '
+
+
+                instance.append(('** Valid closed polylines must have more than two segments. '
                                +'start = %s and end = %s may be too close (mid = %s). '
-                               % (start, end, mid)
+                               +'There is probably an error in the data the shapefile came from. '
+                               +'sDNA recommends breaking *loop links* - %s  ')
+                               % (start, end, mid, cls.sDNA_url)
                                )
 
         return instance

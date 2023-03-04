@@ -195,12 +195,12 @@ class sDNA_GH_Tool(runner.RunnableTool
                                   )
 
     def input_params(self, interpolations = None):
-        return self.param_info_list(self.component_inputs
+        return self.param_info_list(param_names = self.component_inputs
                                    ,extras = interpolations
                                    )
 
     def output_params(self, interpolations = None):
-        return self.param_info_list(self.component_outputs
+        return self.param_info_list(param_names = self.component_outputs
                                    ,extras = interpolations
                                    )
 
@@ -1844,8 +1844,14 @@ class ShapefileWriter(sDNA_GH_Tool):
     retvals = 'retcode', 'f_name', 'gdm'
     component_outputs =  ('file',) 
                
+
+
+
 class ShapefileReaderAddShapeError(Exception):
     pass
+
+
+
 
 class ShapefileReader(sDNA_GH_Tool):
 
@@ -1857,12 +1863,13 @@ class ShapefileReader(sDNA_GH_Tool):
         prepped_fmt = '{name}_prepped'
         output_fmt = '{name}_output'
         ensure_3D = True
+        ignore_invalid = False
                         
     component_inputs = ('file', 'Geom', 'bake', 'ignore_invalid') 
                                                 # existing 'Geom', otherwise new 
                                                 # objects need to be created
 
-    def __call__(self, f_name, gdm, ignore_invalid, opts = None):
+    def __call__(self, f_name, gdm, opts = None):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:
             opts = self.opts
@@ -2040,12 +2047,12 @@ class ShapefileReader(sDNA_GH_Tool):
         sc.doc = ghdoc 
         
         if invalid:
-            msg = '\n %s \n\n' % invalid
-            if ignore_invalid:
-                logger.warning(msg)
+            invalid = '\n %s \n\n' % invalid
+            if options.ignore_invalid:
+                logger.warning(invalid)
             else:
-                logger.error(msg)
-                raise ShapefileReaderAddShapeError(msg)
+                logger.error(invalid)
+                raise ShapefileReaderAddShapeError(invalid)
 
         self.logger.debug('gdm defined.  sc.doc == ghdoc.  ')
 
@@ -2122,8 +2129,34 @@ class ShapefileReader(sDNA_GH_Tool):
                                        +'[x_min, y_min, x_max, y_max]. All '
                                        +'Numbers.'
                                        ) 
-                        ))      
-                                             )
+                        ))
+            ,('ignore_invalid', add_params.ParamInfo(
+                     param_Class = Param_Boolean
+                    ,Description = ('True: suppress errors from failing '
+                                   +'to add shapes to Rhino/GH document.  '
+                                   +'False: skip shapes that could not be '
+                                   +'added to the document. '
+                                   +'Default: %(ignore_invalid)s  '
+                                   +'If True, the reasons why those shapes are '
+                                   +'incompatible with Rhino '
+                                   +'are viewable in *invalid*, but they are also logged '
+                                   +' as warnings (or errors if False) to *out* and any *log_file* '
+                                   +'Five validity criteria are defined here:'
+                                   +rhino_gh_geom.InvalidPolyline.rhino_url
+                                   )
+                    ))
+            ,('invalid', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('Duplicates specific console output in out. '
+                                           +'Details why particular shapes (if any) in the shapefile '
+                                           +'could not be added to a document in Rhino, raising errors.  '
+                                           +'ignore_invalid (currently: %(ignore_invalid)s) must be True '
+                                           +'to read invalid, to suppress those same errors '
+                                           +'(errors stop this and all output Params '
+                                           +'from receiving data). '
+                                           )
+                            ))       
+            )
 
 class UsertextWriterOptions(object):
     uuid_field = 'Rhino3D_'
