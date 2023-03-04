@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '2.0.1'
+__version__ = '2.2.0'
 
 import sys
 import os
