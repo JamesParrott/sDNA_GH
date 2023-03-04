@@ -57,6 +57,7 @@ else:
 
 from ..third_party.PyShp import shapefile as shp
 
+from .options_manager import isnamedtuple
 from .skel.tools.helpers import funcs
 
 
@@ -578,6 +579,11 @@ class OutputFileDeletionOptions(GetFileNameOptions, FieldRecsShapesOptions):
     del_after_read = True
     OUTPUT_FILE_DELETER = None
 
+class ShapeRecordsOptions(OutputFileDeletionOptions):
+    copy_dicts = False
+    shp_type = 'POLYLINEZ'
+
+
 class NullDeleter(object):
     pass
 ShapeFilesDeleter.register(NullDeleter)
@@ -634,16 +640,34 @@ class TmpFileDeletingIterator(SizedIterator):
     def __init__(self, reader, opts = None):
         # type(shp.Reader, dict, dict) -> None
         if opts is None:
-            opts = dict(options = OutputFileDeletionOptions)
+            opts = dict(options = ShapeRecordsOptions)
         self.opts = opts
+        
         if isinstance(reader, basestring) and os.path.isfile(reader):
             self.file_path = reader
             encoding = opts['options'].encoding.replace('-','')
             reader = shp.Reader(reader, encoding = encoding)
-        elif isinstance(reader, shp.Reader):
+        elif not isinstance(reader, shp.Reader):
             raise ValueError('No shapefile reader or file path supplied. ')
+
         self.reader = reader
+        
         self.file_path = reader.shp.name
+
+        if reader.shapeTypeName != opts['options'].shp_type:
+            msg = 'Shape type of file: %s, %s does not match '
+            msg %= (self.file_path, reader.shapeTypeName)
+            msg += 'shape type in options: %s. '
+            msg %= opts['options'].shp_type
+            msg += "Using the shape file's shape type. "
+            
+            logger.warning(msg)
+            warnings.warn(msg)
+            
+            
+        self.shp_type = reader.shapeTypeName
+
+        
 
         super(TmpFileDeletingIterator, self).__init__(
                                                    iterator = self.generator()
@@ -715,8 +739,7 @@ class TmpFileDeletingRecordsIterator(TmpFileDeletingIterator):
         return (record.as_dict() for record in self.reader.iterRecords())
 
 
-class ShapeRecordsOptions(OutputFileDeletionOptions):
-    copy_dicts = False
+
 
 class MultipleShapes(list):
     """ Trivial flag class. """
@@ -738,28 +761,44 @@ def shapes_and_recs_as_dicts(shape_records):
                 for shape_record in shape_records
                 ]
 
-def points_and_rec(shape, record):
-    return shape.points, record
-
-def points_and_records(shapes_and_records):
-    return [points_and_rec(shape, record) 
-            for shape, record in shapes_and_records]
-
-
-def unpack_multi_shape_entry_repeat_rec_as_dict(multi_shape_record):
-    shapes, rec = shape_and_rec_as_dict(multi_shape_record)
-    points, _ = points_and_rec(shapes, rec)
-    parts = shapes.parts
-    return ((points[start:end], rec) for start, end in itertools.pairwise(parts))
-
 
 class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
+
+    def is_3D_shape_type(self):
+        #  POLYLINEZ or LINEM etc.
+        return self.reader.shapeTypeName[-1] in 'ZM'
+
+    def points_and_rec_2D(self, shape, record):
+        return shape.points, record
+
+    def points_and_rec_3D(self, shape, record):
+        # z coordinate is not simply in points
+        return [(x,y,z) for ((x,y), z) in zip(shape.points, shape.z)], record
+
+    def points_and_records(self, shapes_and_records):
+        return [self.points_and_rec(shape, record) 
+                for shape, record in shapes_and_records]    
+
+    def unpack_multi_shape_entry_repeat_rec_as_dict(self, multi_shape_record):
+        shapes, rec = shape_and_rec_as_dict(multi_shape_record)
+        points, _ = self.points_and_rec(shapes, rec)
+        parts = shapes.parts
+        return ((points[start:end], rec) for start, end in itertools.pairwise(parts))
+
     def __init__(self, reader, extra_manglers = None, opts = None):
         #type(shp.Reader, dict, dict)
         if opts is None:
             opts = dict(options = ShapeRecordsOptions)
         
-        self.manglers = self.manglers.copy()
+        
+        self.points_and_rec = self.points_and_rec_3D if self.is_3D_shape_type() else self.points_and_rec_2D
+
+
+        # manglers will be applied to groups of consecutive single shapes 
+        # and groups of consecutive multi-shape shp file entries
+        self.manglers = {True:  funcs.compose(self.points_and_records, shapes_and_recs_as_dicts)
+                        ,False: self.unpack_multi_shape_entry_repeat_rec_as_dict
+                        }
 
         copy_dicts = opts['options'].copy_dicts
 
@@ -796,11 +835,6 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
         super(TmpFileDeletingShapeRecordsIterator, self).__init__(reader, opts)
 
 
-    # manglers will be applied to groups of consecutive single shapes 
-    # and groups of consecutive multi-shape shp file entries
-    manglers = {True:  funcs.compose(points_and_records, shapes_and_recs_as_dicts)
-               ,False: unpack_multi_shape_entry_repeat_rec_as_dict
-               }
 
     def generator(self):
         return funcs.multi_item_unpacking_iterator(
@@ -815,13 +849,13 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
 
 
 
-class ShpOptions(CoerceAndGetCodeOptions
+class ShpOptions(ShapeRecordsOptions
+                ,CoerceAndGetCodeOptions
                 ,GetFileNameOptions
                 ,EnsureCorrectOptions
                 ,WriteIterableToShpOptions
                 ,LocaleOptions
                 ,FieldRecsShapesOptions
                 ):
-                shp_type = 'POLYLINEZ'
-
+    pass
 

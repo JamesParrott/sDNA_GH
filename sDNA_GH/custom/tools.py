@@ -1989,7 +1989,7 @@ class ShapefileReader(sDNA_GH_Tool):
             # an override for different number of overridden geom objects
             # to shapes/recs opens a large a can of worms.  Unsupported.
 
-            self.logger.debug('Geom data map matches shapefile.  ')
+            self.logger.warning('Geom data map matches shapefile. Using existing Geom. ')
 
             gdm_iterator = itertools.zip_longest( # instead of izip to raise 
                                                   # StopIteration in
