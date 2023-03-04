@@ -1955,10 +1955,10 @@ class ShapefileReader(sDNA_GH_Tool):
                                                     (add_geom(*x) for x in group)
                                                     ) # obj, *data = x 
                 except Exception as e:
-                    # I've forgotten what type of Error "could not add shape to document" is
-                    # so unfortunately I have to use the school-boy error bug-hiding catch-all 
-                    # code-smelling anti-pattern version of except   :(
-                    # Shame!  Shame!  Shame!       Shame!  Shame!  Shame!
+                    # The error of interest inside rhinoscriptsyntax.AddPolyline comes from:
+                    #
+                    # if rc==System.Guid.Empty: raise Exception("Unable to add polyline to document")
+                    # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L563
 
                     msg = ('\n The error: \n {{ %s }} \n occurred '
                           +'when adding shape number: %s from shapefile: %s \n'
