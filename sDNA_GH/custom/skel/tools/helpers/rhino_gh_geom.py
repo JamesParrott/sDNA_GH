@@ -261,6 +261,21 @@ def obj_makers(
     return f
 
 
+# def obj_makers(
+#        shp_type = 'POLYLINEZ'
+#       #,make_new_group = make_group
+#       #,add_objects_to_group = add_objs_to_group
+#       ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
+#       ):
+#     #type(str, dict) -> function
+#     rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
+#     #return rhino_obj_maker
+#     # e.g. rhino_obj_maker = rs.AddPolyline
+#     def f(x):
+#         return rhino_obj_maker(x)
+#     return f
+
+
 def add_objs_to_group(objs, group_name):
     #type(list, str) -> int
     return rs.AddObjectsToGroup(objs, group_name)  
