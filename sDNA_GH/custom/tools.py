@@ -1906,8 +1906,11 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug(fields) 
 
         if hasattr(options, 'field') and options.field not in fields:
-            msg = 'field: %s not found in shape file fields: %s' 
+            msg = 'field: %s not found in shape file fields: %s \n\n' 
             msg %= (options.field, fields)
+            msg += 'Before using Parse_Data or Recolour_Objects on Data, '
+            msg += 'set field to one of the shape file fields. '
+            
             self.logger.warning(msg)
             warnings.warn(msg)
 
