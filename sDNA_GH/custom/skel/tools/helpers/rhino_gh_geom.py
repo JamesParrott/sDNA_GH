@@ -246,6 +246,97 @@ Rhino_obj_adder_for_shape = dict(NULL = None
                                 )  
 
 
+
+def L2(X, Y):
+    retval = 0
+    for x, y in zip(X,Y):
+        retval += (x - y)**2
+    return retval**0.5
+
+
+TOL = 1e-15  # 2e-17 is near machine eps on my machine
+
+
+class InvalidPolyline(list):
+    """ Criteria from: rhino_url
+    
+        "Valid polylines have at least one segment, no Invalid points and no zero length segments.
+
+        Closed polylines with only two segments are also not considered valid.    "
+    """
+
+    rhino_url = 'https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Polyline_IsValid.htm'
+    sDNA_url = 'https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/network_preparation.html#connectivity-errors-at-key-locations'
+
+
+    @classmethod
+    def from_points(cls, points_list, num, error):
+    #type(InvalidPolyline, list(list(Number), ...) -> bool)
+
+        instance = cls()
+
+        instance.append(('While adding shape number: %s error: {{ %s }} occurred, '
+                       +' possibly due to not meeting the criteria here: %s'  )
+                       % (num, error, cls.rhino_url)
+                       )
+
+        if not points_list:
+            instance.append('** Zero-length (or falsey) list of points. ')
+
+        if len(points_list) == 1:
+            instance.append('** Polylines must have at least one segment. '
+                           +' Only one point in list. '
+                           )
+
+        d_ = {0: 'x', 1: 'y', 2: 'z'}
+
+        # https://developer.rhino3d.com/api/RhinoCommon/html/P_Rhino_Geometry_Point3d_IsValid.htm
+        # "Each coordinate of the point must pass the IsValidDouble(Double) test "
+
+        invalid_points = ['%s: %s, point number %s' % (d_[j], coord, i)
+                          for i, point in enumerate(points_list)
+                          for j, coord in enumerate(point)
+                          if not Rhino.RhinoMath.IsValidDouble(coord)
+                         ]
+
+        if invalid_points:
+            instance.append('** The following points are invalid: %s ' 
+                           +'(Rhino.RhinoMath.IsValidDouble(coord) is False). '
+                           % str(invalid_points)
+                           )
+
+        zero_length_segments = ['point num %s, %s too close to num %s, %s' % (i, x, i+1, points_list[i+1])
+                                for i, x in enumerate(points_list[:-1])
+                                if L2(x, points_list[i+1]) < TOL
+                               ] 
+        
+        if zero_length_segments:
+            instance.append('** The following pairs of points are too close: %s '
+                           +'(sqrt of sum of squares of diffs, TOL = %s). ' 
+                           % (str(zero_length_segments), TOL)
+                           )
+
+        if not zero_length_segments and len(points_list) == 3:
+            start = points_list[0]
+            mid = points_list[1]
+            end = points_list[2]
+            tol = 100*TOL
+            if L2(start, end) < tol:
+
+
+                instance.append(('** Valid closed polylines must have more than two segments. '
+                               +'start = %s and end = %s may be too close (mid = %s). '
+                               +'There is probably an error in the data the shapefile came from. '
+                               +'sDNA recommends breaking *loop links* - %s  ')
+                               % (start, end, mid, cls.sDNA_url)
+                               )
+
+        return instance
+
+    def __str__(self):
+        return '\n'.join(reason_invalid for reason_invalid in self)
+
+
 def obj_makers(
        shp_type = 'POLYLINEZ'
       #,make_new_group = make_group
@@ -253,14 +344,22 @@ def obj_makers(
       ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
       ):
     #type(str, dict) -> function
-    rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
-    #return rhino_obj_maker
-    # e.g. rhino_obj_maker = rs.AddPolyline
-    def f(x):
-        return rhino_obj_maker(x)
-    return f
+    return getattr(rs, Rhino_obj_adder_for_shape[shp_type])
+    # rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
+    # #return rhino_obj_maker
+    # # e.g. rhino_obj_maker = rs.AddPolyline
+    # def f(x):
+    #     return rhino_obj_maker(x)
+    # return f
 
-
+Rhino_obj_adder_invalid_handlers = dict(
+                                 POLYLINE = InvalidPolyline.from_points
+                                ,POLYGON = InvalidPolyline.from_points   
+                                ,POLYLINEZ = InvalidPolyline.from_points
+                                ,POLYGONZ = InvalidPolyline.from_points   
+                                ,POLYLINEM = InvalidPolyline.from_points
+                                ,POLYGONM = InvalidPolyline.from_points   
+                                ) 
 # def obj_makers(
 #        shp_type = 'POLYLINEZ'
 #       #,make_new_group = make_group
