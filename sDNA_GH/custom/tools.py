@@ -746,16 +746,16 @@ def import_sDNA(opts
         raise e
     except:
         msg = ("sDNA_GH failed to import the sDNA files specified in "
-                +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
-                +" from any of the folders in sDNA_paths."
-                +" Please either ensure a folder in"
-                +" sDNA_paths contains the two corresponding valid files"
-                +" from your chosen sDNA installation, or adjust the"
-                +" file names specified in sDNAUISpec and runsdnacommand"
-                +" to their equivalent files in it (to import a second"
-                +" or third sDNA etc. you must rename these files to different"
-                +" names than in the first). "
-                )
+              +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+              +" from any of the folders in sDNA_paths."
+              +" Please either ensure a folder in"
+              +" sDNA_paths contains the two corresponding valid files"
+              +" from your chosen sDNA installation, or adjust the"
+              +" file names specified in sDNAUISpec and runsdnacommand"
+              +" to their equivalent files in it (to import a second"
+              +" or third sDNA etc. you must rename these files to different"
+              +" names than in the first). "
+              )
         logger.error(msg)
         raise ImportError(msg)
 
@@ -1844,7 +1844,8 @@ class ShapefileWriter(sDNA_GH_Tool):
     retvals = 'retcode', 'f_name', 'gdm'
     component_outputs =  ('file',) 
                
-
+class ShapefileReaderAddShapeError(Exception):
+    pass
 
 class ShapefileReader(sDNA_GH_Tool):
 
@@ -1905,8 +1906,11 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug(fields) 
 
         if hasattr(options, 'field') and options.field not in fields:
-            msg = 'field: %s not found in shape file fields: %s' 
+            msg = 'field: %s not found in shape file fields: %s \n\n' 
             msg %= (options.field, fields)
+            msg += 'Before using Parse_Data or Recolour_Objects on Data, '
+            msg += 'set field to one of the shape file fields. '
+            
             self.logger.warning(msg)
             warnings.warn(msg)
 
@@ -1940,18 +1944,35 @@ class ShapefileReader(sDNA_GH_Tool):
             if options.bake:
                 objs_maker = funcs.compose(str, objs_maker)
 
+            self.shape_num = 0
+
             def add_geom(obj, *args):
                 points_list = funcs.list_of_lists(obj)
+                self.shape_num += 1
                 return (objs_maker(points_list),) + args
 
 
             def gdm_of_new_geom_from_group(group):
-                return gdm_from_GH_Datatree.GeomDataMapping(
-                                                  (add_geom(*x) for x in group)
-                                                  ) # obj, data = x
+                try:
+                    return gdm_from_GH_Datatree.GeomDataMapping(
+                                                    (add_geom(*x) for x in group)
+                                                    ) # obj, *data = x 
+                except Exception as e:
+                    # The error of interest inside rhinoscriptsyntax.AddPolyline comes from:
+                    #
+                    # if rc==System.Guid.Empty: raise Exception("Unable to add polyline to document")
+                    # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L563
 
-            gdm_iterator = (gdm_of_new_geom_from_group(x) 
-                            for x in pyshp_wrapper
+                    msg = ('\n The error: \n {{ %s }} \n occurred '
+                          +'when adding shape number: %s from shapefile: %s \n'
+                          )
+                    msg %= (str(e), self.shape_num, f_name)
+                    logger.error(msg)
+                    raise ShapefileReaderAddShapeError(msg)
+
+
+            gdm_iterator = (gdm_of_new_geom_from_group(group) 
+                            for group in pyshp_wrapper
                                           .TmpFileDeletingShapeRecordsIterator(
                                                                  reader = f_name
                                                                 ,opts = opts
