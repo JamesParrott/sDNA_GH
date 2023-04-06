@@ -85,28 +85,31 @@ def get_points_from_obj(x, shp_type='POLYLINEZ'):
     f = getattr(rs, Rhino_obj_for_shape[shp_type])
     return [list(y) for y in f(x)]
 
+def is_degree_1_Nurbs_Curve(obj):
+    return rs.IsCurve(obj) and rs.CurveDegree(obj) == 1
+
 Rhino_obj_checkers_for_shape = dict(NULL = [None]
                                    ,POINT = ['IsPoint']
                                    ,MULTIPATCH = ['IsMesh']  # Unsupported  
                                    # (too complicated).
-                                   ,POLYLINE = ['IsLine','IsPolyline']  
+                                   ,POLYLINE = ['IsLine','IsPolyline',is_degree_1_Nurbs_Curve]  
                                    #IsPolyline ==False for lines, 
                                    # on which PolylineVertices works fine
-                                   ,POLYGON = ['IsPolyline'] 
+                                   ,POLYGON = ['IsPolyline',is_degree_1_Nurbs_Curve] 
                                    #2 pt Line not a Polygon.
                                    # Doesn't check closed
                                    ,MULTIPOINT = ['IsPoint']   
                                    # e.g. 
                                    # lambda l : any(IsPoint(x) for x in l)
                                    ,POINTZ = ['IsPoint']
-                                   ,POLYLINEZ = ['IsLine','IsPolyline']
-                                   ,POLYGONZ = ['IsPolyline']   
+                                   ,POLYLINEZ = ['IsLine','IsPolyline',is_degree_1_Nurbs_Curve]
+                                   ,POLYGONZ = ['IsPolyline', is_degree_1_Nurbs_Curve]   
                                    #Doesn't check enclosed shape
                                    ,MULTIPOINTZ = ['IsPoints']  
                                    # see MULTIPOINT
                                    ,POINTM = ['IsPoint']
-                                   ,POLYLINEM = ['IsLine','IsPolyline']
-                                   ,POLYGONM = ['IsPolyline']   
+                                   ,POLYLINEM = ['IsLine','IsPolyline',is_degree_1_Nurbs_Curve]
+                                   ,POLYGONM = ['IsPolyline',is_degree_1_Nurbs_Curve]   
                                    #Doesn't check enclosed shape
                                    ,MULTIPOINTM = ['IsPoints']  
                                    # see MULTIPOINT
@@ -194,7 +197,9 @@ def is_shape(obj, shp_type):   #e.g. polyline
     # be set to level 1 to see these log messages
     tmp = sc.doc
     sc.doc = source
-    retval = any( getattr(rs, allower )( obj ) for allower in allowers)
+    retval = any( getattr(rs, allower )( obj ) if isinstance(allower, basestring) else allower(obj)
+                  for allower in allowers
+                )
     sc.doc = tmp
     
     return retval
