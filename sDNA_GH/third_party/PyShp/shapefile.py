@@ -23,6 +23,7 @@ import logging
 import io
 from datetime import date
 import zipfile
+import collections
 import platform
 
 # Create named logger
@@ -139,7 +140,7 @@ if PYTHON3:
 
 else:
     def b(v, encoding='utf-8', encodingErrors='strict'):
-        if isinstance(v, unicode): #type: ignore
+        if isinstance(v, unicode):  #type: ignore
             # For python 2 encode unicode to bytes.
             return v.encode(encoding, encodingErrors)
         elif isinstance(v, bytes):
@@ -150,7 +151,7 @@ else:
             return ""
         else:
             # Force string representation.
-            return unicode(v).encode(encoding, encodingErrors) #type: ignore
+            return unicode(v).encode(encoding, encodingErrors)  #type: ignore
 
     if platform.python_implementation() == 'IronPython':
         cPython_2_b = b
@@ -171,7 +172,7 @@ else:
             return bytes(v).decode(encoding, encodingErrors)
 
     def is_string(v):
-        return isinstance(v, basestring)   #type: ignore
+        return isinstance(v, basestring) #type: ignore
 
 if sys.version_info[0:2] >= (3, 6):
     def pathlike_obj(path):
@@ -190,6 +191,13 @@ else:
                 return str(path)
             except:
                 return path
+    
+    # Coincidentally, Python 3.5 and earlier are also the versions in which
+    # dicts are not already ordered.
+    # "Changed in version 3.7: Dictionary order is guaranteed to be insertion 
+    # order. This behavior was an implementation detail of CPython from 3.6"
+    # https://docs.python.org/3/library/stdtypes.html#dict
+    dict = collections.OrderedDict
 
 
 # Begin
