@@ -251,6 +251,27 @@ Rhino_obj_adder_for_shape = dict(NULL = None
                                 )  
 
 
+def add_degree_one_NurbsCurve(points):
+    Point3Ds = [Rhino.Geometry.Point3d(*list_) 
+                for list_ in points
+               ]
+    nurbs_curve = Rhino.Geometry.NurbsCurve.Create(periodic = False
+                                                  ,degree = 1
+                                                  ,points = Point3Ds
+                                                  )
+    return nurbs_curve
+
+
+Rhino_fallback_obj_adder_for_shape = dict(
+                                 POLYLINE = add_degree_one_NurbsCurve
+                                ,POLYGON = add_degree_one_NurbsCurve   
+                                ,POLYLINEZ = add_degree_one_NurbsCurve
+                                ,POLYGONZ = add_degree_one_NurbsCurve   
+                                ,POLYLINEM = add_degree_one_NurbsCurve
+                                ,POLYGONM = add_degree_one_NurbsCurve   
+                                ) 
+
+
 
 def L2(X, Y):
     retval = 0
@@ -342,20 +363,41 @@ class InvalidPolyline(list):
         return '\n'.join(reason_invalid for reason_invalid in self)
 
 
-def obj_makers(
+def obj_maker_for_shape_type(
        shp_type = 'POLYLINEZ'
       #,make_new_group = make_group
       #,add_objects_to_group = add_objs_to_group
       ,Rhino_obj_adder_for_shape = Rhino_obj_adder_for_shape
       ):
     #type(str, dict) -> function
-    return getattr(rs, Rhino_obj_adder_for_shape[shp_type])
     # rhino_obj_maker = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
     # #return rhino_obj_maker
     # # e.g. rhino_obj_maker = rs.AddPolyline
     # def f(x):
     #     return rhino_obj_maker(x)
     # return f
+
+    first = getattr(rs, Rhino_obj_adder_for_shape[shp_type])
+    fallback = Rhino_fallback_obj_adder_for_shape[shp_type]
+
+    def obj_maker(points):
+
+        # rhinoscriptsyntax.AddPolyline just raises a plain Exception:
+        # """"
+        # if rc==System.Guid.Empty: raise Exception("Unable to add polyline to document")
+        # """"
+        # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L563
+        try:
+            return first(points)
+        except Exception as e_first:
+            try:
+                return fallback(points)
+            except Exception as e_fallback:
+                # optionally handled in tools.ShapefileReader added_geom_generator by invalid_obj_handler
+                pass
+                
+    return obj_maker
+
 
 Rhino_obj_adder_invalid_handlers = dict(
                                  POLYLINE = InvalidPolyline.from_points

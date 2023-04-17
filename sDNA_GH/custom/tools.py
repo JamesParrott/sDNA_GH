@@ -1892,7 +1892,7 @@ class ShapefileReader(sDNA_GH_Tool):
         self.logger.debug('bbox == %s' % bbox)
 
         invalid = []
-        objs_maker = rhino_gh_geom.obj_makers(shape_type)
+        objs_maker = rhino_gh_geom.obj_maker_for_shape_type(shape_type)
         invalid_obj_handler = rhino_gh_geom.Rhino_obj_adder_invalid_handlers.get(
                                                                         shape_type
                                                                        ,None
