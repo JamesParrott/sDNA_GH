@@ -160,7 +160,7 @@ else:
         if isinstance(v, bytes):
             # For python 2 decode bytes to unicode.
             return v.decode(encoding, encodingErrors)
-        elif isinstance(v, unicode): #type: ignore
+        elif isinstance(v, unicode):  #type: ignore
             # Already unicode.
             return v
         elif v is None:
@@ -171,7 +171,7 @@ else:
             return bytes(v).decode(encoding, encodingErrors)
 
     def is_string(v):
-        return isinstance(v, basestring) #type: ignore
+        return isinstance(v, basestring)   #type: ignore
 
 if sys.version_info[0:2] >= (3, 6):
     def pathlike_obj(path):
