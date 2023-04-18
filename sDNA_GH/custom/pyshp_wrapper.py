@@ -403,7 +403,7 @@ def write_iterable_to_shp(my_iterable
     else:
         attribute_tables = AttributeTablesClass()
 
-    if field_names is None or options.cache_iterable: 
+    if True: #field_names is None or options.cache_iterable: 
         
         for item in my_iterable:    
             keys = key_finder(item) # e.g. rhinoscriptsyntax.GetUserText(item,None)
@@ -430,14 +430,18 @@ def write_iterable_to_shp(my_iterable
                                                ) 
                         if val_type == SHP_FIELD_CODES[float]:
                             fields[nice_key]['decimal'] = options.num_dp
-                    print([val['size'] for val in fields.values()])
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
+        
+        print('Calculating field names and sizes')
     else:
         for name in field_names:
             fields[name] = dict(size = max_size
                                ,fieldType = SHP_FIELD_CODES[str]
                                )
         #TODO setup basic fields dict from list without looping over my_iterable        
+
+    print([(key, val['size']) for key, val in fields.items()])
+
 
     def default_record_dict(item):
         retval = { key_matcher(key).group('name') : 
