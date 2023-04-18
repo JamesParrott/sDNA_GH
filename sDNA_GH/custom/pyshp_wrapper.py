@@ -469,6 +469,14 @@ def write_iterable_to_shp(my_iterable
                    ) as w:
 
         for key, val in fields.items():
+            if val['size'] >= 256:
+                raise ValueError('shapefile.Writer.field(%s, **kwargs), kwargs = %s' % (key, val)
+                                +'attempted to create field of width: %s.' % val['size']
+                                +'Set min_sizes = False and max_size <= 255 or use smaller data.\n'
+                                +'Shapefile field lengths can have a maximum width of 255 bytes. '
+                                +'(note in many encodings, e.g. UTF8, more than one byte may be '
+                                +'required per character for unicode strings). '
+                                )
             w.field(key, **val)
         #w.field('Name', 'C')
 
