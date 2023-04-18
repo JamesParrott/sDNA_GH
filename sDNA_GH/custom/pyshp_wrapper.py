@@ -242,7 +242,16 @@ def get_filename(f, options = GetFileNameOptions):
 class EnsureCorrectOptions(object):
     # ensure_correct & write_iterable_to_shp
     extra_chars = 2
+    encoding = 'utf-8' # also used by get_fields_recs_and_shapes
 
+def len_bytes(x, options = EnsureCorrectOptions):
+    #type(type[any], type[any]) -> int
+    if isinstance(x, str):
+        return len(x.encode(options.encoding))
+    
+    # assume non-ascii unicode characters don't show up in str
+    # of bools, ints, floats, decimals or dates
+    return len(str(x))
 
 def ensure_correct(fields
                   ,nice_key
@@ -254,7 +263,7 @@ def ensure_correct(fields
     # type(dict, str, type[any], str, dict namedtuple) -> None
     if nice_key in fields:
         fields[nice_key]['size'] = max(fields[nice_key]['size']
-                                      ,len(str(value)) + max(0, options.extra_chars)
+                                      ,len_bytes(value, options) + max(0, options.extra_chars)
                                       )
         if (val_type == SHP_FIELD_CODES[float] 
             and 'decimal' in fields[nice_key] ):
@@ -287,7 +296,7 @@ def ensure_correct(fields
                 #            + fields[nice_key]['fieldType']
                 #            )
     else:
-        fields[nice_key] = dict( size = (len(str(value)) 
+        fields[nice_key] = dict( size = (len_bytes(value, options)
                                         +max(0,options.extra_chars)
                                         )
                                ,fieldType = val_type
@@ -308,14 +317,13 @@ def ensure_correct(fields
     # Mutates fields.  Nothing returned.
 
 
-class WriteIterableToShpOptions(object):
+class WriteIterableToShpOptions(EnsureCorrectOptions):
     field_size = 30
     cache_iterable= False
     uuid_field = 'Rhino3D_' # 'object_identifier_UUID_'     
     uuid_length = 36 # 32 in 5 blocks (2 x 6 & 2 x 5) with 4 separator characters.
     num_dp = 10 # decimal places
     min_sizes = True
-    encoding = 'utf-8' # also used by get_fields_recs_and_shapes
 
 
 def write_iterable_to_shp(my_iterable 
@@ -378,7 +386,8 @@ def write_iterable_to_shp(my_iterable
 
 
     max_size = (options.field_size
-            + options.extra_chars)
+               + options.extra_chars
+               )
 
     fields = OrderedDict( {options.uuid_field 
                                 : dict(fieldType = SHP_FIELD_CODES[str]
@@ -421,6 +430,7 @@ def write_iterable_to_shp(my_iterable
                                                ) 
                         if val_type == SHP_FIELD_CODES[float]:
                             fields[nice_key]['decimal'] = options.num_dp
+                    print([val['size'] for val in fields.values()])
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
     else:
         for name in field_names:
@@ -863,7 +873,6 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
 class ShpOptions(ShapeRecordsOptions
                 ,CoerceAndGetCodeOptions
                 ,GetFileNameOptions
-                ,EnsureCorrectOptions
                 ,WriteIterableToShpOptions
                 ,LocaleOptions
                 ,FieldRecsShapesOptions
