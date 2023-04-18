@@ -81,9 +81,10 @@ PARTTYPE_LOOKUP = {
     5: 'RING'}
 
 
-# Python 2-3 handling
+# Python 2-3 handling & Iron Python 2.7 handling
 
 PYTHON3 = sys.version_info[0] == 3
+IRON_PYTHON = platform.python_implementation()== 'IronPython'
 
 if PYTHON3:
     xrange = range
@@ -153,23 +154,28 @@ else:
             # Force string representation.
             return unicode(v).encode(encoding, encodingErrors)  #type: ignore
 
-    if platform.python_implementation() == 'IronPython':
-        cPython_2_b = b
-        b = lambda *args, **kwargs : bytes(cPython_2_b(*args, **kwargs))
-
-    def u(v, encoding='utf-8', encodingErrors='strict'):
-        if isinstance(v, bytes):
-            # For python 2 decode bytes to unicode.
-            return v.decode(encoding, encodingErrors)
-        elif isinstance(v, unicode):  #type: ignore
-            # Already unicode.
-            return v
-        elif v is None:
-            # Since we're dealing with text, interpret None as ""
-            return u""
-        else:
-            # Force string representation.
-            return bytes(v).decode(encoding, encodingErrors)
+    if IRON_PYTHON:
+        def u(v, encoding='utf-8', encodingErrors='strict'):
+            if v is None:
+                # Since we're dealing with text, interpret None as ""
+                return u""
+            else:
+                # Force string representation.
+                return bytes(v).decode(encoding, encodingErrors)
+    else:
+        def u(v, encoding='utf-8', encodingErrors='strict'):
+            if isinstance(v, bytes):
+                # For python 2 decode bytes to unicode.
+                return v.decode(encoding, encodingErrors)
+            elif isinstance(v, unicode): #type: ignore
+                # Already unicode.
+                return v
+            elif v is None:
+                # Since we're dealing with text, interpret None as ""
+                return u""
+            else:
+                # Force string representation.
+                return bytes(v).decode(encoding, encodingErrors)
 
     def is_string(v):
         return isinstance(v, basestring) #type: ignore
@@ -2377,7 +2383,7 @@ class Writer(object):
             else:
                 # anything else is forced to string, truncated to the length of the field
                 value = b(value, self.encoding, self.encodingErrors)[:size].ljust(size)
-            if not isinstance(value, bytes):
+            if not IRON_PYTHON and not isinstance(value, bytes):
                 # just in case some of the numeric format() and date strftime() results are still in unicode (Python 3 only)
                 value = b(value, 'ascii', self.encodingErrors) # should be default ascii encoding
             if len(value) != size:
