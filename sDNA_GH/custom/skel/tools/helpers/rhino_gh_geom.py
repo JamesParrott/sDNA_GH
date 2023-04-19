@@ -259,7 +259,15 @@ def add_degree_one_NurbsCurve(points):
                                                   ,degree = 1
                                                   ,points = Point3Ds
                                                   )
-    return nurbs_curve
+
+    # https://github.com/mcneel/rhinoscriptsyntax/blob/c49bd0bf24c2513bdcb84d1bf307144489600fd9/Scripts/rhinoscript/curve.py#L562
+    rc = sc.doc.Objects.AddCurve(nurbs_curve)
+
+    if rc==System.Guid.Empty: 
+        raise Exception("Could not add NurbsCurve to document")
+    sc.doc.Views.Redraw()
+
+    return rc
 
 
 Rhino_fallback_obj_adder_for_shape = dict(

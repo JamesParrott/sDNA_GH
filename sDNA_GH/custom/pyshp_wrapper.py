@@ -432,7 +432,6 @@ def write_iterable_to_shp(my_iterable
                             fields[nice_key]['decimal'] = options.num_dp
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
         
-        print('Calculating field names and sizes')
     else:
         for name in field_names:
             fields[name] = dict(size = max_size
@@ -440,7 +439,6 @@ def write_iterable_to_shp(my_iterable
                                )
         #TODO setup basic fields dict from list without looping over my_iterable        
 
-    print([(key, val['size']) for key, val in fields.items()])
 
 
     def default_record_dict(item):
