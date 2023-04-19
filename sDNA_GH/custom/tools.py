@@ -2276,7 +2276,7 @@ class UsertextWriter(sDNA_GH_Tool):
         for sub_gdm in gdm:
             for key, val in sub_gdm.items():
                 try:
-                    self.write_dict_to_UserText_on_Rhino_obj(
+                    write_dict_to_UserText_on_Rhino_obj(
                                                  d = val
                                                 ,rhino_obj = key
                                                 ,time_stamp = date_time_of_run
