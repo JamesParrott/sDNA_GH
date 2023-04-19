@@ -2196,7 +2196,8 @@ def write_dict_to_UserText_on_Rhino_obj(d
         raise NotImplementedError(msg)
 
     if not isinstance(d, dict):
-        msg = 'dict required by write_dict_to_UserText_on_Rhino_obj'
+        msg = 'dict required by write_dict_to_UserText_on_Rhino_obj, got: %s, of type: %s'
+        msg %= (d, type(d))
         logger.error(msg)
         raise TypeError(msg)
     
