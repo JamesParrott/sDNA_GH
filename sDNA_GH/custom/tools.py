@@ -1725,24 +1725,37 @@ class ShapefileWriter(sDNA_GH_Tool):
             #type: (list) -> list
             return [get_list_of_points_from_obj(obj)]
 
+
+
+        if isinstance(gdm, Iterable) and not isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            cached_gdms = [] # to cache lazy iterators
+            all_items_are_gdms = True
+            for item in gdm:
+                cached_gdms.append(item) 
+                if not isinstance(item, gdm_from_GH_Datatree.GeomDataMapping):
+                    all_items_are_gdms = False
+                
+
+            if cached_gdms and all_items_are_gdms:
+                #
+                # combine all objects into one dict - sDNA requires single 
+                # polyline links
+                #
+
+
+                all_keys_and_vals = ((key, val) 
+                                    for sub_gdm in cached_gdms 
+                                    for key, val in sub_gdm.items()
+                                    )
+                gdm = gdm_from_GH_Datatree.GeomDataMapping(all_keys_and_vals)
+            else:
+                gdm = cached_gdms
+
         if not gdm:
             msg = 'No geometry and no data to write to shapefile, gdm == %s' % gdm
             self.logger.error(msg)
             raise ValueError(msg)
-
-        if (isinstance(gdm, Iterable) and 
-            all(isinstance(item, gdm_from_GH_Datatree.GeomDataMapping) 
-                for item in gdm)):
-            #
-            # combine all objects into one dict - sDNA requires single 
-            # polyline links
-            #
-            all_keys_and_vals = ((key, val) 
-                                 for sub_gdm in gdm 
-                                 for key, val in sub_gdm.items()
-                                )
-            gdm = gdm_from_GH_Datatree.GeomDataMapping(all_keys_and_vals)
-
+            
         if not isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
             msg = ('Geometry or Data in unsupported format. type(gdm) == %s '
                   +'provided, not a GeomDataMapping. gdm == %s' 

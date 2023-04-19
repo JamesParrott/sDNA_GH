@@ -1,11 +1,12 @@
 """
 IronPyShp
+reluctant Iron Python 2 user: james.parrott<at>proton.me
 
+PyShp
 shapefile.py
 Provides read and write support for ESRI Shapefiles.
 authors: jlawhead<at>geospatialpython.com
 maintainer: karim.bahgat.norway<at>gmail.com
-reluctant Iron Python 2 user: james.parrott<at>proton.me
 Compatible with CPython versions 2.7-3.x
 and Iron Python 2.7 (IronPyShp fixes a unicode bug, but 
 has not otherwise been tested).
