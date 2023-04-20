@@ -1,25 +1,28 @@
 #Docs
-.docx
+*.docx
 
 #Personal dev env settings
 .vscode/
 
 #Logs (also under Django)
-.log
+*.log
+
+#Windows shortcuts
+*.lnk
 
 #Shapefiles
-.shp
-.dbf
-.shx
+*.shp
+*.dbf
+*.shx
 
 #sDNA
-.names.csv
+*.names.csv
 
 #Rhino lock file
-.3dm.rhl
+*.3dm.rhl
 
 #Release files
-.zip
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -137,8 +140,3 @@ dmypy.json
 .pyre/
 
 
-*.zip
-*.shx
-*.dbf
-*.shp
-README.docx
