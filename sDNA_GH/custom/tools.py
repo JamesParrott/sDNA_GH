@@ -1267,7 +1267,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     )
 
         for key, val in tool_opts.items():
-            if  key in LIST_ARGS and isinstance(val, list) and len(val) >= 2:
+            if key in LIST_ARGS and isinstance(val, list) and len(val) >= 2:
                 tool_opts[key] = ','.join(str(element) for element in val)
                 self.logger.info('Converted list to str: %s' % tool_opts[key])
 
@@ -1298,11 +1298,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
             # user needs to set sync = false to avoid sharing advanced.
             all_sDNA_tool_opts = get_tool_opts(opts
-                                            ,nick_name = self.nick_name
-                                            ,tool_name = self.tool_name
-                                            ,sDNA = None
-                                            ,val = None
-                                            )
+                                              ,nick_name = self.nick_name
+                                              ,tool_name = self.tool_name
+                                              ,sDNA = None
+                                              ,val = None
+                                              )
             all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = advanced)
 
 
