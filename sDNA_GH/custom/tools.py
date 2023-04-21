@@ -2171,6 +2171,7 @@ class ShapefileReader(sDNA_GH_Tool):
                             ))       
             )
 
+
 class UsertextWriterOptions(object):
     uuid_field = 'Rhino3D_'
     output_key_str = 'sDNA output={name} run time={datetime}'
