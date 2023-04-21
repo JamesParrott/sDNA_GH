@@ -28,7 +28,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '2.5.0'
+__version__ = '2.5.1'
 """ Reads .shp files, and parses data and writes .shp files from any iterable.   
 """
 
@@ -83,10 +83,10 @@ SHP_FIELD_CODES = {int: 'N'
                   ,bool: 'L'
                   ,str: 'C'
                   ,date: 'D'
+                  ,'M': 'M'
                   }
                 
 
-# We omit 'M' for Memo 
 # int = 'N'  here.  In PyShp, 'N' can also be a float 
 
 pyshp_writer_method = dict(NULL = 'null'
@@ -132,7 +132,7 @@ class CoerceAndGetCodeOptions(object):
     use_memo = False # Use the 'M' field code in Shapefiles for un-coerced data
 
 
-def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
+def coerce_and_get_type(x, options = CoerceAndGetCodeOptions):
     #type coercer function
 
     if options.decimal:
@@ -140,10 +140,10 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
     x = str(x)  # To convert False to 'False' and 0 to '0'
     dec.getcontext().prec = options.precision #if else options.precision    # significant figures,  >= # decimal places
     if  x.lower() in ['true','false']:   
-        return x, SHP_FIELD_CODES[bool]   # i.e. 'L'
+        return x, bool  # i.e. 'L'
     try:
         y = int(x)   # if isinstance(x,int):  # Bool test needs to come before this as int(True) == 1
-        return y, SHP_FIELD_CODES[int]    # i.e.   'N'
+        return y, int    # i.e.   'N'
     except ValueError:
         try:
             n = options.max_dp
@@ -160,11 +160,11 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
                 #  Beware:  
                 # https://docs.python.org/2.7/tutorial/floatingpoint.html#tut-fp-issues                                                      
                 
-            return x if options.keep_floats else y, SHP_FIELD_CODES[float]  
+            return x if options.keep_floats else y, float
                     # Tuple , binds to result of ternary operator
         except (dec.InvalidOperation, ValueError):
             if isinstance(x, date):
-                return x, SHP_FIELD_CODES[date]   # i.e. 'D'   
+                return x, date   # i.e. 'D'   
 
             if isinstance(x, list) and len(x) == 3 and all(isinstance(z, int) for z in x):
                 x = ':'.join(map(str, x))
@@ -173,15 +173,15 @@ def coerce_and_get_code(x, options = CoerceAndGetCodeOptions):
                 year=r'([0-3]?\d{3})|\d{2}'
                 month=r'([0]?\d)|(1[0-2])'
                 day=r'([0-2]?\d)|(3[01])'
-                sep=r'([-.,:/ \\])' # allows different seps r'(?P<sep>[-.,:\\/ ])'
+                sep=r'([-\.,:/ \\])' # allows different seps r'(?P<sep>[-.,:\\/ ])'
                 test_patterns =  [ year + sep + month + sep + day ]   # datetime.date requires yyyy, mm, dd
                 if not options.yyyy_mm_dd:
                     test_patterns += [  day + sep + month + sep + year   # https://en.wikipedia.org/wiki/Date_format_by_country
                                        ,month + sep + day + sep + year]  # 
                 if any(re.match(pattern, x) for pattern in test_patterns):
-                    return x, SHP_FIELD_CODES[date]                # TODO, optionally, return datetime.date() object?
+                    return x, date          # TODO, optionally, return datetime.date() object?
                 else:
-                    return x, SHP_FIELD_CODES[str]  # i.e. 'C'  
+                    return x, str  # i.e. 'C'  
             else:
                 msg = 'Failed to coerce UserText to PyShp record data type.  '
                 if options.use_memo:
@@ -239,9 +239,8 @@ def get_filename(f, options = GetFileNameOptions):
     return prev_f
 
 
-class EnsureCorrectOptions(object):
+class EnsureCorrectOptions(CoerceAndGetCodeOptions):
     # ensure_correct & write_iterable_to_shp
-    extra_chars = 2
     encoding = 'utf-8' # also used by get_fields_recs_and_shapes
 
 def len_bytes(x, options = EnsureCorrectOptions):
@@ -253,6 +252,101 @@ def len_bytes(x, options = EnsureCorrectOptions):
     # of bools, ints, floats, decimals or dates
     return len(str(x))
 
+
+class FieldInfo(object):
+    name = None
+    size_req = 1
+    longest_val = None
+    fieldType = str
+    decimal = 0
+
+
+    def field_kwargs_dict(self):
+        
+        retval = dict(size = self.size_req
+                     ,fieldType = SHP_FIELD_CODES[self.fieldType]
+                     )
+        
+        if self.fieldType is float:
+            retval['decimal'] = self.decimal
+
+        return retval
+
+    def increase_size_req_to(self, size, for_val = None):
+        if size <= self.size_req:
+            return
+
+
+        if size >= 256:
+            raise ValueError('Field: %s size attempted to be increased for value: %s' % (self.name, for_val)
+                            +'to width: %s.' % for_val['size']
+                            +'Set min_sizes = False and field_size <= 255 or use smaller data.\n\n'
+                            +'Shapefile field lengths can have a maximum width of 255 bytes. '
+                            +'(note in many encodings, e.g. UTF8, more than one byte may be '
+                            +'required per character for unicode strings). '
+                            )
+        
+        
+        self.longest_val = for_val
+        self.size_req = size
+
+    def increase_size_req_for(self, value):
+        size = len_bytes(value, self.options)
+        self.increase_size_req_to(size, for_val = value)
+    
+    def increase_decimal_req_to(self, decimal, for_val = None):
+        if decimal <= self.decimal:
+            return
+
+
+        if decimal + 2 > self.size_req:
+            raise ValueError('shapefile.Writer.field(%s, **kwargs), kwargs = %s' % (self.name, for_val)
+                            +'(size req: %s ).' % self.size_req
+                            +'attempted to create field with decimal places: %s.' % decimal
+                            +'Set min_sizes = False and num_dp <= %s or use smaller data.\n' % (self.size_req - 2)
+                            )
+        
+        
+        self.longest_val = for_val
+        self.decimal = decimal
+
+    def increase_decimal_req_for(self, value):
+        self.increase_decimal_req_to(dec_places_req(value), for_val = value)
+
+    def update_field(self, fieldType, size = 1, decimal = 0, value = None):
+        self.fieldType = fieldType
+        
+        if fieldType is bool:
+            return
+
+        if size >= self.size_req + 1:
+            self.increase_size_req_to(size, for_val = value)
+        elif value is not None:
+            self.increase_size_req_for(value)
+        elif fieldType is float and decimal >= 1:
+            self.increase_size_req_to(decimal+2, for_val = value)
+
+        if fieldType is float:
+            if decimal >= 1:
+                self.increase_decimal_req_to(decimal, for_val = value)
+            elif value is not None:
+                self.increase_decimal_req_for(value)
+
+    def __init__(self
+                ,name
+                ,value
+                ,fieldType
+                ,decimal = 0
+                ,size = 1
+                ,options = EnsureCorrectOptions
+                ):
+        self.name = name
+        self.options = options
+
+        self.update_field(fieldType, size, decimal, value)
+
+
+
 def ensure_correct(fields
                   ,nice_key
                   ,value
@@ -262,45 +356,45 @@ def ensure_correct(fields
                   ): 
     # type(dict, str, type[any], str, dict namedtuple) -> None
     if nice_key in fields:
-        fields[nice_key]['size'] = max(fields[nice_key]['size']
-                                      ,len_bytes(value, options) + max(0, options.extra_chars)
-                                      )
-        if (val_type == SHP_FIELD_CODES[float] 
-            and 'decimal' in fields[nice_key] ):
-            fields[nice_key]['decimal'] = max(fields[nice_key]['decimal']
-                                             ,dec_places_req(value) 
-                                             )
-        if val_type != fields[nice_key]['fieldType']:
-            if (value in [0,1] #Python list. Discrete. Not math closed interval
-                and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[bool] 
-                or (val_type == SHP_FIELD_CODES[bool] 
-                    and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[int] 
-                    and all( attribute_tables[i][nice_key] in [0,1] 
-                             for i in attribute_tables
-                           )
-                   )
-               ):
-                pass   #1s and 0s are in a Boolean field as integers or a 1 or a 0 
-                       # in a Boolean field is type checking as an integer
+        field_info = fields[nice_key]
+        field_info.increase_size_req_for(value)
+            
+        if val_type is float and field_info.fieldType is float:
+            field_info.increase_decimal_req_for(value) 
+
+        if val_type is not field_info.fieldType:
+            if (val_type in (int, float) and
+                field_info.fieldType is bool):
+                #
+                field_info.update_field(fieldType=val_type, value = value)
+            elif (val_type is bool and
+                  field_info.fieldType is int and
+                  all(attribute_tables[i][nice_key] in [0,1] 
+                      for i in attribute_tables)):
+                #
+                field_info.update_field(fieldType=bool, value = value)
+                #1s and 0s are in a Boolean field as integers or a 1 or a 0 
+                # in a Boolean field is type checking as an integer
                 # TODO:  Check options and rectify - flag as Bool for now 
                 #        (rest of loop will recheck others), 
                 #        or flag for recheck all at end
-            elif (val_type == SHP_FIELD_CODES[float] 
-                  and fields[nice_key]['fieldType'] == SHP_FIELD_CODES[int]):
-                fields[nice_key]['fieldType'] = SHP_FIELD_CODES[float]
-                fields[nice_key]['decimal'] = dec_places_req(value)
+            elif (val_type is float
+                  and field_info.fieldType is int):
+                field_info.update_field(fieldType = float, value = value)  
             else:
-                fields[nice_key]['fieldType'] = SHP_FIELD_CODES[str]
+                field_info.update_field(fieldType = str)
                 #logger.error('Type mismatch in same field.  Cannot store ' 
                 #            +str(value) + ' as .shp record type ' 
                 #            + fields[nice_key]['fieldType']
                 #            )
     else:
-        fields[nice_key] = dict( size = (len_bytes(value, options)
-                                        +max(0,options.extra_chars)
-                                        )
-                               ,fieldType = val_type
-                               )                    
+        fields[nice_key] = FieldInfo(name = nice_key
+                                    ,size = len_bytes(value, options)
+                                    ,value = value
+                                    ,fieldType = val_type
+                                    ,options = options
+                                    )   
+        # print('len_bytes(value, options): %s' % len_bytes(value, options))                 
         # could add a 'name' field, to save looping over the keys to this
         # dict:
         # fields[nice_key][name] = nice_key
@@ -312,8 +406,7 @@ def ensure_correct(fields
         # in fields.  If we wanted to rename it in the shape file to
         # something different than the dictionary key then this is a neat way 
         # of doing so.
-        if val_type == SHP_FIELD_CODES[float]:
-            fields[nice_key]['decimal'] = dec_places_req(value)    
+
     # Mutates fields.  Nothing returned.
 
 
@@ -385,16 +478,12 @@ def write_iterable_to_shp(my_iterable
         
 
 
-    max_size = (options.field_size
-               + options.extra_chars
-               )
-
-    fields = OrderedDict( {options.uuid_field 
-                                : dict(fieldType = SHP_FIELD_CODES[str]
-                                      ,size = (options.uuid_length
-                                              +max(0, options.extra_chars)
-                                              )
-                                      )
+    fields = OrderedDict( {options.uuid_field : FieldInfo(name = options.uuid_field
+                                                         ,value = None
+                                                         ,size = options.uuid_length
+                                                         ,fieldType = str
+                                                         ,options = options
+                                                         )
                           }
                          )
     
@@ -416,7 +505,7 @@ def write_iterable_to_shp(my_iterable
                     #TODO: Support more fields, e.g. type, size
                     value = value_demangler(item, key) 
 
-                    value, val_type = coerce_and_get_code(value, options)
+                    value, val_type = coerce_and_get_type(value, options)
                     values[nice_key] = value 
 
 
@@ -425,16 +514,18 @@ def write_iterable_to_shp(my_iterable
                         ensure_correct(fields, nice_key, value, val_type, attribute_tables, options)
                         # mutates fields, adding nice_key to it if not already there, else updating its val
                     else:
-                        fields[nice_key] = dict(size = max_size
-                                               ,fieldType = val_type
-                                               ) 
-                        if val_type == SHP_FIELD_CODES[float]:
-                            fields[nice_key]['decimal'] = options.num_dp
+                        fields[nice_key] = FieldInfo(name = nice_key
+                                                    ,size = options.field_size
+                                                    ,value = value
+                                                    ,fieldType = val_type
+                                                    ,decimal = options.num_dp
+                                                    ,options = options
+                                                    )  
             attribute_tables[item] = values.copy()  # item may not be hashable so can't use dict of dicts
         
     else:
         for name in field_names:
-            fields[name] = dict(size = max_size
+            fields[name] = dict(size = options.field_size
                                ,fieldType = SHP_FIELD_CODES[str]
                                )
         #TODO setup basic fields dict from list without looping over my_iterable        
@@ -443,7 +534,7 @@ def write_iterable_to_shp(my_iterable
 
     def default_record_dict(item):
         retval = { key_matcher(key).group('name') : 
-                         str( value_demangler(item, key) )[:max_size] 
+                         str( value_demangler(item, key) )[:options.field_size] 
                             for key in key_finder(item) 
                             if (key_matcher(key) and
                                 key_matcher(key).group('name') in fields
@@ -467,18 +558,18 @@ def write_iterable_to_shp(my_iterable
                    ) as w:
 
         for key, val in fields.items():
-            if val['size'] >= 256:
+            
+            if val.size_req >= 256:
                 raise ValueError('shapefile.Writer.field(%s, **kwargs), kwargs = %s' % (key, val)
                                 +'attempted to create field of width: %s.' % val['size']
-                                +'Set min_sizes = False and max_size <= 255 or use smaller data.\n'
+                                +'Set min_sizes = False and field_size <= 255 or use smaller data.\n'
                                 +'Shapefile field lengths can have a maximum width of 255 bytes. '
                                 +'(note in many encodings, e.g. UTF8, more than one byte may be '
                                 +'required per character for unicode strings). '
                                 )
-            w.field(key, **val)
+            w.field(key, **val.field_kwargs_dict())
         #w.field('Name', 'C')
 
-        logger.debug(str(fields))
 
         add_geometric_object = getattr(w,  pyshp_writer_method[shape_code])
         # e.g. add_geometric_object = w.linez
@@ -881,7 +972,6 @@ class TmpFileDeletingShapeRecordsIterator(TmpFileDeletingIterator):
 
 
 class ShpOptions(ShapeRecordsOptions
-                ,CoerceAndGetCodeOptions
                 ,GetFileNameOptions
                 ,WriteIterableToShpOptions
                 ,LocaleOptions

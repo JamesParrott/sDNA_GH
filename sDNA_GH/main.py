@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.5.0'
+__version__ = '2.5.1'
 
 import sys
 import os
@@ -328,7 +328,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     dupe_file_suffix = '{name}_({number})'
     #
     # ensure_correct & write_iterable_to_shp
-    extra_chars = 2
     #
     # write_iterable_to_shp
     field_size = 30

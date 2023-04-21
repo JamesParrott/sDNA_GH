@@ -13,7 +13,7 @@ sDNA_GH:
  - Displays the results from sDNA by colouring a new layer of new polylines or the original ones.
 
 ## User manual.  
-__version__ = '2.5.0'
+__version__ = '2.5.1'
 
 ## Table of contents
 
@@ -227,10 +227,23 @@ Note, if `sync = True` it will remember its previous setting, in which case to g
 
 ##### Shapefile tools
 ###### Write_Shp (write_shapefile)
-Writes a DataTree in `Data` and a list of polylines in `Geom` to a shapefile.  If not specified in `file`, a default file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  `overwrite_shp` = true overwrites existing files; false or creates new files up to a maximum of `max_new_files`.  **WARNING!  Shapefiles created with default names (due to no valid file path being specified in `file` by the user) will be deleted by subsequent sDNA tools if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**  To create a projection (.prj) file for the new shapefile, specify the path of an existing .prj file in `prj`.  If no Data is supplied, if no read_User_Text component is connected to its input, and if `auto_read_User_Text` is true, this tool will first call read_User_Text.  To work with sDNA, data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field matches the template string specified in `input_key_str`.  The field name has a maximum of 10 characters long, and is taken from the `{name}` value (in the key name if it originated as User Text). To write all data with any key name (shorter then 11 characters) to the Shapefile, set `input_key_str` to `{name}`.  Shapefile data entries only allow a maximum width of
-254 Ascii characters, or 254 bytes for Unicode strings.  This means only UTF-8 and UTF-16 encoded Unicode strings of up to 120 code points,
-or even fewer can be stored in a shape file, as encodings can require more than one byte per code point.  This is an intrinsic limitation of the shapefile format [https://en.wikipedia.org/wiki/Shapefile#Data_storage].  
+Writes a DataTree in `Data` and a list of polylines in `Geom` to a shapefile.  If not specified in `file`, a default file name based on the Rhino doc or Grasshopper doc name is used (unless `auto_update_Rhino_doc_path = false`).  `overwrite_shp` = true overwrites existing files, otherwise if it is false Write_Shp creates new automatically named files up to a maximum of `max_new_files` (20 by default).  **WARNING!  Shapefiles created with default names (due to no valid file path being specified in `file` by the user) will be deleted by subsequent sDNA tools if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**  
+
+To create a projection (.prj) file for the new shapefile, specify the path of an existing .prj file in `prj`.  
+
+If no Data is supplied, if no read_User_Text component is connected to its input, and if `auto_read_User_Text` is true, this tool will first call read_User_Text.  
+
+To work with sDNA, data records are only written to the Shapefile (associated with a shape corresponding to a Rhino / GH polyline) if its field matches the template string specified in `input_key_str`.  The field name has a maximum of 10 characters long, and is taken from the `{name}` value (in the key name if it originated as User Text). To write all data with any key name (shorter then 11 characters) to the Shapefile, set `input_key_str` to `{name}`.  
+
+Shapefile data entries (records) only allow a maximum width of 254 Ascii characters, or 254 bytes for Unicode strings.  Encodings can require more than one byte per code point.  So some UTF-8 and UTF-16 encoded Unicode strings may only be 120 code points long, or even shorter.  
+This is an intrinsic limitation of the shapefile format [https://en.wikipedia.org/wiki/Shapefile#Data_storage].  
+
 Rhino and Grasshopper shapes must support certain methods (to retrieve the points list of their vertices) to be written to shp files of the following types: `PolylineVertices` for `POLYLINE`s and `POLYGON`s, `PointCoordinates` for `POINT`s, `PointCloudPoints` for `MULTIPOINT`, and `MeshVertices` for `MULTIPATCH`.  Please note:  `MULTIPATCH`s are not supported, and `POINT`s and `MULTIPOINT`s are experimental and untested.
+
+Write_Shp attempts to coerce data types to set the Shapefile field type and size correctly.  The full coercion order is bool -> int -> (float / Decimal) -> Date -> string (Shapefile field types L -> N -> F -> D -> C respectively).  If attempts at boolean and integer conversion fail, by default the data is then coerced to a Decimal.  The number of significant figures for 
+Decimals is 12 by default.  This can be altered in `precision`.  If `decimal` is set to 
+false, Write_Shp coerces the value to a float instead of a Decimal object.  The maximum number of decimal places is `max_dp`.
+Dates are attempted to be built using Python's `datetime.date` object.  If a datetime.date cannot be built, if `yyyy_mm_dd` is true, a date must be in yyyy mm dd format.  Otherwise if `yyyy_mm_dd` is false as it is by default, dd mm yyyy and mm dd yyyy are also supported.  In both cases, the supported separators are one of: -.,:/\ or a single space.
 
 
 ###### Read_Shp (read_shapefile)
