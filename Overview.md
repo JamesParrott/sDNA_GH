@@ -2,9 +2,9 @@ sDNA_GH components all have an associated tool (apart from a few special ones, e
 
 sDNA tools expect to receive a raw input shape file, and output a shapefile, exactly as if they were used on the command line.
 
-To work with Grasshopper geometry, the user must run other tools before and afterwards.  For convenience, by default two special options, auto_write_Shp and auto_read_Shp are true.  With these settings, sDNA components will accept Grasshopper Geometry and output Grasshopper Geometry, and those extra support tools handle writing and reading shapefiles.
+To run sDNA with Grasshopper geometry, other tools must be run before and afterwards.  For convenience, by default two special options, auto_write_Shp and auto_read_Shp are true.  With these settings, sDNA components will accept Grasshopper Geometry and output Grasshopper Geometry, and the two extra support tools Write_Shp and Read_Shp handle the writing and reading of the shapefiles.
 
-If the user wants to work directly with a shapefile in sDNA_GH, they should set auto_write_Shp to false, sDNA component doesn't first try to write a shapefile for sDNA when the user already has provided one.  Only automatically generated temporary shapefiles are deleted after a tool using it has finished.
+To work directly with a shapefile in sDNA_GH, auto_write_Shp should be set to false, so that the sDNA component doesn't first try to write a shapefile for sDNA when a shapefile is already available.  Only automatically generated temporary shapefiles are deleted after a tool using it has finished.
 
 Rhino polylines should be imported into Grasshopper with Read_Geom.  This is necessary to get the actual UUIDs of the Rhino objects in the object table (not just Grasshopper references). 
 
