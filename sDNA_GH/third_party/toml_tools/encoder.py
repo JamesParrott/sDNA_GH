@@ -83,6 +83,18 @@ def dumps(o, encoder=None):
     return retval
 
 
+_Python_escaped_hex = re.compile(r"""(?<!\\) # not preceded by backslashes
+                                     (?P<literal_backslashes>(\\\\)*)   
+                                     (\\x)  # Python Hex escape prefix 
+                                              # (used for extended-ASCII 
+                                              # chars, e.g. repr('\xad'))
+                                  """,
+                                 flags = re.VERBOSE)
+
+def _Python_escaped_hex_to_escaped_toml(m):
+    return m.group('literal_backslashes') + '\\u00' 
+
+
 def _dump_str(v):
     if sys.version_info < (3,) and hasattr(v, 'decode') and isinstance(v, str):
         v = v.decode('utf-8')
@@ -95,23 +107,38 @@ def _dump_str(v):
     if singlequote:
         v = v.replace("\\'", "'")
         v = v.replace('"', '\\"')
-    v = v.split("\\x")
-    while len(v) > 1:
-        i = -1
-        if not v[0]:
-            v = v[1:]
-        v[0] = v[0].replace("\\\\", "\\")
-        # No, I don't know why != works and == breaks
-        joinx = v[0][i] != "\\"
-        while v[0][:i] and v[0][i] == "\\":
-            joinx = not joinx
-            i -= 1
-        if joinx:
-            joiner = "x"
-        else:
-            joiner = "u00"
-        v = [v[0] + joiner + v[1]] + v[2:]
-    return unicode('"' + v[0] + '"')
+
+    # The mildly infamous code block below simple tries to 
+    # replace the Python hex escape in a repr \xZZ
+    # with its TOML version \u00ZZ, only when preceded by an
+    # even number of backslashes (literals).
+    #
+    # It unfortunately suffers from an error on Windows platforms, e.g.
+    # from v = repr('\xad')
+    #
+    # v = v.split("\\x")
+    # while len(v) > 1:
+    #     i = -1
+    #     if not v[0]:
+    #         v = v[1:]
+    #     v[0] = v[0].replace("\\\\", "\\")
+    #     # No, I don't know why != works and == breaks
+    #     joinx = v[0][i] != "\\"
+    #     while v[0][:i] and v[0][i] == "\\":
+    #         joinx = not joinx
+    #         i -= 1
+    #     if joinx:
+    #         joiner = "x"
+    #     else:
+    #         joiner = "u00"
+    #     v = [v[0] + joiner + v[1]] + v[2:]
+    
+    v = re.sub(_Python_escaped_hex, _Python_escaped_hex_to_escaped_toml, v)
+
+    # print(v)
+
+    return '"%s"' % v
+    # return unicode('"' + v[0] + '"')
 
 
 def _dump_float(v):
@@ -286,7 +313,7 @@ class TomlNumpyEncoder(TomlEncoder):
 class TomlPreserveCommentEncoder(TomlEncoder):
 
     def __init__(self, _dict=dict, preserve=False):
-        from toml.decoder import CommentValue
+        from .decoder import CommentValue
         super(TomlPreserveCommentEncoder, self).__init__(_dict, preserve)
         self.dump_funcs[CommentValue] = lambda v: v.dump(self.dump_value)
 
