@@ -55,7 +55,7 @@ else:
     Set = collections.abc.Set
 from numbers import Number
 
-from ..third_party import toml
+from ..third_party import toml_tools
 
 
 logger = logging.getLogger(__name__)
@@ -364,11 +364,11 @@ def override_namedtuple_with_namedtuple(nt_lesser
 toml_types = [bool, basestring, Number, tuple, list, dict]
 
 
-def save_toml_file(file_name, d):
+def save_toml_file(file_name, dict_):
     #type(str, dict) -> None
     """ Saves a dictionary to a toml file.  Toml specifies the utf-8 encoding."""
-    with open(file_name, 'w') as f:
-        toml.dump(d, f)
+    with open(file_name, 'wb') as f:
+        toml_tools.dump(dict_, f)
 
 
 def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
@@ -378,15 +378,14 @@ def load_toml_file(config_path = os.path.join(sys.path[0], 'config.toml')
 
     """ Loads a toml file as a dictionary.  Trivial wrapper, to accept kwargs.
     
-    https://github.com/uiri/toml/blob/master/toml/decoder.py
-
     Please note, .toml tables are mapped correctly to OrderedDictionaries
     by the line below.  But if convert_subdicts is False, then this dict is
     passed into override_namedtuple, and will pass up through the normal 
     hierarchy of functions in this options_manager module, finally having 
     make_nested_namedtuple called on it, turning the .toml table
     into a namedtuple."""
-    return toml.load(config_path, _dict = OrderedDict)
+    with open(config_path, 'rb') as f:
+        return toml_tools.load(f)
 
 
 def dict_from_toml_file(path):
