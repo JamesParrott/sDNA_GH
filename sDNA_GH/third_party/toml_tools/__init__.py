@@ -1,23 +1,15 @@
-"""Python module which parses and emits TOML.
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2021 Taneli Hukkinen
+# Licensed to PSF under a Contributor Agreement.
 
-Released under the MIT license.
-"""
+__all__ = ("loads", "load", "TOMLDecodeError", "dumps", "dump")
+__version__ = "2.0.0"  
 
-from . import encoder
-from . import decoder
+from ._parser import TOMLDecodeError, load, loads
+from ._writer import dump, dumps
+from ._helpers import stem
 
+# Pretend this exception was created here.
+TOMLDecodeError.__module__ = __name__
 
-load = decoder.load
-loads = decoder.loads
-TomlDecoder = decoder.TomlDecoder
-TomlDecodeError = decoder.TomlDecodeError
-TomlPreserveCommentDecoder = decoder.TomlPreserveCommentDecoder
-
-dump = encoder.dump
-dumps = encoder.dumps
-TomlEncoder = encoder.TomlEncoder
-TomlArraySeparatorEncoder = encoder.TomlArraySeparatorEncoder
-TomlPreserveInlineDictEncoder = encoder.TomlPreserveInlineDictEncoder
-TomlNumpyEncoder = encoder.TomlNumpyEncoder
-TomlPreserveCommentEncoder = encoder.TomlPreserveCommentEncoder
-TomlPathlibEncoder = encoder.TomlPathlibEncoder
