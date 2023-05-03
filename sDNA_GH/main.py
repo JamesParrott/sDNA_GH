@@ -254,7 +254,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,AutoRunToolOptions
                       ):            
     ###########################################################################
-    #System
+    #Operating System
     #
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8' # For shapefiles only, not toml files or names.csv.
