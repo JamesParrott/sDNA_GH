@@ -167,7 +167,7 @@ def update_compnt_and_make_user_obj(component
 
     return success
 
-def text_file_to_str(file, extra_new_line_char = '', encoding = 'utf-8'):
+def text_file_to_str(file, extra_new_line_char = '', encoding = 'utf-8', **kwargs):
     #type(str, str) -> str
     """ A simple text file reader.  """
     if file is None or not isinstance(file, basestring):
@@ -252,7 +252,7 @@ def build_comps_with_docstring_from_readme(default_path
         tool_name = name_map.get(nick_name, nick_name)
         logger.debug('%s is a nick name for the tool %s' % (nick_name, tool_name))
         tool_code_path = path_dict.get(tool_name, default_path)
-        tool_code = text_file_to_str(tool_code_path)
+        tool_code = text_file_to_str(tool_code_path, **kwargs)
 
         doc_string_content, _ = get_doc_string(tool_code)
 
@@ -269,6 +269,8 @@ def build_comps_with_docstring_from_readme(default_path
         if readme:
             logger.debug('Looking in readme for tool with name = %s' % tool_name)
 
+
+            # Match everything in readme following tool_name and a newline, up to two blank lines.
             tool_summary_pattern = re.compile(r'\(%s\)\r?\n(.*?\r?\n)(\r?\n){2}' % tool_name
                                                 ,flags = re.DOTALL # so . will match \n
                                                 )
