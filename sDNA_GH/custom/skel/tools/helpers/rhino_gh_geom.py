@@ -36,11 +36,11 @@ import os
 import logging
 import itertools
 from collections import namedtuple
-import System  #.Net from IronPython
+import System  #.Net from IronPython #type: ignore
 
-import Rhino
-import rhinoscriptsyntax as rs
-import scriptcontext as sc
+import Rhino #type: ignore
+import rhinoscriptsyntax as rs #type: ignore
+import scriptcontext as sc #type: ignore
 
 from ...basic.ghdoc import ghdoc
 from . import funcs
