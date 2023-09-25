@@ -568,12 +568,24 @@ grasshopper.sdna@gmail.com
 ## Developer manual.  
 
 ### Dependencies.
-####
-sDNA_GH is shipped with files from the following python packages included:
+sDNA_GH v 2.5.2 includes static copies of the following Python packages:
 
-[IronPyShp (MIT License) "version: 2.3.1"](https://github.com/JamesParrott/IronPyShp/blob/main/shapefile.py)
+[IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/blob/main/shapefile.py) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
-[Toml (MIT License)](https://github.com/uiri/toml/blob/master/toml/decoder.py)  Latest commit 230f0c9 on 30 Oct 2020 
+[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools))  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in PYthon 3.11) and tomli_w, with a few smalleextras.
+
+
+### Contributions.
+#### Dependencies.
+Contributions to IronPyShp and toml_tools that satisfy the requirements of their copyright holders are welcome.  James created these forks after the original contract ended, and did 
+not alter or add enough code to justify asserting joint-authorship or IP sharing.  The copyright is still owned by the same owners as their parent projects, but James 
+maintains these forks, largely to support sDNA_GH.
+toml_tools in particular has high test coverage thanks to tomli and tomli_w's tests, so is particularly suitable for future development.
+#### sDNA_GH
+Contributions to sDNA_GH must not fail any regression tests.  Unfortunately the test cases are Grasshopper definitions that must each be run manually.  Automating these tests in some way
+would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
+that would let Read_Shp and Write_Shp support Points shapefile types.
+Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the copyright holder, for Cardiff University to be able to include them.
 
 
 ### Build instructions.
@@ -619,7 +631,7 @@ Select GHPython component.   Optionally compile to .ghpy.  File -> Create User O
 
 [^0] The Python 2.7 download can be verified using this [certificate](https://www.python.org/ftp/python/2.7.3/python-2.7.3.msi.asc) and [Gpg4win](https://gpg4win.org/download.html).
 
-[^1] The entire source code for sDNA_GH is visible on [Github](https://github.com/JamesParrott/sDNA_GH/).  All the source code is also visible in the download itself as the component launcher and Python package is visible, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  See the Build Instructions above to build them for yourself from the source code.   
+[^1] The entire source code for sDNA_GH is visible on [Github](https://github.com/JamesParrott/sDNA_GH/).  All the source code is also visible in the download itself as the component launcher and Python package is uncompiled, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  See the Build Instructions above to build them for yourself from the source code.   
 
 
 
