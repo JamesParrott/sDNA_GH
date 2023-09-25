@@ -576,11 +576,12 @@ sDNA_GH v 2.5.2 includes static copies of the following Python packages:
 
 
 ### Contributions.
+Thanks for your interest in contributing.  If you are considering writing code for inclusion in the main sDNA_GH project, not just your own fork, please reach out to us first.  More details below.
 #### Dependencies.
 Contributions to IronPyShp and toml_tools that satisfy the requirements of their copyright holders are welcome.  James created these forks after the original contract ended, and did 
 not alter or add enough code to justify asserting joint-authorship or IP sharing.  The copyright is still owned by the same owners as their parent projects, but James 
-maintains these forks, largely to support sDNA_GH.
-toml_tools in particular has high test coverage thanks to tomli and tomli_w's tests, so is particularly suitable for future development.
+maintains these forks, largely to fulfill sDNA_GH's requirement for unicode support.
+toml_tools in particular has high test coverage (thanks to tomli and tomli_w's tests), and new features are being proposed for TOML, so is particularly suitable for future development.
 #### sDNA_GH
 Contributions to sDNA_GH must not fail any regression tests.  Unfortunately the test cases are Grasshopper definitions that must each be run manually.  Automating these tests in some way
 would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
