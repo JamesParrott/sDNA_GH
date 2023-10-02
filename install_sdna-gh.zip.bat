@@ -1,6 +1,6 @@
 @ECHO OFF
 
-set user_objects_dir=C:\Users\James\AppData\Roaming\Grasshopper\UserObjects\
+set user_objects_dir=%appdata%\Grasshopper\UserObjects\
 
 copy /Y sdna-gh.zip %user_objects_dir%
 cd %user_objects_dir%
