@@ -1764,11 +1764,26 @@ class ShapefileWriter(sDNA_GH_Tool):
             self.logger.error(msg)
             raise TypeError(msg)
 
-        bad_shapes = [obj for obj in gdm if not rhino_gh_geom.is_shape(obj, shp_type)]
+        # bad_shapes = [obj for obj in gdm if not rhino_gh_geom.is_shape(obj, shp_type)]
+        bad_shapes = collections.defaultdict(list)
+        for obj in gdm:
+            if rhino_gh_geom.is_shape(obj, shp_type):
+                continue
+            geom, source = get_geom_and_source_else_leave(obj)
+    
+            bad_shapes[(type(obj).__name__, type(geom).__name__)].append(obj)
+    
+
+
         if bad_shapes:
             msg = 'Shape(s): %s cannot be converted to shp_type: %s' 
-            msg %= (bad_shapes, shp_type)
+            msg %= ('\n'.join('# of (Obj type: %s, geom_type: %s) : %s' % (k + (v,))
+                              for k, v in bad_shapes.items()
+                             )           
+                   ,shp_type
+                   )
             self.logger.error(msg)
+
             raise TypeError(msg)
         else:
             self.logger.debug('Points for obj 0: %s ' 
