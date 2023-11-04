@@ -2737,12 +2737,13 @@ class DataParser(sDNA_GH_Tool):
                   )
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
-        plot_min, plot_max = x_min, x_max
+        #rename for retvals
+        plot_min, plot_max, class_bounds = x_min, x_max, inter_class_bounds
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
-    retvals = 'plot_min', 'plot_max', 'gdm'
+    retvals = 'plot_min', 'plot_max', 'gdm', 'mid_points', 'class_bounds'
     component_outputs = retvals[:2] + ('Data', 'Geom')
 
 
@@ -2902,7 +2903,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             #
             self.info('Raw data in ObjectsRecolourer.  Calling DataParser...')
             self.debug('Raw data: %s' % objs_to_parse.items()[:4])
-            x_min, x_max, gdm_in = self.parse_data(gdm = objs_to_parse
+            x_min, x_max, gdm_in, mid_points, class_bounds = self.parse_data(
+                                                  gdm = objs_to_parse
                                                   ,opts = opts 
                                                   #includes plot_min, plot_max
                                                   )
