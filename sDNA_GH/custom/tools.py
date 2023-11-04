@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.6.1'
+__version__ = '2.6.2'
 
 import os
 import sys
@@ -2416,6 +2416,12 @@ class DataParser(sDNA_GH_Tool):
                                            +'unset.'
                                            )
                             ))
+                  ,('mid_points', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = ('Mid-points of the classes in the '
+                                           +'legend. '
+                                           )
+                            ))
                                                )
 
     component_inputs = ('Geom', 'Data', 'field', 'plot_max', 'plot_min' 
@@ -2738,14 +2744,13 @@ class DataParser(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
         #rename for retvals
-        plot_min, plot_max, class_bounds = x_min, x_max, inter_class_bounds
+        plot_min, plot_max = x_min, x_max
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
-    retvals = 'plot_min', 'plot_max', 'gdm', 'mid_points', 'class_bounds'
+    retvals = 'plot_min', 'plot_max', 'gdm', 'mid_points', 'inter_class_bounds'
     component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[-2:]
-
 
 
 class ObjectsRecolourer(sDNA_GH_Tool):
