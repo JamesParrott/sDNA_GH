@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.6.0'
+__version__ = '2.6.1'
 
 import os
 import sys
@@ -2744,7 +2744,7 @@ class DataParser(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
     retvals = 'plot_min', 'plot_max', 'gdm', 'mid_points', 'class_bounds'
-    component_outputs = retvals[:2] + ('Data', 'Geom')
+    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[-2:]
 
 
 
