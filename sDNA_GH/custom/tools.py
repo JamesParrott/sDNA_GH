@@ -2399,11 +2399,16 @@ class DataParser(sDNA_GH_Tool):
                             ))
                   ,('field_prefix', add_params.ParamInfo(
                              param_Class = Param_String
-                            ,Description = ('If field is not set, the field names / key value of '
+                            ,Description = ('If "field" is not set, the field names / key value of '
                                            +'the results field are searched for the first one '
-                                           +'that starts with field_prefix. ' 
+                                           +'that starts with field_prefix.\n ' 
+                                           +'WARNING: without care, this may allow unfair comparisons 
+                                           +'and incorrect conclusions to be drawn between '
+                                           +'different result sets. The search may return BtE10 '
+                                           +'on one component, and BtE10000000 on another (the two '
+                                           +'can be very different Network measures).\n '
                                            +'If found, this field is parsed or plotted. '
-                                           +'and outputted in field. Default: %(field_prefix)s'
+                                           +'and outputted in "field". Default: %(field_prefix)s'
                                            )
                             ))
                   ,('plot_max', add_params.ParamInfo(
