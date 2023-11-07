@@ -2390,7 +2390,7 @@ class DataParser(sDNA_GH_Tool):
 
     class Options(data_cruncher.SpikeIsolatingQuantileOptions):
         field = None
-        field_prefix = 'BtE'
+        field_prefix = 'Bt'
         plot_min = options_manager.Sentinel('plot_min is automatically '
                                            +'calculated by sDNA_GH unless '
                                            +'overridden.  '
