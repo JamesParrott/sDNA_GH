@@ -1955,14 +1955,25 @@ class ShapefileReader(sDNA_GH_Tool):
             warnings.warn(msg)
 
 
-        field_prefixes = []
    
-        for fld in fields:
-            if fld not in ('LSin', 'LConn', 'Conn', 'LLen', 'Len') and fld.endswith('n'):
-                fld = fld[:-1]
-            else:
-                fld = re.split(r'\d+(\.\d+)?$', fld)[0]
-            field_prefixes.append(fld)
+        def get_prefix(field):
+
+            # Return prefix if field has metric (A, E, H or C) appended, as well as radius
+            for prefix in ('Bt', 'Div', 'MGL', 'NQPD', 'SGL', 'TBPt', 'TPD'):
+                if field.startswith(prefix):
+                    return prefix
+
+            # Strip off default value for radii ('n') unless field never has radius appended
+            # to it, but also ends in n.
+            if field not in ('LSin', 'LConn', 'Conn', 'LLen', 'Len') and field.endswith('n'):
+                return field[:-1]            
+            
+            # Strip off any trailing digits and decimal point
+            return re.split(r'\d+(\.\d+)?$', fld)[0]
+
+
+        field_prefixes = [get_prefix(fld) for fld in fields]
+
 
 
         self.logger.debug('Testing existing geom data map.... ')
