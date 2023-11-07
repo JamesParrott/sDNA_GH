@@ -2327,8 +2327,13 @@ QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
                        )
 
 
+
+
+
+
+
 def search_for_field(fields, prefix):
-    #type: Iterable[str], str -> str
+    #type(Iterable[str], str) -> str
     first = None
     first_that_is_not_id = None
 
@@ -2346,6 +2351,7 @@ def search_for_field(fields, prefix):
         
 
     return first_that_is_not_id or first
+
 
 
 class DataParser(sDNA_GH_Tool):
@@ -2460,12 +2466,48 @@ class DataParser(sDNA_GH_Tool):
                             ))
                                                )
 
+    def make_field_selector(self, gdm, options):
+
+        self.field = options.field or self.Options.field
+        prefix = options.prefix or self.Options.prefix
+
+        def select(val):
+            #type( type[any] ) -> Number
+            
+            if isinstance(val, Number):
+                return val
+
+            if not isinstance(val, dict):
+                msg = 'val: %s is not a dict or a Number (type(val) == %s)' 
+                msg %= (val, type(val))
+                self.logger.error(msg)
+                raise TypeError(msg)
+
+            if self.field is None:
+                self.field = search_for_field(
+                    fields = (k
+                              for sub_gdm in gdm
+                              for dict_ in sub_gdm.values()
+                              for k in dict_
+                             )
+                    ,prefix = prefix
+                    )
+
+            if self.field not in val:
+                msg = 'Key for field: %s not found in val: %s' % (self.field, val)
+                self.logger.error(msg)
+                raise KeyError(msg)
+            return val[self.field]
+        
+        return select
+
     component_inputs = ('Geom', 'Data', 'field', 'field_prefix', 'plot_max', 'plot_min' 
                        ,'num_classes', 'class_spacing', 'inter_class_bounds'
                        )
     #
-    # Geom is essentially unused in this function, except that the legend tags
-    # are appended to it, to colour them in exactly the same way as the 
+    # Geom is essentially unused in this function, except if it is sorted when sort_data = True
+    # or class_spacing == 'quantile', and that the legend tags
+    # are appended to Geom, to colour them in exactly the same way as the 
     # objects.
     #
 
@@ -2490,31 +2532,9 @@ class DataParser(sDNA_GH_Tool):
         if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
             gdm = [gdm]
 
-        if options.field is None:
 
-            all_fields = (k
-                          for sub_gdm in gdm
-                          for dict_ in sub_gdm.values()
-                          for k in dict_
-                         )
-            field = search_for_field(all_fields, options.field_prefix)
-        else:
-            field = options.field
-
-        def select(val, field):
-            #type( type[any], str) -> Number
-            if isinstance(val, Number):
-                return val
-            if not isinstance(val, dict):
-                msg = 'val: %s is not a dict or a Number (type(val) == %s)' 
-                msg %= (val, type(val))
-                self.logger.error(msg)
-                raise TypeError(msg)
-            if field not in val:
-                msg = 'Key for field: %s not found in val: %s' % (field, val)
-                self.logger.error(msg)
-                raise KeyError(msg)
-            return val[field]
+        # This method may set self.field.  
+        select_data_pt_or_field = self.make_field_selector(gdm, options)
 
         plot_min, plot_max = options.plot_min, options.plot_max
         if data_cruncher.max_and_min_are_valid(plot_max, plot_min):
@@ -2523,13 +2543,13 @@ class DataParser(sDNA_GH_Tool):
             #
             x_min, x_max = plot_min, plot_max 
             if options.exclude:
-                data = OrderedDict( (obj, val[field]) 
+                data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                     for sub_gdm in gdm
                                     for obj, val in sub_gdm.items()                                    
-                                    if x_min <= select(val, field) <= x_max
+                                    if x_min <= select_data_pt_or_field(val) <= x_max
                                   )
             else: # exclude == False => enforce bounds, cap and collar
-                data = OrderedDict( (obj, min(x_max, max(x_min, select(val, field)))) 
+                data = OrderedDict( (obj, min(x_max, max(x_min, select_data_pt_or_field(val)))) 
                                     for sub_gdm in gdm
                                     for obj, val in sub_gdm.items()                                    
                                   )
@@ -2538,7 +2558,7 @@ class DataParser(sDNA_GH_Tool):
             self.logger.debug('Manually calculating max and min. '
                       +'No valid override found. '
                       )
-            data = OrderedDict( (obj, select(val, field)) 
+            data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                 for sub_gdm in gdm
                                 for obj, val in sub_gdm.items()                                    
                               )
@@ -2774,10 +2794,10 @@ class DataParser(sDNA_GH_Tool):
             mid_pt_str = format_number(mid_points[0], options.num_format)
             # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
             legend_tags = [options.gen_leg_tag_str.format(lower = x_min_str
-                                                        ,upper = x_max_str
-                                                        ,mid_pt = mid_pt_str 
-                                                        )
-                        ]                                          
+                                                         ,upper = x_max_str
+                                                         ,mid_pt = mid_pt_str 
+                                                         )
+                          ]                                          
 
         self.logger.debug(legend_tags)
 
@@ -2789,7 +2809,7 @@ class DataParser(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
         #rename for retvals
-        plot_min, plot_max = x_min, x_max
+        plot_min, plot_max, field = x_min, x_max, self.field
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
