@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.7.0'
+__version__ = '2.7.1'
 
 import os
 import sys
@@ -1959,7 +1959,7 @@ class ShapefileReader(sDNA_GH_Tool):
         def get_prefix(field):
 
             # Return prefix if field has metric (A, E, H or C) appended, as well as radius
-            for prefix in ('Bt', 'Div', 'MGL', 'NQPD', 'SGL', 'TBPt', 'TPD'):
+            for prefix in ('Bt', 'Div', 'MGL', 'NQPD', 'SGL', 'TPBt', 'TPD'):
                 if field.startswith(prefix):
                     return prefix
 

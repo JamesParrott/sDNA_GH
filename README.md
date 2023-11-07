@@ -13,7 +13,7 @@ sDNA_GH:
  - Displays the results from sDNA by colouring a new layer of new polylines or the original ones.
 
 ## User manual.  
-__version__ = '2.7.0'
+__version__ = '2.7.1'
 
 ## Table of contents
 
