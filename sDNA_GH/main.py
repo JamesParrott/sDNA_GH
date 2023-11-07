@@ -247,7 +247,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                       ,tools.ShapefileWriter.Options
                       ,tools.ShapefileReader.Options
                       ,tools.UsertextWriter.Options
-                      ,tools.DataParser.Options
+                    #   ,tools.DataParser.Options
                       ,tools.ObjectsRecolourer.Options
                       ,tools.sDNA_ToolWrapper.Options
                       ,tools.ConfigManager.Options
@@ -372,7 +372,8 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #         
     # Overrides for DataParser
     #   
-    field = 'BtEn'
+    field = None
+    field_prefix = 'BtE'
     plot_max = options_manager.Sentinel('plot_max is automatically calculated'
                                        +' by sDNA_GH unless overridden.  '
                                        )

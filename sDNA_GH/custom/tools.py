@@ -40,7 +40,6 @@ import os
 import sys
 import abc
 import logging
-import itertools
 import functools
 import subprocess
 import re
@@ -2327,10 +2326,39 @@ QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
                        ,quantile = data_cruncher.spike_isolating_quantile
                        )
 
+
+
+
+
+
+
+def search_for_field(fields, prefix):
+    #type(Iterable[str], str) -> str
+    first = None
+    first_that_is_not_id = None
+
+    for k in fields:
+
+        if k.startswith(prefix):
+            return k
+        
+        if first is None:
+            first = k
+
+        if (first_that_is_not_id is None and 
+            k.lower() != 'id'):
+            first_that_is_not_id = k
+        
+
+    return first_that_is_not_id or first
+
+
+
 class DataParser(sDNA_GH_Tool):
 
     class Options(data_cruncher.SpikeIsolatingQuantileOptions):
-        field = 'BtEn'
+        field = None
+        field_prefix = 'BtE'
         plot_min = options_manager.Sentinel('plot_min is automatically '
                                            +'calculated by sDNA_GH unless '
                                            +'overridden.  '
@@ -2372,7 +2400,21 @@ class DataParser(sDNA_GH_Tool):
                              param_Class = Param_String
                             ,Description = ('The field name / key value of '
                                            +'the results field to parse '
-                                           +'and/or plot. Default: %(field)s'
+                                           +'or plot. Default: %(field)s'
+                                           )
+                            ))
+                  ,('field_prefix', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('If "field" is not set, the field names / key value of '
+                                           +'the results field are searched for the first one '
+                                           +'that starts with field_prefix.\n ' 
+                                           +'WARNING: without care, this may allow unfair comparisons '
+                                           +'and incorrect conclusions to be drawn between '
+                                           +'different result sets. The search may return BtE10 '
+                                           +'on one component, and BtE10000000 on another (the two '
+                                           +'can be very different Network measures).\n '
+                                           +'If found, this field is parsed or plotted. '
+                                           +'and outputted in "field". Default: %(field_prefix)s'
                                            )
                             ))
                   ,('plot_max', add_params.ParamInfo(
@@ -2424,12 +2466,48 @@ class DataParser(sDNA_GH_Tool):
                             ))
                                                )
 
-    component_inputs = ('Geom', 'Data', 'field', 'plot_max', 'plot_min' 
+    def make_field_selector(self, gdm, options):
+
+        self.field = options.field or self.Options.field
+        prefix = options.field_prefix or self.Options.field_prefix
+
+        def select(val):
+            #type( type[any] ) -> Number
+            
+            if isinstance(val, Number):
+                return val
+
+            if not isinstance(val, dict):
+                msg = 'val: %s is not a dict or a Number (type(val) == %s)' 
+                msg %= (val, type(val))
+                self.logger.error(msg)
+                raise TypeError(msg)
+
+            if self.field is None:
+                self.field = search_for_field(
+                    fields = (k
+                              for sub_gdm in gdm
+                              for dict_ in sub_gdm.values()
+                              for k in dict_
+                             )
+                    ,prefix = prefix
+                    )
+
+            if self.field not in val:
+                msg = 'Key for field: %s not found in val: %s' % (self.field, val)
+                self.logger.error(msg)
+                raise KeyError(msg)
+            return val[self.field]
+        
+        return select
+
+    component_inputs = ('Geom', 'Data', 'field', 'field_prefix', 'plot_max', 'plot_min' 
                        ,'num_classes', 'class_spacing', 'inter_class_bounds'
                        )
     #
-    # Geom is essentially unused in this function, except that the legend tags
-    # are appended to it, to colour them in exactly the same way as the 
+    # Geom is essentially unused in this function, except if it is sorted when sort_data = True
+    # or class_spacing == 'quantile', and that the legend tags
+    # are appended to Geom, to colour them in exactly the same way as the 
     # objects.
     #
 
@@ -2443,8 +2521,6 @@ class DataParser(sDNA_GH_Tool):
         self.debug('Starting ParseData tool.  ')
         options = opts['options']
 
-        field = options.field
-
         if not gdm:
             msg = 'No Geom. Parser requires Geom to preserve correspondence '
             msg += 'if the Data is re-ordered. '
@@ -2456,20 +2532,9 @@ class DataParser(sDNA_GH_Tool):
         if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
             gdm = [gdm]
 
-        def select(val, field):
-            #type( type[any], str) -> Number
-            if isinstance(val, Number):
-                return val
-            if not isinstance(val, dict):
-                msg = 'val: %s is not a dict or a Number (type(val) == %s)' 
-                msg %= (val, type(val))
-                self.logger.error(msg)
-                raise TypeError(msg)
-            if field not in val:
-                msg = 'Key for field: %s not found in val: %s' % (field, val)
-                self.logger.error(msg)
-                raise KeyError(msg)
-            return val[field]
+
+        # This method may set self.field.  
+        select_data_pt_or_field = self.make_field_selector(gdm, options)
 
         plot_min, plot_max = options.plot_min, options.plot_max
         if data_cruncher.max_and_min_are_valid(plot_max, plot_min):
@@ -2478,13 +2543,13 @@ class DataParser(sDNA_GH_Tool):
             #
             x_min, x_max = plot_min, plot_max 
             if options.exclude:
-                data = OrderedDict( (obj, val[field]) 
+                data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                     for sub_gdm in gdm
                                     for obj, val in sub_gdm.items()                                    
-                                    if x_min <= select(val, field) <= x_max
+                                    if x_min <= select_data_pt_or_field(val) <= x_max
                                   )
             else: # exclude == False => enforce bounds, cap and collar
-                data = OrderedDict( (obj, min(x_max, max(x_min, select(val, field)))) 
+                data = OrderedDict( (obj, min(x_max, max(x_min, select_data_pt_or_field(val)))) 
                                     for sub_gdm in gdm
                                     for obj, val in sub_gdm.items()                                    
                                   )
@@ -2493,7 +2558,7 @@ class DataParser(sDNA_GH_Tool):
             self.logger.debug('Manually calculating max and min. '
                       +'No valid override found. '
                       )
-            data = OrderedDict( (obj, select(val, field)) 
+            data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                 for sub_gdm in gdm
                                 for obj, val in sub_gdm.items()                                    
                               )
@@ -2719,9 +2784,9 @@ class DataParser(sDNA_GH_Tool):
 
             # e.g. last_leg_tag_str = 'above {lower}'
             legend_tags += [options.last_leg_tag_str.format(lower = lower_str
-                                                        ,upper = x_max_str 
-                                                        ,mid_pt = mid_pt_str 
-                                                        )        
+                                                           ,upper = x_max_str 
+                                                           ,mid_pt = mid_pt_str 
+                                                           )        
                         ]        
         else:
             x_min_str = format_number(x_min, options.num_format)
@@ -2729,10 +2794,10 @@ class DataParser(sDNA_GH_Tool):
             mid_pt_str = format_number(mid_points[0], options.num_format)
             # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
             legend_tags = [options.gen_leg_tag_str.format(lower = x_min_str
-                                                        ,upper = x_max_str
-                                                        ,mid_pt = mid_pt_str 
-                                                        )
-                        ]                                          
+                                                         ,upper = x_max_str
+                                                         ,mid_pt = mid_pt_str 
+                                                         )
+                          ]                                          
 
         self.logger.debug(legend_tags)
 
@@ -2744,28 +2809,24 @@ class DataParser(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
         #rename for retvals
-        plot_min, plot_max = x_min, x_max
+        plot_min, plot_max, field = x_min, x_max, self.field
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
 
-    retvals = 'plot_min', 'plot_max', 'gdm', 'mid_points', 'inter_class_bounds'
-    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[-2:]
+    retvals = 'plot_min', 'plot_max', 'gdm', 'field', 'mid_points', 'inter_class_bounds'
+    component_outputs = retvals[:2] + ('Data', 'Geom') + retvals[-3:]
 
 
 class ObjectsRecolourer(sDNA_GH_Tool):
 
-    class Options(object):
-        field = 'BtEn'
+    class Options(DataParser.Options):
         Col_Grad = False
         Col_Grad_num = 5
         rgb_max = (155, 0, 0) #990000
         rgb_min = (0, 0, 125) #3333cc
         rgb_mid = (0, 155, 0) # guessed
         line_width = 4 # millimetres? 
-        first_leg_tag_str = 'below {upper}'
-        gen_leg_tag_str = '{lower} - {upper}'
-        last_leg_tag_str = 'above {lower}'
         leg_extent = options_manager.Sentinel('leg_extent is automatically '
                                              +'calculated by sDNA_GH unless '
                                              +'overridden.  '
@@ -2807,6 +2868,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
              ('plot_min', dict(self.parse_data.param_infos)['plot_min'])
             ,('plot_max', dict(self.parse_data.param_infos)['plot_max'])
             ,('field', dict(self.parse_data.param_infos)['field'])
+            ,('field_prefix', dict(self.parse_data.param_infos)['field_prefix'])
             ,('bbox', add_params.ParamInfo(
                          param_Class = Param_ScriptVariable
                         ,Description = ('Bounding box of geometry. Used '
@@ -2821,7 +2883,7 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             )
 
     
-    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field')
+    component_inputs = ('plot_min', 'plot_max', 'Data', 'Geom', 'bbox', 'field', 'field_prefix')
 
     def __call__(self, gdm, opts, bbox):
         #type(str, dict, dict) -> int, str, dict, list
@@ -2908,8 +2970,8 @@ class ObjectsRecolourer(sDNA_GH_Tool):
             #
             self.info('Raw data in ObjectsRecolourer.  Calling DataParser...')
             self.debug('Raw data: %s' % objs_to_parse.items()[:4])
-            x_min, x_max, gdm_in, mid_points, class_bounds = self.parse_data(
-                                                  gdm = objs_to_parse
+            x_min, x_max, gdm_in, field, mid_points, class_bounds = self.parse_data(
+                                                   gdm = objs_to_parse
                                                   ,opts = opts 
                                                   #includes plot_min, plot_max
                                                   )
