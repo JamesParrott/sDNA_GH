@@ -2469,7 +2469,7 @@ class DataParser(sDNA_GH_Tool):
     def make_field_selector(self, gdm, options):
 
         self.field = options.field or self.Options.field
-        prefix = optionsfield_prefix or self.Optionsfield_prefix
+        prefix = options.field_prefix or self.Options.field_prefix
 
         def select(val):
             #type( type[any] ) -> Number
