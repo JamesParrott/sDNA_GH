@@ -1956,23 +1956,13 @@ class ShapefileReader(sDNA_GH_Tool):
 
 
         field_prefixes = []
-        if 'radii' in options._fields:
-            radius = options.radii.rpartition(',')[2]
-            sDNA_radius = None
-            if options.radii == 'n':
-                sDNA_radius = 'n'
+   
+        for fld in fields:
+            if fld not in ('LSin', 'LConn', 'Conn', 'LLen', 'Len') and fld.endswith('n'):
+                fld = fld[:-1]
             else:
-                try:
-                    sDNA_radius = float(options.radii)
-                    sDNA_radius = int(options.radii)
-                except ValueError:
-                    pass
-
-            if sDNA_radius is not None:    
-                for fld in fields:
-                    if fld not in ('LSin', 'LConn', 'Conn', 'LLen', 'Len') and fld.endswith(str(sDNA_radius)):
-                        fld = fld.rpartition(str(sDNA_radius))[0]
-                    field_prefixes.append(fld)
+                fld = re.split(r'\d+(\.\d+)?$', fld)[0]
+            field_prefixes.append(fld)
 
 
         self.logger.debug('Testing existing geom data map.... ')
