@@ -2469,7 +2469,7 @@ class DataParser(sDNA_GH_Tool):
     def make_field_selector(self, gdm, options):
 
         self.field = options.field or self.Options.field
-        prefix = options.prefix or self.Options.prefix
+        prefix = optionsfield_prefix or self.Optionsfield_prefix
 
         def select(val):
             #type( type[any] ) -> Number
@@ -2784,9 +2784,9 @@ class DataParser(sDNA_GH_Tool):
 
             # e.g. last_leg_tag_str = 'above {lower}'
             legend_tags += [options.last_leg_tag_str.format(lower = lower_str
-                                                        ,upper = x_max_str 
-                                                        ,mid_pt = mid_pt_str 
-                                                        )        
+                                                           ,upper = x_max_str 
+                                                           ,mid_pt = mid_pt_str 
+                                                           )        
                         ]        
         else:
             x_min_str = format_number(x_min, options.num_format)
