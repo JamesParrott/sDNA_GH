@@ -2402,7 +2402,7 @@ class DataParser(sDNA_GH_Tool):
                             ,Description = ('If "field" is not set, the field names / key value of '
                                            +'the results field are searched for the first one '
                                            +'that starts with field_prefix.\n ' 
-                                           +'WARNING: without care, this may allow unfair comparisons 
+                                           +'WARNING: without care, this may allow unfair comparisons '
                                            +'and incorrect conclusions to be drawn between '
                                            +'different result sets. The search may return BtE10 '
                                            +'on one component, and BtE10000000 on another (the two '
