@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.6.2'
+__version__ = '2.7.0'
 
 import os
 import sys
@@ -1937,6 +1937,7 @@ class ShapefileReader(sDNA_GH_Tool):
                                +'rectangle to plot legend.'
                                )
 
+        
         fields = [ x[0] for x in shp_fields ]
 
         self.logger.debug('options.uuid_field in fields == ' 
@@ -1952,6 +1953,27 @@ class ShapefileReader(sDNA_GH_Tool):
             
             self.logger.warning(msg)
             warnings.warn(msg)
+
+
+        field_prefixes = []
+        if 'radii' in options._fields:
+            radius = options.radii.rpartition(',')[2]
+            sDNA_radius = None
+            if options.radii == 'n':
+                sDNA_radius = 'n'
+            else:
+                try:
+                    sDNA_radius = float(options.radii)
+                    sDNA_radius = int(options.radii)
+                except ValueError:
+                    pass
+
+            if sDNA_radius is not None:    
+                for fld in fields:
+                    if fld not in ('LSin', 'LConn', 'Conn', 'LLen', 'Len') and fld.endswith(str(sDNA_radius)):
+                        fld = fld.rpartition(str(sDNA_radius))[0]
+                    field_prefixes.append(fld)
+
 
         self.logger.debug('Testing existing geom data map.... ')
 
@@ -2111,7 +2133,7 @@ class ShapefileReader(sDNA_GH_Tool):
         return tuple(locs[retval] for retval in self.retvals)
 
 
-    retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'bbox', 'invalid'
+    retvals = 'retcode', 'gdm', 'abbrevs', 'fields', 'field_prefixes', 'bbox', 'invalid'
     component_outputs = ('Geom', 'Data') + retvals[2:]
 
     param_infos = sDNA_GH_Tool.param_infos + (
@@ -2146,6 +2168,15 @@ class ShapefileReader(sDNA_GH_Tool):
                             ,Description = ('Field names from the Shapefile. '
                                            +'Set field to one of these values '
                                            +'to parse and/or plot it. '
+                                           )
+                            ))
+            ,('field_prefixes', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('sDNA_prefixes of field names from the Shapefile. '
+                                           +'Set field_prefix to one of these values '
+                                           +'to search for a field to parse and/or plot. \n'
+                                           +'WARNING!:  May lead to meaningless comparisons '
+                                           +'(changing the measure "moves the goal posts"). '
                                            )
                             ))
             ,('bbox', add_params.ParamInfo(
