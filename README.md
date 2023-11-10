@@ -88,11 +88,26 @@ __version__ = '2.7.1'
 
 ### Installation.
 1. Ensure you have an installation of [Rhino 3D](https://www.rhino3d.com/download/) including Grasshopper (versions 6 and 7 are supported).
-2. To use sDNA with sDNA_GH, ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0] or [Python 2.7.18](https://www.python.org/downloads/release/python-2718/)  that can run sDNA correctly from the command line (with pip for sDNA Learn).  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced (it is not possible to access the Iron Python shipped with Rhino from the command line, in any case).  
+
+sDNA_GH provides some functionality without sDNA installed, e.g. Selecting real Rhino objects, User Text components, reading, writing and parsing shape files, and recolouring objects.  But to use the sDNA components, an installation of sDNA is required.
+
+#### sDNA (both options).
+sDNA itself may require the 64 bit (x64) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ).  
+
+#### Official sDNA installer (and Python 2).
+2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0] or [Python 2.7.18](https://www.python.org/downloads/release/python-2718/)  that can run sDNA correctly from the command line (with pip for sDNA Learn).  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced (it is not possible to access the Iron Python shipped with Rhino from the command line, in any case).  
 3. sDNA Learn requires numpy.  Numpy can be added after installing Python 2.7.18 by opening a `cmd` window and typing: `cd C:\Python27\Scripts` and `pip2.7 install numpy`.  Optional:  If this Python 2.7.18 installation is also used by other 
-processes, to guarantee there are no dependency conflicts, use a venv to run sDNA, e.g. firstly by entering: `cd C:\Python27\Scripts` followed by `pip2.7 install virtualenv` and  `<abs_path_to_sDNA_GH_venv_folder>\Scripts\pip2.7 install numpy` (enter `<abs_path_to_sDNA_GH_venv_folder>\Scripts\activate.bat` to test the venv from the command line) and secondly by setting
-`python` to <abs_path_to_sDNA_GH_venv_folder>\Scripts` (on a config component or on config.toml) in step 13.3 below. 
-4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA itself may require the 64 bit (x64) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ).  The closed source "free as in beer" version of [sDNA](https://sdna.cardiff.ac.uk/sdna/software/software/) and sDNA+ may also require the 32 bit (x86) Visual Studio 2008 redistributable available or [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe) in order to unlock sDNA with a serial number.
+processes, to guarantee there are no dependency conflicts, use a venv to run sDNA, e.g. firstly by entering: `cd C:\Python27\Scripts` followed by `pip2.7 install virtualenv` and  `<path_to_sDNA_venv>\Scripts\pip2.7 install numpy` (enter `<path_to_sDNA_venv>\Scripts\activate.bat` to test the venv from the command line) and secondly by setting
+`python` to <path_to_sDNA_venv>\Scripts` (on a config component or on config.toml) in step 13.3 below. 
+4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA+ is now [open source](https://github.com/fiftysevendegreesofrad/sdna_plus).  But in order to unlock it with a free serial number, the official installer for the closed source release of [sDNA+](https://sdna.cardiff.ac.uk/sdna/software/software/), may also require the 32 bit (x86) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe).
+
+#### Experimental sDNA_plus release (and Python 3)
+2. Install [Python 3](https://www.python.org/downloads/windows/).  CPython 3.11 has been tested with sDNA Integral (but not sDNA Learn).
+3. If using sDNA Learn, Numpy must be installed in environment of the Python process that calls it.  To do so, make a virtual environment for sDNA: `py -m venv <path_to_sDNA_venv>`, and install Numpy into it: `.\`<path_to_sDNA_venv>`\Scripts\pip.exe install numpy`.  Remember <path_to_sDNA_venv> for step 13. 
+4. Download an [experimental release archive](https://github.com/JamesParrott/sdna_plus/releases) and unzip it where you wish to install it.  
+
+#### sDNA_GH
+
 5. Download `sdna-gh.zip` from (food4rhino)[https://www.food4rhino.com/en/app/sdnagh] or the [sDNA_GH releases page on Github](https://github.com/JamesParrott/sDNA_GH/releases).
 6. Ensure `sdna-gh.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files in the zip archive.  Please do not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
 7. Open Rhino and Grasshopper.
@@ -102,12 +117,12 @@ processes, to guarantee there are no dependency conflicts, use a venv to run sDN
 
 11. Restart Rhino and Grasshopper.
 12. The sDNA_GH plug in components should now be available under a new "sDNA" tab in the ribbon amongst the tabs for any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
-13. To use sDNA with sDNA_GH, if no preferences are specified, sDNA_GH will search for sDNA and Python 2.7 installations automatically, using the first one of each it finds.  To ensure sDNA_GH uses a particular version of sDNA and the correct Python 2.7 interpreter it is recommended on first usage to:
+13. To use sDNA with sDNA_GH, if no preferences are specified, sDNA_GH will search for sDNA and Python installations automatically, using the first one of each it finds.  If you are using sDNA Learn with Python in a venv as recommended, or otherwise to ensure sDNA_GH uses a particular version of sDNA and the correct Python interpreter, it is recommended on first usage to:
     -place a Config component on the canvas (the component with a gear/cog icon in `Extra`).
     -Specify the file path of the sDNA folder (containing sDNAUISpec.py and runsdnacommand.py) of the sDNA installation you wish to use in the `sDNA_folders` input.
-    -Specify the file path of the Python 2.7 interpreter's main executable in the `python` input.
-    -Specify any other options you wish to save and reuse on all projects, if necessary by adding custom input Params with the option's name.
-    -Connect a true boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
+    -Specify the file path of the sDNA venv's Python (e.g. <path_to_sDNA_venv>`\Scripts\python.exe` from step 3), or global system Python interpreter's, main executable in the `python` input.
+    -Specify any other options you wish to save and reuse on all projects, if necessary by zooming in, and adding a custom input Param with each option's name.
+    -Connect a true Boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
     -To save options to other project specific `config.toml` files, specify the file path in `save_to` and repeat the previous 4 sub steps.
 
 14. If a newer version of sDNA is used in future with tools unknown to sDNA_GH at the time it was built, if a Config component is placed, and the path of the new sDNA specified in `sDNA_folders`, sDNA_GH will attempt to automatically build components and user objects for the new sDNA tools, and add them to Grasshopper for you.  Set `make_new_comps` to false to prevent this.
