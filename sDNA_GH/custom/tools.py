@@ -3347,11 +3347,13 @@ class ConfigManager(sDNA_GH_Tool):
                             ))
                   ,('python', add_params.ParamInfo(
                              param_Class = Param_FilePath
-                            ,Description = ('File path of the Python 2.7 '
+                            ,Description = ('File path of the Python '
                                            +'executable to run sDNA with, '
                                            +'or its parent folder. '
-                                           +'cPython 2.7 is required for sDNA '
+                                           +'Python is required for sDNA '
                                            +'tools (download link in readme). '
+                                           +'Note: sdna_plus requires a Python newer than 3.3, '
+                                           +'but CPython 2.7 is required for sDNA_open. '
                                            +'Default: %(python)s'
                                            )
                             ))

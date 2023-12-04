@@ -172,17 +172,23 @@ options came from a different component sharing with it, or from itself previous
 
 ##### Shared state vs desynchronised components.
 sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python 2.7 run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
- -on first usage set all common and shared options and those that will seldom be changed on synchronised components, and save these to an installation wide `config.toml` file.  Desynchronised 
- options may still read defaults from an installation wide `config.toml` file.
- -Either set the synchronised components to `sync` = false after their shared options have been saved, or place new components.
 
+###### Synchronisation (Advanced user only)
 To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
 This writes `sync` = true to the installation wide options file (`config.toml`).  As long as no higher priority options source (Params, project specific options files, or local metas from other components) sets `sync` = false, all desynchronised components will then resynchronise the next time they run.
 
-To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
+###### Applying sychronisation changes.
+ Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
 a) Restart Rhino, 
 b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
 c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
+
+###### Desynchronisation.
+Components are already desynchronised by default.  Global desynchronisation is only necessary if you have already synchronised them, e.g.to save options from other components to a `config.toml` file, and wish to undo this.
+
+To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  
+
+Apply the synchronisation changes as in the previous subsection. 
 
 ###### Desynchronised components (`sync` = false):
  -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
@@ -202,7 +208,7 @@ c) Set the `config` on each component to be resynchronised to the file path of t
  -only once read the installation wide `config.toml` file user options file, when the first sDNA_GH component is placed (synchronised or desynchronised).  
  -in one `.gh` file are affected by the global options set by other synchronised sDNA_GH components in previous `.gh` files opened in the same Rhino session.
 
-The following Inputs and Outputs are never shared when not connected in Grasshopper: `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
+The following Inputs and Outputs are never shared (unless connected by the user in Grasshopper): `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
 
 
 #### Tools.
