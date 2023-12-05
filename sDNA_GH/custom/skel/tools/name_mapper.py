@@ -89,8 +89,7 @@ def tool_not_found_error(inst
     raise NickNameNotFoundError(msg)
 
 
-def tool_factory(inst
-                ,nick_name
+def tool_factory(nick_name
                 ,name_map
                 ,tools_dict
                 ,tool_not_found = tool_not_found_error 
@@ -116,8 +115,7 @@ def tool_factory(inst
             tools =[]
             #nick_name_opts = {}
             for mapped_name in map_result:
-                tools.append(tool_factory(inst
-                                         ,mapped_name
+                tools.append(tool_factory(mapped_name
                                          ,name_map 
                                          ,tools_dict
                                          ,tool_not_found
@@ -134,8 +132,7 @@ def tool_factory(inst
                 logger.debug('Tool: ' + mapped_name + ' already in tools_dict')
                 tools_dict.setdefault(nick_name, tools_dict[mapped_name])
             else:
-                tool_not_found(inst
-                              ,nick_name
+                tool_not_found(nick_name
                               ,mapped_name
                               ,name_map
                               ,tools_dict

@@ -960,7 +960,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             nick_name = self.nick_name
 
         self.my_tools = name_mapper.tool_factory(
-                                         inst = self
                                         ,nick_name = nick_name
                                         ,name_map = self.opts['metas'].name_map
                                         ,tools_dict = runner.tools_dict
