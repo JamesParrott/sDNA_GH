@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.7.1'
+__version__ = '2.7.2-rc'
 
 import sys
 import os
@@ -982,12 +982,17 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             
 
         for tool in my_tools:
-            self.tools_default_opts.update(tool.default_tool_opts)
+            
+            if not isinstance(tool, tools.sDNA_ToolWrapper):
+                continue
+            
             self.not_shared.update(tool.not_shared)
 
-            if isinstance(tool, tools.sDNA_ToolWrapper):
-                sDNA = tools.sDNA_key(self.opts)  # the submodule, tools.py
-                self.do_not_remove += tool.default_named_tuples[sDNA]._fields
+            self.tools_default_opts.update(tool.default_tool_opts)
+            
+            sDNA = tools.sDNA_key(self.opts)  # the submodule, tools.py
+            self.do_not_remove += tool.default_named_tuples[sDNA]._fields
+
 
         #self.logger.debug(self.opts)
         self.logger.debug('Tool opts == ' + '\n'.join(
