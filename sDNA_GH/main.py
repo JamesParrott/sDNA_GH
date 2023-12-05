@@ -1058,6 +1058,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         nick_name = self.nick_name
 
         if result == 'Name updated': # True 1st run after __init__
+            self.logger.info('Initialising or updating component.  First run or nick_name updated. ')
             if (nick_name.lower()
                          .replace('_','')
                          .replace(' ','') == 'sdnageneral'

@@ -95,7 +95,7 @@ def tool_factory(inst
                 ,tools_dict
                 ,tool_not_found = tool_not_found_error 
                 ):  
-    #type( str, dict, dict, function ) -> list
+    #type( str, dict, dict, function ) -> list | function
     """ Updates tools_dict with lists of tools in name_map if nick_name not in
         tools_dict already (for memoisation) but nick_name can be resolved 
         in name_map (possibly making recursive calls to itself).  Else 
