@@ -759,34 +759,7 @@ do_not_remove += DEFAULT_LOCAL_METAS._fields
 
 
 
-def cache_sDNA_tool(compnt # instead of self
-                   ,nick_name
-                   ,mapped_name
-                   ,name_map = None # unused; just for tool_not_found ArgSpec
-                   ,tools_dict = runner.tools_dict # mutated
-                   ):
-    #type(type[any], str, str, dict, dict, function) -> None
-    """ Custom tasks to be carried out by tool factory when no tool named 
-        mapped_name is found in tools_dict.  
-        
-        Imports sDNAUISpec and runsdnacommand if necessary.  
-        Builds a new sDNA tool from tools.py (and thence from sDNAUISpec.py).
-        Inserts this new tool into tools_dict (only under its nick_name).
-        Adds in any new tool option fields to the list of Params not to 
-        be removed.  
 
-        Appends to Mutates compnt.do_not_remove and adds item to tools_dict.
-    """
-    sDNA_tool = tools.sDNA_ToolWrapper(opts = compnt.opts
-                                      ,tool_name = mapped_name
-                                      ,nick_name = nick_name
-                                      ,component = compnt
-                                      )                                      
-    tools_dict[nick_name] = sDNA_tool
-    sDNA = tools.sDNA_key(compnt.opts)
-    compnt.do_not_remove += sDNA_tool.default_named_tuples[sDNA]._fields 
-    compnt.tools_default_opts.update(sDNA_tool.default_tool_opts)
-    compnt.not_shared.update(sDNA_tool.not_shared)
 
 
 
@@ -948,13 +921,46 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         return params_updated
 
 
+    def cache_sDNA_tool(
+                     self
+                    ,nick_name
+                    ,mapped_name
+                    ,name_map = None # unused; just for tool_not_found ArgSpec
+                    ,tools_dict = runner.tools_dict # mutated
+                    ):
+        #type(type[any], str, str, dict, dict, function) -> None
+        """ Custom tasks to be carried out by tool factory when no tool named 
+            mapped_name is found in tools_dict.  
+            
+            Imports sDNAUISpec and runsdnacommand if necessary.  
+            Builds a new sDNA tool from tools.py (via sDNAUISpec.py).
+            Inserts this new tool into tools_dict (only under its nick_name).
+            Adds in any new tool option fields to the list of Params not to 
+            be removed.  
+
+            Appends to Mutates self.do_not_remove and adds item to tools_dict.
+        """
+        sDNA_tool = tools.sDNA_ToolWrapper(
+                                     opts = self.opts
+                                    ,tool_name = mapped_name
+                                    ,nick_name = nick_name
+                                    # self needed for a reference to 
+                                    # self.component.params_adder.user_inputs,
+                                    # to support make_advanced using custom
+                                    # paramms from the ZUI
+                                    ,component = self
+                                    )                                      
+        tools_dict[nick_name] = sDNA_tool
+
+
     def update_tools(self, nick_name = None):
-        #type(type[any], str) -> type[any]
+        #type(type[any], str) -> None
 
         if nick_name is None:
             nick_name = self.nick_name
 
-        tools = name_mapper.tool_factory(inst = self
+        self.my_tools = name_mapper.tool_factory(
+                                         inst = self
                                         ,nick_name = nick_name
                                         ,name_map = self.opts['metas'].name_map
                                         ,tools_dict = runner.tools_dict
@@ -965,8 +971,24 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         # cache_sDNA_tool is defined in this module.  It is called
         # for any tool_name not in tools_dict, and then looks for 
         # that tool_name in sDNAUISpec.py .  
-        self.logger.debug(tools)
-                
+        self.logger.debug(
+            'self.my_tools in update_tools after tool_factory: %s'
+            % self.my_tools
+            )
+
+        if not isinstance(self.my_tools, list):
+            my_tools = [self.my_tools]
+        else:
+            my_tools = self.my_tools
+            
+
+        for tool in my_tools:
+            self.tools_default_opts.update(tool.default_tool_opts)
+            self.not_shared.update(tool.not_shared)
+
+            if isinstance(tools.sDNA_ToolWrapper):
+                sDNA = tools.sDNA_key(self.opts)  # the submodule, tools.py
+                self.do_not_remove += tool.default_named_tuples[sDNA]._fields
 
         #self.logger.debug(self.opts)
         self.logger.debug('Tool opts == ' + '\n'.join(
@@ -976,7 +998,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                                  ) 
                     )
 
-        return tools
 
 
 
@@ -1065,7 +1086,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 and 'tool' in kwargs ):
                 #
                 nick_name = kwargs['tool']
-            self.my_tools = self.update_tools(nick_name)
+            self.update_tools(nick_name)
         
             self.auto_insert_tools()  
 
