@@ -412,7 +412,7 @@ class PythonOptions(object):
                                                          )
                        )
     python_exes = ['python.exe', 'py27.exe']
-    python = '' #r'C:\Python27\python.exe'
+    python = '' 
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
