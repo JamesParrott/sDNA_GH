@@ -985,7 +985,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             self.tools_default_opts.update(tool.default_tool_opts)
             self.not_shared.update(tool.not_shared)
 
-            if isinstance(tools.sDNA_ToolWrapper):
+            if isinstance(tool, tools.sDNA_ToolWrapper):
                 sDNA = tools.sDNA_key(self.opts)  # the submodule, tools.py
                 self.do_not_remove += tool.default_named_tuples[sDNA]._fields
 
