@@ -964,7 +964,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                                         ,nick_name = nick_name
                                         ,name_map = self.opts['metas'].name_map
                                         ,tools_dict = runner.tools_dict
-                                        ,tool_not_found = cache_sDNA_tool
+                                        ,tool_not_found = self.cache_sDNA_tool
                                         )
         # The component nick_name
         # is mapped to a tool_name or list of tool_name via name_map. 
