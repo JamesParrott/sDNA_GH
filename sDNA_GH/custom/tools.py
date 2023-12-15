@@ -2754,8 +2754,8 @@ class DataParser(sDNA_GH_Tool):
         msg += 'x_max == %s ' % x_max
         self.logger.debug(msg)
 
-        y_min = options.y_min or x_min
-        y_max = options.y_max or x_max
+        y_min = x_min if options.y_min is None else options.y_min 
+        y_max = x_max if options.y_max is None else options.y_max
 
 
         if (x_max - x_min < options.tol 
