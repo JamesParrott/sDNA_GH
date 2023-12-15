@@ -2895,7 +2895,7 @@ class DataParser(sDNA_GH_Tool):
 
             def renormalise(x):
                 return spline(
-                         data_val
+                         x
                         ,x_min
                         ,p   # base or x_mid.  Can't be a kwarg.
                         ,x_max
