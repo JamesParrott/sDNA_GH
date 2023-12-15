@@ -2630,7 +2630,7 @@ class DataParser(sDNA_GH_Tool):
         return data, x_min, x_max
 
 
-    def classify_data(data, x_min, x_max, options):
+    def classify_data(self, data, x_min, x_max, options):
 
 
         n = len(data)
@@ -2892,7 +2892,7 @@ class DataParser(sDNA_GH_Tool):
             y_min = x_min if options.y_min is None else options.y_min 
             y_max = x_max if options.y_max is None else options.y_max
 
-            
+
             def renormalise(x):
                 return spline(
                          data_val
@@ -2913,7 +2913,7 @@ class DataParser(sDNA_GH_Tool):
 
         
         mid_points = self.mid_points(
-                            inter_class_bounds
+                             inter_class_bounds
                             ,x_min
                             ,x_max
                             )
