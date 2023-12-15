@@ -162,12 +162,11 @@ def exp_spline(x, x_min, base, x_max, y_min, y_max):
                    )
 
 
-VALID_RE_NORMALISERS = ('none', 'uniform', 'linear', 'exponential', 'logarithmic')
+VALID_RE_NORMALISERS = ('none', 'linear', 'exponential', 'logarithmic')
 
 
 splines = dict(zip(VALID_RE_NORMALISERS[1:] 
                   ,[linearly_interpolate
-                   ,linearly_interpolate
                    ,exp_spline
                    ,log_spline
                    ]
@@ -810,10 +809,10 @@ def max_and_min_are_valid(max_, min_):
 
 
 def geometric(
-             data
-            ,num_classes
-            ,options = None
-            ):
+         data
+        ,num_classes
+        ,options = None
+        ):
 
     _min = min(data)
     _max = max(data) + 0.00001 
@@ -837,15 +836,15 @@ def geometric(
                 )
 
         if _max < 1:
-            return [_max**k for k in range(classes, 1, -1)]
+            return [_max**k for k in range(num_classes, 1, -1)]
 
-        ratio = _max ** (1 / float(classes))
+        ratio = _max ** (1 / float(num_classes))
 
-        return [ratio**k for k in range(1, classes)]
+        return [ratio**k for k in range(1, num_classes)]
 
 
-    ratio = (_max / _min) ** (1 / float(classes))
-    return [_min * ratio**k for k in range(1, classes)]
+    ratio = (_max / _min) ** (1 / float(num_classes))
+    return [_min * ratio**k for k in range(1, num_classes)]
 
 
 
