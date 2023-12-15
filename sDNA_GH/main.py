@@ -382,7 +382,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
                                        )
     sort_data = False
     base = 10 # base of log and exp spline, not of number representations
-    re_normaliser = 'linear' #['uniform', 'linear', 'exponential', 'logarithmic']
+    re_normaliser = 'none' #['none', 'uniform', 'linear', 'exponential', 'logarithmic']
     if re_normaliser not in data_cruncher.VALID_RE_NORMALISERS:
         raise ValueError('%s must be in %s' 
                         %(re_normaliser, data_cruncher.VALID_RE_NORMALISERS)

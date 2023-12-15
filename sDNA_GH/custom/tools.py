@@ -1120,7 +1120,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                     ,category = UserWarning
                     ,filename = __file__ + self.__class__.__name__
-                    ,lineno = 253
+                    ,lineno = 1123
                     )
 
         self.logger.debug('Params added to component_inputs for args '
@@ -2514,6 +2514,14 @@ class DataParser(sDNA_GH_Tool):
                              param_Class = Param_ScriptVariable
                             ,Description = 'Value (if any) to re_normalise plot_min to. '
                             ))
+                  ,('colour_as_class', add_params.ParamInfo(
+                             param_Class = Param_Boolean
+                            ,Description = ('true: Replace each data value with the '
+                                           +'value of the midpoint of its class.  ' 
+                                           +"false: don't. "
+                                           +'Default: %(colour_as_class)s' 
+                                           )
+                            )) 
                   # Output Param          
                   ,('mid_points', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
@@ -2560,7 +2568,7 @@ class DataParser(sDNA_GH_Tool):
 
     component_inputs = ('Geom', 'Data', 'field', 'field_prefix', 'plot_max', 'plot_min' 
                        ,'num_classes', 'class_spacing', 'inter_class_bounds'
-                       ,'re_normaliser', 'y_max', 'y_min'
+                       ,'re_normaliser', 'y_max', 'y_min', 'colour_as_class'
                        )
     #
     # Geom is essentially unused in this function, except if it is sorted when sort_data = True
@@ -2569,37 +2577,16 @@ class DataParser(sDNA_GH_Tool):
     # objects.
     #
 
-
-
-    def __call__(self, gdm, opts):
-        #type(str, dict, dict) -> int, str, dict, list
-        # Note!  opts can be mutated.
-        if opts is None:
-            opts = self.opts
-        self.debug('Starting ParseData tool.  ')
-        options = opts['options']
-
-        if not gdm:
-            msg = 'No Geom. Parser requires Geom to preserve correspondence '
-            msg += 'if the Data is re-ordered. '
-            msg += 'Connect list of objects to Geom. '
-            msg += ' gdm == %s' % gdm
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
-            gdm = [gdm]
-
-
+    def filter_or_bound_data_from_selected_field(self, gdm, options):
         # This method may set self.field.  
         select_data_pt_or_field = self.make_field_selector(gdm, options)
 
-        plot_min, plot_max = options.plot_min, options.plot_max
-        if data_cruncher.max_and_min_are_valid(plot_max, plot_min):
+        user_min, user_max = options.plot_min, options.plot_max
+        if data_cruncher.max_and_min_are_valid(user_max, user_min):
             #
             self.logger.info('Valid max and min override will be used. ')
             #
-            x_min, x_max = plot_min, plot_max
+            x_min, x_max = user_min, user_max
             if options.exclude:
                 data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                     for sub_gdm in gdm
@@ -2614,8 +2601,8 @@ class DataParser(sDNA_GH_Tool):
 
         else:
             self.logger.debug('Manually calculating max and min. '
-                      +'No valid override found. '
-                      )
+                             +'No valid override found. '
+                             )
             data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                 for sub_gdm in gdm
                                 for obj, val in sub_gdm.items()                                    
@@ -2635,32 +2622,16 @@ class DataParser(sDNA_GH_Tool):
                                                            )
                          ) 
 
+        self.logger.debug('len(data)== %s ' % len(data.values()))
 
 
 
-        use_manual_classes = (options.inter_class_bounds and
-                              isinstance(options.inter_class_bounds, list)
-                              and all( isinstance(x, Number) 
-                                       for x in options.inter_class_bounds
-                                     )
-                             )
 
-        if options.sort_data or (
-           not use_manual_classes 
-           and options.class_spacing in QUANTILE_METHODS ):
-            # 
-            self.logger.info('Sorting data... ')
-            data = OrderedDict( sorted(data.items()
-                                      ,key = lambda tupl : tupl[1]
-                                      ) 
-                              )
-            self.logger.debug('data.values() == %s, ... ,%s' % (tuple(data.values()[:3])
-                                                               ,tuple(data.values()[-3:])
-                                                               )
-                             ) 
+        return data, x_min, x_max
 
-        param={}
-        param['exponential'] = param['logarithmic'] = options.base
+
+    def classify_data(data, x_min, x_max, options):
+
 
         n = len(data)
         m = min(n, options.num_classes)
@@ -2673,7 +2644,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = __file__ + '.' + self.__class__.__name__
-                                    ,lineno = 1050
+                                    ,lineno = 2683
                                     )
             else:
                 self.logger.error(msg)
@@ -2681,7 +2652,7 @@ class DataParser(sDNA_GH_Tool):
 
 
 
-        if use_manual_classes:
+        if self.use_manual_classes:
             inter_class_bounds = options.inter_class_bounds
             self.logger.info('Using manually specified'
                             +' inter-class boundaries. '
@@ -2725,7 +2696,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = 'DataParser.tools.py'
-                                    ,lineno = 1001
+                                    ,lineno = 2735
                                     )
             else:
                 self.logger.error(msg)
@@ -2739,13 +2710,15 @@ class DataParser(sDNA_GH_Tool):
                 raise ValueError(msg)
 
 
+
         self.logger.debug('num class boundaries == ' 
                     + str(len(inter_class_bounds))
                     )
         self.logger.debug('m == %s' % m)
         self.logger.debug('n == %s' % n)
         if len(inter_class_bounds) + 1 < m:
-            logger.warning('It has only been possible to classify data into '
+            self.logger.warning(
+                           'It has only been possible to classify data into '
                           +'%s distinct classes, not %s' % (len(inter_class_bounds) + 1, m)
                           )
 
@@ -2754,51 +2727,10 @@ class DataParser(sDNA_GH_Tool):
         msg += 'x_max == %s ' % x_max
         self.logger.debug(msg)
 
-        y_min = x_min if options.y_min is None else options.y_min 
-        y_max = x_max if options.y_max is None else options.y_max
+        return inter_class_bounds
 
-
-        if (x_max - x_min < options.tol 
-            or options.re_normaliser not in data_cruncher.splines):
-            #
-            re_normalise = lambda x, *args : x
-        else:
-            spline = data_cruncher.splines[options.re_normaliser]
-            def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
-                return spline(x
-                             ,x_min
-                             ,p   # base or x_mid.  Can't be a kwarg.
-                             ,x_max
-                             ,y_min = y_min
-                             ,y_max = y_max
-                             )
+    def mid_points(self, inter_class_bounds, x_min, x_max):
         
-        def class_mid_point(x): 
-            highest_lower_bound = x_min if x < inter_class_bounds[0] else max(
-                                            y 
-                                            for y in [x_min] + inter_class_bounds
-                                            if y <= x                  
-                                            )
-            #Classes include their lower bound
-            least_upper_bound = x_max if x >= inter_class_bounds[-1] else min(
-                                            y 
-                                            for y in inter_class_bounds + [x_max] 
-                                            if y > x
-                                            )
-
-            return re_normalise(0.5*(least_upper_bound + highest_lower_bound))
-
-
-
-        if options.colour_as_class:
-            renormaliser = class_mid_point
-        else:
-            renormaliser = re_normalise
-
-
-
-
-
         if inter_class_bounds:
             mid_points = [0.5*(x_min + min(inter_class_bounds))]
             mid_points += [0.5*(x + y) for x, y in itertools.pairwise(inter_class_bounds)]
@@ -2806,6 +2738,10 @@ class DataParser(sDNA_GH_Tool):
         else:
             mid_points = [0.5*(x_min + x_max)]
         self.logger.debug(mid_points)
+
+        return mid_points
+
+    def legend_tags(self, inter_class_bounds, mid_points, x_min, x_max, options):
 
         locale.setlocale(locale.LC_ALL, options.locale)
 
@@ -2864,15 +2800,138 @@ class DataParser(sDNA_GH_Tool):
 
         self.logger.debug(legend_tags)
 
-        gen_exp = ((key, renormaliser(val))
-                   for key, val in itertools.chain(data.items()
-                                                  ,zip(legend_tags, mid_points)
-                                                  )
-                  )
+        return legend_tags
+
+
+    def __call__(self, gdm, opts):
+        #type(str, dict, dict) -> int, str, dict, list
+        # Note!  opts can be mutated.
+        if opts is None:
+            opts = self.opts
+        self.debug('Starting ParseData tool.  ')
+        options = opts['options']
+
+        if not gdm:
+            msg = 'No Geom. Parser requires Geom to preserve correspondence '
+            msg += 'if the Data is re-ordered. '
+            msg += 'Connect list of objects to Geom. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            gdm = [gdm]
+
+        self.use_manual_classes = (options.inter_class_bounds and
+                                   isinstance(options.inter_class_bounds, list) and
+                                   all(isinstance(x, Number) 
+                                       for x in options.inter_class_bounds
+                                      )
+                                  )
+
+        data, x_min, x_max = self.filter_or_bound_data_from_selected_field(gdm, options)
+
+
+        if options.sort_data or (
+           not self.use_manual_classes 
+           and options.class_spacing in QUANTILE_METHODS ):
+            # 
+            self.logger.info('Sorting data... ')
+            data = OrderedDict( sorted(data.items()
+                                      ,key = lambda tupl : tupl[1]
+                                      ) 
+                              )
+            self.logger.debug('data.values() == %s, ... ,%s' % (tuple(data.values()[:3])
+                                                               ,tuple(data.values()[-3:])
+                                                               )
+                             ) 
+
+
+        inter_class_bounds = self.classify_data(data, x_min, x_max, options)
+
+
+        
+
+
+        if options.colour_as_class:
+
+        
+            def class_mid_point(x): 
+                highest_lower_bound = x_min if x < inter_class_bounds[0] else max(
+                                                y 
+                                                for y in [x_min] + inter_class_bounds
+                                                if y <= x                  
+                                                )
+                #Classes include their lower bound
+                least_upper_bound = x_max if x >= inter_class_bounds[-1] else min(
+                                                y 
+                                                for y in inter_class_bounds + [x_max] 
+                                                if y > x
+                                                )
+
+                return 0.5*(least_upper_bound + highest_lower_bound)
+
+
+            for obj, data_val in data.items():
+                data[obj] = class_mid_point(data_val)
+
+
+
+        if (x_max - x_min >= options.tol and
+            options.re_normaliser in data_cruncher.splines):
+            #
+
+
+
+            param={}
+            param['exponential'] = param['logarithmic'] = options.base
+
+            spline = data_cruncher.splines[options.re_normaliser]
+            p = param.get(options.re_normaliser, 'Not used')
+
+            y_min = x_min if options.y_min is None else options.y_min 
+            y_max = x_max if options.y_max is None else options.y_max
+
+            
+            def renormalise(x):
+                return spline(
+                         data_val
+                        ,x_min
+                        ,p   # base or x_mid.  Can't be a kwarg.
+                        ,x_max
+                        ,y_min = y_min
+                        ,y_max = y_max
+                        )
+
+            for i, inter_class_bound in enumerate(inter_class_bounds):
+                inter_class_bounds[i] = renormalise(inter_class_bound)
+
+            for obj, data_val in data.items():
+                data[obj] = renormalise(data_val)
+
+            x_max, x_min = y_max, y_min
+
+        
+        mid_points = self.mid_points(
+                            inter_class_bounds
+                            ,x_min
+                            ,x_max
+                            )
+
+        legend_tags = self.legend_tags(
+                             inter_class_bounds
+                            ,mid_points
+                            ,x_min
+                            ,x_max
+                            ,options
+                            )
+
+        gen_exp = itertools.chain(data.items(), zip(legend_tags, mid_points))
+
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
-        #rename for retvals
-        plot_min, plot_max, field = y_min, y_max, self.field
+        # rename for retvals
+        plot_min, plot_max, field = x_min, x_max, self.field
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
