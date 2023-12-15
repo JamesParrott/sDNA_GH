@@ -2411,7 +2411,8 @@ class DataParser(sDNA_GH_Tool):
                        ]
         # e.g. [2000000, 4000000, 6000000, 8000000, 10000000, 12000000]
         class_spacing = 'quantile'
-        VALID_CLASS_SPACINGS = data_cruncher.VALID_RE_NORMALISERS + tuple(QUANTILE_METHODS.keys())
+        VALID_RE_NORMALISERS = data_cruncher.VALID_RE_NORMALISERS
+        VALID_CLASS_SPACINGS = VALID_RE_NORMALISERS + tuple(QUANTILE_METHODS.keys())
 
         base = 10 # for Log and exp
         colour_as_class = False
@@ -2501,7 +2502,7 @@ class DataParser(sDNA_GH_Tool):
                             ,Description = ('Name of method to use to '
                                            +'renormalise the data. '
                                            +'Allowed Values: '
-                                           +'%(data_cruncher.VALID_RE_NORMALISERS)s.  ' 
+                                           +'%(VALID_RE_NORMALISERS)s.  ' 
                                            +'Default: %(re_normaliser)s'
                                            ) 
                             ))
