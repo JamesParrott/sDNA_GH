@@ -2401,7 +2401,7 @@ class DataParser(sDNA_GH_Tool):
                                            +'calculated by sDNA_GH unless '
                                            +'overridden.  '
                                            )
-        re_normaliser = 'linear'
+        re_normaliser = 'none'
         sort_data = False
         num_classes = 8
         inter_class_bounds = [options_manager.Sentinel('inter_class_bounds is automatically '
@@ -2425,6 +2425,8 @@ class DataParser(sDNA_GH_Tool):
         remove_overlaps = True
         suppress_small_classes_error = False
         suppress_class_overlap_error = False
+        y_max = None
+        y_min = None
         
         assert re_normaliser in data_cruncher.VALID_RE_NORMALISERS
         assert class_spacing in VALID_CLASS_SPACINGS
@@ -2454,17 +2456,19 @@ class DataParser(sDNA_GH_Tool):
                   ,('plot_max', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Maximum data value to parse. '
-                                           +'Higher values (and their '
-                                           +'objects) are omitted. '
-                                           +'Automatically calculated if unset.'
+                                           +'Outlying values higher than plot_max are set to plot_max '
+                                           +'if exclude is false, or omitted (as are their '
+                                           +'objects). '
+                                           +"Automatically calculated to the data's actual max if unset."
                                            )
                             ))
                   ,('plot_min', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Minimum data value to parse. '
-                                           +'Lower values (and their '
-                                           +'objects) are omitted. '
-                                           +'Automatically calculated if unset.'
+                                           +'Outlying values lower than plot_min are set to plot_min '
+                                           +'if exclude is false, or omitted (as are their '
+                                           +'objects). '
+                                           +"Automatically calculated to the data's actual min if unset."
                                            )
                             ))
                   ,('num_classes', add_params.ParamInfo(
@@ -2482,7 +2486,7 @@ class DataParser(sDNA_GH_Tool):
                                            +'%(VALID_CLASS_SPACINGS)s.  ' 
                                            +'Default: %(class_spacing)s'
                                            ) 
-                            ))
+                            ))                
                   ,('inter_class_bounds', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Inter-class boundaries for the '
@@ -2491,7 +2495,25 @@ class DataParser(sDNA_GH_Tool):
                                            +'the method in class_spacing if '
                                            +'unset.'
                                            )
+                            ))        
+                  ,('re_normaliser', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('Name of method to use to '
+                                           +'renormalise the data. '
+                                           +'Allowed Values: '
+                                           +'%(data_cruncher.VALID_RE_NORMALISERS)s.  ' 
+                                           +'Default: %(re_normaliser)s'
+                                           ) 
                             ))
+                  ,('y_max', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = 'Value (if any) to re_normalise plot_max to. '
+                            ))
+                  ,('y_min', add_params.ParamInfo(
+                             param_Class = Param_ScriptVariable
+                            ,Description = 'Value (if any) to re_normalise plot_min to. '
+                            ))
+                  # Output Param          
                   ,('mid_points', add_params.ParamInfo(
                              param_Class = Param_ScriptVariable
                             ,Description = ('Mid-points of the classes in the '
@@ -2537,6 +2559,7 @@ class DataParser(sDNA_GH_Tool):
 
     component_inputs = ('Geom', 'Data', 'field', 'field_prefix', 'plot_max', 'plot_min' 
                        ,'num_classes', 'class_spacing', 'inter_class_bounds'
+                       ,'re_normaliser', 'y_max', 'y_min'
                        )
     #
     # Geom is essentially unused in this function, except if it is sorted when sort_data = True
@@ -2575,7 +2598,7 @@ class DataParser(sDNA_GH_Tool):
             #
             self.logger.info('Valid max and min override will be used. ')
             #
-            x_min, x_max = plot_min, plot_max 
+            x_min, x_max = plot_min, plot_max
             if options.exclude:
                 data = OrderedDict( (obj, select_data_pt_or_field(val)) 
                                     for sub_gdm in gdm
@@ -2730,6 +2753,12 @@ class DataParser(sDNA_GH_Tool):
         msg += 'x_max == %s ' % x_max
         self.logger.debug(msg)
 
+        if y_min is None:
+            y_min = x_min
+
+        if y_max is None:
+            y_max = x_max
+
 
         if (x_max - x_min < options.tol 
             or options.re_normaliser not in data_cruncher.splines):
@@ -2740,10 +2769,10 @@ class DataParser(sDNA_GH_Tool):
             def re_normalise(x, p = param.get(options.re_normaliser, 'Not used')):
                 return spline(x
                              ,x_min
-                             ,p   # base or x_mid.  Can't be kwarg.
+                             ,p   # base or x_mid.  Can't be a kwarg.
                              ,x_max
-                             ,y_min = x_min
-                             ,y_max = x_max
+                             ,y_min = y_min
+                             ,y_max = y_max
                              )
         
         def class_mid_point(x): 
@@ -2845,7 +2874,7 @@ class DataParser(sDNA_GH_Tool):
         gdm = gdm_from_GH_Datatree.GeomDataMapping(gen_exp)
 
         #rename for retvals
-        plot_min, plot_max, field = x_min, x_max, self.field
+        plot_min, plot_max, field = y_min, y_max, self.field
         
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)

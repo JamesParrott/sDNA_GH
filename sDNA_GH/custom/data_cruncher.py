@@ -162,10 +162,10 @@ def exp_spline(x, x_min, base, x_max, y_min, y_max):
                    )
 
 
-VALID_RE_NORMALISERS = ('uniform', 'linear', 'exponential', 'logarithmic')
+VALID_RE_NORMALISERS = ('none', 'uniform', 'linear', 'exponential', 'logarithmic')
 
 
-splines = dict(zip(VALID_RE_NORMALISERS 
+splines = dict(zip(VALID_RE_NORMALISERS[1:] 
                   ,[linearly_interpolate
                    ,linearly_interpolate
                    ,exp_spline
