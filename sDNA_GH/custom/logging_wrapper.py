@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 __author__ = 'James Parrott'
-__version__ = '2.7.2-rc'
+__version__ = '2.8.0'
 
 import sys
 import os

@@ -28,7 +28,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '2.7.2-rc'
+__version__ = '2.8.0'
 """
 Functions to override namedtuples, from dicts, toml files 
 and other named tuples e.g. for options data structures.
