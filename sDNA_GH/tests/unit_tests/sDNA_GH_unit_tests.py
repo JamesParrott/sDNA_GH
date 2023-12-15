@@ -82,21 +82,6 @@ class FileAndStream():
 
 
 
-class TestStringMethods(unittest.TestCase):
-    def test_upper(self):
-        self.assertEqual('foo'.upper(), 'FOO')
-    
-    def test_isupper(self):
-        self.assertTrue('FOO'.isupper())
-        self.assertFalse('Foo'.isupper())
-    
-    def test_split(self):
-        s = 'hello world'
-        self.assertEqual(s.split(), ['hello', 'world'])
-        
-        # check that s.split fails when the separator is not a string
-        with self.assertRaises(TypeError):
-            s.split(2)
 
 
 class TestDataCruncher(unittest.TestCase):
@@ -336,6 +321,9 @@ def run_launcher_tests(self, *args):
         o.write('Loading unit tests from: %s \n' % start_dir)
                                     
         discovered_suite = unittest.TestLoader().discover(start_dir = start_dir
+                                                          # Non standard pattern ensures 
+                                                          # tests requiring Grasshopper are
+                                                          # skipped by the default discovery 
                                                          ,pattern = '*test*.py'
                                                          )
 

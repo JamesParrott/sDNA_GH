@@ -1,0 +1,13 @@
+mapclassif_Iron/__init__.py,sha256=frcCV1k9oG9oKj3dpUqdJg1PxRT2RSN_XKdLCPjaYaY,2
+mapclassif_Iron/classifiers.py,sha256=lr6u9KPaFiGgh3O_QJ6N_cDWlKkBY4v-liij9sXKLnw,2980
+mapclassif_Iron/test_fisher_jenks_meanss.py,sha256=fW_iqqUG5Lnd8YJchidydGhzfYsCRJOA9Y3-fe7VGfY,3339
+mapclassif_Iron/datasets/__init__.py,sha256=UQTjSZioXaPgCLnYFbvQXWUTR1Xzy5o9OAiLVmii_Cc,51
+mapclassif_Iron/datasets/calemp/README.md,sha256=eTMkhFDTo6xsVA4wVpf3Q3FK5sSQv6qRtP_PeZ3jGRQ,319
+mapclassif_Iron/datasets/calemp/__init__.py,sha256=qvQ_r6HDPKmnBjRsoa_8Y_PHzx0v1zSgvcL79Q1O_74,21
+mapclassif_Iron/datasets/calemp/calempdensity.csv,sha256=QPeSvESoXqY1UOAIL57xQ2Eu2RChjU7R4xPokhHEhyU,7122
+mapclassif_Iron/datasets/calemp/data.py,sha256=A2BwEZjAMPPm3rGCgm8IwRt9nOK_oXUWNlbT_0ICcMI,450
+mapclassif_Iron-2.7.0.dist-info/LICENSE.txt,sha256=rZI_O-FrEw_GL55S5YX-zVVFV6MlAyZKWEl7_xtm6Pg,1485
+mapclassif_Iron-2.7.0.dist-info/METADATA,sha256=aE0Gvp7EuJ49PzoZedL5eRCiudTvA2mhqK117gKy4IU,2126
+mapclassif_Iron-2.7.0.dist-info/WHEEL,sha256=oiQVh_5PnQM0E3gPdiz09WCNmwiHDMaGer_elqB3coM,92
+mapclassif_Iron-2.7.0.dist-info/top_level.txt,sha256=GxKWplnVWqMqm1I7gW_KN8mxFlmRfWi9emcTAi-ogUQ,16
+mapclassif_Iron-2.7.0.dist-info/RECORD,,

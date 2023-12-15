@@ -47,6 +47,7 @@ from numbers import Number
 import collections
 
 from .skel.tools.helpers.funcs import itertools # for pairwise if Python < 3.10
+from ..third_party.mapclassif_Iron.classifiers import _fisher_jenks_means_without_numpy
 
 OrderedDict, Counter = collections.OrderedDict, collections.Counter
 
@@ -806,3 +807,51 @@ def max_and_min_are_valid(max_, min_):
             isinstance(min_, Number) and 
             max_ > min_ 
            )
+
+
+def geometric(
+             data
+            ,num_classes
+            ,options = None
+            ):
+
+    _min = min(data)
+    _max = max(data) + 0.00001 
+
+    if _min == _max:
+        raise ValueError(
+            "Cannot compute geometric classification of data points "
+            +"that are all same value, max: %s == min: %s"
+            % (_min, _max)
+            +"Set class_spacing to a different classification method. "
+            )
+
+    if _min == 0:
+        if _max == 1:
+            raise ValueError(
+                "Geometric classification is not meaningful "
+                "if min == 0 and max == 1a unit range is data points "
+                +"that are all same value, max: %s == min: %s"
+                % (_min, _max)
+                +"Set class_spacing to a different classification method. "
+                )
+
+        if _max < 1:
+            return [_max**k for k in range(classes, 1, -1)]
+
+        ratio = _max ** (1 / float(classes))
+
+        return [ratio**k for k in range(1, classes)]
+
+
+    ratio = (_max / _min) ** (1 / float(classes))
+    return [_min * ratio**k for k in range(1, classes)]
+
+
+
+def fisher_jenks(
+             data
+            ,num_classes
+            ,options = None
+            ):
+    return _fisher_jenks_means_without_numpy(data, num_classes)

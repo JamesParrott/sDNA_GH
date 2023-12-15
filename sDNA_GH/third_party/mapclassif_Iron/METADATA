@@ -1,0 +1,44 @@
+Metadata-Version: 2.1
+Name: mapclassif-Iron
+Version: 2.7.0
+Summary: Classification Schemes for Choropleth Maps.
+Maintainer-email: James Parrott <james.parrott@proton.me>
+License: BSD 3-Clause
+Project-URL: Repository, https://github.com/JamesParrott/mapclassif-Iron
+Keywords: spatial statistics,geovisualizaiton
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: GIS
+Requires-Python: >=2.7
+Description-Content-Type: text/x-rst
+License-File: LICENSE.txt
+Provides-Extra: all
+Requires-Dist: numba[dev,docs,speedups,tests] ; extra == 'all'
+Provides-Extra: tests
+Requires-Dist: geopandas ; extra == 'tests'
+Requires-Dist: libpysal ; extra == 'tests'
+Requires-Dist: matplotlib ; extra == 'tests'
+Requires-Dist: pytest ; extra == 'tests'
+Requires-Dist: pytest-cov ; extra == 'tests'
+Requires-Dist: pytest-xdist ; extra == 'tests'
+
+`mapclassif-Iron` is a fork of mapclassify that provides 
+_fisher_jenks_mean for Pythons without numpy (and nothing else).
+
+mapclassify implements a family of classification schemes for choropleth maps.
+Its focus is on the determination of the number of classes, and the assignment
+of observations to those classes. It is intended for use with upstream mapping
+and geovisualization packages (see `geopandas`_ and `geoplot`_)
+that handle the rendering of the maps.
+
+For further theoretical background see "`Choropleth Mapping`_" in Rey, S.J., D. Arribas-Bel, and L.J. Wolf (2020) "Geographic Data Science with PySAL and the PyData Stack”.
+
+.. _geopandas: https://geopandas.org/mapping.html
+.. _geoplot: https://residentmario.github.io/geoplot/user_guide/Customizing_Plots.html
+.. _Choropleth Mapping: https://geographicdata.science/book/notebooks/05_choropleth.html

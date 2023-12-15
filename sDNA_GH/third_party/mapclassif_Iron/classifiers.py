@@ -1,14 +1,23 @@
 
-import copy
+import sys
 import functools
-import warnings
 
-
+class NotIronPython(Exception):
+    pass
 
 class MockNumpy(object):
     def __init__(self, int_type=None, float_type=None):
-        self.int32 = int_type or int
-        self.float32 = float_type or float
+
+        try:
+            if sys.implementation.name == 'ironpython':
+                import System
+                self.int32 = int_type or System.Int16
+                self.float32 = float_type or System.Single
+            else:
+                raise NotIronPython
+        except (ImportError, NotIronPython):
+            self.int32 = int_type or int
+            self.float32 = float_type or float
 
         self.inf = self.float32("inf")
 
