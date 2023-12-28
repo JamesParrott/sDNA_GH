@@ -84,15 +84,15 @@ def is_uuid(val):
 
 def windows_installation_paths(names):
     #type(str/Sequence(str)) -> list(str)
-    """ Yields possible installation paths on Windows for an 
+    r""" Yields possible installation paths on Windows for an 
         un-located app named name.
 
         for each name in names, yields:
             all paths on the system path with name as a substring
-            'C:\' + name
-            r'C:\Program Files\' + name
-            r'C:\Program Files (x86)\' + name
-            e.g. r'C:\Users\USER_NAME\AppData\Roaming\' + name
+            r'C:' + '\\' name
+            r'C:\Program Files' + '\\'name
+            r'C:\Program Files (x86)' + '\\'name
+            e.g. r'C:\Users\USER_NAME\AppData\Roaming' + '\\'name
 
     """
     if isinstance(names, basestring):

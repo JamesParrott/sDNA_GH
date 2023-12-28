@@ -1283,7 +1283,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 self.logger.debug('needed_inputs == %s' 
                                 % self.component.params_adder.needed_inputs
                                 )
-                advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
+                advanced = ';'.join(key if val is None else ('%s=%s' % (key, val))
                                     for key, val in kwargs.items()
                                     if (key in user_inputs and 
                                         key not in self.built_in_options(opts)
@@ -2676,8 +2676,8 @@ class DataParser(sDNA_GH_Tool):
                                                           ,y_min = x_min
                                                           ,y_max = x_max
                                                           )     
-                            for i in range(1, options.num_classes) 
-                            ]
+                                  for i in range(1, options.num_classes) 
+                                 ]
 
         count_bound_counts = Counter(inter_class_bounds)
 
@@ -2703,11 +2703,7 @@ class DataParser(sDNA_GH_Tool):
                 raise ValueError(msg)
 
 
-            if options.re_normaliser not in data_cruncher.VALID_RE_NORMALISERS:
-                # e.g.  'linear', exponential, logarithmic
-                msg = 'Invalid re_normaliser : %s ' % options.re_normaliser
-                self.logger.error(msg)
-                raise ValueError(msg)
+
 
 
 
@@ -2758,11 +2754,12 @@ class DataParser(sDNA_GH_Tool):
             #e.g. first_leg_tag_str = 'below {upper}'
 
             legend_tags = [options.first_leg_tag_str.format(lower = x_min_str
-                                                        ,upper = upper_str
-                                                        ,mid_pt = mid_pt_str
-                                                        )
-                        ]
-            for lower_bound, class_mid_point, upper_bound in zip(inter_class_bounds[0:-1]
+                                                           ,upper = upper_str
+                                                           ,mid_pt = mid_pt_str
+                                                           )
+                          ]
+            for lower_bound, class_mid_point, upper_bound in zip(
+                                                         inter_class_bounds[0:-1]
                                                         ,mid_points[1:-1]
                                                         ,inter_class_bounds[1:]  
                                                         ):
@@ -2772,10 +2769,10 @@ class DataParser(sDNA_GH_Tool):
                 mid_pt_str = format_number(class_mid_point, options.num_format)
                 # e.g. gen_leg_tag_str = '{lower} - {upper}' # also supports {mid}
                 legend_tags += [options.gen_leg_tag_str.format(lower = lower_str
-                                                            ,upper = upper_str
-                                                            ,mid_pt = mid_pt_str 
-                                                            )
-                            ]
+                                                              ,upper = upper_str
+                                                              ,mid_pt = mid_pt_str 
+                                                              )
+                               ]
 
             lower_str =  format_number(max( inter_class_bounds ), options.num_format)
             x_max_str =  format_number(x_max, options.num_format)
@@ -2827,7 +2824,7 @@ class DataParser(sDNA_GH_Tool):
                                    all(isinstance(x, Number) 
                                        for x in options.inter_class_bounds
                                       )
-                                  )
+                                   )
 
         data, x_min, x_max = self.filter_or_bound_data_from_selected_field(gdm, options)
 
