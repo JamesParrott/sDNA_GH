@@ -1283,7 +1283,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 self.logger.debug('needed_inputs == %s' 
                                 % self.component.params_adder.needed_inputs
                                 )
-                advanced = ';'.join(key if val is None else '%s=%s' % (key, val)
+                advanced = ';'.join(key if val is None else ('%s=%s' % (key, val))
                                     for key, val in kwargs.items()
                                     if (key in user_inputs and 
                                         key not in self.built_in_options(opts)
