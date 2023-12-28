@@ -1021,7 +1021,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.input_specs[sDNA] = input_spec = sDNA_Tool.getInputSpec()
 
 
-        if (any(tuple_[0]=='analmet' for tuple_ in input_spec) and 
+        if (any(tuple_[0]=='analmet' and 'HYBRID' in tuple_[3] for tuple_ in input_spec) and 
             self.ADVANCED_ARG_INPUT_PARAMS):
 
             if not any(tuple_[0]=='advanced' for tuple_ in input_spec):
