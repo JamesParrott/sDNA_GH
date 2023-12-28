@@ -1377,7 +1377,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             #
             # TODO add in names of other tools that change the network
 
-        advanced = tool_opts['advanced']
+        advanced = tool_opts.get('advanced', '')
 
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
