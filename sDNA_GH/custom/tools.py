@@ -1015,19 +1015,26 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.logger.error(msg)
             raise ValueError(msg)
                             
-        self.input_specs[sDNA] = input_spec = sDNA_Tool.getInputSpec()
         self.get_syntaxes[sDNA] = get_syntax = sDNA_Tool.getSyntax
 
-        defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
+        
+        self.input_specs[sDNA] = input_spec = sDNA_Tool.getInputSpec()
 
-        if 'analmet' in defaults and self.ADVANCED_ARG_INPUT_PARAMS:
 
-            if 'advanced' not in defaults:
+        if (any(tuple_[0]=='analmet' for tuple_ in input_spec) and 
+            self.ADVANCED_ARG_INPUT_PARAMS):
+
+            if not any(tuple_[0]=='advanced' for tuple_ in input_spec):
                 defaults['advanced'] = ''
 
-            for arg_name, default_val in self.ADVANCED_ARG_INPUT_PARAMS.items():
-                if arg_name not in defaults:
-                    defaults[arg_name] = default_val
+                #                 (varname,    display_name,                  data_type,    default
+                #                                                                     filter_,  required)
+                input_spec.append(('advanced', 'sDNA Advanced Config string', 'Text', None, '', False))
+
+            input_spec.extend(ADVANCED_ARG_INPUT_PARAMS)
+
+        defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
+        self.input_specs[sDNA] = input_spec
 
         # varname : default.  See below for other names in tuple_ in input_spec
 
@@ -1071,9 +1078,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         # to cause an intentional lasting side effect, assignment will only 
         # affect the local name)
 
-        for varname, display_name, data_type, filter_, default, required in input_spec:  
-                      
-            description = display_name +'. '
+        for spec in input_spec:
+            varname, display_name, data_type, filter_, default, required = spec   
+            
+            if not description.rstrip().endswith('.'):
+                description = display_name +'. '
             description += 'Default value == %(' + varname + ')s.'
             # to be interpolated by self.param_info_list from self.all_options_dict
 
@@ -1081,17 +1090,15 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                and not isinstance(filter_, basestring)
                and len(filter_) >= 2): 
                 #
-                description = '%s. Allowed values: %s. ' % (description
-                                                           ,', '.join(map(str
-                                                                         ,filter_
-                                                                         )
-                                                                     )
-                                                           ) 
+                description += ' Allowed values: %s. ' % ', '.join(map(str, filter_))
+
             # if required:     
             #     description = 'REQUIRED. %s' % description
+
+            py_type_name = ''
+
             if data_type:
                 if data_type.lower() not in self.sDNA_types_to_py_type_names:
-                    py_type_name = ''
                     msg = 'Default types will be assigned to Param '
                     msg +='with unsupported data type: %s, '
                     msg += 'for param: %s, of tool: %s, with nick name: %s'
@@ -1180,9 +1187,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
     # Flag arguments not supported, only ones to be included in 
     # sDNA advanced config string as "key=value".
-    ADVANCED_ARG_INPUT_PARAMS = {'lineformula': ''
-                                ,'juncformula': ''
-                                }
+    #   (varname,        display_name,                           data_type,    default
+    #                                                                    filter_,  required)
+    ADVANCED_ARG_INPUT_PARAMS = (
+        ('lineformula', 'Line formula (for hybid metric).',      'Text', None, '', False)
+       ,('juncformula', 'Junction formula (for hybrid metric).', 'Text', None, '', False)
+       )
 
 
     LIST_ARGS = ('radius'
