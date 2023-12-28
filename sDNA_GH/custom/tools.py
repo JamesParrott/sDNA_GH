@@ -1020,10 +1020,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         
         self.input_specs[sDNA] = input_spec = sDNA_Tool.getInputSpec()
 
-
+        # Don't add 'advanced' or ADVANCED_ARG_INPUT_PARAMS to sDNA Prepare, Learn or Predict
         if (any(tuple_[0]=='analmet' and 'HYBRID' in tuple_[3] for tuple_ in input_spec) and 
             self.ADVANCED_ARG_INPUT_PARAMS):
 
+            # Not used - advanced is in all the UISpecs that have 'analmet'
+            # (all tools except sDNA Prepare, Learn and Predict)
             if not any(tuple_[0]=='advanced' for tuple_ in input_spec):
                 defaults['advanced'] = ''
 
@@ -1192,8 +1194,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     #   (varname,        display_name,                           data_type,    default
     #                                                                    filter_,  required)
     ADVANCED_ARG_INPUT_PARAMS = (
-        ('lineformula', 'Line formula (for hybid metric).',      'Text', None, '', False)
-       ,('juncformula', 'Junction formula (for hybrid metric).', 'Text', None, '0', False)
+        ('lineformula', 'Line formula (requires hybrid metric).',      'Text', None, '', False)
+       ,('juncformula', 'Junction formula (requires hybrid metric).', 'Text', None, '0', False)
        )
 
 
@@ -1217,7 +1219,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ,opts
                 ,input = None
                 ,output = None
-                ,advanced = None
                 ,**kwargs
                 ):
         #type(str, dict, str, str, str, dict) -> int, str
@@ -1232,7 +1233,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             raise ValueError(msg)
 
         options = opts['options']
-        metas = opts['metas']
 
         sDNA = sDNA_key(opts)
 
@@ -1306,56 +1306,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 self.logger.info('Converted list to str: %s' % tool_opts[key])
 
 
-        # If the user has specifed an advanced config string, as well as 
-        # non-empty values for some params in self.ADVANCED_ARG_INPUT_PARAMS, 
-        # strip out the key-value pairs in the advanced config string (to be 
-        # overidden by the params in the next step) 
-        tool_opts['advanced'] = ';'.join(str_
-                                         for str_ in tool_opts.get('advanced', '').split(';')
-                                         if not any(spec[0] == str_.partition('=')[0]
-                                                    for spec in self.ADVANCED_ARG_INPUT_PARAMS
-                                                    if tool_opts.get(spec[0], '')
-                                                   )
-                                        )
-
-
-        # Mutate tool_opts, removing keys in ADVANCED_ARG_INPUT_PARAMS
-        for spec in self.ADVANCED_ARG_INPUT_PARAMS:
-            key, __, __, __, __, __ = spec
-            val = tool_opts.pop(key, '')
-            if val: 
-                advanced_config_substring = '%s=%s' % (key, val)
-
-                if not tool_opts['advanced']:
-                    tool_opts['advanced'] = advanced_config_substring
-                elif advanced_config_substring not in tool_opts['advanced']:
-                    tool_opts['advanced'] += (';' + advanced_config_substring)
-
-
-        if tool_opts['advanced']:
-            if advanced is None:
-                advanced = tool_opts['advanced']
-            if metas.make_advanced and not advanced:
-                user_inputs = self.component.params_adder.user_inputs
-                # We need this reference because some args this tool doesn't 
-                # recognise, may have been added to the component, by another
-                # tool on it.
-
-                self.logger.debug('user_inputs == %s' % user_inputs)
-                self.logger.debug('needed_inputs == %s' 
-                                 % self.component.params_adder.needed_inputs
-                                 )
-                advanced = ';'.join(key if val is None else ('%s=%s' % (key, val))
-                                    for key, val in kwargs.items()
-                                    if (key in user_inputs and 
-                                        key not in self.built_in_options(opts)
-                                    )
-                                )
-                tool_opts['advanced'] = advanced
-                self.logger.info('Built advanced config string: %s' % advanced)
-
-            else:
-                self.logger.debug('Advanced config string: %s' % advanced)
+        if 'advanced' in tool_opts:
+            self.logger.debug('Calling self.add_to_advanced_config_string')
+            tool_opts = self.add_to_advanced_config_string(tool_opts, opts)
 
             # user needs to set sync = false to avoid sharing advanced.
             # Shared advanced strings will duplicate values for args
@@ -1367,8 +1320,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                               ,sDNA = None
                                               ,val = None
                                               )
-            all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = advanced)
+            all_sDNA_tool_opts[sDNA] = tool_opts_sDNA._replace(advanced = tool_opts['advanced'])
 
+        self.logger.debug('tool_opts: %s' % tool_opts)
 
         syntax = get_syntax(tool_opts)
 
@@ -1423,6 +1377,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             #
             # TODO add in names of other tools that change the network
 
+        advanced = tool_opts['advanced']
 
         locs = locals().copy()
         return tuple(locs[retval] for retval in self.retvals)
@@ -1430,6 +1385,63 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     
     retvals = 'retcode', 'f_name', 'input', 'output', 'advanced'
     component_outputs = ('file',) # retvals[-1])
+
+    def add_to_advanced_config_string(self, tool_opts, opts):
+        # If the user has specifed an advanced config string, as well as 
+        # non-empty values for some params in self.ADVANCED_ARG_INPUT_PARAMS, 
+        # strip out the key-value pairs in the advanced config string (to be 
+        # overidden by the params in the next step) 
+        tool_opts['advanced'] = ';'.join(str_
+                                         for str_ in tool_opts.get('advanced', '').split(';')
+                                         if not any(spec[0] == str_.partition('=')[0]
+                                                    for spec in self.ADVANCED_ARG_INPUT_PARAMS
+                                                    if tool_opts.get(spec[0], '')
+                                                   )
+                                        )
+
+        self.logger.info("repr(tool_opts['advanced']): %s " % repr(tool_opts['advanced']))
+
+        # Mutate tool_opts, removing keys in ADVANCED_ARG_INPUT_PARAMS
+        for spec in self.ADVANCED_ARG_INPUT_PARAMS:
+            key, __, __, __, __, __ = spec
+            val = tool_opts.pop(key, '')
+            if val: 
+                advanced_config_substring = '%s=%s' % (key, val)
+
+                if not tool_opts['advanced']:
+                    tool_opts['advanced'] = advanced_config_substring
+                elif advanced_config_substring not in tool_opts['advanced']:
+                    tool_opts['advanced'] += (';' + advanced_config_substring)
+
+        self.logger.info("repr(tool_opts['advanced']): %s " % repr(tool_opts['advanced']))
+
+        
+        metas = opts['metas']
+
+        if metas.make_advanced:
+            user_inputs = self.component.params_adder.user_inputs
+            # We need this reference because some args this tool doesn't 
+            # recognise, may have been added to the component, by another
+            # tool on it.
+
+            self.logger.debug('user_inputs == %s' % user_inputs)
+            self.logger.debug('needed_inputs == %s' 
+                                % self.component.params_adder.needed_inputs
+                                )
+            tool_opts['advanced'] += ';'.join(
+                                key if val is None else ('%s=%s' % (key, val))
+                                for key, val in kwargs.items()
+                                if (key in user_inputs and 
+                                    key not in self.built_in_options(opts)
+                                    )
+                                )
+            self.logger.info('Extra advanced config string: %s' % tool_opts['advanced'])
+
+        else:
+            self.logger.debug('Advanced config string: %s' % tool_opts['advanced'])
+
+
+        return tool_opts
 
 
 def get_objs_and_OrderedDicts(only_selected = False
