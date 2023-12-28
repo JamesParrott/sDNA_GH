@@ -1081,7 +1081,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         for spec in input_spec:
             varname, display_name, data_type, filter_, default, required = spec   
             
-            if not description.rstrip().endswith('.'):
+            if display_name.rstrip().endswith('.'):
+                description = display_name
+            else:
                 description = display_name +'. '
             description += 'Default value == %(' + varname + ')s.'
             # to be interpolated by self.param_info_list from self.all_options_dict
