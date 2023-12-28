@@ -1312,15 +1312,16 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         # overidden by the params in the next step) 
         tool_opts['advanced'] = ';'.join(str_
                                          for str_ in tool_opts.get('advanced', '').split(';')
-                                         if not any(key in str_.split('=')[0]
-                                                    for key in self.ADVANCED_ARG_INPUT_PARAMS
-                                                    if tool_opts.get(key, '')
+                                         if not any(spec[0] == str_.partition('=')[0]
+                                                    for spec in self.ADVANCED_ARG_INPUT_PARAMS
+                                                    if tool_opts.get(spec[0], '')
                                                    )
                                         )
 
 
         # Mutate tool_opts, removing keys in ADVANCED_ARG_INPUT_PARAMS
-        for key in self.ADVANCED_ARG_INPUT_PARAMS:
+        for spec in self.ADVANCED_ARG_INPUT_PARAMS:
+            key, __, __, __, __, __ = spec
             val = tool_opts.pop(key, '')
             if val: 
                 advanced_config_substring = '%s=%s' % (key, val)
