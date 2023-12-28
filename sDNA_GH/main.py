@@ -1164,7 +1164,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 # component's input 
                 # Params can be updated to reflect the new sDNA
 
-        autos_changed = self.old_autos != auto_run_tool_options(self.options)
+        autos_changed = (self.old_autos != auto_run_tool_options(self.options))
         if any_sDNA_tools_updated or autos_changed:
             if autos_changed:
                 self.logger.info('New auto options found.  Re-updating tools. ')
@@ -1174,6 +1174,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
             params_updated = self.update_Params()#self.Params, self.tools)
             # to add in any new sDNA inputs to the component's Params
+            
             if params_updated:
                 self.logger.info('Params have been updated.  '
                                 +'Returning None to allow new Params to be set. '
@@ -1186,15 +1187,17 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
             #
             tools.import_sDNA(self.opts)
             self.logger.info('Building missing sDNA components (if any). ')
-            tools.build_missing_sDNA_components(opts = self.opts
-                                               ,category_abbrevs = self.metas.category_abbrevs
-                                               ,plug_in_name = dev_tools.plug_in_name #'sDNA'
-                                               ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
-                                               ,user_objects_location = tools.sDNA_GH_user_objects_location
-                                               ,add_to_canvas = False
-                                               ,overwrite = True
-                                               ,move_user_objects = self.metas.move_user_objects
-                                               )
+
+            tools.build_missing_sDNA_components(
+                 opts = self.opts
+                ,category_abbrevs = self.metas.category_abbrevs
+                ,plug_in_name = dev_tools.plug_in_name #'sDNA'
+                ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
+                ,user_objects_location = tools.sDNA_GH_user_objects_location
+                ,add_to_canvas = False
+                ,overwrite = True
+                ,move_user_objects = self.metas.move_user_objects
+                )
 
 
 

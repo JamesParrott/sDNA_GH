@@ -313,6 +313,9 @@ def delete_Param(Params, name, IO):
         WARNING.  Glitches and crashes are likely when calling this function
         from a component, on its own Params (e.g. that will cause it to run
         again).  
+
+        It is used in builder.py, on code-generated components' params, from 
+        the builder component (to remove the default GhPython params). 
     """
     check_IO(IO)
     Params_to_delete = [P for P in getattr(Params, IO) if P.NickName == name]

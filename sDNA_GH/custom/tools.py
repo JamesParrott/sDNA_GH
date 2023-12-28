@@ -1019,7 +1019,16 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         self.get_syntaxes[sDNA] = get_syntax = sDNA_Tool.getSyntax
 
         defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
-                              
+
+        if 'analmet' in defaults and self.ADVANCED_ARG_INPUT_PARAMS:
+
+            if 'advanced' not in defaults:
+                defaults['advanced'] = ''
+
+            for arg_name, default_val in self.ADVANCED_ARG_INPUT_PARAMS.items():
+                if arg_name not in defaults:
+                    defaults[arg_name] = default_val
+
         # varname : default.  See below for other names in tuple_ in input_spec
 
         nt_name = '_'.join([nick_name, tool_name, sDNA])
@@ -1107,12 +1116,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                    # (a tuple of a tuple of two). 
 
         if metas.show_all:
+
+
             new_keys = tuple(key 
                              for key in defaults
                              if key not in self.component_inputs
                             )
-            if new_keys:
-                self.component_inputs += new_keys
 
             if 'advanced' not in defaults:
                 msg = "'advanced' not in defaults_dict"
@@ -1122,6 +1131,11 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                     ,filename = __file__ + self.__class__.__name__
                     ,lineno = 1123
                     )
+
+            new_keys += tuple()
+
+            if new_keys:
+                self.component_inputs += new_keys
 
         self.logger.debug('Params added to component_inputs for args '
                          +'in input spec:\n %s' 
@@ -1164,9 +1178,26 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.retvals += ('gdm',)
 
 
-    
+    # Flag arguments not supported, only ones to be included in 
+    # sDNA advanced config string as "key=value".
+    ADVANCED_ARG_INPUT_PARAMS = {'lineformula': ''
+                                ,'juncformula': ''
+                                }
+
+
+    LIST_ARGS = ('radius'
+                ,'radii'
+                ,'preserve_absolute'
+                ,'preserve_unitlength'
+                ,'origins'
+                ,'destinations'
+                ,'predictors'
+                ,'reglambda'
+                ) 
     
     component_inputs = ('file', 'config') 
+
+
 
 
     def __call__(self # the tool instance not the GH component.
@@ -1255,22 +1286,40 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                            # just defined will take priority in a 
                            # subsequent second sDNA tool.
 
-        LIST_ARGS = ('radius'
-                    ,'radii'
-                    ,'preserve_absolute'
-                    ,'preserve_unitlength'
-                    ,'origins'
-                    ,'destinations'
-                    ,'predictors'
-                    ,'reglambda'
-                    )
+
 
         for key, val in tool_opts.items():
-            if key in LIST_ARGS and isinstance(val, list) and len(val) >= 2:
+            if key in self.LIST_ARGS and isinstance(val, list) and len(val) >= 2:
                 tool_opts[key] = ','.join(str(element) for element in val)
                 self.logger.info('Converted list to str: %s' % tool_opts[key])
 
-        if 'advanced' in tool_opts:
+
+        # If the user has specifed an advanced config string, as well as 
+        # non-empty values for some params in self.ADVANCED_ARG_INPUT_PARAMS, 
+        # strip out the key-value pairs in the advanced config string (to be 
+        # overidden by the params in the next step) 
+        tool_opts['advanced'] = ';'.join(str_
+                                         for str_ in tool_opts.get('advanced', '').split(';')
+                                         if not any(key in str_.split('=')[0]
+                                                    for key in self.ADVANCED_ARG_INPUT_PARAMS
+                                                    if tool_opts.get(key, '')
+                                                   )
+                                        )
+
+
+        # Mutate tool_opts, removing keys in ADVANCED_ARG_INPUT_PARAMS
+        for key in self.ADVANCED_ARG_INPUT_PARAMS:
+            val = tool_opts.pop(key, '')
+            if val: 
+                advanced_config_substring = '%s=%s' % (key, val)
+
+                if not tool_opts['advanced']:
+                    tool_opts['advanced'] = advanced_config_substring
+                elif advanced_config_substring not in tool_opts['advanced']:
+                    tool_opts['advanced'] += (';' + advanced_config_substring)
+
+
+        if tool_opts['advanced']:
             if advanced is None:
                 advanced = tool_opts['advanced']
             if metas.make_advanced and not advanced:
@@ -1281,8 +1330,8 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
                 self.logger.debug('user_inputs == %s' % user_inputs)
                 self.logger.debug('needed_inputs == %s' 
-                                % self.component.params_adder.needed_inputs
-                                )
+                                 % self.component.params_adder.needed_inputs
+                                 )
                 advanced = ';'.join(key if val is None else ('%s=%s' % (key, val))
                                     for key, val in kwargs.items()
                                     if (key in user_inputs and 
@@ -1296,6 +1345,9 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 self.logger.debug('Advanced config string: %s' % advanced)
 
             # user needs to set sync = false to avoid sharing advanced.
+            # Shared advanced strings will duplicate values for args
+            # in self.ADVANCED_ARG_INPUT_PARAMS
+            #  
             all_sDNA_tool_opts = get_tool_opts(opts
                                               ,nick_name = self.nick_name
                                               ,tool_name = self.tool_name
