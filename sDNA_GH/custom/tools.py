@@ -1031,7 +1031,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 #                                                                     filter_,  required)
                 input_spec.append(('advanced', 'sDNA Advanced Config string', 'Text', None, '', False))
 
-            input_spec.extend(ADVANCED_ARG_INPUT_PARAMS)
+            input_spec.extend(self.ADVANCED_ARG_INPUT_PARAMS)
 
         defaults = OrderedDict((tuple_[0], tuple_[4]) for tuple_ in input_spec)
         self.input_specs[sDNA] = input_spec
