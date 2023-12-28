@@ -43,7 +43,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.8.0'
+__version__ = '2.9.0'
 
 import sys
 import os
@@ -1174,7 +1174,7 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
 
             params_updated = self.update_Params()#self.Params, self.tools)
             # to add in any new sDNA inputs to the component's Params
-            
+
             if params_updated:
                 self.logger.info('Params have been updated.  '
                                 +'Returning None to allow new Params to be set. '

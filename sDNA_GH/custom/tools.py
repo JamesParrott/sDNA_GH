@@ -34,7 +34,7 @@
 """
 
 __author__ = 'James Parrott'
-__version__ = '2.8.0'
+__version__ = '2.9.0'
 
 import os
 import sys
@@ -1191,10 +1191,10 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
     # Flag arguments not supported, only ones to be included in 
     # sDNA advanced config string as "key=value".
-    #   (varname,        display_name,                           data_type,    default
-    #                                                                    filter_,  required)
+    #   (varname,        display_name,                                data_type,    default
+    #                                                                         filter_,  required)
     ADVANCED_ARG_INPUT_PARAMS = (
-        ('lineformula', 'Line formula (requires hybrid metric).',      'Text', None, '', False)
+        ('lineformula', 'Line formula (requires hybrid metric).',     'Text', None, '', False)
        ,('juncformula', 'Junction formula (requires hybrid metric).', 'Text', None, '0', False)
        )
 

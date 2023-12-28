@@ -28,7 +28,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '2.8.0'
+__version__ = '2.9.0'
 
 from random import random as random_num
 from math import trunc as floor  # for an int, not a float.  math.floor(2.33) == 2.0;  math.trunc(2.33) == 2
