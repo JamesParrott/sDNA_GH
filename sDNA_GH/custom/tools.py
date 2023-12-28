@@ -1193,7 +1193,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     #                                                                    filter_,  required)
     ADVANCED_ARG_INPUT_PARAMS = (
         ('lineformula', 'Line formula (for hybid metric).',      'Text', None, '', False)
-       ,('juncformula', 'Junction formula (for hybrid metric).', 'Text', None, '', False)
+       ,('juncformula', 'Junction formula (for hybrid metric).', 'Text', None, '0', False)
        )
 
 
