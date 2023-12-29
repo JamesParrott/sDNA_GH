@@ -591,17 +591,19 @@ grasshopper.sdna@gmail.com
 ### Dependencies.
 sDNA_GH v 2.5.2 includes static copies of the following Python packages:
 
-[IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/blob/main/shapefile.py) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
+[IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
-[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools))  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in PYthon 3.11) and tomli_w, with a few smalleextras.
+[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in PYthon 3.11) and tomli_w, with a few smalleextras.
+
+[mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a tested, striped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
 
 
 ### Contributions.
-Thanks for your interest in contributing.  If you are considering writing code for inclusion in the main sDNA_GH project, not just your own fork, please reach out to us first.  More details below.
+Thankyou for your interest in contributing.  If you are considering writing code for inclusion in the main sDNA_GH project, please reach out to us first.  More details below.
 #### Dependencies.
-Contributions to IronPyShp and toml_tools that satisfy the requirements of their copyright holders are welcome.  James created these forks after the original contract ended, and did 
-not alter or add enough code to justify asserting joint-authorship or IP sharing.  The copyright is still owned by the same owners as their parent projects, but James 
-maintains these forks, largely to fulfill sDNA_GH's requirement for unicode support.
+Contributions to toml_tools, IronPyShp, and mapclassif-Iron that satisfy the requirements of their copyright holders are welcome.  
+These forks were created after the original release of sDNA_GH.  Their copyright is still owned by the same owners as their 
+parent projects.  James maintains these forks.
 toml_tools in particular has high test coverage (thanks to tomli and tomli_w's tests), and new features are being proposed for TOML, so is particularly suitable for future development.
 #### sDNA_GH
 Contributions to sDNA_GH must not fail any regression tests.  Unfortunately the test cases are Grasshopper definitions that must each be run manually.  Automating these tests in some way
