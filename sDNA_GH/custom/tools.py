@@ -1307,8 +1307,12 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
 
         if 'advanced' in tool_opts:
-            self.logger.debug('Calling self.add_to_advanced_config_string')
-            tool_opts = self.add_to_advanced_config_string(tool_opts, opts)
+            self.logger.debug('Calling self._add_to_advanced_config_string')
+            tool_opts = self._add_to_advanced_config_string(
+                                 tool_opts
+                                ,opts
+                                ,extra_inputs = kwargs
+                                )
 
             # user needs to set sync = false to avoid sharing advanced.
             # Shared advanced strings will duplicate values for args
@@ -1386,7 +1390,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
     retvals = 'retcode', 'f_name', 'input', 'output', 'advanced'
     component_outputs = ('file',) # retvals[-1])
 
-    def add_to_advanced_config_string(self, tool_opts, opts):
+    def _add_to_advanced_config_string(self, tool_opts, opts, extra_inputs):
         # If the user has specifed an advanced config string, as well as 
         # non-empty values for some params in self.ADVANCED_ARG_INPUT_PARAMS, 
         # strip out the key-value pairs in the advanced config string (to be 
@@ -1430,7 +1434,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                                 )
             tool_opts['advanced'] += ';'.join(
                                 key if val is None else ('%s=%s' % (key, val))
-                                for key, val in kwargs.items()
+                                for key, val in extra_inputs.items()
                                 if (key in user_inputs and 
                                     key not in self.built_in_options(opts)
                                     )
