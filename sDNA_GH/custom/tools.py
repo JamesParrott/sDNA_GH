@@ -1432,14 +1432,19 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
             self.logger.debug('needed_inputs == %s' 
                                 % self.component.params_adder.needed_inputs
                                 )
-            tool_opts['advanced'] += ';'.join(
+
+            custom_advanced = ';'.join(
                                 key if val is None else ('%s=%s' % (key, val))
                                 for key, val in extra_inputs.items()
                                 if (key in user_inputs and 
                                     key not in self.built_in_options(opts)
                                     )
                                 )
-            self.logger.info('Extra advanced config string: %s' % tool_opts['advanced'])
+
+            tool_opts['advanced'] = ';'.join([tool_opts['advanced'], custom_advanced])
+
+            self.logger.info('Advanced config string from user added input params: %s' % tool_opts['advanced'])
+
 
         else:
             self.logger.debug('Advanced config string: %s' % tool_opts['advanced'])
