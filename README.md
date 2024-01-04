@@ -1,4 +1,8 @@
 # sDNA_GH
+Authors
+* James Parrott
+* Crispin Cooper (Cardiff University)
+
 sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper providing components that run the tools from a local [sDNA](https://github.com/fiftysevendegreesofrad/sdna_open/releases) installation, on Rhino and Grasshopper geometry and data.  
 
 ## sDNA
