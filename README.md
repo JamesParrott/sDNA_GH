@@ -5,6 +5,9 @@ Authors
 
 sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper providing components that run the tools from a local [sDNA](https://github.com/fiftysevendegreesofrad/sdna_open/releases) installation, on Rhino and Grasshopper geometry and data.  
 
+Shenzhen University and Hong Kong University funded the initial and subsequent development phases respectively.  Wedderburn Transport Planning and Alain Chiaradia worked on defining the idea, and staunchly supported the project along with Cardiff University.  Sara Nalaskowska, Siddharth Khakhar and Fan Zitian, all provided invaluable help during development and testing.  Huge thanks to all.
+
+
 ## sDNA
 sDNA is able to calculate Betweenness, Closeness, Angular distance, and many other quantities including custom hybrid metrics, and is able to perform many other advanced functions as well.  Please note, for results of a network analysis to be meaningful, it must be ensured that the network is first properly [prepared](https://sdna-open.readthedocs.io/en/latest/network_preparation.html).
 
