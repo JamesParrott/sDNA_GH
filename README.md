@@ -99,15 +99,15 @@ __version__ = '2.9.2'
 
 sDNA_GH provides some functionality without sDNA installed, e.g. Selecting real Rhino objects, User Text components, reading and writing shapefiles, parsing data, and recolouring objects.  But to use the sDNA components, an installation of sDNA is required.
 
-#### sDNA (both options).
-sDNA itself may require the 64 bit (x64) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ).  
+#### sDNA dependencies.
+sDNA itself may require the 64 bit (x64) Visual Studio redistributable [^0].  
 
 #### Official sDNA installer (and Python).
 2. Ensure you have a supported version of [Python](https://www.python.org/downloads/windows/) (CPython, the reference implementation).  Do not run sDNA in non CPythons, as invalid shape files will be produced.  sDNA has been tested with a lot of different CPython versions.  But these do not include the CPython shipped with Rhino 8.    
 3. sDNA Learn requires numpy.  Numpy can be installed by opening a `cmd` window and typing: `python -m pip install numpy`.  Optional:  If this Python installation is also used by other 
 processes, to guarantee there are no dependency conflicts, create a venv to run sDNA in, e.g. firstly by entering: `python -m venv <path_to_sDNA_venv>`  `<path_to_sDNA_venv>\Scripts\pip.exe install numpy` (enter `<path_to_sDNA_venv>\Scripts\activate.bat` to test the venv from the command line) and secondly within Grasshopper set
 `python` to <path_to_sDNA_venv>\Scripts` on a config component (or in config.toml) in step 13.iii below. 
-4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna.cardiff.ac.uk/sdna/software/download/).  sDNA+ is now [open source](https://github.com/fiftysevendegreesofrad/sdna_plus).  sDNA may also require a Visual Studio redistributable.  If you chose a non-default installation directory, remember it for step 13.ii.
+4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna.cardiff.ac.uk/sdna/software/download/).  sDNA+ is now [open source](https://github.com/fiftysevendegreesofrad/sdna_plus).  As above, sDNA may also require a Visual Studio redistributable.  If you chose a non-default installation directory, remember it for step 13.ii.
 
 
 #### sDNA_GH
@@ -115,16 +115,16 @@ processes, to guarantee there are no dependency conflicts, create a venv to run 
 5. Download `sdna-gh.zip` from (food4rhino)[https://www.food4rhino.com/en/app/sdnagh] or the [sDNA_GH releases page on Github](https://github.com/JamesParrott/sDNA_GH/releases).
 6. Ensure `sdna-gh.zip` is unblocked: Open File Explorer and go to your Downloads folder (or whichever folder you saved it in).  Right click it and select `Properties` from the bottom of the menu.  Then click on the _Unblock_ check box at the bottom (right of _Security_), then click `OK` or `Apply`.  The check box and _Security_ section should disappear.  This should unblock all the files in the zip archive.  Please do not automatically trust and unblock all software downloaded from anywhere on the internet [^1].  
 7. Open Rhino and Grasshopper.
-8. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is not the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
+8. In Grasshopper's pull down menus (above the tabs ribbon at the top) click `File` -> `Special folders` -> `User Objects Folder`.  The default in Rhino 7 is `%appdata%\Grasshopper\UserObjects`.  Note, this is different to the Components Folder used by many other plug-ins (i.e. not `%appdata%\Grasshopper\Libraries`).
 9. Copy `sdna-gh.zip` to this folder (e.g. it should be at `%appdata%\Grasshopper\UserObjects\sdna-gh.zip`).
 10. Unzip `sdna-gh.zip` to this location (in Windows 10 right click `sdna-gh.zip` and select `Extract All ...`, then click `Extract` to use the suggested location).  In the User Objects folder, a new folder called `sdna-gh` should have been created, itself containing a subfolder called `sDNA_GH` (plus license.md and copies of these readme files).  If necessary, rename the outer parent folder (inside the User Objects folder) to exactly "sdna-gh" (no quotes). E.g. if you previously downloaded an earlier version of sDNA_GH (or any other file called) sdna-gh.zip, your web browser may have renamed a second download to sdna-gh(1).zip.  In this case, you will need to either rename the file or the folder created by unzipping it.
 
 11. Restart Rhino and Grasshopper.
-12. The sDNA_GH plug in components should now be available under a new "sDNA" tab in the ribbon amongst the tabs for any other plug-ins installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
+12. The sDNA_GH plug in components should now be available under a new "sDNA" tab in the ribbon amongst the tabs for all the plug-ins you have installed (right of `Mesh`, `Intersect`, `Transform` and `Display` etc).  
 13. To use sDNA with sDNA_GH, if no preferences are specified, sDNA_GH will search for sDNA and Python installations automatically, using the first one of each it finds.  If you are using sDNA Learn with Python in a venv as recommended, or otherwise to ensure sDNA_GH uses a particular version of sDNA and the correct Python interpreter, it is recommended on first usage to:
     -place a Config component on the canvas (the component with a gear/cog icon in `Extra`).
-    -Specify the file path of the sDNA folder (containing sDNAUISpec.py and runsdnacommand.py) of the sDNA installation you wish to use in the `sDNA_folders` input.
-    -Specify the file path of the sDNA venv's Python (e.g. <path_to_sDNA_venv>`\Scripts\python.exe` from step 3), or global system Python interpreter's, main executable in the `python` input.
+    -Specify the file path of the sDNA folder (containing `sDNAUISpec.py` and `runsdnacommand.py`) of the sDNA installation you wish to use in the `sDNA_folders` input (e.g. `C:\Program Files (x86)\sDNA`).
+    -Specify the file path of the sDNA venv's Python (e.g. <path_to_sDNA_venv>`\Scripts\python.exe` from step 3), or the path of the chosen Python interpreter's main executable in the `python` input.
     -Specify any other options you wish to save and reuse on all projects, if necessary by zooming in, and adding a custom input Param with each option's name.
     -Connect a true Boolean toggle to `go`.  An installation wide user options file (`config.toml`) will be created if there isn't one already.
     -To save options to other project specific `config.toml` files, specify the file path in `save_to` and repeat the previous 4 sub steps.
@@ -133,89 +133,10 @@ processes, to guarantee there are no dependency conflicts, create a venv to run 
 
 
 ### Usage.  
-#### Components.
-
-##### Automatic multi-tools.
-Each sDNA tool has its own Grasshopper component.  To run a tool, a true value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, if an `auto_` option is set to true, some components also automatically run other tools before and after they run their own tools (if components for those tools are not connected to it).  For example, this allows an entire sDNA process to be run on Rhino Geometry from a single sDNA tool component.  
-When an sDNA_GH component is first placed on the canvas, or a grasshopper file with an sDNA_GH component on the canvas is first loaded, each component adds in Params for all its required Input and Output arguments (if the Params are not already present).  These added Params include those of any extra automatically added tools if an `auto_` option is true, that would other wise require separate components.  Extra customisation can be carried out by adding in user specified Params too, that have the correct name of a supported option.  Similarly any Params not being specified can be removed.  
-
-[note] The Config component tool always loads its options when placed or its Inputs are updated for any value of `go`.  On the Unload_sDNA component, `unload` does the same thing as `go`.
-
-##### Running individual tools.  
-Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.  A Grasshopper Colour Gradient tool can be connected in between a Parse_Data component and Recolour_Objects component.  
-
-##### Component Execution Order.
-Multiple sDNA_GH tools can be run from a single sDNA_GH component by setting any of the `auto_` options to true: `auto_get_Geom`, `auto_read_User_Text`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data`, on a Config component, before placing the chosen sDNA_GH tool on the canvas (as long as components for those tools are not connected to it).    
-**Warning!**   If you did not create a `config.toml` file (in Installation step 13 above), and if you rely instead on Config components inside your .gh file itself to set option values, immediately before saving your .gh file, be sure to select the Config component determining any `auto_` options, and press `Ctrl` + `B` (or from the pull-down menu select `Edit` -> `Arrange` -> `Put To Back`) to to send to the back, any components that should run first when you reload the .gh file.  This ensures the Config component will run before other sDNA_GH components, which rely on settings controlled by it to configure themselves correctly.
-
-#### Options.  
-sDNA_GH is highly customisable.  This customisation is controlled by setting options.  To give an option a value, connect a Grasshopper Param or text panel containing that value, to the Param with that option name on any sDNA_GH component (except Unload_sDNA).  If a Param is subsequently disconnected, its latest value will be remembered.  Some Text Params can be cleared by connecting an empty Text Panel to them.
-Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Options whose names are all in capitals are read only.  Any other option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other sDNA_GH components as well, via normal Grasshopper connections. 
-
-##### Adding Component Input and Output Params.  
-To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
-
-##### Logging options
-If `log_file` is not an empty string, a log file is created before Input Params are created on components, so to have any effect, the options `propagate`, `working_folder`, `logs_dir` and `log_file` must be set in an installation wide config.toml file, e.g. by setting those options and `go` to true on Config component, and restarting Rhino.  Logging levels can be changed dynamically.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.  To suppress output from the `out` Output param entirely, set `log_console_level` to `CRITICAL`.  To propagate log messages higher than the sDNA_GH package's parent
-logger (which will most likely result in a lot of output), set `propagate` to true.
- 
-###### Options override priority order
-1. The component input Param options override options in a project specific options file (`config`).  
-2. A project specific options file (specified in `config`) overrides options from another sDNA_GH component (connected in `opts`).  
-3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml`).  
-4. On start up only (and every time thereafter if `sync = false`, `no_state = true` and `read_only = false`) the installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
-[note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
-
-##### Local meta options.
-By default all sDNA_GH components, across all Grasshopper canvases in the same Rhino process, share (and may change) the same global `opts` (module options, tool options, and *meta* options) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users. 
-
-To give an sDNA_GH component different options to another of the same type using the shared global options, it must de-synchronise from the global options.  De-syncing occurs if a component's *local meta option* `sync` is false (if `read_only` is true, it will still read from but not update the global options).  *local metas* are like any other option, except a) they are shared using `l_metas` instead of `opts`, and b) they are not updated automatically from the global module options (as this would defeat their entire purpose).
-
-Components referring to the global options share their settings.  This means they do not know if a particular setting in the global
-options came from a different component sharing with it, or from itself previously.  Shared states mean even a component in isolation has its own historical state.  To use components without any options sharing and a minimum of state, set `sync` to false and `no_state` to true (its default). 
-
-##### Shared state vs desynchronised components.
-sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python 2.7 run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
-
-###### Synchronisation (Advanced user only)
-To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
-This writes `sync` = true to the installation wide options file (`config.toml`).  As long as no higher priority options source (Params, project specific options files, or local metas from other components) sets `sync` = false, all desynchronised components will then resynchronise the next time they run.
-
-###### Applying sychronisation changes.
- Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
-a) Restart Rhino, 
-b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
-c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
-
-###### Desynchronisation.
-Components are already desynchronised by default.  Global desynchronisation is only necessary if you have already synchronised them, e.g.to save options from other components to a `config.toml` file, and wish to undo this.
-
-To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  
-
-Apply the synchronisation changes as in the previous subsection. 
-
-###### Desynchronised components (`sync` = false):
- -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
- -Plot min and plot max will be automatically calculated anew each time, if viewing multiple results fields.
- -Input params will be revert to their defaults when disconnected.
- -Config components cannot affect the behaviour of desynchronised components, or save their options to `config.toml` files.  
- -If sDNA components are run with `auto_write_Shp` = false or `auto_read_Shp` = false, deletion of temporary files requires opts to be connected between the sDNA component and write_Shp and read_Shp component.
- -Read all the defaults in the override order on every run, so respond dynamically to changes in the installation wide `config.toml` options file.
- -Support multiple project specific `.toml` files.
- -Require the `.toml` file to be set on a `config` Input on every desynchronised component that refers to it.  
-
-###### Synchronised components (`sync` = true): 
- -are affected by relevant `auto_` rules set on a Config component.  
- -can have their options saved to `config.toml` files.
- -only require one project specific `.toml` file to be set to a `config` Input between all of them.
- -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
- -only once read the installation wide `config.toml` file user options file, when the first sDNA_GH component is placed (synchronised or desynchronised).  
- -in one `.gh` file are affected by the global options set by other synchronised sDNA_GH components in previous `.gh` files opened in the same Rhino session.
-
-The following Inputs and Outputs are never shared (unless connected by the user in Grasshopper): `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
-
-
 #### Tools.
+Each tool has a component that runs that tool.  `auto_` rules may cause a component to also run other tools as well.  
+For example, by default, sDNA components run Write_Shp before, and Read_Shp after, their sDNA tool. 
+
 ##### Common component input and output Params
 **OK** This output is true when a component has executed successfully.
 
@@ -224,11 +145,11 @@ The following Inputs and Outputs are never shared (unless connected by the user 
 **file** Specifies the path of a file to write to, or that was written to.
 
 **Data**
-`Data` must be a Data Tree 2 branches deep at the first level: a branch each for keys {0;0} and values {0;1}.  The two nodes of this structure should have a branch for each geometric object (so the nth's keys and values should have paths {0;0;n} and {0;1;n}).  The lists at these nodes must be of equal length.  The mth key and value of the nth geometric object should be {0;0;n}[m] and {0;1;n}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or from a Shapefile.  Grasshopper's path tools can be used to adjust compatible Data Trees into this format.  
+It is possible to do most tasks in sDNA_GH without ever looking at `Data` in detail.  The order of the deepest branches must correspond with the order of the Geometric objects.  But for example to specify weights elsewhere than on their corresponding Polylines, it is also possible to construct `Data` manually.  If so, `Data` must be a Data Tree 2 branches deep at the first level: a branch each for keys {0;0} and values {0;1}.  The two nodes of this structure should have a branch for each geometric object (so the nth's keys and values should have paths {0;0;n} and {0;1;n}).  The lists at these nodes must be of equal length.  The mth key and value of the nth geometric object should be {0;0;n}[m] and {0;1;n}[m] respectively.  Read_Shp supplies a Data Tree in this required format, if the data is read from User Text or from a Shapefile.  Grasshopper's path tools can be used to adjust compatible Data Trees into this format.  
 
-**Geom** Accepts a list of geometric objects (Guids of Rhino objects or native Grasshopper objects).  Data trees of objects need to be flattened into lists. To use Rhino objects referenced from Grasshopper parameter objects (instead of their Grasshopper versions which are often obscured unless the Rhino shapes are set to Hidden) run the output of the Geometry (Geo) or Curve (Crv)through a Guid (ID) parameter object first. 
+**Geom** Accepts a list of geometric objects (Guids of Rhino objects or native Grasshopper objects).  Data trees of objects need to be flattened into lists. To use Rhino objects referenced from Grasshopper parameter objects (instead of their Grasshopper versions which are often obscured unless the Rhino shapes are set to Hidden) run the output of the Geometry (Geo) or Curve (Crv) through a Guid (ID) parameter object first. 
 
-**gdm** Accepts a Geometry-data-mapping, a python nested dictionary.  The keys are the UUIDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
+**gdm** An alternative to both **Geom** and **Data**.  Accepts a Geometry-data-mapping, a list of nested dictionaries (standard Python objects).  The keys are the UUIDs of geometric objects.  The values are also dictionaries, containing key/value pairs for use as User Text.
 
 **opts** Accepts an options data structure (a nested dictionary of named tuples) from another sDNA_GH component.  Only of use if they are not synced to the global module options.
 
@@ -243,11 +164,12 @@ If not using a `config.toml` file, then e.g. when using a config component to se
 
 
 ###### Read_Geom (get_Geom)
-Gets strings of the uuid references to Rhino polylines and degree-1 Nurbs curves for subsequent sDNA_GH tools.  
+Gets real strings of the uuid references to Rhino polylines and degree-1 Nurbs curves for subsequent sDNA_GH tools.  Grasshopper Geom and Curve params create Grasshopper references to Rhino objects.  The actual Rhino uuid is required to read and write User Text on a
+Rhino object.
 
 Set `selected` to true, to only read objects that are selected.  Similarly, specify `layer` to the name of a layer, to only read objects from that layer.  
 
-Note, if `sync = True` it will remember its previous setting, in which case to go back to selecting all layers, `layer` must be set to any value that is not the name of a layer.  Similarly, to go back to selecting everything (not just selected geometry) set `selected = false`.If the component has `sync = false`, an input Params that has had its value set, when subsequently disconnected will fallback to whatever its previous value was. 
+Note, if `sync = True` it will remember its previous setting, in which case to go back to selecting all layers, `layer` must be set to any value that is not the name of a layer.  Similarly, to go back to selecting everything (not just selected geometry) set `selected = false`.  If the component has `sync = false`, an input Params that has had its value set, when subsequently disconnected will fallback to whatever its previous value was. 
 
 
 
@@ -338,14 +260,20 @@ A field specifying an originating Rhino object's UUID `uuid_field` will be omitt
 
 
 #### sDNA Tools
+By default, sDNA components run the Write_Shp tool before, and Read_Shp tool after, the actual sDNA tool of the component, passing in and out the names of the special temporary shapefiles.  To prevent this, e.g. if using seperate Write_Shp or Read_Shp components, set `auto_write_Shp` or `auto_read_Shp` to false respectively.
+
 ##### Analysis tools
  - sDNA tools run sDNA from the command line, using the Python interpreter in `python`.  
- - All sDNA tools try to load an sDNA installation.  The first pair of sDNAUISPEc.py and runsdnacommand.py files matching the names in `sDNAUISpec` and `runsdnacommand`, found in a folder in sDNA_paths are loaded (if the corresponding sDNA is not already loaded).  This is used to run the correct sDNA tool in the corresponding `/bin` sub folder, and to add Input Params to the sDNA component for each of its sDNA tool's inputs.
+ - All sDNA tools try to load an sDNA installation.  The first pair of sDNAUISpec.py and runsdnacommand.py files matching the names in `sDNAUISpec` and `runsdnacommand`, found in a folder in sDNA_paths are loaded (if the corresponding sDNA is not already loaded).  This is used to run the correct sDNA tool in the corresponding `/bin` sub folder, and to add Input Params to the sDNA component for each of its sDNA tool's inputs.
  - By default an sDNA tool component will show all the possible inputs on its input Params.  To show only the essential inputs instead (and make the components a lot smaller) set `show_all` = false.  
  - sDNA tools require a shapefile to be specified in `file` or `input`.  If Write_User_Text is run beforehand and a file name is not specified, a default file name will be used.
  - if the user Param `make_advanced` is true, all other unrecognised user params on the component will be added into the advanced config string.
 
-If `auto_write_Shp` or `auto_read_Shp` are true, all sDNA components attempt to check, e.g. if any Write_User_Text or Read_User_Text components are already connected to its inputs (upstream) or outputs (downstream) respectively.  If not, the sDNA component will run Write_User_Text or Read_User_Text before and after it.  If all `auto_` options are true, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis in sDNA, read in the output shapefile, and recolour the Rhino polylines.  **WARNING!  If a valid file path was not specified in `file` or `input` on a preceding Write_Shp component, and that file was used by an sDNA tool, sDNA components will delete input shapefiles with default names if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**   
+###### Auto-run tool rules.
+The `auto_` options control automatic insertion of extra support tools, into an sDNA component's list of tools.  These extra tools
+can allow sDNA components to do anything between simply being pure wrappers around the sDNA command line interface, to carrying out an entire workflow from Rhino geometry and User Text, finshing with recolouring the Rhino Geometry with the sDNA results.  Running tools within a single component should be faster and require less memory, as the Data and Geometry is all kept as the internal data structure (a `gdm`) between tools, instead of being transformed into Grasshopper native form after each component runs, and into Python `gdm` form again when the next component runs. 
+
+If `auto_read_User_Text` is true, all sDNA components attempt to check, if any read_User_Text components are already connected to its inputs (upstream).  If not, the sDNA component will insert the read_User_Text tool before all instances of the auto_write_Shp tool (which is run before each sDNA tool if `auto_write_Shp` is true, as above).  Similarly, if `auto_get_Geom` is true, Read_Geom is run before all instances of read_User_Text.  So if all `auto_` options are true, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis in sDNA, read in the output shapefile (data and shapes), parse the data, and recolour the original Rhino polylines.  **WARNING!  If a valid file path was not specified in `file` or `input` on a preceding Write_Shp component, and that file was used by an sDNA tool, sDNA components will delete input shapefiles with default names if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**   
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):
 
 ###### [sDNA_Integral](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#integral-analysis) (sDNAIntegral)
@@ -561,23 +489,88 @@ Functionality is provided by main.py in the sDNA_GH Python package, so new compo
 
 
 
-<!--
-### Example Grasshopper definitions.
-#### Running sDNA Integral on a random grid read from Rhino.
-##### Selecting and specifying an sDNA Results field.
-##### Reading shapefile data with existing geometry.
-##### Using a Grasshopper Colour gradient component.
-##### Adding a legend with a Legend component.
-##### Customising legend class boundaries and tag names.
 
-#### Running sDNA Integral on a random grid of Grasshopper geometry (colouring with the Custom Preview component).
-#### Running sDNA Integral on a network of polylines, approximating a network of arcs from intersecting circles. 
-##### Recolouring the arcs instead of polylines.
-#### Writing polylines and data to shapefiles.
-#### Reading in polylines and data from shapefiles.
-#### Writing User Text.
-#### Reading User Text for sDNA (e.g. User weights).
-#### Baking (saving Grasshopper objects to a Rhino document) with User Text. -->
+
+#### Advanced Usage.
+
+##### Automatic multi-tools.
+Each sDNA tool has its own Grasshopper component.  To run a tool, a true value, e.g. from a Boolean toggle component, must be connected to its component's `go` Input Param [^note].  To group together common work flows, if an `auto_` option is set to true, some components also automatically run other tools before and after they run their own tools (if components for those tools are not connected to it).  For example, this allows an entire sDNA process to be run on Rhino Geometry from a single sDNA tool component.  
+When an sDNA_GH component is first placed on the canvas, or a grasshopper file with an sDNA_GH component on the canvas is first loaded, each component adds in Params for all its required Input and Output arguments (if the Params are not already present).  These added Params include those of any extra automatically added tools if an `auto_` option is true, that would other wise require separate components.  Extra customisation can be carried out by adding in user specified Params too, that have the correct name of a supported option.  Similarly any Params not being specified can be removed.  
+
+[note] The Config component tool always loads its options when placed or its Inputs are updated for any value of `go`.  On the Unload_sDNA component, `unload` does the same thing as `go`.
+
+##### Running individual tools.  
+Multiple sDNA_GH components can be chained together to run in sequence by connecting the `OK` Output Param of one component, to the `go` Input Param of the component(s) to be run afterwards.  A Grasshopper Colour Gradient tool can be connected in between a Parse_Data component and Recolour_Objects component.  
+
+##### Component Execution Order.
+Multiple sDNA_GH tools can be run from a single sDNA_GH component by setting any of the `auto_` options to true: `auto_get_Geom`, `auto_read_User_Text`, `auto_write_Shp`, `auto_read_Shp` and `auto_plot_data`, on a Config component, before placing the chosen sDNA_GH tool on the canvas (as long as components for those tools are not connected to it).    
+**Warning!**   If you did not create a `config.toml` file (in Installation step 13 above), and if you rely instead on Config components inside your .gh file itself to set option values, immediately before saving your .gh file, be sure to select the Config component determining any `auto_` options, and press `Ctrl` + `B` (or from the pull-down menu select `Edit` -> `Arrange` -> `Put To Back`) to to send to the back, any components that should run first when you reload the .gh file.  This ensures the Config component will run before other sDNA_GH components, which rely on settings controlled by it to configure themselves correctly.
+
+#### Options.  
+sDNA_GH is highly customisable.  This customisation is controlled by setting options.  To give an option a value, connect a Grasshopper Param or text panel containing that value, to the Param with that option name on any sDNA_GH component (except Unload_sDNA).  If a Param is subsequently disconnected, its latest value will be remembered.  Some Text Params can be cleared by connecting an empty Text Panel to them.
+Any option in a component can be read by adding an Output Param and renaming it to the name of the option.  Options whose names are all in capitals are read only.  Any other option in a component can be changed by adding an Input Param and renaming it to the name of the option, and connecting it to the new value.  Entire options data structures (`opts`) may also be passed in from other sDNA_GH components as well, via normal Grasshopper connections. 
+
+##### Adding Component Input and Output Params.  
+To add a new Input or Output Param, zoom in on the component until plus and minus symbols can be seen between the params.  Click on the plus symbol where you want the new Param.  Right click the new Param's name (e.g. x, y or z for an Input Param, or a,b or c for an Output Param) to rename it to name of the desired option you wish to set.
+
+##### Logging options
+If `log_file` is not an empty string, a log file is created before Input Params are created on components, so to have any effect, the options `propagate`, `working_folder`, `logs_dir` and `log_file` must be set in an installation wide config.toml file, e.g. by setting those options and `go` to true on Config component, and restarting Rhino.  Logging levels can be changed dynamically.  Supported values for `log_file_level` and `log_console_level` are: `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`.  To suppress output from the `out` Output param entirely, set `log_console_level` to `CRITICAL`.  To propagate log messages higher than the sDNA_GH package's parent
+logger (which will most likely result in a lot of output), set `propagate` to true.
+ 
+###### Options override priority order
+1. The component input Param options override options in a project specific options file (`config`).  
+2. A project specific options file (specified in `config`) overrides options from another sDNA_GH component (connected in `opts`).  
+3. Options from another sDNA_GH component override the installation-wide options file (e.g. `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml`).  
+4. On start up only (and every time thereafter if `sync = false`, `no_state = true` and `read_only = false`) the installation-wide options file overrides the sDNA_GH hard-coded default options in `main.py` [^note]
+[note] Dev note: the options in `main.py` themselves override every individual tool's default options in `tools.py`.
+
+##### Local meta options.
+By default all sDNA_GH components, across all Grasshopper canvases in the same Rhino process, share (and may change) the same global `opts` (module options, tool options, and *meta* options) in the `main.py` module.  If only one of each tool is needed (and there is only one version of sDNA), that will suffice for most users. 
+
+To give an sDNA_GH component different options to another of the same type using the shared global options, it must de-synchronise from the global options.  De-syncing occurs if a component's *local meta option* `sync` is false (if `read_only` is true, it will still read from but not update the global options).  *local metas* are like any other option, except a) they are shared using `l_metas` instead of `opts`, and b) they are not updated automatically from the global module options (as this would defeat their entire purpose).
+
+Components referring to the global options share their settings.  This means they do not know if a particular setting in the global
+options came from a different component sharing with it, or from itself previously.  Shared states mean even a component in isolation has its own historical state.  To use components without any options sharing and a minimum of state, set `sync` to false and `no_state` to true (its default). 
+
+##### Shared state vs desynchronised components.
+sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python 2.7 run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
+
+###### Synchronisation (Advanced user only)
+To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
+This writes `sync` = true to the installation wide options file (`config.toml`).  As long as no higher priority options source (Params, project specific options files, or local metas from other components) sets `sync` = false, all desynchronised components will then resynchronise the next time they run.
+
+###### Applying sychronisation changes.
+ Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
+a) Restart Rhino, 
+b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
+c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
+
+###### Desynchronisation.
+Components are already desynchronised by default.  Global desynchronisation is only necessary if you have already synchronised them, e.g.to save options from other components to a `config.toml` file, and wish to undo this.
+
+To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  
+
+Apply the synchronisation changes as in the previous subsection. 
+
+###### Desynchronised components (`sync` = false):
+ -must have any `auto_` options directly set on each of them.  A config component cannot be used for this.
+ -Plot min and plot max will be automatically calculated anew each time, if viewing multiple results fields.
+ -Input params will be revert to their defaults when disconnected.
+ -Config components cannot affect the behaviour of desynchronised components, or save their options to `config.toml` files.  
+ -If sDNA components are run with `auto_write_Shp` = false or `auto_read_Shp` = false, deletion of temporary files requires opts to be connected between the sDNA component and write_Shp and read_Shp component.
+ -Read all the defaults in the override order on every run, so respond dynamically to changes in the installation wide `config.toml` options file.
+ -Support multiple project specific `.toml` files.
+ -Require the `.toml` file to be set on a `config` Input on every desynchronised component that refers to it.  
+
+###### Synchronised components (`sync` = true): 
+ -are affected by relevant `auto_` rules set on a Config component.  
+ -can have their options saved to `config.toml` files.
+ -only require one project specific `.toml` file to be set to a `config` Input between all of them.
+ -can save automatically created advanced config strings (the `advanced` option) to `.toml` files by sharing them with a config component, and thence saved to file.
+ -only once read the installation wide `config.toml` file user options file, when the first sDNA_GH component is placed (synchronised or desynchronised).  
+ -in one `.gh` file are affected by the global options set by other synchronised sDNA_GH components in previous `.gh` files opened in the same Rhino session.
+
+The following Inputs and Outputs are never shared (unless connected by the user in Grasshopper): `OK`, `go`, `Geom`, `Data`, `file`, `input`, `output`, `gdm`.
 
 
 
@@ -657,6 +650,7 @@ Change .csproj target to v4.8 [https://stackoverflow.com/questions/58000123/visu
 GHPython for .ghuser:
 Select GHPython component.   Optionally compile to .ghpy.  File -> Create User Object
 
+[^0] The the old builds of sDNA_open require the 64 bit (x64) Visual Studio 2008 redistributable.  It is available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ).  
 
 [^1] The entire source code for sDNA_GH is visible on [Github](https://github.com/JamesParrott/sDNA_GH/).  All the source code is also visible in the download itself as the component launcher and Python package is uncompiled, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  See the Build Instructions above to build them for yourself from the source code.   
 
