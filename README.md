@@ -8,16 +8,17 @@ sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a 
 Shenzhen University and Hong Kong University funded the initial and subsequent development phases respectively.  Wedderburn Transport Planning and Alain Chiaradia worked on defining the idea, and staunchly supported the project along with Cardiff University.  Sara Nalaskowska, Siddharth Khakhar and Fan Zitian, all provided invaluable help during development and testing.  Huge thanks to all.
 
 
-## sDNA
-sDNA is able to calculate Betweenness, Closeness, Angular distance, and many other quantities including custom hybrid metrics, and is able to perform many other advanced functions as well.  Please note, for results of a network analysis to be meaningful, it must be ensured that the network is first properly [prepared](https://sdna-open.readthedocs.io/en/latest/network_preparation.html).
-
 ## sDNA_GH functionality
 sDNA_GH: 
- - Reads a network's polyline Geometry from Rhino or Grasshopper, and Data from any User Text on it. 
- - Writes the network polylines (formed by one or more polylines) and user Data to a Shapefile.  
+ - Reads a network's polyline Geometry from Rhino or Grasshopper.
+ - Reads data from any User Text on Rhino objects. 
+ - Writes a network's links (formed by one or more polylines), and associated data to shapefiles.
  - Initiates an sDNA tool that processes that shapefile, and e.g. carries out a network preparation or an analysis.
- - Reads the shapefile produced by the sDNA tool.
- - Displays the results from sDNA by colouring a new layer of new polylines or the original ones.
+ - Reads polyline shapefiles produced by the sDNA tool, and any associated data e.g. the results from sDNA.
+ - Parses the selected data field, and normalises and classifies the data, sorting the polylines if necessary.
+ - Colours can be allocated to each polyline based on the parsed data, either using a Colour Gradient component, or automatically.   
+ - Visually represents the results from sDNA by colouring a new layer of polylines, or the original Rhino shapes.
+ - Allows easy adding of a native Legend.
 
 ## User manual.  
 __version__ = '2.9.2'
@@ -83,8 +84,8 @@ __version__ = '2.9.2'
 
 ### System Requirements. 
 #### Software
-1. Windows 10 or 8.1 (not tested in Windows 11) 
-2. Python 2.7.  Please note Iron Python 2.7 does not run sDNA correctly (as incorrect shapefiles are produced).
+1. Windows (8.1, 10, or 11) 
+2. Python.  (Please note non-CPythons, e.g. Iron Python 2.7, are not supported, as invalid shapefiles will be produced).
 3. sDNA. 
 4. Rhino and Grasshopper (tested in Rhino 7)
 #### Hardware
@@ -96,22 +97,18 @@ __version__ = '2.9.2'
 ### Installation.
 1. Ensure you have an installation of [Rhino 3D](https://www.rhino3d.com/download/) including Grasshopper (versions 6 and 7 are supported).
 
-sDNA_GH provides some functionality without sDNA installed, e.g. Selecting real Rhino objects, User Text components, reading, writing and parsing shape files, and recolouring objects.  But to use the sDNA components, an installation of sDNA is required.
+sDNA_GH provides some functionality without sDNA installed, e.g. Selecting real Rhino objects, User Text components, reading and writing shapefiles, parsing data, and recolouring objects.  But to use the sDNA components, an installation of sDNA is required.
 
 #### sDNA (both options).
 sDNA itself may require the 64 bit (x64) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe ).  
 
-#### Official sDNA installer (and Python 2).
-2. Ensure you have an installation of [Python 2.7](http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi) [^0] or [Python 2.7.18](https://www.python.org/downloads/release/python-2718/)  that can run sDNA correctly from the command line (with pip for sDNA Learn).  sDNA_GH runs sDNA from the command line.  Command line use of sDNA has been tested with Python versions 2.6 and 2.7 .  Do not run sDNA with Iron Python 2.7, as invalid shape files may be produced (it is not possible to access the Iron Python shipped with Rhino from the command line, in any case).  
-3. sDNA Learn requires numpy.  Numpy can be added after installing Python 2.7.18 by opening a `cmd` window and typing: `cd C:\Python27\Scripts` and `pip2.7 install numpy`.  Optional:  If this Python 2.7.18 installation is also used by other 
-processes, to guarantee there are no dependency conflicts, use a venv to run sDNA, e.g. firstly by entering: `cd C:\Python27\Scripts` followed by `pip2.7 install virtualenv` and  `<path_to_sDNA_venv>\Scripts\pip2.7 install numpy` (enter `<path_to_sDNA_venv>\Scripts\activate.bat` to test the venv from the command line) and secondly by setting
-`python` to <path_to_sDNA_venv>\Scripts` (on a config component or on config.toml) in step 13.iii below. 
-4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna-open.readthedocs.io/en/latest/installation_usage.html).  sDNA+ is now [open source](https://github.com/fiftysevendegreesofrad/sdna_plus), but at the time of writing has no official installer.  The official installer for the closed source release of [sDNA+](https://sdna.cardiff.ac.uk/sdna/software/software/), may also require the 32 bit (x86) Visual Studio 2008 redistributable, available [here](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2008-vc-90-sp1-no-longer-supported) or [here](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe), in order to unlock it with a free serial number.  If you chose a non-default installation directory, remember it for step 13.ii.
+#### Official sDNA installer (and Python).
+2. Ensure you have a supported version of [Python](https://www.python.org/downloads/windows/) (CPython, the reference implementation).  Do not run sDNA in non CPythons, as invalid shape files will be produced.  sDNA has been tested with a lot of different CPython versions.  But these do not include the CPython shipped with Rhino 8.    
+3. sDNA Learn requires numpy.  Numpy can be installed by opening a `cmd` window and typing: `python -m pip install numpy`.  Optional:  If this Python installation is also used by other 
+processes, to guarantee there are no dependency conflicts, create a venv to run sDNA in, e.g. firstly by entering: `python -m venv <path_to_sDNA_venv>`  `<path_to_sDNA_venv>\Scripts\pip.exe install numpy` (enter `<path_to_sDNA_venv>\Scripts\activate.bat` to test the venv from the command line) and secondly within Grasshopper set
+`python` to <path_to_sDNA_venv>\Scripts` on a config component (or in config.toml) in step 13.iii below. 
+4. To use sDNA with sDNA_GH, ensure you have an installation of [sDNA](https://sdna.cardiff.ac.uk/sdna/software/download/).  sDNA+ is now [open source](https://github.com/fiftysevendegreesofrad/sdna_plus).  sDNA may also require a Visual Studio redistributable.  If you chose a non-default installation directory, remember it for step 13.ii.
 
-#### Experimental sDNA_plus release (and Python 3)
-2. Install [Python 3](https://www.python.org/downloads/windows/).  CPython 3.11 has been tested with sDNA Integral (but not sDNA Learn).
-3. If using sDNA Learn, Numpy must be installed in environment of the Python process that calls it.  To do so, make a virtual environment for sDNA: `py -m venv <path_to_sDNA_venv>`, and install Numpy into it: `.\`<path_to_sDNA_venv>`\Scripts\pip.exe install numpy`.  Remember <path_to_sDNA_venv> for step 13.iii. 
-4. Download an [experimental release archive](https://github.com/JamesParrott/sdna_plus/releases) and unzip it where you wish to install it.  Remember the path to the resulting folder for step 13.ii.
 
 #### sDNA_GH
 
@@ -660,7 +657,6 @@ Change .csproj target to v4.8 [https://stackoverflow.com/questions/58000123/visu
 GHPython for .ghuser:
 Select GHPython component.   Optionally compile to .ghpy.  File -> Create User Object
 
-[^0] The Python 2.7 download can be verified using this [certificate](https://www.python.org/ftp/python/2.7.3/python-2.7.3.msi.asc) and [Gpg4win](https://gpg4win.org/download.html).
 
 [^1] The entire source code for sDNA_GH is visible on [Github](https://github.com/JamesParrott/sDNA_GH/).  All the source code is also visible in the download itself as the component launcher and Python package is uncompiled, except the .ghuser files which each contain the launcher code under a different name, and are compiled.  See the Build Instructions above to build them for yourself from the source code.   
 
