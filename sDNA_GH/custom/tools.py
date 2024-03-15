@@ -1332,6 +1332,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         command = (options.python
                   +' -u ' 
+                  +' -E '
                   +'"' 
                   +os.path.join(os.path.dirname(sDNAUISpec.__file__)
                                ,'bin'
