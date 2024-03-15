@@ -1146,7 +1146,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                     ,category = UserWarning
                     ,filename = __file__ + self.__class__.__name__
-                    ,lineno = 1123
+                    ,lineno = 1149
                     )
 
             new_keys += tuple()
@@ -2737,7 +2737,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = __file__ + '.' + self.__class__.__name__
-                                    ,lineno = 2683
+                                    ,lineno = 2740
                                     )
             else:
                 self.logger.error(msg)
@@ -2789,7 +2789,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = 'DataParser.tools.py'
-                                    ,lineno = 2735
+                                    ,lineno = 2792
                                     )
             else:
                 self.logger.error(msg)

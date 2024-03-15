@@ -541,7 +541,7 @@ def quantile_l_to_r(data
                     warnings.showwarning(message = msg
                                         ,category = UserWarning
                                         ,filename = __file__ 
-                                        ,lineno = 979
+                                        ,lineno = 544
                                         )
                     break
                 # assert lub_found # !
