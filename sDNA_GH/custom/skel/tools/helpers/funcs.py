@@ -101,14 +101,14 @@ def windows_installation_paths(names):
         for path in os.getenv('PATH').split(';'):
             if name in path:
                 yield path 
+        yield os.path.join(os.getenv('LOCALAPPDATA'), 'Programs', name)
+        yield os.path.join(os.getenv('LOCALAPPDATA'), name)
+        yield os.path.join(os.getenv('APPDATA'), name)
+        yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
+        yield os.path.join(os.getenv('PROGRAMFILES'), name)
         yield os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)# r'C:\' + name
         # os.sep is needed.  os.getenv('SYSTEMDRIVE') returns c: on Windows.
         #                    assert os.path.join('c:', 'foo') == 'c:foo'
-        yield os.path.join(os.getenv('PROGRAMFILES'), name)
-        yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
-        yield os.path.join(os.getenv('APPDATA'), name)
-        yield os.path.join(os.getenv('LOCALAPPDATA'), name)
-        yield os.path.join(os.getenv('LOCALAPPDATA'), 'Programs', name)
         # e.g. for one user: C:\Users\James\AppData\Local\Programs\sDNA\
 # https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
 

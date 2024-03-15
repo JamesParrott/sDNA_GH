@@ -404,14 +404,20 @@ sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 class PythonOptions(object):
     """All options needed to specify a Python interpreter, or search for one. """
 
-    python_paths = list( funcs.windows_installation_paths(('Python27'
+    python_paths = list( funcs.windows_installation_paths((*tuple('Python3%s' % i 
+                                                                  for i in range(12, 8, -1)
+                                                                 )  
+                                                          ,'Python3'
+                                                          ,'Python_3'
+                                                          ,'Python'
+                                                          ,'Python27'
                                                           ,'Python_27'
                                                           ,'Python_2.7'
                                                           ,'Python2.7'
                                                           )
                                                          )
                        )
-    python_exes = ['python.exe', 'py27.exe']
+    python_exes = ['python.exe', 'python3.exe', 'py27.exe']
     python = '' 
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
