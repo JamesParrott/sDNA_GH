@@ -85,7 +85,7 @@ __version__ = '2.9.2'
 ### System Requirements. 
 #### Software
 1. Windows (8.1, 10, or 11) 
-2. Python.  (Please note non-CPythons, e.g. Iron Python 2.7, are not supported, as invalid shapefiles will be produced).
+2. Python.  (Please note non-CPythons, e.g. Iron Python, are not supported, as invalid shapefiles will be produced).
 3. sDNA. 
 4. Rhino and Grasshopper (tested in Rhino 7)
 #### Hardware
@@ -533,7 +533,7 @@ Components referring to the global options share their settings.  This means the
 options came from a different component sharing with it, or from itself previously.  Shared states mean even a component in isolation has its own historical state.  To use components without any options sharing and a minimum of state, set `sync` to false and `no_state` to true (its default). 
 
 ##### Shared state vs desynchronised components.
-sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python 2.7 run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
+sDNA_GH has two fundamentally different modes of operation controlled by the Boolean `sync` local meta option:  synchronised and desynchronised.  Local meta options of components can only be changed directly on each component via user Params, by project options files (`config` params) or by the installation wide options file (`config.toml`).  By default, components are desynchronised (`sync` = false).  A few useful features are available from synchronised components, but they may behave in unexpected ways, and may even feel buggy and glitchy.  It is recommended to undertake a one off setup process to save your commonly used custom options in an installation wide options file (`config.toml`).  This is necessary to run sDNA if sDNA_GH fails to automatically find sDNA or the Python run time; even if this is successful but takes a while, it is still a good idea.  Thereafter all components can be used as desynchronised: 
 
 ###### Synchronisation (Advanced user only)
 To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
@@ -590,7 +590,7 @@ sDNA_GH v 2.5.2 includes static copies of the following Python packages:
 
 [IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
-[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in PYthon 3.11) and tomli_w, with a few smalleextras.
+[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in Python 3.11) and tomli_w, with a few small extras.
 
 [mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a tested, striped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
 

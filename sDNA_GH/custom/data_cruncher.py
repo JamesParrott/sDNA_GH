@@ -268,7 +268,7 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                  ):
     #type(OrderedCounter, Number) -> dict 
     """Given a discrete frequency distribution of Numbers in the form of an 
-       OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
+       OrderedCounter (defined earlier in this module or e.g. the Python 
        collections recipe), calculates a closed interval [a, b] of
        width b - a <= w that maximises the number of data points contained 
        within it, containing at least min_num_of_data_pts data points.  

@@ -341,7 +341,6 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     ###########################################################################
     # Override for sDNA_ToolWrapper
     python = ''
-    #python = r'C:\Python27\python.exe' 
     ###########################################################################
     #
     # Overrides for ShapefileWriter

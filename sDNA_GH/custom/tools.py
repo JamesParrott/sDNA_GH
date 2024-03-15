@@ -467,7 +467,7 @@ def check_python(opts):
             break  
     else:  # for/else, i.e. if the for loop wasn't left early by break
         msg = ('No Python interpreter file found.  Please specify a valid '
-              +'python 2.7 interpreter or its parent folder in python '
+              +'python interpreter or its parent folder in python '
               +', or a range of python interpreter names and folder names to '
               +'search for one in python_exes and python_paths.'
               )
@@ -955,8 +955,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         overwrite_shp = pyshp_wrapper.ShpOptions.overwrite_shp
         # file extensions are actually optional in PyShp, 
         # but just to be safe and future proof
-# Default installation path of Python 2.7.3 release (32 bit ?) 
-# http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
     def get_tool_opts(self, opts, sDNA = None, val = None):
@@ -3532,8 +3530,6 @@ class ConfigManager(sDNA_GH_Tool):
                                            +'or its parent folder. '
                                            +'Python is required for sDNA '
                                            +'tools (download link in readme). '
-                                           +'Note: sdna_plus requires a Python newer than 3.3, '
-                                           +'but CPython 2.7 is required for sDNA_open. '
                                            +'Default: %(python)s'
                                            )
                             ))
