@@ -173,6 +173,14 @@ splines = dict(zip(VALID_RE_NORMALISERS[1:]
                   )
               )
 
+# repeat basically the same dictionary, to customise
+# the options of class_spacings, e.g. to match the 
+# corresponding ones in QGIS.
+basic_class_spacings = {'Equal Interval' : linearly_interpolate
+                       ,'Exponential (inverse log)' : exp_spline
+                       ,'Logarithmic scale' : log_spline
+                       }
+
 
 def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
     # type(Number, Number, Number, Number, Number, Number, Number) -> float

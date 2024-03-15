@@ -2443,13 +2443,13 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
-QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
-                       ,max_deltas = data_cruncher.class_bounds_at_max_deltas
-                       ,adjuster = data_cruncher.quantile_l_to_r
-                       ,quantile = data_cruncher.spike_isolating_quantile
-                       ,geometric = data_cruncher.geometric
-                       ,fisher_jenks = data_cruncher.fisher_jenks
-                       )
+QUANTILE_METHODS = {'simple' : data_cruncher.simple_quantile
+                   ,'max_deltas' : data_cruncher.class_bounds_at_max_deltas
+                   ,'Equal Count (Quantile)' : data_cruncher.quantile_l_to_r
+                   ,'quantile' : data_cruncher.spike_isolating_quantile
+                   ,'geometric' : data_cruncher.geometric
+                   ,'Natural Breaks (Jenks)' : data_cruncher.fisher_jenks
+                   }
 
 
 
@@ -2757,7 +2757,7 @@ class DataParser(sDNA_GH_Tool):
                                                                     )
 
         else: 
-            inter_class_bounds = [data_cruncher.splines[options.class_spacing](
+            inter_class_bounds = [data_cruncher.basic_class_spacings[options.class_spacing](
                                                            i
                                                           ,1
                                                           ,param.get(options.class_spacing
