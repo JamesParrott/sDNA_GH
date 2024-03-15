@@ -586,7 +586,7 @@ grasshopper.sdna@gmail.com
 ## Developer manual.  
 
 ### Dependencies.
-sDNA_GH v 2.5.2 includes static copies of the following Python packages:
+sDNA_GH 3.0.0.alpha_1 includes static copies of the following Python packages:
 
 [IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
