@@ -404,14 +404,20 @@ sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 class PythonOptions(object):
     """All options needed to specify a Python interpreter, or search for one. """
 
-    python_paths = list( funcs.windows_installation_paths(('Python27'
+    python_paths = list( funcs.windows_installation_paths(tuple('Python3%s' % i 
+                                                                for i in range(12, 8, -1)
+                                                               )  
+                                                         +('Python3'
+                                                          ,'Python_3'
+                                                          ,'Python'
+                                                          ,'Python27'
                                                           ,'Python_27'
                                                           ,'Python_2.7'
                                                           ,'Python2.7'
                                                           )
                                                          )
                        )
-    python_exes = ['python.exe', 'py27.exe']
+    python_exes = ['python.exe', 'python3.exe', 'py27.exe']
     python = '' 
 
 python_options = options_manager.namedtuple_from_class(PythonOptions)
@@ -461,7 +467,7 @@ def check_python(opts):
             break  
     else:  # for/else, i.e. if the for loop wasn't left early by break
         msg = ('No Python interpreter file found.  Please specify a valid '
-              +'python 2.7 interpreter or its parent folder in python '
+              +'python interpreter or its parent folder in python '
               +', or a range of python interpreter names and folder names to '
               +'search for one in python_exes and python_paths.'
               )
@@ -949,8 +955,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
         overwrite_shp = pyshp_wrapper.ShpOptions.overwrite_shp
         # file extensions are actually optional in PyShp, 
         # but just to be safe and future proof
-# Default installation path of Python 2.7.3 release (32 bit ?) 
-# http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi copied from sDNA manual:
 # https://sdna.cardiff.ac.uk/sdna/wp-content/downloads/documentation/manual/sDNA_manual_v4_1_0/installation_usage.html 
 
     def get_tool_opts(self, opts, sDNA = None, val = None):
@@ -1140,7 +1144,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                     ,category = UserWarning
                     ,filename = __file__ + self.__class__.__name__
-                    ,lineno = 1123
+                    ,lineno = 1149
                     )
 
             new_keys += tuple()
@@ -1332,6 +1336,7 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
 
         command = (options.python
                   +' -u ' 
+                  +' -E '
                   +'"' 
                   +os.path.join(os.path.dirname(sDNAUISpec.__file__)
                                ,'bin'
@@ -2438,13 +2443,13 @@ class UsertextWriter(sDNA_GH_Tool):
 
 
 
-QUANTILE_METHODS = dict(simple = data_cruncher.simple_quantile
-                       ,max_deltas = data_cruncher.class_bounds_at_max_deltas
-                       ,adjuster = data_cruncher.quantile_l_to_r
-                       ,quantile = data_cruncher.spike_isolating_quantile
-                       ,geometric = data_cruncher.geometric
-                       ,fisher_jenks = data_cruncher.fisher_jenks
-                       )
+QUANTILE_METHODS = {'simple' : data_cruncher.simple_quantile
+                   ,'max_deltas' : data_cruncher.class_bounds_at_max_deltas
+                   ,'Equal Count (Quantile)' : data_cruncher.quantile_l_to_r
+                   ,'quantile' : data_cruncher.spike_isolating_quantile
+                   ,'geometric' : data_cruncher.geometric
+                   ,'Natural Breaks (Jenks)' : data_cruncher.fisher_jenks
+                   }
 
 
 
@@ -2730,7 +2735,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = __file__ + '.' + self.__class__.__name__
-                                    ,lineno = 2683
+                                    ,lineno = 2740
                                     )
             else:
                 self.logger.error(msg)
@@ -2752,7 +2757,7 @@ class DataParser(sDNA_GH_Tool):
                                                                     )
 
         else: 
-            inter_class_bounds = [data_cruncher.splines[options.class_spacing](
+            inter_class_bounds = [data_cruncher.basic_class_spacings[options.class_spacing](
                                                            i
                                                           ,1
                                                           ,param.get(options.class_spacing
@@ -2782,7 +2787,7 @@ class DataParser(sDNA_GH_Tool):
                 warnings.showwarning(message = msg
                                     ,category = UserWarning
                                     ,filename = 'DataParser.tools.py'
-                                    ,lineno = 2735
+                                    ,lineno = 2792
                                     )
             else:
                 self.logger.error(msg)
@@ -3525,8 +3530,6 @@ class ConfigManager(sDNA_GH_Tool):
                                            +'or its parent folder. '
                                            +'Python is required for sDNA '
                                            +'tools (download link in readme). '
-                                           +'Note: sdna_plus requires a Python newer than 3.3, '
-                                           +'but CPython 2.7 is required for sDNA_open. '
                                            +'Default: %(python)s'
                                            )
                             ))

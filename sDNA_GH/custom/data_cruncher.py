@@ -173,6 +173,14 @@ splines = dict(zip(VALID_RE_NORMALISERS[1:]
                   )
               )
 
+# repeat basically the same dictionary, to customise
+# the options of class_spacings, e.g. to match the 
+# corresponding ones in QGIS.
+basic_class_spacings = {'Equal Interval' : linearly_interpolate
+                       ,'Exponential (inverse log)' : exp_spline
+                       ,'Logarithmic scale' : log_spline
+                       }
+
 
 def three_point_quad_spline(x, x_min, x_mid, x_max, y_min, y_mid, y_max):
     # type(Number, Number, Number, Number, Number, Number, Number) -> float
@@ -268,7 +276,7 @@ def max_interval_lt_width_w_with_most_data_points(ordered_counter
                                                  ):
     #type(OrderedCounter, Number) -> dict 
     """Given a discrete frequency distribution of Numbers in the form of an 
-       OrderedCounter (defined earlier in this module or e.g. the Python 2.7 
+       OrderedCounter (defined earlier in this module or e.g. the Python 
        collections recipe), calculates a closed interval [a, b] of
        width b - a <= w that maximises the number of data points contained 
        within it, containing at least min_num_of_data_pts data points.  
@@ -541,7 +549,7 @@ def quantile_l_to_r(data
                     warnings.showwarning(message = msg
                                         ,category = UserWarning
                                         ,filename = __file__ 
-                                        ,lineno = 979
+                                        ,lineno = 544
                                         )
                     break
                 # assert lub_found # !
