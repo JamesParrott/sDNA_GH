@@ -37,6 +37,8 @@ import unittest
 from time import asctime    
 from itertools import repeat, izip
 from collections import OrderedDict
+import ctypes
+import socket
 
 from ghpythonlib.componentbase import executingcomponent as component
 import Grasshopper, GhPython
@@ -298,61 +300,88 @@ TestCreateGeomDataMapping.test_empty_DataTree = test_empty_DataTree
 
 tests_log_file_suffix = '_unit_test_results'
 
-def run_launcher_tests(self, *args):
-    """ Set MyComponent.RunScript to this function to run sDNA_GH 
-        unit tests in Grasshopper. 
-    """
-    log_file_dir = os.path.dirname(checkers.get_path(fallback = self.package_location))
-    if os.path.isfile(log_file_dir):
-        log_file_path = os.path.splitext(log_file_dir)[0]
-    else:
-        log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
-
-    test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
-    test_log_file = open(test_log_file_path,'at')
-    output_double_stream = FileAndStream(test_log_file, sys.stderr)
-
-    start_dir = self.package_location #os.path.join(self.package_location, launcher.package_name)
 
 
-    with output_double_stream as o:
 
 
-        o.write('Loading unit tests from: %s \n' % start_dir)
-                                    
-        discovered_suite = unittest.TestLoader().discover(start_dir = start_dir
-                                                          # Non standard pattern ensures 
-                                                          # tests requiring Grasshopper are
-                                                          # skipped by the default discovery 
-                                                         ,pattern = '*test*.py'
-                                                         )
+class UDPStream(object):
+    def __init__(self, port = 9999, host = '127.0.0.1'):
+        self.port = port
+        self.host = host
+        # SOCK_DGRAM is the socket type to use for UDP sockets
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def write(self, str_):
+        # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example
+        data = str_.encode("utf-8")
+        self.sock.sendto(data, (self.host, self.port))
 
 
-        o.write('Unit test run started at: %s ... \n\n' % asctime())
-
-        unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
-        
-        
-    
-    return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
+def exit_Rhino(ret_code = 0):
+    ctypes.windll.user32.PostQuitMessage(ret_code)
 
 
 def make_test_running_component_class(Component
                                      ,package_location
-                                     ,launcher = None
+                                     ,run_launcher_tests = None
+                                     ,output_stream = sys.stderr
+                                     ,exit = False
                                      ):
     #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
     """ Class Decorator to add in package location and replace 
         RunScript with a test launcher. 
     """
 
-    if launcher is None:
-        launcher = run_launcher_tests
+    if run_launcher_tests is None:
+
+        def run_launcher_tests(self, *args):
+            """ Set MyComponent.RunScript to this function to run sDNA_GH 
+                unit tests in Grasshopper. 
+            """
+            log_file_dir = os.path.dirname(checkers.get_path(fallback = package_location))
+            if os.path.isfile(log_file_dir):
+                log_file_path = os.path.splitext(log_file_dir)[0]
+            else:
+                log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
+
+            test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
+            test_log_file = open(test_log_file_path,'at')
+            output_double_stream = FileAndStream(test_log_file, output_stream)
+
+            start_dir = package_location #os.path.join(package_location, launcher.package_name)
+
+
+            with output_double_stream as o:
+
+
+                o.write('Loading unit tests from: %s \n' % start_dir)
+                                            
+                discovered_suite = unittest.TestLoader().discover(start_dir = start_dir
+                                                                # Non standard pattern ensures 
+                                                                # tests requiring Grasshopper are
+                                                                # skipped by the default discovery 
+                                                                ,pattern = '*test*.py'
+                                                                )
+
+
+                o.write('Unit test run started at: %s ... \n\n' % asctime())
+
+                result = unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
+                
+            if exit:
+                exit_Rhino(not result.wasSuccessful())
+                
+            
+            return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
+
+
 
     class TestRunningComponent(Component):
         _RunScript = Component.RunScript
-        RunScript = launcher
+        RunScript = run_launcher_tests
 
-    TestRunningComponent.package_location = package_location
 
     return TestRunningComponent
+
+def make_noninteractive_test_running_component_class(port, host):
+    udp_stream = UDPStream(port, host)
+    return make_test_running_component_class(output_stream = udp_stream, exit = True)
