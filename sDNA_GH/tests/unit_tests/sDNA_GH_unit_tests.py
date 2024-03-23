@@ -315,6 +315,8 @@ class UDPStream(object):
         data = str_.encode("utf-8")
         self.sock.sendto(data, (self.host, self.port))
 
+    def flush(self):
+        pass
 
 def exit_Rhino(ret_code = 0):
     ctypes.windll.user32.PostQuitMessage(ret_code)
@@ -335,6 +337,16 @@ def make_test_running_component_class(Component
 
         exit = False if os.getenv('SDNA_GH_NON_INTERACTIVE', '').lower() in ('', '0', 'false') else True
 
+
+        start_dir = package_location #os.path.join(package_location, launcher.package_name)
+
+        test_suite = test_suite or unittest.TestLoader().discover(start_dir = start_dir
+                                                        # Non standard pattern ensures 
+                                                        # tests requiring Grasshopper are
+                                                        # skipped by the default discovery 
+                                                        ,pattern = '*test*.py'
+                                                        )
+
         def run_launcher_tests(self, *args):
             """ Set MyComponent.RunScript to this function to run sDNA_GH 
                 unit tests in Grasshopper. 
@@ -348,15 +360,6 @@ def make_test_running_component_class(Component
             test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
             test_log_file = open(test_log_file_path,'at')
             output_double_stream = FileAndStream(test_log_file, output_stream)
-
-            start_dir = package_location #os.path.join(package_location, launcher.package_name)
-
-            test_suite = test_suite or unittest.TestLoader().discover(start_dir = start_dir
-                                                            # Non standard pattern ensures 
-                                                            # tests requiring Grasshopper are
-                                                            # skipped by the default discovery 
-                                                            ,pattern = '*test*.py'
-                                                            )
 
             with output_double_stream as o:
 
@@ -384,8 +387,15 @@ def make_test_running_component_class(Component
 
     return TestRunningComponent
 
-def make_noninteractive_test_running_component_class(test_suite, port=9999, host='127.0.0.1'):
+def make_noninteractive_test_running_component_class(Component
+                                                    ,package_location
+                                                    ,test_suite
+                                                    ,port=9999
+                                                    ,host='127.0.0.1'
+                                                    ):
     udp_stream = UDPStream(port, host)
-    return make_test_running_component_class(output_stream = udp_stream
+    return make_test_running_component_class(Component
+                                            ,package_location
+                                            ,output_stream = udp_stream
                                             ,test_suite = test_suite
                                             )
