@@ -1,6 +1,6 @@
 #! python3
 # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example 
-
+import os
 import pathlib
 import socketserver
 import multiprocessing
@@ -37,11 +37,13 @@ if __name__ == '__main__':
     test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
     # test_gh_file_path = 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
 
-    client_path = pathlib.Path(__file__).parent / 'client.py'
-    print(rf'{test_gh_file_path}')
+    # client_path = pathlib.Path(__file__).parent / 'client.py'
+    # print(rf'{test_gh_file_path}')
     # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
-    print(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path} _enterend"')
-                #   ,env = {'SDNA_GH_NON_INTERACTIVE' : 'True'}
-                #   )
+    env = os.environ.copy()
+    env['SDNA_GH_NON_INTERACTIVE'] = 'True'
+    subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path} _enterend"'
+                  ,env = env
+                  )
 
     p.join()
