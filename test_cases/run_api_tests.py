@@ -31,13 +31,17 @@ def start_UDP_server():
 if __name__ == '__main__':
     p = multiprocessing.Process(target=start_UDP_server)
     p.daemon = True
+    print('Starting output printing UDP server.  Press Ctrl+C to quit.')
     p.start()
 
     test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
+    # test_gh_file_path = 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
 
+    client_path = pathlib.Path(__file__).parent / 'client.py'
+    print(rf'{test_gh_file_path}')
     # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
-    subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path} _enter _exit _enterend"'
-                  ,env = {'SDNA_GH_NON_INTERACTIVE' : 1}
-                  )
+    print(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path} _enterend"')
+                #   ,env = {'SDNA_GH_NON_INTERACTIVE' : 'True'}
+                #   )
 
     p.join()
