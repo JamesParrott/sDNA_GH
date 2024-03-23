@@ -325,6 +325,7 @@ def make_test_running_component_class(Component
                                      ,run_launcher_tests = None
                                      ,output_stream = sys.stderr
                                      ,exit = False
+                                     ,test_suite = ()
                                      ):
     #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
     """ Class Decorator to add in package location and replace 
@@ -349,23 +350,23 @@ def make_test_running_component_class(Component
 
             start_dir = package_location #os.path.join(package_location, launcher.package_name)
 
+            test_suite = test_suite or unittest.TestLoader().discover(start_dir = start_dir
+                                                            # Non standard pattern ensures 
+                                                            # tests requiring Grasshopper are
+                                                            # skipped by the default discovery 
+                                                            ,pattern = '*test*.py'
+                                                            )
 
             with output_double_stream as o:
 
 
                 o.write('Loading unit tests from: %s \n' % start_dir)
                                             
-                discovered_suite = unittest.TestLoader().discover(start_dir = start_dir
-                                                                # Non standard pattern ensures 
-                                                                # tests requiring Grasshopper are
-                                                                # skipped by the default discovery 
-                                                                ,pattern = '*test*.py'
-                                                                )
 
 
                 o.write('Unit test run started at: %s ... \n\n' % asctime())
 
-                result = unittest.TextTestRunner(o, verbosity=2).run(discovered_suite)
+                result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
                 
             if exit:
                 exit_Rhino(not result.wasSuccessful())
@@ -382,6 +383,9 @@ def make_test_running_component_class(Component
 
     return TestRunningComponent
 
-def make_noninteractive_test_running_component_class(port, host):
+def make_noninteractive_test_running_component_class(port, host, test_suite):
     udp_stream = UDPStream(port, host)
-    return make_test_running_component_class(output_stream = udp_stream, exit = True)
+    return make_test_running_component_class(output_stream = udp_stream
+                                            ,exit = True
+                                            ,test_suite = test_suite
+                                            )
