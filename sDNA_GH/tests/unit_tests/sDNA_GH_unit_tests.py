@@ -305,7 +305,7 @@ tests_log_file_suffix = '_unit_test_results'
 
 
 class UDPStream(object):
-    def __init__(self, port = 9999, host = '127.0.0.1'):
+    def __init__(self, port, host):
         self.port = port
         self.host = host
         # SOCK_DGRAM is the socket type to use for UDP sockets
@@ -324,7 +324,6 @@ def make_test_running_component_class(Component
                                      ,package_location
                                      ,run_launcher_tests = None
                                      ,output_stream = sys.stderr
-                                     ,exit = False
                                      ,test_suite = ()
                                      ):
     #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
@@ -333,6 +332,8 @@ def make_test_running_component_class(Component
     """
 
     if run_launcher_tests is None:
+
+        exit = False if os.getenv('SDNA_GH_NON_INTERACTIVE', '').lower() in ('', '0', 'false') else True
 
         def run_launcher_tests(self, *args):
             """ Set MyComponent.RunScript to this function to run sDNA_GH 
@@ -383,9 +384,8 @@ def make_test_running_component_class(Component
 
     return TestRunningComponent
 
-def make_noninteractive_test_running_component_class(port, host, test_suite):
+def make_noninteractive_test_running_component_class(test_suite, port=9999, host='127.0.0.1'):
     udp_stream = UDPStream(port, host)
     return make_test_running_component_class(output_stream = udp_stream
-                                            ,exit = True
                                             ,test_suite = test_suite
                                             )
