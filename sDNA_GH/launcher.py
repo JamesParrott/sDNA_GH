@@ -104,6 +104,7 @@ USER_INSTALLATION_FOLDER = os.path.join(
                                    ,ZIP_FILE_NAME
                                    )
 SELFTEST = 'selftest'
+APITEST = 'RunsDNAGHAPItests'
 
 
 
@@ -399,21 +400,33 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             # component.  Even though we overwrite this class on the next line
             # immediately below.  
 
-    MyComponent = sDNA_GH.main.sDNA_GH_Component
-    # Grasshopper calls MyComponent.RunScript automatically.
 
+    
+    test_runners, _ = load_modules('%s.tests.test_running_component_classes' % ((PACKAGE_NAME,)*2)
+                                  ,sDNA_GH_search_path
+                                  )
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
 
+        # unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((PACKAGE_NAME,)*2)
+        #                             ,sDNA_GH_search_path
+        #                             )     
 
-        unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((PACKAGE_NAME,)*2)
-                                    ,sDNA_GH_search_path
-                                    )
 
         
-        MyComponent = unit_tests.make_test_running_component_class(
+        MyComponent = test_runners.make_test_running_component_class(
                                          MyComponent
                                         ,package_location = sDNA_GH_search_path
                                         )
-        # Grasshopper calls MyComponent.RunScript automatically.
+    elif nick_name.replace(' ','').replace('_','').lower() == APITEST:     
 
+   
+
+        MyComponent = test_runners.make_noninteractive_test_running_component_class(
+                MyComponent
+                ,Grasshopper.Folders.DefaultUserObjectFolder
+                ,test_suite
+                )
+    else:
+        MyComponent = sDNA_GH.main.sDNA_GH_Component
+        # Grasshopper calls MyComponent.RunScript automatically (in SDK mode GhPython components).
