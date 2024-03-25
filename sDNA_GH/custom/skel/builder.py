@@ -229,8 +229,8 @@ def build_comps_with_docstring_from_readme(default_path
     
 
 
-    row_height = 175 if row_height is None else row_height
-    row_width = 800 if row_width is None else row_width
+    row_height = row_height or 175
+    row_width = row_width or 800
 
     
     while (isinstance(default_path, Iterable) 
