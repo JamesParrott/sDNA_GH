@@ -79,23 +79,29 @@ def test_recolouring_random_num_of_random_objs_random_cols(self):
         print('%s: Correct colour: %s' % (guid, obj.Attributes.ObjectColor == colour))
       
 
-class RandomNumberOfRandomObjectsRandomlyRecolourTests(unittest.TestCase):
-    pass
+def API_unittest_TestCase_instances():
 
 
-NUM_TESTS = 5
+    class RandomNumberOfRandomObjectsRandomlyRecolourTests(unittest.TestCase):
+        pass
 
-method_names = []
 
-for i in range(NUM_TESTS):
-#    test_recolouring_random_num_of_random_objs_random_cols(None)
-    method_name = 'test_recolouring_random_num_of_random_objs_random_cols_%s' % (i+1)
-    setattr(RandomNumberOfRandomObjectsRandomlyRecolourTests
-           ,method_name
-           ,test_recolouring_random_num_of_random_objs_random_cols
-           )
-    method_names.append(method_name)
-           
-test_suite = unittest.TestSuite()
-for method_name in method_names:
-    test_suite.addTest(RandomNumberOfRandomObjectsRandomlyRecolourTests(method_name))
+    # NUM_TESTS = 5
+
+    # method_names = []
+
+    while True:
+    #    test_recolouring_random_num_of_random_objs_random_cols(None)
+        method_name = 'test_recolouring_random_num_of_random_objs_random_cols_%s' % (i+1)
+        setattr(RandomNumberOfRandomObjectsRandomlyRecolourTests
+            ,method_name
+            ,test_recolouring_random_num_of_random_objs_random_cols
+            )
+        # method_names.append(method_name)
+
+        yield RandomNumberOfRandomObjectsRandomlyRecolourTests(method_name)
+            
+    # test_suite = unittest.TestSuite()
+    # for method_name in method_names:
+        # # test_suite.addTest(RandomNumberOfRandomObjectsRandomlyRecolourTests(method_name))
+        # yield RandomNumberOfRandomObjectsRandomlyRecolourTests(method_name)

@@ -360,33 +360,34 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if 'sDNA_GH.main' in sys.modules:
         sDNA_GH.main = sys.modules['sDNA_GH.main']
     else:
-        sDNA_GH.main, _ = load_modules(m_names = PACKAGE_NAME + '.main'
-                                      ,folders = sDNA_GH_search_path
-                                      ,folders_error_msg = 'Please unzip %s.zip '
-                                                           %ZIP_FILE_NAME
-                                                           +' in the folder %s '
-                                                           %Grasshopper.Folders.DefaultUserObjectFolder
-                                                           +'and ensure a subfolder called %s is created '
-                                                           %os.path.join(ZIP_FILE_NAME, PACKAGE_NAME)
-                                                           +'inside it, containing main.py ' 
-                                                           +'and all the sDNA_GH python files '
-                                                           +'including those within other subfolders. ' 
-                                      ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  '
-                                                              +'Please: 1) Copy %s.zip into: %s '
-                                                              %(ZIP_FILE_NAME
-                                                               ,Grasshopper.Folders.DefaultUserObjectFolder
-                                                               )
-                                                              +'2) Unblock it if necessary. '
-                                                              +'3) Right click '
-                                                              +'it, select Extract All... and click Extract, '
-                                                              +'to extract it to that location. '
-                                                              +'4) Ensure that main.py and all sDNA_GH python' 
-                                                              +' files and subfolders are inside: %s '
-                                                              %os.path.join(USER_INSTALLATION_FOLDER
-                                                                           ,PACKAGE_NAME
-                                                                           )
-                                                              +'5) Reinitialise the component or restart Rhino.'
-                                      )         
+        sDNA_GH.main, _ = load_modules(
+             m_names = PACKAGE_NAME + '.main'
+            ,folders = sDNA_GH_search_path
+            ,folders_error_msg = 'Please unzip %s.zip '
+                                %ZIP_FILE_NAME
+                                +' in the folder %s '
+                                %Grasshopper.Folders.DefaultUserObjectFolder
+                                +'and ensure a subfolder called %s is created '
+                                %os.path.join(ZIP_FILE_NAME, PACKAGE_NAME)
+                                +'inside it, containing main.py ' 
+                                +'and all the sDNA_GH python files '
+                                +'including those within other subfolders. ' 
+            ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  '
+                                    +'Please: 1) Copy %s.zip into: %s '
+                                    %(ZIP_FILE_NAME
+                                    ,Grasshopper.Folders.DefaultUserObjectFolder
+                                    )
+                                    +'2) Unblock it if necessary. '
+                                    +'3) Right click '
+                                    +'it, select Extract All... and click Extract, '
+                                    +'to extract it to that location. '
+                                    +'4) Ensure that main.py and all sDNA_GH python' 
+                                    +' files and subfolders are inside: %s '
+                                    %os.path.join(USER_INSTALLATION_FOLDER
+                                                ,PACKAGE_NAME
+                                                )
+                                    +'5) Reinitialise the component or restart Rhino.'
+            )         
 
 
     logger = sDNA_GH.main.logger.getChild('launcher')
@@ -410,22 +411,16 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
         # unit_tests, _ = load_modules('%s.tests.unit_tests.%s_unit_tests' % ((PACKAGE_NAME,)*2)
         #                             ,sDNA_GH_search_path
-        #                             )     
-
-
-        
+        #                             )    
+  
         MyComponent = test_runners.make_test_running_component_class(
-                                         MyComponent
-                                        ,package_location = sDNA_GH_search_path
-                                        )
+                 MyComponent
+                ,package_location = sDNA_GH_search_path
+                )
     elif nick_name.replace(' ','').replace('_','').lower() == APITEST:     
-
-   
-
         MyComponent = test_runners.make_noninteractive_test_running_component_class(
-                MyComponent
-                ,Grasshopper.Folders.DefaultUserObjectFolder
-                ,test_suite
+                 MyComponent
+                ,package_location = sDNA_GH_search_path
                 )
     else:
         MyComponent = sDNA_GH.main.sDNA_GH_Component

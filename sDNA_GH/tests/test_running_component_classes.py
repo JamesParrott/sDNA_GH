@@ -85,12 +85,13 @@ def make_test_running_component_class(Component
 
     return TestRunningComponent
 
-def make_noninteractive_test_running_component_class(Component
+def make_noninteractive_api_test_running_component_class(Component
                                                     ,package_location
                                                     ,test_suite
                                                     ,port=9999
                                                     ,host='127.0.0.1'
                                                     ):
+    test_suite
     udp_stream = UDPStream(port, host)
     return make_test_running_component_class(Component
                                             ,package_location
