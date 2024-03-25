@@ -334,8 +334,11 @@ class UDPStream(object):
 
 
 
-def save_doc_to_DIR():
-    path = os.path.join(DIR, 'random_circles.3dm')
+def save_doc_to_DIR(name = 'tmp_sDNA_GH_api_tests_working_file.3dm'):
+    # 'Dale Fugier'
+    # https://discourse.mcneel.com/t/sys-exit-shows-popup-window-instead-of-just-exiting/163811/7
+
+    path = os.path.join(DIR, name)
     Rhino.RhinoApp.RunScript('_-SaveAs ' + path, True)
     
 
@@ -344,6 +347,9 @@ def save_doc_to_DIR():
 
 
 def exit_Rhino():
+    #'Dale Fugier'
+    # https://discourse.mcneel.com/t/sys-exit-shows-popup-window-instead-of-just-exiting/163811/7
+
     save_doc_to_DIR()
     Rhino.RhinoDoc.ActiveDoc.Modified = False
 
@@ -408,6 +414,15 @@ def make_test_running_component_class(Component
 
                 result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
                 
+                o.write('sDNA API Test Summary')
+                o.write('Errors: %s' % (result.errors,))
+                o.write('Failures: %s' % (result.failures,))
+
+                if not result.wasSuccessful():
+                    # Special string to tell run_api_tests to return non-zero exit code
+                    o.write('SDNA_GH_API_TESTS_FAILED')
+
+
             if exit:
                 exit_Rhino()
                 # exit_Rhino(23)

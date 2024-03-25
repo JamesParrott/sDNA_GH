@@ -1,0 +1,1 @@
+.\create_release_sdna-gh.zip.bat & .\install_sdna-gh.zip.bat & python .\test_cases\run_api_tests.py

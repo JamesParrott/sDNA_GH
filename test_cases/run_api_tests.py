@@ -7,6 +7,9 @@ import socketserver
 import multiprocessing
 import subprocess
 
+from collections import deque
+
+
 
 class MyUDPHandler(socketserver.BaseRequestHandler):
     """
@@ -16,10 +19,14 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     when sending data back via sendto().
     """
 
+    last_output = deque([], maxlen=300)
+
     def handle(self):
         data = self.request[0].strip()
         socket = self.request[1]
-        print(data.decode('utf-8'))
+        output = data.decode('utf-8')
+        print(output)
+        self.last_output.append(output)
         # socket.sendto(data.upper(), self.client_address)
 
 def start_UDP_server():
@@ -34,14 +41,14 @@ if __name__ == '__main__':
     print('Starting output printing UDP server.  Press Ctrl+C to quit.')
     p.start()
 
+    # Test output over UDP to stdout from RhinoPython
+    # client_path = pathlib.Path(__file__).parent / 'client.py'
+    # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
 
     test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
 
-    test_gh_file_path = 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
 
-    client_path = pathlib.Path(__file__).parent / 'client.py'
-    print(rf'{test_gh_file_path}')
-    subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
+    print(rf'Opening: {test_gh_file_path}')
     env = os.environ.copy()
     env['SDNA_GH_NON_INTERACTIVE'] = 'True'
     result = subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path}  _enter _exit _enterend"'
@@ -49,9 +56,9 @@ if __name__ == '__main__':
                            )
 
     # p.join()
-    
+
     print(f'{result.returncode=}')
-    if result.returncode != 0:
+    if result.returncode != 0 or 'SDNA_GH_API_TESTS_FAILED' in ''.join(MyUDPHandler.last_output):
         raise Exception('Error during testing and/or some tests not passed.  Retcode: %s' % result.returncode)
 
 
