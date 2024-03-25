@@ -39,6 +39,7 @@ from itertools import repeat, izip
 from collections import OrderedDict
 import ctypes
 import socket
+import tempfile
 
 from ghpythonlib.componentbase import executingcomponent as component
 import Grasshopper, GhPython
@@ -56,6 +57,16 @@ from ...custom.skel.tools.helpers import checkers
 
 from ...custom import data_cruncher
 from ...custom import gdm_from_GH_Datatree
+
+
+TMP = tempfile.gettempdir()
+
+DIR = TMP
+
+for SUB_DIR in ( 'sDNA_GH', 'tests'):
+    DIR = os.path.join(DIR, SUB_DIR)
+    if not os.path.isdir(DIR):
+        os.mkdir(DIR)
 
 
 class FileAndStream():
@@ -318,8 +329,30 @@ class UDPStream(object):
     def flush(self):
         pass
 
-def exit_Rhino(ret_code = 0):
-    ctypes.windll.user32.PostQuitMessage(ret_code)
+
+
+
+
+
+def save_doc_to_DIR():
+    path = os.path.join(DIR, 'random_circles.3dm')
+    Rhino.RhinoApp.RunScript('_-SaveAs ' + path, True)
+    
+
+
+
+
+
+def exit_Rhino():
+    save_doc_to_DIR()
+    Rhino.RhinoDoc.ActiveDoc.Modified = False
+
+    hWnd = Rhino.RhinoApp.MainWindowHandle()
+    ctypes.windll.user32.PostMessageW(hWnd, 0x0010, 0, 0) # - quits but doesn't set return code
+    # ctypes.windll.user32.PostQuitMessage(ret_code) # - doesn't quit, even if Rhino doc saved.
+    # ctypes.windll.user32.PostMessageW(hWnd, 0x0010, ret_code, 0) # - quits but doesn't set return code
+    # ctypes.windll.user32.PostMessageW(hWnd, 0x0012, ret_code, 0) # - makes Rhino hang. ret code 1 is set
+    #                                                              # after killing it from Task Manager.
 
 
 def make_test_running_component_class(Component
@@ -376,7 +409,8 @@ def make_test_running_component_class(Component
                 result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
                 
             if exit:
-                exit_Rhino(19)
+                exit_Rhino()
+                # exit_Rhino(23)
                 # exit_Rhino(not result.wasSuccessful())
                 
             

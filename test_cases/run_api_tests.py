@@ -8,7 +8,6 @@ import multiprocessing
 import subprocess
 
 
-
 class MyUDPHandler(socketserver.BaseRequestHandler):
     """
     This class works similar to the TCP handler class, except that
@@ -35,20 +34,25 @@ if __name__ == '__main__':
     print('Starting output printing UDP server.  Press Ctrl+C to quit.')
     p.start()
 
-    test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
-    # test_gh_file_path = 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
 
-    # client_path = pathlib.Path(__file__).parent / 'client.py'
-    # print(rf'{test_gh_file_path}')
-    # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
+    test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
+
+    test_gh_file_path = 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
+
+    client_path = pathlib.Path(__file__).parent / 'client.py'
+    print(rf'{test_gh_file_path}')
+    subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
     env = os.environ.copy()
     env['SDNA_GH_NON_INTERACTIVE'] = 'True'
     result = subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path}  _enter _exit _enterend"'
                            ,env = env
                            )
+
+    # p.join()
+    
+    print(f'{result.returncode=}')
     if result.returncode != 0:
         raise Exception('Error during testing and/or some tests not passed.  Retcode: %s' % result.returncode)
 
-    # p.join()
 
     sys.exit(0)

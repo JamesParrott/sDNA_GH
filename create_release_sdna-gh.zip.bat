@@ -1,5 +1,6 @@
 @ECHO OFF
 
+set cwd=%CD%
 set zip_name=sdna-gh
 set package_name=sDNA_GH
 
@@ -16,3 +17,4 @@ rem del README.md
 rem del README.pdf
 rem del license.md
 
+cd %cwd%

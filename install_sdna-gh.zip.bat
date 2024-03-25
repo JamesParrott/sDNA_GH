@@ -1,5 +1,6 @@
 @ECHO OFF
 
+set cwd=%CD%
 set user_objects_dir=%appdata%\Grasshopper\UserObjects\
 
 @REM copy /Y - overwrites dest if necessary
@@ -10,3 +11,4 @@ rmdir /S /Q sdna-gh
 mkdir sdna-gh
 cd sdna-gh
 tar -xf ..\sdna-gh.zip
+cd %cwd%
