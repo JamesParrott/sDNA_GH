@@ -1,6 +1,7 @@
 #! python3
 # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example 
 import os
+import sys
 import pathlib
 import socketserver
 import multiprocessing
@@ -42,8 +43,12 @@ if __name__ == '__main__':
     # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
     env = os.environ.copy()
     env['SDNA_GH_NON_INTERACTIVE'] = 'True'
-    subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path} _enterend"'
-                  ,env = env
-                  )
+    result = subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path}  _enter _exit _enterend"'
+                           ,env = env
+                           )
+    if result.returncode != 0:
+        raise Exception('Error during testing and/or some tests not passed.  Retcode: %s' % result.returncode)
 
-    p.join()
+    # p.join()
+
+    sys.exit(0)
