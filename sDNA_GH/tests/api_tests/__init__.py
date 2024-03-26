@@ -1,3 +1,5 @@
+import importlib
+
 def make_unit_test_TestCase_instance_generator(
     RandomNumberOfRandomObjectsRandomlyRecolourTests,
     test_recolouring_random_num_of_random_objs_random_cols
