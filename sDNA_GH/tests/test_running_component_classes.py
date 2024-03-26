@@ -1,7 +1,12 @@
+import os
+
 tests_log_file_suffix = '_unit_test_results'
 
-
-
+API_TEST_MODULES = [os.path.splitext(file_)[0] 
+                    for file_ in os.listdir(os.path.join(os.path.dirname(__file__), 'api_tests'))
+                    if file_.endswith('.py')
+                    if file_ not in ('__init__.py')
+                   ] 
 
 
 def make_test_running_component_class(Component
@@ -87,11 +92,24 @@ def make_test_running_component_class(Component
 
 def make_noninteractive_api_test_running_component_class(Component
                                                     ,package_location
-                                                    ,test_suite
+                                                    ,test_name,
                                                     ,port=9999
                                                     ,host='127.0.0.1'
                                                     ):
-    test_suite
+    if test_name in API_TEST_MODULES:
+        module_names = [test_name]
+    elif test_name.lower() == 'all':
+        module_names = API_TEST_MODULES
+    else:
+        raise Exception('Invalid API test name: %s' % test_name)
+    
+    test_modules = [importlib.import_module('.tests.api_tests.%s' % name, 'sDNA_GH')
+                    for name in module_names
+                   ]
+    
+    for module_ in test_module:
+        test_case_generator = getattr(module_, 'test_case_generator')
+
     udp_stream = UDPStream(port, host)
     return make_test_running_component_class(Component
                                             ,package_location

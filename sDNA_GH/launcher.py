@@ -417,7 +417,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                  MyComponent
                 ,package_location = sDNA_GH_search_path
                 )
-    elif nick_name.startswith(APITEST_PREFIX) and os.getenv('SDNA_GH_API_TESTS'):
+    elif nick_name.startswith(APITEST_PREFIX) and os.getenv('NUM_SDNA_GH_API_TESTS'):
         MyComponent = test_runners.make_noninteractive_test_running_component_class(
                  MyComponent
                 ,package_location = sDNA_GH_search_path

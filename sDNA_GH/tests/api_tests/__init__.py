@@ -1,32 +1,25 @@
-import importlib
+import os
 
 def make_unit_test_TestCase_instance_generator(
-    RandomNumberOfRandomObjectsRandomlyRecolourTests,
-    test_recolouring_random_num_of_random_objs_random_cols
-    
+    Class,
+    method,
     ):
 
 
-    def API_unittest_TestCase_instances():
+    def API_unittest_TestCase_instances(
+            N = int(os.getenv('NUM_SDNA_GH_API_TESTS', '5')),
+            ):
 
-
-        class RandomNumberOfRandomObjectsRandomlyRecolourTests(unittest.TestCase):
+        class Class(unittest.TestCase):
             pass
 
-
-        # NUM_TESTS = 5
-
-        # method_names = []
-
-        while True:
-        #    test_recolouring_random_num_of_random_objs_random_cols(None)
-            method_name = 'test_recolouring_random_num_of_random_objs_random_cols_%s' % (i+1)
-            setattr(RandomNumberOfRandomObjectsRandomlyRecolourTests
+        for i in range(1, N+1):        
+            method_name = '%s_%s' % (method.__name__, i)
+            setattr(Class
                 ,method_name
-                ,test_recolouring_random_num_of_random_objs_random_cols
+                ,method
                 )
-            # method_names.append(method_name)
 
-            yield RandomNumberOfRandomObjectsRandomlyRecolourTests(method_name)
+            yield Class(method_name)
 
     return API_unittest_TestCase_instances

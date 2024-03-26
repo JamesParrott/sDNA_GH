@@ -21,13 +21,14 @@ from ghpythonlib.componentbase import executingcomponent as component
 
 from sDNA_GH.tests.unit_tests.sDNA_GH_unit_tests import make_noninteractive_test_running_component_class
 
+GH_DOC = ghdoc.Component.Attributes.DocObject.OnPingDocument()
 
-def GH_doc_components(doc = None):
-    if doc is None:
-        doc = ghdoc.Component.Attributes.DocObject.OnPingDocument()
+def GH_doc_components(doc = GH_DOC):
     return {component.NickName : component
             for component in doc.Objects
            }
+
+GH_DOC_COMPONENTS = GH_doc_components()
 
 def set_data_on(param, val):
     param.ClearData()
@@ -38,12 +39,10 @@ def get_data_from(param):
     return branch[0] if branch else None
 
 
-# GH_Doc_components = GH_doc_components(GH_Doc)
-
-#all_docs_comps = {
-#    os.path.splitext(os.path.basename(doc.FilePath))[0] : (doc, GH_doc_components(doc)) 
-#    for doc in Grasshopper.Instances.DocumentServer.GetEnumerator() 
-#    }
+def all_docs_comps():
+   return {os.path.splitext(os.path.basename(doc.FilePath))[0] : (doc, GH_doc_components(doc)) 
+           for doc in Grasshopper.Instances.DocumentServer.GetEnumerator() 
+          }
 
 
 
@@ -56,6 +55,8 @@ def get_plugin_files(plugin = ''):
                         for file_ in gh_comp_server.ExternalFiles(True, True)
                         if plugin.lower() in file_.FilePath.lower()
                        )
+
+
 def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=1, pos = (200, 550)):
     
     plugin_files = plugin_files or get_plugin_files('sDNA_GH')
@@ -69,10 +70,7 @@ def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=
     if file_obj is None:
         raise Exception('No user object found called: %s' % name)
     
-#    print(dir(file_obj))
-#    print(file_obj.GetHashCode())
-#    guid = file_obj.FileHash
-#    print(guid)
+
                     
     user_obj = Grasshopper.Kernel.GH_UserObject(file_obj.FilePath)
 
@@ -95,10 +93,15 @@ def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=
     return comp_obj 
 
 
-if 'Recolour_Objects' not in GH_Doc_components:
-    Recolour_Objects = add_instance_of_userobject_to_canvas('Recolour_Objects')
-else:
-    Recolour_Objects = GH_Doc_components['Recolour_Objects']
+
+
+def get_comp_from_or_add_comp_to_canvas(name):
+    
+    if name not in GH_DOC_COMPONENTS:
+        comp = add_instance_of_userobject_to_canvas(name)
+        GH_DOC_COMPONENTS[name] = comp
+
+    return GH_DOC_COMPONENTS[name]
 
 
 #info = Rhino.NodeInCode.Components.FindComponent('read')
@@ -175,21 +178,6 @@ def exit_Rhino():
 
 
 
-#def run_Recolour_Objects(Data, Geom):
-#    set_data_on(Recolour_Objects.Params.Input[0], True) #go
-#    set_data_on(Recolour_Objects.Params.Input[4], Data) 
-#    set_data_on(Recolour_Objects.Params.Input[5], Geom)
-
-#    run_comp(Recolour_Objects, go=True, Data=Data, Geom=Geom)
-
-    # a = get_data_from(Recolour_Objects.Params.Output[0])
-
-    # print(a)
-
-
-# cols = th.tree_to_list(colours)[0]
-
-# print(len(cols[0]))
 
 
 def make_callable_using_node_in_code(name):
