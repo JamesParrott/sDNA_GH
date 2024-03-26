@@ -92,7 +92,7 @@ def make_test_running_component_class(Component
 
 def make_noninteractive_api_test_running_component_class(Component
                                                     ,package_location
-                                                    ,test_name,
+                                                    ,test_name
                                                     ,port=9999
                                                     ,host='127.0.0.1'
                                                     ):

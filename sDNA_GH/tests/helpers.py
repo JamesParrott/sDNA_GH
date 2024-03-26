@@ -95,7 +95,7 @@ def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=
 
 
 
-def get_comp_from_or_add_comp_to_canvas(name):
+def get_user_obj_comp_from_or_add_to_canvas(name):
     
     if name not in GH_DOC_COMPONENTS:
         comp = add_instance_of_userobject_to_canvas(name)

@@ -1,12 +1,23 @@
-from . import make_unit_test_TestCase_instance_generator, get_comp_from_or_add_comp_to_canvas
+import System
+import Rhino
+
+from . import make_unit_test_TestCase_instance_generator, get_user_obj_comp_from_or_add_to_canvas
 from .helpers import run_comp, get_or_add_comp, add_instance_of_userobject_to_canvas
+from .fuzzers import random_Geometry
 
-# This module must be run from a Grasshopper Document with a 
-# Component_Random and GH_GradientControl already placed.
-GHRandomComponent = GH_Doc_components['Random']
-GHGradientComponent = GH_Doc_components['Gradient']
 
-Recolour_Objects = get_comp_from_or_add_comp_to_canvas('Recolour_Objects')
+
+try:
+    GHRandomComponent = GH_Doc_components['Random']
+    GHGradientComponent = GH_Doc_components['Gradient']
+except KeyError:
+    raise Exception("This test requires a Random Sequence component, and a Gradient component "
+                    " on the canvas. "
+                    "Place these components and run an Unload_sDNA component "
+                    " then re-initialise this component to restart the test. "
+                   )
+
+Recolour_Objects = get_user_obj_comp_from_or_add_to_canvas('Recolour_Objects')
 
 
 def test_recolouring_random_num_of_random_objs_random_cols(self):
@@ -16,29 +27,28 @@ def test_recolouring_random_num_of_random_objs_random_cols(self):
 
     N = len(Geom)
 
-    cols = []
+    colours = []
 
 
 
     
+    # TODO: Work out how to pass in, and extract lists from Grasshopper components.
     for __ in range(N):
-
-
 
         random_retvals = run_comp(GHRandomComponent, N=1, S = random_int(0, 250000))
 
         gradient_retvals = run_comp(GHGradientComponent, L0=-123, L1 = 172, t = random_retvals['nums'])
 
         col = gradient_retvals['C']
-        cols.append(col.Value)
+        colours.append(col.Value)
 
 
 
 
-    run_comp(Recolour_Objects, go=True, Data=cols, Geom=Geom)
+    run_comp(Recolour_Objects, go=True, Data=colours, Geom=Geom)
 
     j = 0
-    for geom, colour in zip(Geom, cols):
+    for geom, colour in zip(Geom, colours):
         guid = System.Guid(geom)
         j += 1
         if not guid:
