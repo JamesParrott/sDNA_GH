@@ -29,7 +29,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '3.0.0.alpha_1'
+__version__ = '3.0.0.alpha_2'
 
 import sys
 import os
@@ -37,16 +37,7 @@ import unittest
 from time import asctime    
 from itertools import repeat, izip
 from collections import OrderedDict
-import ctypes
-import socket
-import tempfile
 
-from ghpythonlib.componentbase import executingcomponent as component
-import Grasshopper, GhPython
-import System
-import Rhino
-import rhinoscriptsyntax as rs
-import scriptcontext as sc
 from ghpythonlib import treehelpers 
 
 from ...custom.skel.basic.ghdoc import ghdoc 
@@ -61,14 +52,6 @@ from ...custom import gdm_from_GH_Datatree
 from ..helpers import FileAndStream
 
 
-TMP = tempfile.gettempdir()
-
-DIR = TMP
-
-for SUB_DIR in ( 'sDNA_GH', 'tests'):
-    DIR = os.path.join(DIR, SUB_DIR)
-    if not os.path.isdir(DIR):
-        os.mkdir(DIR)
 
 
 

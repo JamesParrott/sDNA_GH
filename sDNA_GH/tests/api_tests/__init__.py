@@ -3,25 +3,24 @@ import unittest
 
 
 def make_unit_test_TestCase_instance_generator(
-    Class,
     method,
     ):
-
 
     def API_unittest_TestCase_instances(
             N = int(os.getenv('NUM_SDNA_GH_API_TESTS', '5')),
             ):
 
-        class Class(unittest.TestCase):
+        class APITestCase(unittest.TestCase):
             pass
 
-        for i in range(1, N+1):        
-            method_name = '%s_%s' % (method.__name__, i)
-            setattr(Class
+        for i in range(1, N+1):
+            method_name = 'test_%s_%s' % (method.__name__, i)
+            print('Adding test method: %s' % method_name)
+            setattr(APITestCase
                 ,method_name
                 ,method
                 )
 
-            yield Class(method_name)
+            yield APITestCase(method_name)
 
     return API_unittest_TestCase_instances

@@ -26,7 +26,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         socket = self.request[1]
         output = data.decode('utf-8')
         print(output)
-        self.last_output.append(output)
+        self.__class__.last_output.append(output)
         # socket.sendto(data.upper(), self.client_address)
 
 def start_UDP_server():
@@ -45,8 +45,8 @@ if __name__ == '__main__':
     # client_path = pathlib.Path(__file__).parent / 'client.py'
     # subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="_-RunPythonScript {client_path} _enter _exit _enterend"')
 
-    test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
-
+    # test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
+    test_gh_file_path = pathlib.Path(__file__).parent / "Rhino_8_API_tests.gh"
 
     print(rf'Opening: {test_gh_file_path}')
     env = os.environ.copy()
@@ -64,7 +64,11 @@ if __name__ == '__main__':
     # p.join()
 
     print(f'{result.returncode=}')
-    if result.returncode != 0 or 'SDNA_GH_API_TESTS_FAILED' in ''.join(MyUDPHandler.last_output):
+
+    print(MyUDPHandler.last_output)
+    print('SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output)[-100:])
+
+    if result.returncode != 0 or 'SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output):
         raise Exception('Error during testing and/or some tests not passed.  Retcode: %s' % result.returncode)
 
 

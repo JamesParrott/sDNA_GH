@@ -8,6 +8,9 @@ import inspect
 import logging
 from collections import OrderedDict
 import unittest
+import ctypes
+import socket
+import tempfile
 
 import System
 
@@ -21,6 +24,15 @@ from ghpythonlib.componentbase import executingcomponent as component
 
 from ..custom.skel.basic.ghdoc import ghdoc
 
+
+TMP = tempfile.gettempdir()
+
+DIR = TMP
+
+for SUB_DIR in ( 'sDNA_GH', 'tests'):
+    DIR = os.path.join(DIR, SUB_DIR)
+    if not os.path.isdir(DIR):
+        os.mkdir(DIR)
 
 GH_DOC = ghdoc.Component.Attributes.DocObject.OnPingDocument()
 
@@ -59,6 +71,12 @@ def get_plugin_files(plugin = ''):
                        )
 
 
+def get_position(comp_number, row_width = 800, row_height = 175, pos = (200, 550)):
+    l = comp_number * row_height
+    x = pos[0] + (l % row_width)
+    y = pos[1] + 220 * (l // row_width)
+    return x, y
+
 def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=1, pos = (200, 550)):
     
     plugin_files = plugin_files or get_plugin_files('sDNA_GH')
@@ -87,7 +105,7 @@ def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=
     
     comp_obj.Attributes.Pivot = System.Drawing.PointF.Add(comp_obj.Attributes.Pivot, sizeF)
     
-    success = GH_doc.AddObject(docObject = comp_obj, update = False)
+    success = GH_DOC.AddObject(docObject = comp_obj, update = False)
     
     if not success:
         raise Exception('Could not add comp: %s to GH canvas' % comp_obj)
@@ -125,15 +143,18 @@ def run_comp(comp, **kwargs):
 
 
 class FileAndStream(object):
-    def __init__(self, file, stream):
+    def __init__(self, file, stream, print_too = False):
         self.file = file
         self.stream = stream
         if hasattr(file, 'fileno'):
             self.fileno = file.fileno
+        self.print_too = print_too
         
     def write(self, *args):
         self.stream.write(*args)
         self.file.write(*args)
+        if self.print_too:
+            print(', '.join(args))
         
     def flush(self, *args):
         self.stream.flush()

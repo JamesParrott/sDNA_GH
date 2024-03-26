@@ -28,7 +28,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '3.0.0.alpha_1'
+__version__ = '3.0.0.alpha_2'
 """ Reads .shp files, and parses data and writes .shp files from any iterable.   
 """
 

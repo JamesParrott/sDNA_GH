@@ -9,7 +9,7 @@ from ghpythonlib.componentbase import executingcomponent as component
 
 from ..custom.skel.tools.helpers import checkers
 from .. import launcher
-from .helpers import FileAndStream, UDPStream
+from .helpers import FileAndStream, UDPStream, exit_Rhino
 
 
 
@@ -53,11 +53,15 @@ def make_test_running_component_class(package_location
                                                         # skipped by the default discovery 
                                                         ,pattern = '*test*.py'
                                                         )
+        else:
+            print('Using test_suite: %s' % test_suite)
 
         def run_launcher_tests(self, *args):
             """ Set MyComponent.RunScript to this function to run sDNA_GH 
                 unit tests in Grasshopper. 
             """            
+
+            print('Starting RunScript')
 
             log_file_dir = os.path.dirname(checkers.get_path(fallback = package_location))
             if os.path.isfile(log_file_dir):
@@ -66,7 +70,12 @@ def make_test_running_component_class(package_location
                 log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
             test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
             test_log_file = open(test_log_file_path,'at')
-            output_double_stream = FileAndStream(test_log_file, output_stream)
+
+            output_double_stream = FileAndStream(
+                                         test_log_file
+                                        ,output_stream
+                                        ,print_too = output_stream is not sys.stderr
+                                        )
 
             with output_double_stream as o:
 
@@ -74,13 +83,13 @@ def make_test_running_component_class(package_location
 
                 result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
                 
-                o.write('sDNA API Test Summary')
-                o.write('Errors: %s' % (result.errors,))
-                o.write('Failures: %s' % (result.failures,))
+                o.write('sDNA Test Summary\n')
+                o.write('Errors: %s\n' % (result.errors,))
+                o.write('Failures: %s\n' % (result.failures,))
 
                 if not result.wasSuccessful():
                     # Special string to tell run_api_tests to return non-zero exit code
-                    o.write('SDNA_GH_API_TESTS_FAILED')
+                    o.write('SDNA_GH_TESTS_FAILED')
 
 
             if exit:
@@ -114,14 +123,17 @@ def make_noninteractive_api_test_running_component_class(
     else:
         raise Exception('Invalid API test name: %s' % test_name)
     
-    test_modules = [importlib.import_module('.tests.api_tests.%s' % name, 'sDNA_GH')
+    test_modules = {name : importlib.import_module('.tests.api_tests.%s' % name, 'sDNA_GH')
                     for name in module_names
-                   ]
+                   }
     
     test_suite = unittest.TestSuite()
 
-    for module_ in test_module:
-        test_case_generator = getattr(module_, 'test_case_generator')
+    for name, module in test_modules.items():
+        if not hasattr(module, 'test_case_generator'):
+            continue
+        print('Adding test cases for module: %s' % name)
+        test_case_generator = getattr(module, 'test_case_generator')
         for test_case in test_case_generator():
             test_suite.addTest(test_case)
 

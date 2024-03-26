@@ -1,9 +1,10 @@
 import System
 import Rhino
+import scriptcontext as sc
 
 from . import make_unit_test_TestCase_instance_generator
-from ..helpers import run_comp,get_user_obj_comp_from_or_add_to_canvas
-from ..fuzzers import random_Geometry
+from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
+from ..fuzzers import random_Geometry, random_int
 
 
 
@@ -18,9 +19,9 @@ if Rhino.RhinoDoc.ActiveDoc.Name:
 
 
 try:
-    GHRandomComponent = GH_Doc_components['Random']
-    GHGradientComponent = GH_Doc_components['Gradient']
-    GHDomainComponent = GH_Doc_components['Construct Domain (Dom)']
+    GHRandomComponent = GH_DOC_COMPONENTS['Random']
+    GHGradientComponent = GH_DOC_COMPONENTS['Gradient']
+    GHDomainComponent = GH_DOC_COMPONENTS['Dom']
 except KeyError:
     raise Exception("These tests require a Random Sequence component"
                     ", a Gradient component "
@@ -33,7 +34,7 @@ except KeyError:
 Recolour_Objects = get_user_obj_comp_from_or_add_to_canvas('Recolour_Objects')
 
 
-def test_recolouring_random_num_of_random_objs_random_cols(self):
+def recolouring_random_num_of_random_objs_random_cols(self):
 
     sc.doc = Rhino.RhinoDoc.ActiveDoc
     Geom = random_Geometry()
@@ -42,15 +43,17 @@ def test_recolouring_random_num_of_random_objs_random_cols(self):
 
     colours = []
 
+    L0, L1 = -123, 172
 
+    domain_retvals = run_comp(GHDomainComponent, A=L0, B=L1)
 
     
     # TODO: Work out how to pass in, and extract lists from Grasshopper components.
     for __ in range(N):
 
-        random_retvals = run_comp(GHRandomComponent, N=1, S = random_int(0, 250000))
+        random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=1, S = random_int(0, 250000))
 
-        gradient_retvals = run_comp(GHGradientComponent, L0=-123, L1 = 172, t = random_retvals['nums'])
+        gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
 
         col = gradient_retvals['C']
         colours.append(col.Value)
@@ -72,7 +75,11 @@ def test_recolouring_random_num_of_random_objs_random_cols(self):
             print('j: %s, Falsey obj: %s' % (j, obj))
             continue
         if self is not None:
-            self.assertEqual(obj.Attributes.ObjectColor, colour)
+            self.assertEqual(
+                obj.Attributes.ObjectColor
+                ,colour
+                ,msg='geom: %s\n expected: %s\n actual: %s\n guid: %s' % (geom, colour, obj.Attributes.ObjectColor, guid)
+                )
         print('%s: Correct colour: %s' % (guid, obj.Attributes.ObjectColor == colour))
       
 
@@ -80,6 +87,5 @@ def test_recolouring_random_num_of_random_objs_random_cols(self):
 
 
 test_case_generator = make_unit_test_TestCase_instance_generator(
-                            Class = RandomNumberOfRandomObjectsRandomlyRecolourTests,
-                            method = test_recolouring_random_num_of_random_objs_random_cols,
+                            method = recolouring_random_num_of_random_objs_random_cols,
                             )

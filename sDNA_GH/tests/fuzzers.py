@@ -29,6 +29,11 @@
 
 
 import os
+import random
+import inspect
+from collections import OrderedDict
+
+import rhinoscriptsyntax as rs
 
 # random is used here for fuzz testing, not Cryptography.  
 # But could Windows OS generated randomness be repeatable
