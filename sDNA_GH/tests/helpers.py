@@ -19,9 +19,11 @@ import rhinoscriptsyntax as rs
 import ghpythonlib.treehelpers as th
 from ghpythonlib.componentbase import executingcomponent as component 
 
-from sDNA_GH.tests.unit_tests.sDNA_GH_unit_tests import make_noninteractive_test_running_component_class
+from ..custom.skel.basic.ghdoc import ghdoc
+
 
 GH_DOC = ghdoc.Component.Attributes.DocObject.OnPingDocument()
+
 
 def GH_doc_components(doc = GH_DOC):
     return {component.NickName : component
@@ -104,14 +106,6 @@ def get_user_obj_comp_from_or_add_to_canvas(name):
     return GH_DOC_COMPONENTS[name]
 
 
-#info = Rhino.NodeInCode.Components.FindComponent('read')
-
-#assert info
-
-
-# Recolour_Objects = GH_Doc_components['Recolour_Objects'] 
-
-# print(type(Recolour_Objects))
 
 def run_comp(comp, **kwargs):
     
@@ -128,6 +122,29 @@ def run_comp(comp, **kwargs):
            }
 
 
+
+
+class FileAndStream(object):
+    def __init__(self, file, stream):
+        self.file = file
+        self.stream = stream
+        if hasattr(file, 'fileno'):
+            self.fileno = file.fileno
+        
+    def write(self, *args):
+        self.stream.write(*args)
+        self.file.write(*args)
+        
+    def flush(self, *args):
+        self.stream.flush()
+        self.file.flush()
+        
+    def __enter__(self):
+        self.file.__enter__()
+        return self
+        
+    def __exit__(self, *args):
+        return self.file.__exit__(*args)    
 
 
 class UDPStream(object):

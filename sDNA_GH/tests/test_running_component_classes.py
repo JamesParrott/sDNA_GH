@@ -1,4 +1,17 @@
 import os
+import sys
+import unittest
+import time
+import itertools
+import importlib
+
+from ghpythonlib.componentbase import executingcomponent as component
+
+from ..custom.skel.tools.helpers import checkers
+from .. import launcher
+from .helpers import FileAndStream, UDPStream
+
+
 
 tests_log_file_suffix = '_unit_test_results'
 
@@ -9,8 +22,7 @@ API_TEST_MODULES = [os.path.splitext(file_)[0]
                    ] 
 
 
-def make_test_running_component_class(Component
-                                     ,package_location
+def make_test_running_component_class(package_location
                                      ,run_launcher_tests = None
                                      ,output_stream = sys.stderr
                                      ,test_suite = ()
@@ -58,7 +70,7 @@ def make_test_running_component_class(Component
 
             with output_double_stream as o:
 
-                o.write('Unit test run started at: %s ... \n\n' % asctime())
+                o.write('Unit test run started at: %s ... \n\n' % time.asctime())
 
                 result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
                 
@@ -79,19 +91,18 @@ def make_test_running_component_class(Component
             
             # return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
             # False is for "ok" not "output"
-            return tuple(repeat(None, len(self.Params.Output) - 1))
+            return tuple(itertools.repeat(None, len(self.Params.Output) - 1))
 
 
 
-    class TestRunningComponent(Component):
-        _RunScript = Component.RunScript
+    class TestRunningComponent(component):
         RunScript = run_launcher_tests
 
 
     return TestRunningComponent
 
-def make_noninteractive_api_test_running_component_class(Component
-                                                    ,package_location
+def make_noninteractive_api_test_running_component_class(
+                                                     package_location
                                                     ,test_name
                                                     ,port=9999
                                                     ,host='127.0.0.1'
@@ -107,12 +118,15 @@ def make_noninteractive_api_test_running_component_class(Component
                     for name in module_names
                    ]
     
+    test_suite = unittest.TestSuite()
+
     for module_ in test_module:
         test_case_generator = getattr(module_, 'test_case_generator')
+        for test_case in test_case_generator():
+            test_suite.addTest(test_case)
 
     udp_stream = UDPStream(port, host)
-    return make_test_running_component_class(Component
-                                            ,package_location
+    return make_test_running_component_class(package_location
                                             ,output_stream = udp_stream
                                             ,test_suite = test_suite
                                             )

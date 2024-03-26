@@ -1,4 +1,6 @@
 import os
+import unittest
+
 
 def make_unit_test_TestCase_instance_generator(
     Class,

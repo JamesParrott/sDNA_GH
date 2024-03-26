@@ -409,13 +409,11 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
         MyComponent = test_runners.make_test_running_component_class(
-                 MyComponent
-                ,package_location = sDNA_GH_search_path
+                package_location = sDNA_GH_search_path
                 )
     elif nick_name.startswith(APITEST_PREFIX) and os.getenv('NUM_SDNA_GH_API_TESTS'):
-        MyComponent = test_runners.make_noninteractive_test_running_component_class(
-                 MyComponent
-                ,package_location = sDNA_GH_search_path
+        MyComponent = test_runners.make_noninteractive_api_test_running_component_class(
+                package_location = sDNA_GH_search_path
                 ,test_name = nick_name.partition(APITEST_PREFIX)[2]
                 )
     else:

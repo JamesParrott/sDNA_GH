@@ -58,6 +58,8 @@ from ...custom.skel.tools.helpers import checkers
 from ...custom import data_cruncher
 from ...custom import gdm_from_GH_Datatree
 
+from ..helpers import FileAndStream
+
 
 TMP = tempfile.gettempdir()
 
@@ -68,28 +70,6 @@ for SUB_DIR in ( 'sDNA_GH', 'tests'):
     if not os.path.isdir(DIR):
         os.mkdir(DIR)
 
-
-class FileAndStream():
-    def __init__(self, file, stream):
-        self.file = file
-        self.stream = stream
-        if hasattr(file, 'fileno'):
-            self.fileno = file.fileno
-        
-    def write(self, *args):
-        self.stream.write(*args)
-        self.file.write(*args)
-        
-    def flush(self, *args):
-        self.stream.flush()
-        self.file.flush()
-        
-    def __enter__(self):
-        self.file.__enter__()
-        return self
-        
-    def __exit__(self, *args):
-        return self.file.__exit__(*args)    
 
 
 

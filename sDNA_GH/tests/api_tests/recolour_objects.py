@@ -1,20 +1,33 @@
 import System
 import Rhino
 
-from . import make_unit_test_TestCase_instance_generator, get_user_obj_comp_from_or_add_to_canvas
-from .helpers import run_comp, get_or_add_comp, add_instance_of_userobject_to_canvas
-from .fuzzers import random_Geometry
+from . import make_unit_test_TestCase_instance_generator
+from ..helpers import run_comp,get_user_obj_comp_from_or_add_to_canvas
+from ..fuzzers import random_Geometry
+
+
+
+if Rhino.RhinoDoc.ActiveDoc.Name:
+    raise Exception("These tests require a clean Rhino Document to test in. "
+                    "To protect your document: save your Rhino file"
+                    ", create a new one (and don't save it)"
+                    ", run an Unload_sDNA component"
+                    ", and re-initialise this component to restart the tests. "
+                   )
 
 
 
 try:
     GHRandomComponent = GH_Doc_components['Random']
     GHGradientComponent = GH_Doc_components['Gradient']
+    GHDomainComponent = GH_Doc_components['Construct Domain (Dom)']
 except KeyError:
-    raise Exception("This test requires a Random Sequence component, and a Gradient component "
+    raise Exception("These tests require a Random Sequence component"
+                    ", a Gradient component "
+                    ", and a Construct Domain (Dom) component"
                     " on the canvas. "
-                    "Place these components and run an Unload_sDNA component "
-                    " then re-initialise this component to restart the test. "
+                    "Place these components, run an Unload_sDNA component"
+                    ", and then re-initialise this component to restart the tests. "
                    )
 
 Recolour_Objects = get_user_obj_comp_from_or_add_to_canvas('Recolour_Objects')
