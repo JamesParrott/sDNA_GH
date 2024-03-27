@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 __author__ = 'James Parrott'
-__version__ = '3.0.0.alpha_2'
+__version__ = '3.0.0.alpha_3'
 
 import os
 import logging

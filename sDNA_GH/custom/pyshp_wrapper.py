@@ -6,7 +6,7 @@
 # Copyright (c) [2021] [Cardiff University, a body incorporated
 # by Royal Charter and a registered charity (number:
 # 1136855) whose administrative offices are at 7th floor 30-
-# 36 Newport Road, UniversityCF24 0DE, Wales, UK]
+# 36 Newport Road, University CF24 0DE, Wales, UK]
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 
 
 __author__ = 'James Parrott'
-__version__ = '3.0.0.alpha_2'
+__version__ = '3.0.0.alpha_3'
 """ Reads .shp files, and parses data and writes .shp files from any iterable.   
 """
 
