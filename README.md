@@ -481,6 +481,12 @@ Not a tool in the same sense as the others (this has no tool function in sDNA). 
 cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests of the functions in the launcher, can also be added to the launcher code. 
 
 
+###### sDNA_GH_API_test_xxxx
+
+These components are not provided with releases. But for developers, launcher components with 
+this name will run API test "xxxx" (xxxx can be "all" to run all of them)
+
+
 <!--
 ###### Build_components 
 Easily build all the other components for the sDNA installation provided.  User Objects still need to be built manually, but components are all the same launcher code in a Gh_Python component, but with different names (and docstring summary lines).  
@@ -593,6 +599,27 @@ sDNA_GH 3.0.0.alpha_1 includes static copies of the following Python packages:
 [toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in Python 3.11) and tomli_w, with a few small extras.
 
 [mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a tested, striped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
+
+
+### Testing.
+
+#### Unit tests.
+Most of the code in sDNA_GH is coupled with the APIs of sDNA and Rhino and Grasshopper, and does not carry out calculations of significant complexity (to avoid unnecessarily slowing the user's machine).  
+However the code in data_cruncher.py is a little more complex, and so is important to test.  Its 
+unit tests can be run within Grasshopper by placing a self_test component (with a test tube icon under Extras).
+
+#### API Tests.
+The API Tests can be run locally from within Rhino by opening `test_cases\Rhino_8_API_tests.gh`.  They can also be run locally from the cmd command line by running `python .\test_cases\run_api_tests.py` (Python >= 3.8 required), a script which launches Rhino, listens over UDP for 'stderr' output from the unittest process within Rhino, and attempts to return an error code indicating success or failure of the tests.  Test output is also saved to `test_cases\sDNA_GH_unit_test_results.log`.
+
+If RhinoCompute allows command line access, this could potentially be developed into a cloud CI pipeline.  
+
+#### Iteration.
+When working on the source tree outside of Rhino, if no changes to `.\launcher.py` have been made (that would neccessitate running `.\build_components.bat`), then `.\create_install_and_test_release.bat` can be run to create a release from the current source tree (and whatever component launcher files are there from a previous build), install it, and run the API tests on it.
+
+#### Other Tests.
+Grasshopper is a visual programming language.  It has been challenging to run a test framework within it
+it from a local command line, let alone a modern CI/CD system.  So unfortunately all other test Grasshopper definitions must be opened manually.  They are included as examples for the end user.
+
 
 
 ### Contributions.
