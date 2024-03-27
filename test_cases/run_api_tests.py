@@ -6,8 +6,8 @@ import pathlib
 import socketserver
 import multiprocessing
 import subprocess
-
-from collections import deque
+from typing import Optional
+# from collections import deque
 
 
 
@@ -19,14 +19,16 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
     when sending data back via sendto().
     """
 
-    last_output = deque([], maxlen=300)
+    quit_on = 'SDNA_GH_TESTS_FAILED'
 
     def handle(self):
         data = self.request[0].strip()
         socket = self.request[1]
         output = data.decode('utf-8')
         print(output)
-        self.__class__.last_output.append(output)
+        if output == self.quit_on:
+            sys.exit(1)
+        # self.__class__.last_output.append(output)
         # socket.sendto(data.upper(), self.client_address)
 
 def start_UDP_server():
@@ -61,15 +63,19 @@ if __name__ == '__main__':
                            ,env = env
                            )
 
-    # p.join()
+    p.terminate()
 
     print(f'{result.returncode=}')
+    print(f'{p.exitcode=}')
 
-    print(MyUDPHandler.last_output)
-    print('SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output)[-100:])
+    # print(MyUDPHandler.last_output)
+    # print('SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output)[-100:])
 
-    if result.returncode != 0 or 'SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output):
-        raise Exception('Error during testing and/or some tests not passed.  Retcode: %s' % result.returncode)
+    if result.returncode != 0 or p.exitcode: #'SDNA_GH_TESTS_FAILED' in ''.join(MyUDPHandler.last_output):
+        raise Exception('Some tests were failed (or an error occurred during testing). \n'
+                        f'Test runner retcode: {result.returncode}\n'
+                        f'Test output server exitcode: {p.exitcode}\n'
+                        )
 
 
     sys.exit(0)

@@ -33,9 +33,19 @@ except KeyError:
 
 Recolour_Objects = get_user_obj_comp_from_or_add_to_canvas('Recolour_Objects')
 
+# Run now to prevent the first test spuriously failing.
+#   
+# The Recolour_Objects component needs to run RunScript, to 
+# add its params etc. before we can test it.  
+# 
+# This call can be removed if a test fail is needed 
+# e.g. in dev, to test the result of a test failure.
+run_comp(Recolour_Objects)
 
 def recolouring_random_num_of_random_objs_random_cols(self):
-
+    # Can be called with None or used as a unittest.TestCase 
+    # method, if assigned on to an instance at run-time, dynamically.
+    # Allows configurable fuzz testing and parametric testing.
     sc.doc = Rhino.RhinoDoc.ActiveDoc
     Geom = random_Geometry()
 
@@ -63,10 +73,8 @@ def recolouring_random_num_of_random_objs_random_cols(self):
 
     run_comp(Recolour_Objects, go=True, Data=colours, Geom=Geom)
 
-    j = 0
-    for geom, colour in zip(Geom, colours):
+    for j, (geom, colour) in enumerate(zip(Geom, colours), start=1):
         guid = System.Guid(geom)
-        j += 1
         if not guid:
             print('j: %s, Falsey guid: %s' % (j, guid))
             continue
@@ -74,12 +82,15 @@ def recolouring_random_num_of_random_objs_random_cols(self):
         if not obj:
             print('j: %s, Falsey obj: %s' % (j, obj))
             continue
+
         if self is not None:
             self.assertEqual(
                 obj.Attributes.ObjectColor
                 ,colour
-                ,msg='geom: %s\n expected: %s\n actual: %s\n guid: %s' % (geom, colour, obj.Attributes.ObjectColor, guid)
-                )
+                ,msg=('\n geom: %s\n test number: %s\n expected: %s\n actual: %s\n guid: %s' 
+                        % (Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid), j, colour, obj.Attributes.ObjectColor, guid)
+                     )  
+                )   
         print('%s: Correct colour: %s' % (guid, obj.Attributes.ObjectColor == colour))
       
 

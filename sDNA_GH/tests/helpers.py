@@ -114,17 +114,6 @@ def add_instance_of_userobject_to_canvas(name, plugin_files = None, comp_number=
 
 
 
-
-def get_user_obj_comp_from_or_add_to_canvas(name):
-    
-    if name not in GH_DOC_COMPONENTS:
-        comp = add_instance_of_userobject_to_canvas(name)
-        GH_DOC_COMPONENTS[name] = comp
-
-    return GH_DOC_COMPONENTS[name]
-
-
-
 def run_comp(comp, **kwargs):
     
     comp.ClearData()
@@ -134,12 +123,19 @@ def run_comp(comp, **kwargs):
             set_data_on(param, kwargs[param.NickName])
     comp.CollectData()
     comp.ComputeData()
-    
+
     return {param.NickName : get_data_from(param) 
             for param in comp.Params.Output
            }
 
 
+def get_user_obj_comp_from_or_add_to_canvas(name):
+    
+    if name not in GH_DOC_COMPONENTS:
+        comp = add_instance_of_userobject_to_canvas(name)
+        GH_DOC_COMPONENTS[name] = comp
+
+    return GH_DOC_COMPONENTS[name]
 
 
 class FileAndStream(object):
