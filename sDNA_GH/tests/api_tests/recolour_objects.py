@@ -91,15 +91,21 @@ def recolouring_random_num_of_random_objs_random_cols(self):
     domain_retvals = run_comp(GHDomainComponent, A=L0, B=L1)
 
     
+    random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=N, S = random_int(0, 250000))
+
+    gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
+
+    colours = gradient_retvals['C']
+
     # TODO: Work out how to pass in, and extract lists from Grasshopper components.
-    for __ in range(N):
+    # for __ in range(N):
 
-        random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=1, S = random_int(0, 250000))
+    #     random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=1, S = random_int(0, 250000))
 
-        gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
+    #     gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
 
-        col = gradient_retvals['C']
-        colours.append(col.Value)
+    #     col = gradient_retvals['C']
+    #     colours.append(col.Value)
 
 
 
@@ -120,8 +126,9 @@ def recolouring_random_num_of_random_objs_random_cols(self):
             self.assertEqual(
                 obj.Attributes.ObjectColor
                 ,colour
-                ,msg=('\n geom: %s\n test number: %s\n expected: %s\n actual: %s\n guid: %s' 
-                        % (Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid), j, colour, obj.Attributes.ObjectColor, guid)
+                ,msg=('\n obj: %s\n test number: %s\n expected: %s\n actual: %s\n guid: %s' 
+                        # % (Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid), j, colour, obj.Attributes.ObjectColor, guid)
+                        % (obj, j, colour, obj.Attributes.ObjectColor, guid)
                      )  
                 )   
         print('%s: Correct colour: %s' % (guid, obj.Attributes.ObjectColor == colour))

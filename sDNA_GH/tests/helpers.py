@@ -78,11 +78,34 @@ GH_DOC_COMPONENTS = GH_doc_components()
 
 def set_data_on(param, val):
     param.ClearData()
-    param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), 0, val)
+    if param.Access == Grasshopper.Kernel.GH_ParamAccess.list and isinstance(val, (list, tuple)):
+        for i, item in enumerate(val):
+            param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), i, item)
+    # elif param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
+    #     param.AddVolatileDataTree(val)
+    else: #if param.Access == Grasshopper.Kernel.GH_ParamAccess.item:
+        param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), 0, val)
 
+    # raise NotImplementedError('Unsupported Param.Access value %s. '
+    #                          +'Supported: item, list and tree. '
+    #                          % param.Access
+    #                          )
 def get_data_from(param):
-    branch = Grasshopper.DataTree[object](param.VolatileData).Branch(0)
-    return branch[0] if branch else None
+    if param.Access == Grasshopper.Kernel.GH_ParamAccess.item:
+        branch = Grasshopper.DataTree[object](param.VolatileData).Branch(0)
+        return branch[0] if branch else None
+    elif param.Access == Grasshopper.Kernel.GH_ParamAccess.list:
+        return list(param.VolatileData)
+    elif param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
+        return param.VolatileData
+
+    raise NotImplementedError('Unsupported Param.Access value %s. '
+                             +'Supported: item, list and tree. '
+                             % param.Access
+                             )
+    
+
+    
 
 
 def all_docs_comps():

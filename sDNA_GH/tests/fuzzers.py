@@ -132,13 +132,15 @@ random_funcs = OrderedDict([
                      ])
 
 
-def random_Geometry():
+def random_Geometry(gens = None):
 
     N = random_int(1, 14)
 
+    gens = gens or OBJECT_GENERATORS
+
     Geom = []
     for __ in range(N):
-        obj_gen = random.choice(OBJECT_GENERATORS)
+        obj_gen = random.choice(gens)
         kwargs = {}
         for arg in needed_args(obj_gen):
             names_and_random_funcs = ((name, v) 
