@@ -93,7 +93,11 @@ def recolouring_random_num_of_random_objs_random_cols(self):
     
     random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=N, S = random_int(0, 250000))
 
+    # raise Exception('random, type: %s, val: %s' % (type(random_retvals), random_retvals))
+
     gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
+
+    # raise Exception('random, type: %s, val: %s' % (type(gradient_retvals), gradient_retvals))
 
     colours = gradient_retvals['C']
 
@@ -122,13 +126,20 @@ def recolouring_random_num_of_random_objs_random_cols(self):
             print('j: %s, Falsey obj: %s' % (j, obj))
             continue
 
+        # Just test the numbers.
+        # It would be nice, but we don't need to require that both 
+        # colours are of exactly the same type (from our test machinery
+        # and the attribute on the recoloured object).  
+        expected = colour.Value
+        actual = obj.Attributes.ObjectColor
+
         if self is not None:
             self.assertEqual(
-                obj.Attributes.ObjectColor
-                ,colour
+                 expected
+                ,actual
                 ,msg=('\n obj: %s\n test number: %s\n expected: %s\n actual: %s\n guid: %s' 
                         # % (Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid), j, colour, obj.Attributes.ObjectColor, guid)
-                        % (obj, j, colour, obj.Attributes.ObjectColor, guid)
+                        % (obj, j, expected, actual, guid)
                      )  
                 )   
         print('%s: Correct colour: %s' % (guid, obj.Attributes.ObjectColor == colour))

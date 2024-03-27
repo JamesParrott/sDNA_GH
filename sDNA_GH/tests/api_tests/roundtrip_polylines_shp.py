@@ -65,11 +65,12 @@ run_comp(Write_Shp)
 run_comp(Read_Shp)
 
 
-def get_polyline(polyline_guid):
+def get_polyline(id):
+    guid = System.Guid(id)
     geom = sc.doc.Objects.FindGeometry(guid)
     success, polyline = geom.TryGetPolyline()
     if not success:
-        raise Exception('Could not get polyline for geom: %s, guid: %s' % (geom, polyline_guid))
+        raise Exception('Could not get polyline for geom: %s, guid: %s' % (geom, guid))
     return polyline
 
 
@@ -89,14 +90,15 @@ def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
     # TODO: Work out how to pass in, and extract lists from Grasshopper components.
     write_shp_retvals = run_comp(Write_Shp, go = True, Geom = Geom)
 
-    read_shp_retvals = run_comp(Read_Shp, go = True, file = write_shp_retvals['file'])
+    read_shp_retvals = run_comp(Read_Shp, go = True, bake = True, file = write_shp_retvals['file'])
 
 
     for j, (expected_initial_geom, actual_geom) in enumerate(zip(Geom, read_shp_retvals['Geom']), start=1):
-        actual_guid = System.Guid(actual_geom)
+        # actual_guid = System.Guid(actual_geom)
 
 
-        expected, actual = get_polyline(expected_initial_geom), get_polyline(actual_guid)
+        expected = get_polyline(expected_initial_geom)
+        actual = get_polyline(actual_geom)
 
         if self is not None:
             self.assertAlmostEqual(
@@ -113,6 +115,6 @@ def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
 
 
 
-test_case_generatore = make_unit_test_TestCase_instance_generator(
+test_case_generator = make_unit_test_TestCase_instance_generator(
                             method = roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile,
                             )
