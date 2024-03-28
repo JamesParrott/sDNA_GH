@@ -78,39 +78,24 @@ GH_DOC_COMPONENTS = GH_doc_components()
 
 def set_data_on(param, val):
     param.ClearData()    
-    # if param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
-    #     param.AddVolatileDataTree(val)
-    # if param.Access == Grasshopper.Kernel.GH_ParamAccess.list and 
+
     if isinstance(val, (list, tuple)):
         for i, item in enumerate(val):
             param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), i, item)
-    # elif param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
-    #     param.AddVolatileDataTree(val)
-    else: #if param.Access == Grasshopper.Kernel.GH_ParamAccess.item:
+    else: 
         param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), 0, val)
 
-    # raise NotImplementedError('Unsupported Param.Access value %s. '
-    #                          +'Supported: item, list and tree. '
-    #                          % param.Access
-    #                          )
+
 def get_data_from(param):
 
-    
-    # if param.Access == Grasshopper.Kernel.GH_ParamAccess.list:
-    #     return list(param.VolatileData)
-
-    # elif param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
-    #     return param.VolatileData
     data_tree = Grasshopper.DataTree[object](param.VolatileData)
-    # if param.VolatileDataCount >= 1:
-    if data_tree.DataCount >= 1:
+
+    if data_tree.DataCount >= 1: # Alternative: param.VolatileDataCount >= 1 
         return list(data_tree.AllData())
     else:
         branch = data_tree.Branch(0)
         return branch[0] if branch else None
-    # if param.Access == Grasshopper.Kernel.GH_ParamAccess.item:
-    #     branch = Grasshopper.DataTree[object](param.VolatileData).Branch(0)
-    #     return branch[0] if branch else None
+
     
 
     raise NotImplementedError('Unsupported Param.Access value %s. '

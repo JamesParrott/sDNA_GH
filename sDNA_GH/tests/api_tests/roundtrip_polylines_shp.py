@@ -30,11 +30,14 @@
 __author__ = 'James Parrott'
 __version__ = '3.0.0.alpha_3'
 
+import itertools
 
 import System
 import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
+
+from ...custom.skel.basic.ghdoc import ghdoc
 
 from . import make_unit_test_TestCase_instance_generator
 from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
@@ -67,7 +70,7 @@ run_comp(Read_Shp)
 
 def get_polyline(id):
     guid = System.Guid(id)
-    geom = sc.doc.Objects.FindGeometry(guid)
+    geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid)
     success, polyline = geom.TryGetPolyline()
     if not success:
         raise Exception('Could not get polyline for geom: %s, guid: %s' % (geom, guid))
@@ -81,35 +84,36 @@ def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
     sc.doc = Rhino.RhinoDoc.ActiveDoc
     Geom = random_Geometry(gens = [rs.AddPolyline,])
 
-    # N = len(Geom)
+    Curves = [rs.PolylineVertices(geom) for geom in Geom]
 
 
-    
-    # for __ in range(N):
-
-    # TODO: Work out how to pass in, and extract lists from Grasshopper components.
     write_shp_retvals = run_comp(Write_Shp, go = True, Geom = Geom)
 
-    read_shp_retvals = run_comp(Read_Shp, go = True, bake = True, file = write_shp_retvals['file'])
+    sc.doc = ghdoc
+    read_shp_retvals = run_comp(Read_Shp, go = True, file = write_shp_retvals['file'])
 
+    Shp_Geom = read_shp_retvals['Geom']
 
-    for j, (expected_initial_geom, actual_geom) in enumerate(zip(Geom, read_shp_retvals['Geom']), start=1):
-        # actual_guid = System.Guid(actual_geom)
+    for j, (expected, actual_geom) in enumerate(zip(Curves, Shp_Geom), start=1):
 
-
-        expected = get_polyline(expected_initial_geom)
-        actual = get_polyline(actual_geom)
+        success, actual = actual_geom.Value.TryGetPolyline() #get_polyline(actual_geom)
+        
 
         if self is not None:
-            self.assertAlmostEqual(
-                 expected
-                ,actual
-                ,msg=(' test number: %s\n expected: %s, guid: %s\n actual: %s\n guid: %s' 
-                        % (j, expected, expected_initial_geom, actual, actual_guid)
-                     )  
-                )
+            self.assertTrue(success)
+            msg = (' test number: %s\n expected: %s\n actual: %s\n' 
+                  % (j, expected, actual)
+                  )
+            for point_ex, point_act in itertools.zip_longest(expected, actual, fillvalue = None):
+                self.assertAlmostEqual(
+                    point_ex
+                    ,point_act
+                    ,msg=  msg
+                    )
         else:
-            print('%s: Correctly round tripped: %s' % (actual_guid, expected == actual))
+            print('Expected: %s, Actual: %s: Correctly round tripped: %s' 
+                 % (expected, actual, expected == actual)
+                 )
       
 
 
