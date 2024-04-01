@@ -101,7 +101,7 @@ def roundtrip_UserText(self):
     Actual_Data_list = th.tree_to_list(Data_read_from_geom)
 
 
-    for j, ((k_exp, v_exp), (k_act, v_act)) in enumerate(zip(zip(*Data_list), zip(*Actual_Data_list), start=1)):
+    for j, ((k_exp, v_exp), (k_act, v_act)) in enumerate(zip(zip(*Data_list), zip(*Actual_Data_list)), start=1):
 
         for expected, actual, name in ((k_exp, k_act, 'Keys')
                                       ,(v_exp, v_act, 'Vals')):
