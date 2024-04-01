@@ -2349,7 +2349,7 @@ def write_dict_to_UserText_on_Rhino_obj(d
     if options.uuid_field in d:
         obj = d.pop( options.uuid_field )
     
-    for key in d:
+    for key, val in d.items():
 
         s = options.output_key_str
         UserText_key_name = s.format(name = key
@@ -2372,7 +2372,7 @@ def write_dict_to_UserText_on_Rhino_obj(d
                             + str(rhino_obj)
                             )
 
-        rs.SetUserText(rhino_obj, UserText_key_name, str( d[key] ), False)          
+        rs.SetUserText(rhino_obj, UserText_key_name, str(val), False)          
 
 
 

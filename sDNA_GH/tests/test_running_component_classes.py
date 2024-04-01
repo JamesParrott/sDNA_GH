@@ -51,8 +51,9 @@ API_TEST_MODULES = [os.path.splitext(file_)[0]
                     for file_ in os.listdir(os.path.join(os.path.dirname(__file__), 'api_tests'))
                     if file_.endswith('.py')
                     if file_ not in ('__init__.py')
-                   ] 
+                   ]
 
+print('API_TEST_MODULES: %s' % API_TEST_MODULES)
 
 def make_test_running_component_class(package_location
                                      ,run_launcher_tests = None

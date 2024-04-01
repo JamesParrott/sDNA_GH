@@ -5,11 +5,6 @@
 
 # MIT License
 
-# Copyright (c) [2021] [Cardiff University, a body incorporated
-# by Royal Charter and a registered charity (number:
-# 1136855) whose administrative offices are at 7th floor 30-
-# 36 Newport Road, University CF24 0DE, Wales, UK]
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -90,6 +85,8 @@ def get_data_from(param):
 
     data_tree = Grasshopper.DataTree[object](param.VolatileData)
 
+    if str(param.Access) == 'tree':
+        return data_tree
     if data_tree.DataCount >= 1: # Alternative: param.VolatileDataCount >= 1 
         return list(data_tree.AllData())
     else:

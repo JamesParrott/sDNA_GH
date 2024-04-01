@@ -36,12 +36,13 @@ import System
 import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
+from ghpythonlib import treehelpers as th
 
 from ...custom.skel.basic.ghdoc import ghdoc
 
 from . import make_unit_test_TestCase_instance_generator
 from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
-from ..fuzzers import random_Geometry, random_int
+from ..fuzzers import random_Geometry, random_int, random_string
 
 
 
@@ -54,8 +55,8 @@ if Rhino.RhinoDoc.ActiveDoc.Name:
                    )
 
 
-Write_Shp = get_user_obj_comp_from_or_add_to_canvas('Write_Shp')
-Read_Shp = get_user_obj_comp_from_or_add_to_canvas('Read_Shp')
+Write_Usertext = get_user_obj_comp_from_or_add_to_canvas('Write_Usertext')
+Read_Usertext = get_user_obj_comp_from_or_add_to_canvas('Read_Usertext')
 
 # Run now to prevent the first test spuriously failing.
 #   
@@ -64,61 +65,63 @@ Read_Shp = get_user_obj_comp_from_or_add_to_canvas('Read_Shp')
 # 
 # This call can be removed if a test fail is needed 
 # e.g. in dev, to test the result of a test failure.
-run_comp(Write_Shp)
-run_comp(Read_Shp)
+run_comp(Write_Usertext)
+run_comp(Read_Usertext)
 
 
-def get_polyline(id):
-    guid = System.Guid(id)
-    geom = Rhino.RhinoDoc.ActiveDoc.Objects.FindGeometry(guid)
-    success, polyline = geom.TryGetPolyline()
-    if not success:
-        raise Exception('Could not get polyline for geom: %s, guid: %s' % (geom, guid))
-    return polyline
 
-
-def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
+def roundtrip_UserText(self):
     # Can be called with None or used as a unittest.TestCase 
-    # method, if assigned on to an instance at run-time, dynamically.
+    # method, if dynamically assigned on to an instance at run-time.
     # Allows configurable fuzz testing and parametric testing.
     sc.doc = Rhino.RhinoDoc.ActiveDoc
-    Geom = random_Geometry(gens = [rs.AddPolyline,])
 
-    Curves = [rs.PolylineVertices(geom) for geom in Geom]
+    Geom = random_Geometry()
+    keys_lists, vals_lists = [], []
+    Data_list = [keys_lists, vals_lists]
+    for __ in range(len(Geom)):
 
+        unique_keys = set((random_string() for ___ in range(random_int())))
 
-    write_shp_retvals = run_comp(Write_Shp, go = True, Geom = Geom)
-
-    sc.doc = ghdoc
-    read_shp_retvals = run_comp(Read_Shp, go = True, file = write_shp_retvals['file'])
-
-    Shp_Geom = read_shp_retvals['Geom']
-
-    for j, (expected, actual_geom) in enumerate(zip(Curves, Shp_Geom), start=1):
-
-        success, actual = actual_geom.Value.TryGetPolyline() #get_polyline(actual_geom)
+        keys = list(unique_keys)
+        vals = [random_string() for __ in range(len(keys))]
         
+        keys_lists.append(keys)
+        vals_lists.append(vals)
 
-        if self is not None:
-            self.assertTrue(success)
-            msg = (' test number: %s\n expected: %s\n actual: %s\n' 
-                  % (j, expected, actual)
+    Data = th.list_to_tree(Data_list)
+
+
+    write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = Data, output_key_str='{name}')
+
+    read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
+
+    Data_read_from_geom = read_usertext_retvals['Data']
+
+    Actual_Data_list = th.tree_to_list(Data_read_from_geom)
+
+
+    for j, ((k_exp, v_exp), (k_act, v_act)) in enumerate(zip(zip(*Data_list), zip(*Actual_Data_list), start=1)):
+
+        for expected, actual, name in ((k_exp, k_act, 'Keys')
+                                      ,(v_exp, v_act, 'Vals')):
+            msg = ('%s test number: %s. \n Exp - Actual: %s\n Actual - Exp: %s\n' 
+                  % (name, j, set(expected) - set(actual), set(actual) - set(expected))
                   )
-            for point_ex, point_act in itertools.zip_longest(expected, actual, fillvalue = None):
-                self.assertAlmostEqual(
-                    point_ex
-                    ,point_act
-                    ,msg=  msg
-                    )
-        else:
-            print('Expected: %s, Actual: %s: Correctly round tripped: %s' 
-                 % (expected, actual, expected == actual)
-                 )
+
+
+            if self is not None:
+                self.assertEqual(expected
+                                ,actual
+                                ,msg = msg
+                                )
+            else:
+                print(msg)
       
 
 
 
 
-test_case_generatore = make_unit_test_TestCase_instance_generator(
-                            method = roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile,
+test_case_generator = make_unit_test_TestCase_instance_generator(
+                            method = roundtrip_UserText,
                             )
