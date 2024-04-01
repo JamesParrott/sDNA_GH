@@ -148,6 +148,6 @@ def recolouring_random_num_of_random_objs_random_cols(self):
 
 
 
-test_case_generator = make_unit_test_TestCase_instance_generator(
+test_case_generatorr = make_unit_test_TestCase_instance_generator(
                             method = recolouring_random_num_of_random_objs_random_cols,
                             )

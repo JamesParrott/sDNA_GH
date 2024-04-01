@@ -2380,8 +2380,17 @@ class UsertextWriter(sDNA_GH_Tool):
 
     Options = UsertextWriterOptions
 
-    component_inputs = ('Geom', 'Data')
+    component_inputs = ('Geom', 'Data', 'output_key_str')
 
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('output_key_str', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('The format string of the Usertext keys. '
+                                           +'Supports "{name}" and "{datetime}" fields. '
+                                           +'Default: %(output_key_str)s'
+                                           )
+                            ))
+                   )
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
         if opts is None:

@@ -91,6 +91,15 @@ def roundtrip_UserText(self):
 
     Data = th.list_to_tree(Data_list)
 
+    gh_struct = Grasshopper.Kernel.Data.GH_Structure[Grasshopper.Kernel.Types.GH_String]()
+
+    for path in Data.Paths:
+        for i, item in enumerate(Data.Branch(path)):
+            gh_str = Grasshopper.Kernel.Types.GH_String(item)
+            gh_struct.Append(gh_str, path)
+
+    write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct, output_key_str='{name}')
+
 
     write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = Data, output_key_str='{name}')
 
