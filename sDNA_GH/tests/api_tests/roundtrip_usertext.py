@@ -34,6 +34,7 @@ import itertools
 
 import System
 import Rhino
+import Grasshopper
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 from ghpythonlib import treehelpers as th
@@ -99,9 +100,6 @@ def roundtrip_UserText(self):
             gh_struct.Append(gh_str, path)
 
     write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct, output_key_str='{name}')
-
-
-    write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = Data, output_key_str='{name}')
 
     read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
 

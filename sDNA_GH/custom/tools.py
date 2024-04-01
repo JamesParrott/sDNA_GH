@@ -2389,7 +2389,7 @@ class UsertextWriter(sDNA_GH_Tool):
                                            +'Supports "{name}" and "{datetime}" fields. '
                                            +'Default: %(output_key_str)s'
                                            )
-                            ))
+                            )),
                    )
     def __call__(self, gdm, opts):
         #type(str, dict, dict) -> int, str, dict, list
