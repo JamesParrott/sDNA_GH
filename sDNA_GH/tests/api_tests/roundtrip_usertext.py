@@ -101,9 +101,40 @@ def roundtrip_UserText(self):
 
     write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct, output_key_str='{name}')
 
-    read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
+    # read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
 
-    Data_read_from_geom = read_usertext_retvals['Data']
+    # for path in Data.Paths:
+    #     for i, item in enumerate(Data.Branch(path)):
+    #         gh_str = Grasshopper.Kernel.Types.GH_String(item)
+    #         gh_struct.Append(gh_str, path)
+
+    # write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct) #, output_key_str='{name}')
+
+#    return
+
+#    Data_Read = next(param
+#                     for param in Read_Usertext.Params.Output
+#                     if param.NickName == 'Data'
+#                    )
+#                    
+#    print('Badoom')
+#    print(dir(Data_Read))
+    
+    read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
+    
+    Data_Read = next(param
+                 for param in Read_Usertext.Params.Output
+                 if param.NickName == 'Data'
+                )
+                
+#    Data_read_from_geom = Grasshopper.DataTree[object](Data_Read.VolatileData)
+    Data_read_from_geom = Grasshopper.DataTree[object]()
+    for path in Data_Read.VolatileData.Paths:
+        branch = Data_Read.VolatileData.Branch[path]
+        for item in branch:
+            Data_read_from_geom.Add(item, path)
+
+    # Data_read_from_geom = read_usertext_retvals['Data']
 
     Actual_Data_list = th.tree_to_list(Data_read_from_geom)
 
@@ -112,16 +143,17 @@ def roundtrip_UserText(self):
 
         for expected, actual, name in ((k_exp, k_act, 'Keys')
                                       ,(v_exp, v_act, 'Vals')):
+            actual = set((str(gh_string) for gh_string in actual))
+            in_exp_not_act = set(expected) - set(actual)
+            in_act_not_exp = set(actual) - set(expected)
             msg = ('%s test number: %s. \n Exp - Actual: %s\n Actual - Exp: %s\n' 
-                  % (name, j, set(expected) - set(actual), set(actual) - set(expected))
+                  % (name, j, in_exp_not_act, in_act_not_exp)
                   )
 
 
             if self is not None:
-                self.assertEqual(expected
-                                ,actual
-                                ,msg = msg
-                                )
+                self.assertFalse(bool(in_exp_not_act), msg = msg)
+                self.assertFalse(bool(in_act_not_exp), msg = msg)
             else:
                 print(msg)
       

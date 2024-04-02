@@ -32,6 +32,8 @@ import random
 import inspect
 from collections import OrderedDict
 
+import System.Text
+
 import rhinoscriptsyntax as rs
 
 # random is used here for fuzz testing, not Cryptography.  
@@ -71,11 +73,32 @@ def random_nurbs_curve(length = None, degree = None):
     # https://developer.rhino3d.com/guides/opennurbs/nurbs-geometry-overview/
     degree = degree or random_int(1, length-1)
 
-    # The knots are a list of degree+N-1 numbers, where N is the number of control points. Sometimes this list of numbers is called the knot vector. In this term, the word vector does not mean 3‑D direction.
-    # This list of knot numbers must satisfy several technical conditions. The standard way to ensure that the technical conditions are satisfied is to require the numbers to stay the same or get larger as you go down the list and to limit the number of duplicate values to no more than the degree. For example, for a degree 3 NURBS curve with 11 control points, the list of numbers 0,0,0,1,2,2,2,3,7,7,9,9,9 is a satisfactory list of knots. The list 0,0,0,1,2,2,2,2,7,7,9,9,9 is unacceptable because there are four 2s and four is larger than the degree.
-    # The number of times a knot value is duplicated is called the knot’s multiplicity. In the preceding example of a satisfactory list of knots, the knot value 0 has multiplicity three, the knot value 1 has multiplicity one, the knot value 2 has multiplicity three, the knot value 3 has multiplicity one, the knot value 7 has multiplicity two, and the knot value 9 has multiplicity three. A knot value is said to be a full-multiplicity knot if it is duplicated degree many times. In the example, the knot values 0, 2, and 9 have full multiplicity. A knot value that appears only once is called a simple knot. In the example, the knot values 1 and 3 are simple knots.
-    # If a list of knots starts with a full multiplicity knot, is followed by simple knots, terminates with a full multiplicity knot, and the values are equally spaced, then the knots are called uniform. For example, if a degree 3 NURBS curve with 7 control points has knots 0,0,0,1,2,3,4,4,4, then the curve has uniform knots. The knots 0,0,0,1,2,5,6,6,6 are not uniform. Knots that are not uniform are called non‑uniform. The N and U in NURBS stand for non‑uniform and indicate that the knots in a NURBS curve are permitted to be non-uniform.
-    # Duplicate knot values in the middle of the knot list make a NURBS curve less smooth. At the extreme, a full multiplicity knot in the middle of the knot list means there is a place on the NURBS curve that can be bent into a sharp kink. For this reason, some designers like to add and remove knots and then adjust control points to make curves have smoother or kinkier shapes. Since the number of knots is equal to (N+degree‑1), where N is the number of control points, adding knots also adds control points and removing knots removes control points. Knots can be added without changing the shape of a NURBS curve. In general, removing knots will change the shape of a curve.
+    # """
+    # The knots are a list of degree+N-1 numbers, where N is the number of control points. 
+    # Sometimes this list of numbers is called the knot vector. In this term, the word vector does not mean 3‑D direction.
+    # This list of knot numbers must satisfy several technical conditions. 
+    # The standard way to ensure that the technical conditions are satisfied is to require the 
+    # numbers to stay the same or get larger as you go down the list and to limit the number of duplicate 
+    # values to no more than the degree. For example, for a degree 3 NURBS curve with 11 control points, 
+    # the list of numbers 0,0,0,1,2,2,2,3,7,7,9,9,9 is a satisfactory list of knots. 
+    # The list 0,0,0,1,2,2,2,2,7,7,9,9,9 is unacceptable because there are four 2s and four is larger than the degree.
+    # The number of times a knot value is duplicated is called the knot’s multiplicity. 
+    # In the preceding example of a satisfactory list of knots, the knot value 0 has multiplicity three, the knot value 1 has multiplicity one, the knot value 2 has multiplicity three, the knot value 3 has multiplicity one, the knot value 7 has multiplicity two, and the knot value 9 has multiplicity three. A knot value is said to be a full-multiplicity knot if it is duplicated degree many times. In the example, the knot values 0, 2, and 9 have full multiplicity. A knot value that appears only once is called a simple knot. In the example, the knot values 1 and 3 are simple knots.
+    # If a list of knots starts with a full multiplicity knot, is followed by simple knots, 
+    # terminates with a full multiplicity knot, and the values are equally spaced, then the knots are called uniform. 
+    # For example, if a degree 3 NURBS curve with 7 control points has knots 0,0,0,1,2,3,4,4,4, 
+    # then the curve has uniform knots. The knots 0,0,0,1,2,5,6,6,6 are not uniform. Knots that are not 
+    # uniform are called non‑uniform. The N and U in NURBS stand for non‑uniform and indicate that the 
+    # knots in a NURBS curve are permitted to be non-uniform.
+    # Duplicate knot values in the middle of the knot list make a NURBS curve less smooth. 
+    # At the extreme, a full multiplicity knot in the middle of the knot list means there is a 
+    # place on the NURBS curve that can be bent into a sharp kink. For this reason, some designers like to add and 
+    # remove knots and then adjust control points to make curves have smoother or kinkier shapes. 
+    # Since the number of knots is equal to (N+degree‑1), where N is the number of control points, 
+    # adding knots also adds control points and removing knots removes control points. 
+    # Knots can be added without changing the shape of a NURBS curve. 
+    # In general, removing knots will change the shape of a curve.
+    # """
     knots = []
 
     i = 0
@@ -94,9 +117,23 @@ try:
 except NameError:
     unichr = chr
 
+def valid_unicode_codepoint_or_empty_str(i):
+    if not System.Text.Rune.IsValid(i):
+        return ''
+        
+    return System.String(System.Text.Rune(i))
+
+
+
+# for lb, ub in [(0, 127), (0xFFFF-200, 0xFFFF), (0xFFFF+1812, 0xFFFF+1870)] + [
+#                 (i, i+400) for i in range(0x1FFFF, 0x10FFFF, 0x10000)]:
+# #    s = u''.join(System.String(System.Text.Rune(i)) for i in range(lb, ub))
+#     s = u''.join(valid_unicode_codepoint_or_empty_str(i) for i in range(lb, ub))
+
 def random_string(length = None):
     length = length or random_int()
-    return u''.join(unichr(random_int()) for __ in range(length))
+    return u''.join(valid_unicode_codepoint_or_empty_str(random_int(0, 0x10FFFF)) for __ in range(length))
+    # return u''.join(unichr(random_int(0, 0xFFFF)) for __ in range(length))
 
 
 OBJECT_GENERATORS = [rs.AddArc3Pt, rs.AddBox, rs.AddCircle3Pt, 

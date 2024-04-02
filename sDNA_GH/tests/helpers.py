@@ -89,7 +89,7 @@ def get_data_from(param):
     data_tree = Grasshopper.DataTree[object](param.VolatileData)
 
     if param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
-        return data_tree
+        return param.VolatileData
     if data_tree.DataCount >= 1: # Alternative: param.VolatileDataCount >= 1 
         return list(data_tree.AllData())
     else:
