@@ -123,18 +123,20 @@ def factory(obj_gens = None):
         
         read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
         
-        Data_Read = next(param
-                    for param in Read_Usertext.Params.Output
-                    if param.NickName == 'Data'
-                    )
+        # Data_Read = next(param
+        #             for param in Read_Usertext.Params.Output
+        #             if param.NickName == 'Data'
+        #             )
 
-        Data_read_from_geom = Grasshopper.DataTree[object]()
-        for path in Data_Read.VolatileData.Paths:
-            branch = Data_Read.VolatileData.Branch[path]
-            for item in branch:
-                Data_read_from_geom.Add(item, path)
+        # Data_read_from_geom = Grasshopper.DataTree[object]()
+        # for path in Data_Read.VolatileData.Paths:
+        #     branch = Data_Read.VolatileData.Branch[path]
+        #     for item in branch:
+        #         Data_read_from_geom.Add(item, path)
 
-        Actual_Data_list = th.tree_to_list(Data_read_from_geom)
+        Data_read_from_geom = read_usertext_retvals['Data']
+
+        Actual_Data_list = th.tree_to_list(Data_read_from_geom, retrieve_base = None)
 
 
         for j, ((k_exp, v_exp), (k_act, v_act)) in enumerate(zip(zip(*Data_list), zip(*Actual_Data_list)), start=1):

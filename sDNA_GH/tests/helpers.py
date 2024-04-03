@@ -87,10 +87,22 @@ def set_data_on(param, val):
 
 def get_data_from(param):
 
-    data_tree = Grasshopper.DataTree[object](param.VolatileData)
 
     if param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
-        return param.VolatileData
+        # return param.VolatileData
+
+
+        data_tree = Grasshopper.DataTree[object]()
+        for path in param.VolatileData.Paths:
+            branch = param.VolatileData.Branch[path]
+            for item in branch:
+                data_tree.Add(item, path)
+
+        return data_tree
+
+    
+    data_tree = Grasshopper.DataTree[object](param.VolatileData)
+    
     if data_tree.DataCount >= 1: # Alternative: param.VolatileDataCount >= 1 
         return list(data_tree.AllData())
     else:
