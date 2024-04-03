@@ -110,6 +110,7 @@ def make_test_running_component_class(package_location
                                         ,print_too = output_stream is not sys.stderr
                                         )
 
+
             with output_double_stream as o:
 
                 o.write('Unit test run started at: %s ... \n\n' % time.asctime())
@@ -125,7 +126,7 @@ def make_test_running_component_class(package_location
                     o.write('SDNA_GH_TESTS_FAILED')
 
 
-            if exit:
+            if exit and result.wasSuccessful():
                 exit_Rhino()
                 # exit_Rhino(23)
                 # exit_Rhino(not result.wasSuccessful())

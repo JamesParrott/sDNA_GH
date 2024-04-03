@@ -1673,10 +1673,11 @@ class UsertextReader(sDNA_GH_Tool):
         sc.doc = Rhino.RhinoDoc.ActiveDoc
         for sub_gdm in gdm:
             for obj in sub_gdm:
-                try:
-                    keys = rs.GetUserText(obj)
-                except ValueError:
-                    keys =[]
+                keys = rs.GetUserText(obj)
+                # try:
+                #     keys = rs.GetUserText(obj)
+                # except ValueError:
+                #     keys =[]
                 for key in keys:
                     val = rs.GetUserText(obj, key)
 

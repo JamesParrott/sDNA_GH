@@ -135,11 +135,13 @@ def random_string(length = None):
     return u''.join(valid_unicode_codepoint_or_empty_str(random_int(0, 0x10FFFF)) for __ in range(length))
     # return u''.join(unichr(random_int(0, 0xFFFF)) for __ in range(length))
 
+def random_torus(base, minor_radius, delta_radius):
+    return rs.AddTorus(base, minor_radius + delta_radius, minor_radius)
 
 OBJECT_GENERATORS = [rs.AddArc3Pt, rs.AddBox, rs.AddCircle3Pt, 
                      rs.AddCone, rs.AddCurve, rs.AddEllipse3Pt, rs.AddLine,
                      rs.AddPoint, rs.AddPolyline,
-                     rs.AddRectangle, rs.AddSphere, rs.AddSpiral, rs.AddTorus,
+                     rs.AddRectangle, rs.AddSphere, rs.AddSpiral, random_torus,
                      rs.AddTextDot, random_nurbs_curve
                      ]
 
@@ -166,7 +168,7 @@ random_funcs = OrderedDict([
 
 def random_Geometry(gens = None):
 
-    N = random_int(1, 14)
+    N = 1 #random_int(1, 14)
 
     gens = gens or OBJECT_GENERATORS
 
