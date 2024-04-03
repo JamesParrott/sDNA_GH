@@ -138,10 +138,11 @@ def random_string(length = None):
 def random_torus(base, minor_radius, delta_radius):
     return rs.AddTorus(base, minor_radius + delta_radius, minor_radius)
 
-OBJECT_GENERATORS = [rs.AddArc3Pt, rs.AddBox, rs.AddCircle3Pt, 
+OBJECT_GENERATORS = [rs.AddArc3Pt, #rs.AddBox, 
+                     rs.AddCircle3Pt, 
                      rs.AddCone, rs.AddCurve, rs.AddEllipse3Pt, rs.AddLine,
                      rs.AddPoint, rs.AddPolyline,
-                     rs.AddRectangle, rs.AddSphere, rs.AddSpiral, random_torus,
+                     rs.AddRectangle, rs.AddSphere, rs.AddSpiral, # random_torus,
                      rs.AddTextDot, random_nurbs_curve
                      ]
 
@@ -168,7 +169,7 @@ random_funcs = OrderedDict([
 
 def random_Geometry(gens = None):
 
-    N = 1 #random_int(1, 14)
+    N = random_int(1, 14)
 
     gens = gens or OBJECT_GENERATORS
 

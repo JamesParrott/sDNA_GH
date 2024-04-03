@@ -170,8 +170,7 @@ def factory(obj_gens = None):
                     print(msg)
     return roundtrip_UserText
 
-# Test Creating Tori
-roundtrip_UserText = factory(obj_gens = [OBJECT_GENERATORS[12],])
+roundtrip_UserText = factory()
 
 # import unittest
 # from ..fuzzers import OBJECT_GENERATORS

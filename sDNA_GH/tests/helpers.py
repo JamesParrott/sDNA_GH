@@ -74,8 +74,9 @@ GH_DOC_COMPONENTS = GH_doc_components()
 def set_data_on(param, val):
     param.ClearData()    
     print(param.Access)
-    if (param.Access == Grasshopper.Kernel.GH_ParamAccess.tree ):
-#        and isinstance(val, Grasshopper.DataTree[object])):
+    if (param.Access == Grasshopper.Kernel.GH_ParamAccess.tree
+        and isinstance(val, Grasshopper.DataTree[object])):
+        #
         param.AddVolatileDataTree(val)
     elif isinstance(val, (list, tuple)):
         for i, item in enumerate(val):
