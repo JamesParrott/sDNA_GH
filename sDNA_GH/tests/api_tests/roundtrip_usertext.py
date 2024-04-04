@@ -101,38 +101,9 @@ def factory(obj_gens = None):
                 gh_struct.Append(gh_str, path)
 
         write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct, output_key_str='{name}')
-
-        # read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
-
-        # for path in Data.Paths:
-        #     for i, item in enumerate(Data.Branch(path)):
-        #         gh_str = Grasshopper.Kernel.Types.GH_String(item)
-        #         gh_struct.Append(gh_str, path)
-
-        # write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct) #, output_key_str='{name}')
-
-        #    return
-
-        #    Data_Read = next(param
-        #                     for param in Read_Usertext.Params.Output
-        #                     if param.NickName == 'Data'
-        #                    )
-        #                    
-        #    print('Badoom')
-        #    print(dir(Data_Read))
         
         read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
         
-        # Data_Read = next(param
-        #             for param in Read_Usertext.Params.Output
-        #             if param.NickName == 'Data'
-        #             )
-
-        # Data_read_from_geom = Grasshopper.DataTree[object]()
-        # for path in Data_Read.VolatileData.Paths:
-        #     branch = Data_Read.VolatileData.Branch[path]
-        #     for item in branch:
-        #         Data_read_from_geom.Add(item, path)
 
         Data_read_from_geom = read_usertext_retvals['Data']
 
