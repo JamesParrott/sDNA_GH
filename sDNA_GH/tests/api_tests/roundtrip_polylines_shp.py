@@ -30,6 +30,7 @@
 __author__ = 'James Parrott'
 __version__ = '3.0.0.alpha_3'
 
+import os
 import itertools
 
 import System
@@ -89,8 +90,15 @@ def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
 
     write_shp_retvals = run_comp(Write_Shp, go = True, Geom = Geom)
 
+    shp_file = write_shp_retvals['file']
+
     sc.doc = ghdoc
-    read_shp_retvals = run_comp(Read_Shp, go = True, file = write_shp_retvals['file'])
+    read_shp_retvals = run_comp(Read_Shp, go = True, file = shp_file)
+
+    # Delete test artefacts.  The safety of this assumes
+    # Write_Shp has correctly avoided pre-existing files.
+    if os.path.isfile(shp_file):
+        os.remove(shp_file)
 
     Shp_Geom = read_shp_retvals['Geom']
 

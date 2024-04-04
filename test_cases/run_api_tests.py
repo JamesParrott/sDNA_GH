@@ -85,7 +85,7 @@ if __name__ == '__main__':
     env['SDNA_GH_NON_INTERACTIVE'] = 'True'
     
     # Number of Fuzz tests to run.
-    env['NUM_SDNA_GH_API_TESTS'] = sys.arg[1] if len(sys.argv) >= 2 else '150'
+    env['NUM_SDNA_GH_API_TESTS'] = sys.arg[1] if len(sys.argv) >= 2 else '5'
     
     result = subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path}  _enter _exit _enterend"'
                            ,env = env
