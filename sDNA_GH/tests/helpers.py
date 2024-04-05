@@ -71,22 +71,22 @@ def GH_doc_components(doc = GH_DOC):
 
 GH_DOC_COMPONENTS = GH_doc_components()
 
-def set_data_on(param, val):
-    param.ClearData()    
-    print(param.Access)
-    # "and isinstance(val, Grasshopper.DataTree[object])""
-    # mimicks Grasshopper support for passing a list into a Tree access param
-    if (param.Access == Grasshopper.Kernel.GH_ParamAccess.tree
-        and isinstance(val, Grasshopper.DataTree[object])):
-        #
-        param.AddVolatileDataTree(val)
-    elif isinstance(val, (list, tuple)):
-        for i, item in enumerate(val):
-            param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), i, item)
-    else: 
-        param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), 0, val)
+GH_TYPE_CONVERTERS = {str : [Grasshopper.Kernel.Types.GH_String]
+                     ,bool : [Grasshopper.Kernel.Types.GH_Boolean]
+                     ,int : [Grasshopper.Kernel.Types.GH_Integer]
+                     ,float : [Grasshopper.Kernel.Types.GH_Number]
+                     }
 
-def DataTree_to_DH_struct(data_tree, Type_ = None):
+def convert_GH_type_to_Python_type(x):
+    for PythonType, v in GH_TYPE_CONVERTERS.items():
+        for GH_Type in v:
+            if isinstance(x, GH_Type):
+                return PythonType(str(x))
+
+    return x
+
+
+def DataTree_to_GH_Struct(data_tree, Type_ = None):
     # https://mcneel.github.io/grasshopper-api-docs/api/grasshopper/html/T_Grasshopper_Kernel_Data_GH_Structure_1.htm
     #
     # https://mcneel.github.io/grasshopper-api-docs/api/grasshopper/html/T_Grasshopper_DataTree_1.htm
@@ -99,18 +99,38 @@ def DataTree_to_DH_struct(data_tree, Type_ = None):
             gh_str = Type_(item)
             gh_struct.Append(gh_str, path)
 
-def GH_struct_to_DataTree(gh_struct):
+    return gh_struct
+
+def GH_Struct_to_DataTree(gh_struct):
     # https://mcneel.github.io/grasshopper-api-docs/api/grasshopper/html/T_Grasshopper_Kernel_Data_GH_Structure_1.htm
     #
     # https://mcneel.github.io/grasshopper-api-docs/api/grasshopper/html/T_Grasshopper_DataTree_1.htm
     #
-        data_tree = Grasshopper.DataTree[object]()
-        for path in gh_struct.Paths:
-            branch = gh_struct.Branch[path]
-            for item in branch:
-                data_tree.Add(item, path)
+    data_tree = Grasshopper.DataTree[object]()
+    for path in gh_struct.Paths:
+        branch = gh_struct.Branch[path]
+        for item in branch:
+            data_tree.Add(item, path)
 
-        return data_tree
+    return data_tree
+
+
+def set_data_on(param, val, Type_ = None):
+    param.ClearData()    
+    print(param.Access)
+    # "and isinstance(val, Grasshopper.DataTree[object])""
+    # mimicks Grasshopper support for passing a list into a Tree access param
+    if (param.Access == Grasshopper.Kernel.GH_ParamAccess.tree
+        and isinstance(val, Grasshopper.DataTree[object])):
+        #
+        gh_struct = DataTree_to_GH_Struct(val, Type_)
+        param.AddVolatileDataTree(gh_struct)
+    elif isinstance(val, (list, tuple)):
+        for i, item in enumerate(val):
+            param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), i, item)
+    else: 
+        param.AddVolatileData(Grasshopper.Kernel.Data.GH_Path(0), 0, val)
+
 
 def get_data_from(param):
 
@@ -118,13 +138,13 @@ def get_data_from(param):
     if param.Access == Grasshopper.Kernel.GH_ParamAccess.tree:
         # return param.VolatileData
 
-        return GH_struct_to_DataTree(param.VolatileData)
+        return GH_Struct_to_DataTree(param.VolatileData)
 
     
     data_tree = Grasshopper.DataTree[object](param.VolatileData)
     
     if data_tree.DataCount >= 1: # Alternative: param.VolatileDataCount >= 1 
-        return list(data_tree.AllData())
+        return [convert_GH_type_to_Python_type(x) for x in data_tree.AllData()]
     else:
         branch = data_tree.Branch(0)
         return branch[0] if branch else None

@@ -90,15 +90,18 @@ def roundtrip_a_random_num_of_random_polylines_through_a_ShapeFile(self):
 
     write_shp_retvals = run_comp(Write_Shp, go = True, Geom = Geom)
 
-    shp_file = write_shp_retvals['file']
+    shp_file = write_shp_retvals['file'][0]
 
     sc.doc = ghdoc
     read_shp_retvals = run_comp(Read_Shp, go = True, file = shp_file)
 
     # Delete test artefacts.  The safety of this assumes
     # Write_Shp has correctly avoided pre-existing files.
-    if os.path.isfile(shp_file):
-        os.remove(shp_file)
+    shp_file_name = os.path.splitext(shp_file)[0]
+    for ext in ('shp', 'shx', 'dbf'):
+        shp_file_part = '%s.%s' % (shp_file_name, ext)
+        if os.path.isfile(shp_file_part):
+            os.remove(shp_file_part)
 
     Shp_Geom = read_shp_retvals['Geom']
 

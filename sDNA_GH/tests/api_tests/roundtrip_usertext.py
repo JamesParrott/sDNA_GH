@@ -42,7 +42,11 @@ from ghpythonlib import treehelpers as th
 from ...custom.skel.basic.ghdoc import ghdoc
 
 from . import make_unit_test_TestCase_instance_generator
-from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
+from ..helpers import (run_comp,
+                       get_user_obj_comp_from_or_add_to_canvas,
+                       GH_DOC_COMPONENTS,
+                       )
+
 from ..fuzzers import random_Geometry, random_int, random_string, OBJECT_GENERATORS
 
 
@@ -93,22 +97,25 @@ def factory(obj_gens = None):
 
         Data = th.list_to_tree(Data_list)
 
-        gh_struct = Grasshopper.Kernel.Data.GH_Structure[Grasshopper.Kernel.Types.GH_String]()
-
-        for path in Data.Paths:
-            for i, item in enumerate(Data.Branch(path)):
-                gh_str = Grasshopper.Kernel.Types.GH_String(item)
-                gh_struct.Append(gh_str, path)
-
-        write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = gh_struct, output_key_str='{name}')
+        write_usertext_retvals = run_comp(Write_Usertext, go = True, Geom = Geom, Data = Data, output_key_str='{name}')
         
         read_usertext_retvals = run_comp(Read_Usertext, go = True, compute_vals = False, Geom = Geom)
         
-
         Data_read_from_geom = read_usertext_retvals['Data']
 
-        Actual_Data_list = th.tree_to_list(Data_read_from_geom, retrieve_base = None)
+        Actual_Data_list = th.tree_to_list(Data_read_from_geom, retrieve_base = None)[0]
 
+        # raise Exception('%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' % (
+        #                                 type(Actual_Data_list),
+        #                                 [type(x).__name__ for x in Actual_Data_list],
+        #                                 [len(x) for x in Actual_Data_list],   
+        #                                 [len(Actual_Data_list[0][0]), len(Actual_Data_list[0][1])],
+        #                                 type(Data_list),
+        #                                 [type(x).__name__ for x in Data_list],
+        #                                 [len(x) for x in Data_list],
+        #                                 [len(Data_list[0][0]), len(Data_list[0][1])],
+        #                                 )
+        #                 )
 
         for j, ((k_exp, v_exp), (k_act, v_act)) in enumerate(zip(zip(*Data_list), zip(*Actual_Data_list)), start=1):
 
