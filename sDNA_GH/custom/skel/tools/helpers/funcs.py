@@ -1,5 +1,6 @@
-#! /usr/bin/python
+#! /usr/bin/awk NR==3
 # -*- coding: utf-8 -*-
+# This module requires Iron Python and Microsoft Windows
 
 # MIT License
 
@@ -48,7 +49,11 @@ try:
     basestring #type: ignore
 except NameError:
     basestring = str
-    
+
+import clr
+clr.AddReference('Microsoft.VisualBasic')
+import Microsoft.VisualBasic
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -219,3 +224,11 @@ def get_main_else_get_aliases(dict_, main, aliases, fallback_value = None, mangl
                 retval = mangler(retval)
             return retval 
     return fallback_value # intentionally un-mangled.
+
+
+def recycle_file(path):
+    recycle_option = Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin
+
+    ui_option = Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs
+    
+    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, ui_option, recycle_option)

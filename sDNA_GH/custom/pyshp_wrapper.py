@@ -55,6 +55,9 @@ else:
     class ABC(object):
         __metaclass__ = abc.ABCMeta
 
+
+
+
 from ..third_party.PyShp import shapefile as shp
 
 from .options_manager import isnamedtuple
@@ -634,8 +637,8 @@ def delete_file(path
     #type(str, type[any]) -> None
     if os.path.isfile(path):
         logger.info('Deleting file: %s ' % path)
-        os.remove(path)
-
+        # os.remove(path)
+        funcs.recycle_file(path)
 
 def name_matches(file_name, regexes = ()):
     #type(str, Iterable) -> bool
