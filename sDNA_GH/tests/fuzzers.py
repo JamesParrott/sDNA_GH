@@ -48,6 +48,9 @@ random.seed(SEED)
 # Extents of viewport
 MIN_X, MAX_X, MIN_Y, MAX_Y = -10.0, 110.0, -10.0, 40.0
 
+def random_boolean():
+    return random.choice([True, False])
+
 def random_number(min_ = MIN_X, max_ = MAX_X):
     return random.uniform(min_, max_)
 

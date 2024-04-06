@@ -41,6 +41,7 @@ import tempfile
 
 import System
 
+import rhinoscriptsyntax as rs
 import scriptcontext as sc 
 import Rhino
 import Rhino.NodeInCode.Components
@@ -117,7 +118,6 @@ def GH_Struct_to_DataTree(gh_struct):
 
 def set_data_on(param, val, type_ = str):
     param.ClearData()    
-    print(param.Access)
     # "and isinstance(val, Grasshopper.DataTree[object])""
     # mimicks Grasshopper support for passing a list into a Tree access param
     if (param.Access == Grasshopper.Kernel.GH_ParamAccess.tree
@@ -287,13 +287,12 @@ class UDPStream(object):
 
 
 
-
-def save_doc_to_DIR(name = 'tmp_sDNA_GH_api_tests_working_file.3dm'):
+def save_doc_to_(name = 'tmp_sDNA_GH_api_tests_working_file.3dm', dir_ = DIR):
     # 'Dale Fugier'
     # https://discourse.mcneel.com/t/sys-exit-shows-popup-window-instead-of-just-exiting/163811/7
 
-    path = os.path.join(DIR, name)
-    Rhino.RhinoApp.RunScript('_-SaveAs ' + path, True)
+    path = os.path.join(dir_, name) if dir_ else name
+    rs.Command('_-SaveAs ' + path, True)
     
 
 
@@ -304,7 +303,7 @@ def exit_Rhino():
     #'Dale Fugier'
     # https://discourse.mcneel.com/t/sys-exit-shows-popup-window-instead-of-just-exiting/163811/7
 
-    save_doc_to_DIR()
+    save_doc_to_()
     Rhino.RhinoDoc.ActiveDoc.Modified = False
 
     hWnd = Rhino.RhinoApp.MainWindowHandle()

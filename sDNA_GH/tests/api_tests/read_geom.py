@@ -30,15 +30,31 @@
 __author__ = 'James Parrott'
 __version__ = '3.0.0.alpha_3'
 
+import os
+import itertools
+
 
 import System
 import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
+from ...custom.skel.tools.helpers.funcs import recycle_file
+
 from . import make_unit_test_TestCase_instance_generator
-from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
-from ..fuzzers import random_Geometry, random_int, random_nurbs_curve
+from ..helpers import (run_comp,
+                       get_user_obj_comp_from_or_add_to_canvas,
+                       GH_DOC_COMPONENTS,
+                       save_doc_to_,
+                       DIR
+                      )
+from ..fuzzers import (random_Geometry,
+                       random_int,
+                       random_nurbs_curve,
+                       random_string,
+                       random_boolean,
+                       OBJECT_GENERATORS
+                      )
 
 
 
@@ -64,67 +80,117 @@ Read_Geom = get_user_obj_comp_from_or_add_to_canvas('Read_Geom')
 # e.g. in dev, to test the result of a test failure.
 run_comp(Read_Geom)
 
+def settings():
+    yield False, None
+    # yield True, None
+    # yield False, random_string()
+    # yield True, random_string()
+
+
+def randomly_either_call_f_or_remove(set_, f):
+    
+    sc.doc = Rhino.RhinoDoc.ActiveDoc
+
+    to_be_removed = []
+    for item in set_:
+        if random_boolean():
+            f(item)
+        else:
+            to_be_removed.append(item)
+
+    for item in to_be_removed:
+        # This just deselects item.  If it's an object id, 
+        # the object will still exist in the Rhino Doc.
+        set_.remove(item)
+
+
+def call_f_on_all_Objects(f):
+    
+    sc.doc = Rhino.RhinoDoc.ActiveDoc
+
+    f(rs.AllObjects(include_lights=True, include_grips=True, include_references=True))
+    f(rs.HiddenObjects(include_lights=True, include_grips=True, include_references=True))
+    f(rs.LockedObjects(include_lights=True, include_grips=True, include_references=True))
+
+
 def read_geom(self):
     # Can be called with None or used as a unittest.TestCase 
     # method, if assigned on to an instance at run-time, dynamically.
     # Allows configurable fuzz testing and parametric testing.
-    sc.doc = Rhino.RhinoDoc.ActiveDoc
-    obj_gens = OBJECT_GENERATORS.copy()
-    polyline_gens = (rs.AddPolyline, rs.AddLine, rs.AddCurve, random_nurbs_curve)
-
-    for polyline_gen in polyline_gens:
-        obj_gens.remove(polyline_gen)
+    
+    polyline_gens = (rs.AddPolyline, rs.AddLine, lambda : random_nurbs_curve(order=1))
 
     
-    for polyline_gen in polyline_gens:
+    other_obj_gens = [obj_gen 
+                      for obj_gen in OBJECT_GENERATORS
+                      if obj_gen not in polyline_gens + (rs.AddRectangle, random_nurbs_curve)
+                     ] 
 
-        # Or delete polylines
-        save_rhino_document_to_tmp()
-        create_fresh_rhino_document()
+    file_prefix = 'read_geom_working_file_(%s).3dm'
 
+    # Save any pre-existing Rhino file to tmp_file
+    for i in itertools.count():
+        name = file_prefix % i
+        tmp_file = os.path.join(DIR, name)
+        if not os.path.isfile(tmp_file):
+            break
 
-        Other_Geom = random_Geometry(gens = obj_gens)
+    save_doc_to_(tmp_file, dir_ = '')
 
-        # How to add some to layers?
-        # How to select some?
-        Polylines = random_Geometry(gens = [polyline_gen,])
+    for j, polyline_gen in enumerate(polyline_gens):
+        # Don't use itertools.product 
+        # Generate new random strings for layer,
+        # for each polyline_gen
+        for selected, layer in settings():
 
+            sc.doc = Rhino.RhinoDoc.ActiveDoc
 
-
-        # TODO: Work out how to pass in, and extract lists from Grasshopper components.
-        # for __ in range(N):
-
-        #     random_retvals = run_comp(GHRandomComponent, R = domain_retvals['I'], N=1, S = random_int(0, 250000))
-
-        #     gradient_retvals = run_comp(GHGradientComponent, L0=L0, L1=L1, t = random_retvals['nums'])
-
-        #     col = gradient_retvals['C']
-        #     colours.append(col.Value)
-
-        layer = 
-        selected = 
+            call_f_on_all_Objects(rs.DeleteObjects)
 
 
-        Read_Geom_retvals = run_comp(Read_Geom, go=True, selected = selected, layer = layer)
-        Actual_Polylines = set(Read_Geom_retvals['Geom'])
 
-        Expected_Polylines = set((obj.guid for obj in polyline_gens
-                                  if (not selected or rs.ObjectSelected(obj))
-                                  if (layer is None or obj.layer == layer)
-                                 )
-                                )
+            Other_Geom = random_Geometry(gens = other_obj_gens)
 
-        if self is not None:
-            self.assertEqual(
-                Expected_Polylines
-                Actual_Polylines
-                ,msg=('expected: %s\n actual: %s\n, layer: %s, selected: %s' 
-                     % (Expected_Polylines, Actual_Polylines, layer, selected)
-                     )
-                )  
-        else:   
-            print('Selected correctly: %s' % (guid, Expected_Polylines == Actual_Polylines))
-        
+            # How to add some to layers?
+            # How to select some?
+            Polylines = set(random_Geometry(gens = [polyline_gen,]))
+
+            if selected:
+                call_f_on_all_Objects(rs.UnselectObjects)
+                randomly_either_call_f_or_remove(Polylines, rs.SelectObject)
+
+            kwargs = dict()
+
+            if layer is not None:
+                rs.AddLayer(layer)
+                kwargs['layer'] = layer
+
+                randomly_either_call_f_or_remove(Polylines, lambda obj: rs.ObjectLayer(obj, layer))
+
+            
+
+            Read_Geom_retvals = run_comp(Read_Geom, go=True, selected = False, **kwargs)
+            Actual_Polylines = set(Read_Geom_retvals['Geom'] if Read_Geom_retvals['Geom'] else [])
+
+            unexpected = Actual_Polylines - Polylines
+            missing = Polylines - Actual_Polylines
+
+            if self is not None:
+                self.assertFalse(
+                     bool(unexpected)
+                    ,msg=('%s) unexpected: %s\n layer: %s, selected: %s, polyline_gen: %s' 
+                         % (j, unexpected, layer, selected, polyline_gen)
+                         )
+                    )  
+                self.assertFalse(
+                     bool(missing)
+                    ,msg=('%s) missing: %s\n layer: %s, selected: %s, polyline_gen: %s' 
+                         % (j, missing, layer, selected, polyline_gen)
+                         )
+                    )  
+            else:   
+                print('%s).  Selected correctly: %s' % (j, Actual_Polylines == Polylines))
+            
 
 
 
