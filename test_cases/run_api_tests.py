@@ -78,6 +78,9 @@ if __name__ == '__main__':
     # test_gh_file_path = pathlib.Path(__file__).parent / 'Rhino_8_Read_Geom_(Rhino)_and_Recolour_Objects_test.gh'
     test_gh_file_path = pathlib.Path(__file__).parent / "Rhino_8_API_tests.gh"
 
+    # TODO:    Refactor all this block as:
+    # cheetah.run(test_gh_file_path, env = env, quit_on = 'SDNA_GH_TESTS_FAILED', protocol='UDP', host = '127.0.0.1', port=9999)
+
     print(rf'Opening: {test_gh_file_path}')
     env = os.environ.copy()
     
@@ -87,10 +90,12 @@ if __name__ == '__main__':
     # Number of Fuzz tests to run.
     env['NUM_SDNA_GH_API_TESTS'] = sys.arg[1] if len(sys.argv) >= 2 else '5'
     
+    #if test_gh_file_path.endswith('.gh'):
+
     result = subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {test_gh_file_path}  _enter _exit _enterend"'
                            ,env = env
                            )
-
+    # else:  # assert test_gh_file_path.endswith('.py') # => run with Rhinoscript. 
     p.terminate()
 
     print(f'{result.returncode=}')
