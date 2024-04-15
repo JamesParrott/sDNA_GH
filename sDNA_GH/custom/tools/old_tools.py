@@ -2310,146 +2310,8 @@ class ShapefileReader(sDNA_GH_Tool):
             )
 
 
-class UsertextWriterOptions(object):
-    uuid_field = 'Rhino3D_'
-    output_key_str = 'sDNA output={name} run time={datetime}'
-    overwrite_UserText = True
-    max_new_keys = 10
-    dupe_key_suffix = '_{}'
-    suppress_overwrite_warning = False
-    suppress_write_failure_error = True
-
-def write_dict_to_UserText_on_Rhino_obj(d
-                                       ,rhino_obj
-                                       ,time_stamp
-                                       ,logger = logger
-                                       ,options = None
-                                       ):
-    #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
-    
-    if sc.doc == ghdoc:
-        msg = 'Ensure sc.doc == %s is a Rhino Document before calling ' % sc.doc
-        msg += 'this function.  '
-        msg += 'Writing User Text to GH objects is not supported.'
-        logger.error(msg)
-        raise NotImplementedError(msg)
-
-    if not isinstance(d, dict):
-        msg = 'dict required by write_dict_to_UserText_on_Rhino_obj, got: %s, of type: %s'
-        msg %= (d, type(d))
-        logger.error(msg)
-        raise TypeError(msg)
-    
-    if options is None:
-        options = UsertextWriterOptions
-    
-    #if is_an_obj_in_GH_or_Rhino(rhino_obj):
-        # Checker switches GH/ Rhino context
-            
-    existing_keys = rs.GetUserText(rhino_obj)
-    if options.uuid_field in d:
-        obj = d.pop( options.uuid_field )
-    
-    for key, val in d.items():
-
-        s = options.output_key_str
-        UserText_key_name = s.format(name = key
-                                    ,datetime = time_stamp
-                                    )
-        
-        if not options.overwrite_UserText:
-
-            for i in range(0, options.max_new_keys):
-                tmp = UserText_key_name 
-                tmp += options.dupe_key_suffix.format(i)
-                if tmp not in existing_keys:
-                    break
-            UserText_key_name = tmp
-        else:
-            if not options.suppress_overwrite_warning:
-                logger.warning( "UserText key == " 
-                            + UserText_key_name 
-                            +" overwritten on object with guid " 
-                            + str(rhino_obj)
-                            )
-
-        rs.SetUserText(rhino_obj, UserText_key_name, str(val), False)          
 
 
-
-class UsertextWriter(sDNA_GH_Tool):
-
-    Options = UsertextWriterOptions
-
-    component_inputs = ('Geom', 'Data', 'output_key_str')
-
-    param_infos = sDNA_GH_Tool.param_infos + (
-                   ('output_key_str', add_params.ParamInfo(
-                             param_Class = Param_String
-                            ,Description = ('The format string of the Usertext keys. '
-                                           +'Supports "{name}" and "{datetime}" fields. '
-                                           +'Default: %(output_key_str)s'
-                                           )
-                            )),
-                   )
-    def __call__(self, gdm, opts):
-        #type(str, dict, dict) -> int, str, dict, list
-        if opts is None:
-            opts = self.opts        
-        options = opts['options']
-
-        date_time_of_run = asctime()
-        self.debug('Creating Class logger at: %s ' % date_time_of_run)
-
-        if not gdm:
-            msg = 'No Geom objects to write to. '
-            msg += 'Connect list of objects to Geom. '
-            msg += ' gdm == %s' % gdm
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
-            gdm = [gdm]
-
-        if all(not value for sub_gdm in gdm for value in sub_gdm.values()):
-            msg = 'No Data to write as User Text. '
-            msg += 'Please connect data tree to Data. '
-            msg += ' gdm == %s' % gdm
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-
-
-
-        sc.doc = Rhino.RhinoDoc.ActiveDoc
-        for sub_gdm in gdm:
-            for key, val in sub_gdm.items():
-                try:
-                    write_dict_to_UserText_on_Rhino_obj(
-                                                 d = val
-                                                ,rhino_obj = key
-                                                ,time_stamp = date_time_of_run
-                                                ,logger = self.logger
-                                                ,options = options
-                                                )
-                except ValueError as e: # Tested when rs.SetUserText fails
-                    msg = 'Writing dict: %s as User Text to obj: %s failed '
-                    msg %= (val, key)
-                    msg += 'with error message: %s ' % e.message
-                    msg += 'and args: %s' % e.args
-                    logger.error(msg)
-                    if options.suppress_write_failure_error:
-                        warnings.warn(msg)
-                    else:
-                        raise e
-
-        sc.doc = ghdoc  
-        
-        locs = locals().copy()
-        return tuple(locs[retval] for retval in self.retvals)
-    
-    retvals = ()
-    component_outputs = () 
 
 
 
@@ -3493,6 +3355,150 @@ def parse_values_for_toml(x, supported_types = toml_no_tuples):
                                     isinstance(val, tuple(supported_types))))
                           )
     return x
+
+
+
+
+class UsertextWriterOptions(object):
+    uuid_field = 'Rhino3D_'
+    output_key_str = 'sDNA output={name} run time={datetime}'
+    overwrite_UserText = True
+    max_new_keys = 10
+    dupe_key_suffix = '_{}'
+    suppress_overwrite_warning = False
+    suppress_write_failure_error = True
+
+def write_dict_to_UserText_on_Rhino_obj(d
+                                       ,rhino_obj
+                                       ,time_stamp
+                                       ,logger = logger
+                                       ,options = None
+                                       ):
+    #type(dict, str, str, logging.Logger, Options | namedtuple) -> None
+    
+    if sc.doc == ghdoc:
+        msg = 'Ensure sc.doc == %s is a Rhino Document before calling ' % sc.doc
+        msg += 'this function.  '
+        msg += 'Writing User Text to GH objects is not supported.'
+        logger.error(msg)
+        raise NotImplementedError(msg)
+
+    if not isinstance(d, dict):
+        msg = 'dict required by write_dict_to_UserText_on_Rhino_obj, got: %s, of type: %s'
+        msg %= (d, type(d))
+        logger.error(msg)
+        raise TypeError(msg)
+    
+    if options is None:
+        options = UsertextWriterOptions
+    
+    #if is_an_obj_in_GH_or_Rhino(rhino_obj):
+        # Checker switches GH/ Rhino context
+            
+    existing_keys = rs.GetUserText(rhino_obj)
+    if options.uuid_field in d:
+        obj = d.pop( options.uuid_field )
+    
+    for key, val in d.items():
+
+        s = options.output_key_str
+        UserText_key_name = s.format(name = key
+                                    ,datetime = time_stamp
+                                    )
+        
+        if not options.overwrite_UserText:
+
+            for i in range(0, options.max_new_keys):
+                tmp = UserText_key_name 
+                tmp += options.dupe_key_suffix.format(i)
+                if tmp not in existing_keys:
+                    break
+            UserText_key_name = tmp
+        else:
+            if not options.suppress_overwrite_warning:
+                logger.warning( "UserText key == " 
+                            + UserText_key_name 
+                            +" overwritten on object with guid " 
+                            + str(rhino_obj)
+                            )
+
+        rs.SetUserText(rhino_obj, UserText_key_name, str(val), False)          
+
+
+
+class UsertextWriter(sDNA_GH_Tool):
+
+    Options = UsertextWriterOptions
+
+    component_inputs = ('Geom', 'Data', 'output_key_str')
+
+    param_infos = sDNA_GH_Tool.param_infos + (
+                   ('output_key_str', add_params.ParamInfo(
+                             param_Class = Param_String
+                            ,Description = ('The format string of the Usertext keys. '
+                                           +'Supports "{name}" and "{datetime}" fields. '
+                                           +'Default: %(output_key_str)s'
+                                           )
+                            )),
+                   )
+    def __call__(self, gdm, opts):
+        #type(str, dict, dict) -> int, str, dict, list
+        if opts is None:
+            opts = self.opts        
+        options = opts['options']
+
+        date_time_of_run = asctime()
+        self.debug('Creating Class logger at: %s ' % date_time_of_run)
+
+        if not gdm:
+            msg = 'No Geom objects to write to. '
+            msg += 'Connect list of objects to Geom. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+        if isinstance(gdm, gdm_from_GH_Datatree.GeomDataMapping):
+            gdm = [gdm]
+
+        if all(not value for sub_gdm in gdm for value in sub_gdm.values()):
+            msg = 'No Data to write as User Text. '
+            msg += 'Please connect data tree to Data. '
+            msg += ' gdm == %s' % gdm
+            self.logger.error(msg)
+            raise ValueError(msg)
+
+
+
+
+        sc.doc = Rhino.RhinoDoc.ActiveDoc
+        for sub_gdm in gdm:
+            for key, val in sub_gdm.items():
+                try:
+                    write_dict_to_UserText_on_Rhino_obj(
+                                                 d = val
+                                                ,rhino_obj = key
+                                                ,time_stamp = date_time_of_run
+                                                ,logger = self.logger
+                                                ,options = options
+                                                )
+                except ValueError as e: # Tested when rs.SetUserText fails
+                    msg = 'Writing dict: %s as User Text to obj: %s failed '
+                    msg %= (val, key)
+                    msg += 'with error message: %s ' % e.message
+                    msg += 'and args: %s' % e.args
+                    logger.error(msg)
+                    if options.suppress_write_failure_error:
+                        warnings.warn(msg)
+                    else:
+                        raise e
+
+        sc.doc = ghdoc  
+        
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
+    
+    retvals = ()
+    component_outputs = () 
 
 
 
