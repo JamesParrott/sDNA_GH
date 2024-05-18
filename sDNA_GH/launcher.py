@@ -242,6 +242,7 @@ def strict_import(module_name = ''
         #if search_folder_only:
         #    sys.path = [search_path]
         if search_path not in sys.path:
+            logger.warning('Prepending sys.path with: %s' % search_path)
             sys.path.insert(0, search_path)
     else:
         raise FilePathError(module_name = module_name
@@ -328,7 +329,24 @@ def load_modules(m_names
                               ,logger = logger
                               )
 
+def get_dir_of_python_package_containing_ghuser():
 
+    gh_comp_server = Grasshopper.Kernel.GH_ComponentServer()
+
+    for file_ in gh_comp_server.ExternalFiles(True, True):
+        path = file_.FilePath
+        if PACKAGE_NAME in path:
+            break
+        #
+    else: # for loop did not break
+        return None
+
+    dir_ = os.path.dirname(path)
+
+    while PACKAGE_NAME in dir_:
+        dir_ = os.path.dirname(dir_)
+
+    return dir_
 
 
 if __name__ == '__main__': # False in a compiled component.  But then the user
@@ -339,21 +357,25 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     nick_name = ghenv.Component.NickName #type: ignore
 
+    sDNA_GH_search_paths = [USER_INSTALLATION_FOLDER]
 
+
+    other_package_path = get_dir_of_python_package()
+    if other_package_path:
+        sDNA_GH_search_paths.append(other_package_path)
+
+    # builder can only load sDNA_GH from its parent directory, 
+    # e.g. if in a dir one level up in the main repo
+    # such as sDNA_build_components.gh.
     if (REPOSITORY and 
         nick_name == 'Build_components'):
         #
-        sDNA_GH_search_path = REPOSITORY 
-        # builder can only load sDNA_GH from its parent directory, 
-        # e.g. if in a dir one level up in the main repo
-        # such as sDNA_build_components.gh.
-    else:
-        sDNA_GH_search_path = USER_INSTALLATION_FOLDER
+        sDNA_GH_search_paths.insert(0, REPOSITORY) 
 
 
     sc.doc = ghdoc #type: ignore
 
-    output.debug(sDNA_GH_search_path)
+    output.debug(sDNA_GH_search_paths)
 
     class sDNA_GH(object):
         pass
@@ -363,9 +385,9 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if main_sDNA_GH_module in sys.modules:
         sDNA_GH.main = sys.modules[main_sDNA_GH_module]
     else:
-        sDNA_GH.main, _ = load_modules(
+        sDNA_GH.main, sDNA_GH_path = load_modules(
              m_names = main_sDNA_GH_module
-            ,folders = sDNA_GH_search_path
+            ,folders = sDNA_GH_search_paths
             ,folders_error_msg = 'Please unzip %s.zip '
                                 % ZIP_FILE_NAME
                                 +' in the folder %s '
@@ -407,18 +429,18 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     
     test_runners, _ = load_modules('%s.tests.test_running_component_classes' % PACKAGE_NAME
-                                  ,sDNA_GH_search_path
+                                  ,sDNA_GH_path
                                   )
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
         MyComponent = test_runners.make_test_running_component_class(
-                package_location = sDNA_GH_search_path
+                package_location = sDNA_GH_path
                 )
     elif nick_name.startswith(APITEST_PREFIX):
         if not os.getenv('NUM_SDNA_GH_API_TESTS'):
             raise Exception('The environment variable: NUM_SDNA_GH_API_TESTS must be set. ')
         MyComponent = test_runners.make_noninteractive_api_test_running_component_class(
-                package_location = sDNA_GH_search_path
+                package_location = sDNA_GH_path
                 ,test_name = nick_name.partition(APITEST_PREFIX)[2]
                 )
     else:
