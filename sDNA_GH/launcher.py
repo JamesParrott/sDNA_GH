@@ -31,10 +31,11 @@
 
 """ Main entry point to launch sDNA_GH if run as a script from an sDNA_GH GhPython component.
 
-    Imports the python package sDNA_GH and (re)defining the MyComponent(component) 
-    class.  Grasshopper instantiates this class in each such component, then 
-    calls its RunScript method 
-    (and recalls it on each Param update / recalculation).
+    Imports the python package sDNA_GH and (re)defines the MyComponent(component) 
+    class.  Grasshopper instantiates this class in each such GhPython
+    component (set to SDK mode which the builder has done), then calls its 
+    RunScript method. (This RunScript method is also called subsequently
+    on each Param update / Grasshopper canvas recalculation).
 
     There may be multiple components, all running this same launcher code.
     Therefore we want the root logger to live in the sDNA_GH.main module
