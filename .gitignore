@@ -18,6 +18,9 @@
 #sDNA
 *.names.csv
 
+# Gephi demo output
+make_gephi_edges_csv.csv
+
 #Rhino lock file
 *.3dm.rhl
 
