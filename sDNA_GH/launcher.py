@@ -358,11 +358,13 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     class sDNA_GH(object):
         pass
 
-    if 'sDNA_GH.main' in sys.modules:
-        sDNA_GH.main = sys.modules['sDNA_GH.main']
+    main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
+
+    if main_sDNA_GH_module in sys.modules:
+        sDNA_GH.main = sys.modules[main_sDNA_GH_module]
     else:
         sDNA_GH.main, _ = load_modules(
-             m_names = PACKAGE_NAME + '.main'
+             m_names = main_sDNA_GH_module
             ,folders = sDNA_GH_search_path
             ,folders_error_msg = 'Please unzip %s.zip '
                                 % ZIP_FILE_NAME
