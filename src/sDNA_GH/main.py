@@ -258,7 +258,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     #
     platform = 'NT' # in {'NT','win32','win64'} only supported for now
     encoding = 'utf-8' # For shapefiles only, not toml files or names.csv.
-                       # Used by .custom.pyshp_wrapper
+                       # Used by .pyshp_wrapper
                        # get_fields_recs_and_shapes and write_iterable_to_shp
     package_name = os.path.basename(os.path.dirname(__file__))
     sub_module_name, _ = os.path.splitext(os.path.basename(__file__))
@@ -275,7 +275,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     auto_plot_data = False
     ###########################################################################
     #
-    # Overrides for .custom.logging_wrapper
+    # Overrides for .logging_wrapper
     #
     path = FILE_TO_WORK_FROM
     # Also used by ShapefileWriter, ShapefileReader
@@ -306,7 +306,7 @@ class HardcodedOptions(logging_wrapper.LoggingOptions
     ###########################################################################
     #
     #     Shapefiles
-    #     Application specific overrides for .custom.pyshp_wrapper
+    #     Application specific overrides for .pyshp_wrapper
     #
     shp_type = 'POLYLINEZ' # Also in RhinoObjectsReader, ShapefileWriter
     locale = ''  # '' => User's own settings.  Also in DataParser

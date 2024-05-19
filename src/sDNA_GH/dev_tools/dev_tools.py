@@ -34,12 +34,12 @@ __version__ = '3.0.0.alpha_4'
 import os
 import logging
 
-from ..custom.skel.tools import name_mapper
-from ..custom import tools
-from ..custom.skel.tools import runner
-from ..custom.skel.basic.ghdoc import ghdoc
+from ..skel.tools import name_mapper
+from .. import tools
+from ..skel.tools import runner
+from ..skel.basic.ghdoc import ghdoc
 from .. import launcher
-from ..custom.skel import builder
+from ..skel import builder
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

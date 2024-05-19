@@ -39,7 +39,7 @@ import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
-from ...custom.skel.tools.helpers.funcs import recycle_file
+from ...skel.tools.helpers.funcs import recycle_file
 
 from . import make_unit_test_TestCase_instance_generator
 from ..helpers import (run_comp,

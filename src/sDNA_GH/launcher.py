@@ -91,7 +91,7 @@ except NameError:
 try:
     ghdoc #type: ignore
 except NameError:
-    from .custom.skel.basic.ghdoc import ghdoc
+    from .skel.basic.ghdoc import ghdoc
 
 ZIP_FILE_NAME = 'sdna-gh'
 PACKAGE_NAME = 'sDNA_GH'
@@ -106,7 +106,7 @@ USER_INSTALLATION_FOLDER = os.path.join(
                                    )
 SELFTEST = 'selftest'
 APITEST_PREFIX = 'sDNA_GH_API_test_'
-DEPS = []
+DEPS = ['toml_tools', 'shapefile', 'mapclassif_Iron']
 
 
 
@@ -386,7 +386,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         sDNA_GH.main = sys.modules[main_sDNA_GH_module]
     else:
         sDNA_GH.main, sDNA_GH_path = load_modules(
-             m_names = main_sDNA_GH_module
+             m_names = [main_sDNA_GH_module] + [DEPS]
             ,folders = sDNA_GH_search_paths
             ,folders_error_msg = 'Please unzip %s.zip '
                                 % ZIP_FILE_NAME

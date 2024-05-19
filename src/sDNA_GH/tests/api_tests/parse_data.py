@@ -39,7 +39,7 @@ import scriptcontext as sc
 import rhinoscriptsyntax as rs
 from ghpythonlib import treehelpers as th
 
-from ...custom.skel.basic.ghdoc import ghdoc
+from ...skel.basic.ghdoc import ghdoc
 
 from . import make_unit_test_TestCase_instance_generator
 from Cheetah_GH.helpers import (run_comp,

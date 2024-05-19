@@ -39,7 +39,7 @@ import importlib
 
 from ghpythonlib.componentbase import executingcomponent as component
 
-from ..custom.skel.tools.helpers import checkers
+from ..skel.tools.helpers import checkers
 from .. import launcher
 from .helpers import FileAndStream, UDPStream, exit_Rhino
 

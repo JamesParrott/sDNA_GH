@@ -40,14 +40,14 @@ from collections import OrderedDict
 
 from ghpythonlib import treehelpers 
 
-from ...custom.skel.basic.ghdoc import ghdoc 
+from ...skel.basic.ghdoc import ghdoc 
 from ... import main
 from ... import launcher
-from ...custom import tools
-from ...custom.skel.tools.helpers import checkers
+from .. import tools
+from ...skel.tools.helpers import checkers
 
-from ...custom import data_cruncher
-from ...custom import gdm_from_GH_Datatree
+from .. import data_cruncher
+from .. import gdm_from_GH_Datatree
 
 from ..helpers import FileAndStream
 

@@ -38,7 +38,7 @@ import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
-from ...custom.skel.basic.ghdoc import ghdoc
+from ...skel.basic.ghdoc import ghdoc
 
 from . import make_unit_test_TestCase_instance_generator
 from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
