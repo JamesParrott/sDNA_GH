@@ -1,5 +1,6 @@
-#! /usr/bin/python
+#! /usr/bin/awk NR==3
 # -*- coding: utf-8 -*-
+# This module requires Grasshopper Python (Rhino3D)
 
 # MIT License
 
@@ -27,42 +28,27 @@
 # SOFTWARE.
 
 
+
 __authors__ = {'James Parrott', 'Crispin Cooper'}
 __version__ = '3.0.0.alpha_4'
 
-from random import random as random_num
-from math import trunc as floor  # for an int, not a float.  math.floor(2.33) == 2.0;  math.trunc(2.33) == 2
 
-import shapefile
+# Import classes etc. from sub modules, to allow the existing imports 
+# (for old_tools.py) to be reused unchanged.
+from .sdna import (update_opts
+                  ,sDNA_Tool_Wrapper
+                  ,sDNA_key
+                  ,build_missing_sDNA_components
+                  ,import_sDNA
+                  ,sDNA_GH_user_objects_location
+                  ,list_of_param_infos
+                  )
+from .config import ConfigManager
 
-N, M = 50, 40
-x, y = 0, 0
-p = 0.2
-go = True
-
-def grid_point_coords(n,m):
-    for i in range(n):
-        for j in range(m):
-            yield j,i
-
-def make_poly_line(x1,y1,x2,y2,store,func,offset=[x,y]):
-    if random_num() > p:
-        x1 += offset[0]; x2 += offset[0];
-        y1 += offset[1]; y2 += offset[1];
-        new_poly_line = [[x1,y1,0], [x2,y2,0]]
-        store += [new_poly_line]
-        func(new_poly_line)
-
-if go is True:  
-    M,N=map( floor,  [M, N] )
-    geometries = []
-    with shapefile.Writer('test_random_grid.shp', shapeType = shapefile.POLYLINEZ) as w:
-        w.field('Name.  ','C')
-        def write_poly_line_to_w(poly_line):
-            w.linez([poly_line])
-            w.record('From ' + ', to '.join(map(str,poly_line)))
-        for col,row in grid_point_coords(N,M):
-                if col < M-1:
-                    make_poly_line(col,row,col+1,row,geometries,write_poly_line_to_w)
-                if row < N-1:
-                    make_poly_line(col,row,col,row+1,geometries,write_poly_line_to_w)
+from .support.Read_Geom import RhinoObjectsReader
+from .support.Read_Usertext import UsertextReader
+from .support.Write_Shp import ShapefileWriter
+from .support.Read_Shp import ShapefileReader
+from .support.Write_Usertext import UsertextWriter
+from .support.Parse_Data import DataParser
+from .support.Recolour_Objects import ObjectsRecolourer

@@ -22,8 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__author__ = 'James Parrott'
-__version__ = '3.0.0.alpha_3'
+__authors__ = {'James Parrott', 'Crispin Cooper'}
+__version__ = '3.0.0.alpha_4'
 
 
 
