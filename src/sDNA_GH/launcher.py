@@ -384,7 +384,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         # Our fake module class sDNA_GH has no .__path__
         sDNA_GH_path = os.path.dirname(os.path.dirname(sDNA_GH.main.__file__))
     else:
-        sDNA_GH.main, sDNA_GH_path = load_modules(
+        modules, sDNA_GH_path = load_modules(
              m_names = [main_sDNA_GH_module] + [DEPS]
             ,folders = sDNA_GH_search_paths
             ,folders_error_msg = 'Please unzip %s.zip '
@@ -411,7 +411,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                                   ,PACKAGE_NAME
                                                   ))
                                     +'5) Reinitialise the component or restart Rhino.'
-            )         
+            )
+        sDNA_GH.main = modules[0]         
 
 
     logger = sDNA_GH.main.logger.getChild('launcher')
