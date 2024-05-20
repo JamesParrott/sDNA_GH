@@ -96,7 +96,7 @@ def update_compnt_and_make_user_obj(component
             icon = os.path.join(icons_path, tool_name + '.png')
 
     if icon is not None:
-        logger.debug('Adding icon: %s to user_object: %s' % (icon_path, name))
+        logger.debug('Adding icon: %s to user_object: %s' % (icon, name))
         user_object.Icon = System.Drawing.Bitmap(icon)
 
     user_object.BaseGuid = component.ComponentGuid
@@ -269,9 +269,9 @@ def build_comps_with_docstring_from_readme(default_path
                 logger.debug('No summary found for tool: %s.  Tool_code unchanged.' % tool_name)
                 summary = doc_string_content
 
-        l = i * row_height
-        x = 200 + (l % row_width)
-        y = 550 + 220 * (l // row_width)
+        h = i * row_height
+        x = 200 + (h % row_width)
+        y = 550 + 220 * (h // row_width)
         position = [x, y]
 
         gh_python_comp = GhPython.Component.ZuiPythonComponent()

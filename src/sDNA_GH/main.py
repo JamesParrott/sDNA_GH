@@ -46,7 +46,6 @@ __authors__ = {'James Parrott', 'Crispin Cooper'}
 __version__ = '3.0.0.alpha_4'
 
 
-import sys
 import os
 import collections
 if hasattr(collections, 'Iterable'):
@@ -827,10 +826,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
         self.tools = my_tools[:] if isinstance(my_tools, list) else [my_tools]
 
         options = self.opts['options']
-
-        metas = self.opts['metas']
-
-        name_map = metas.name_map
         
         self.logger.debug('Inserting tools... ')
 

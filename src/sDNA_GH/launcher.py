@@ -335,9 +335,11 @@ def load_modules(m_names
             #
             logger.debug('Importing %s' % repr(m_names))
 
-            return tuple(strict_import(name, folder, '', logger = logger) 
-                         for name in m_names
-                        ) + (folder,)
+            return (tuple(strict_import(name, folder, '', logger = logger) 
+                          for name in m_names
+                         )
+                   ,folder
+                   )
             # tuple of modules, followed by the path to them
     raise ModulesNotFoundError(message_fmt = modules_not_found_msg
                               ,m_names = m_names

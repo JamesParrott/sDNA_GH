@@ -37,9 +37,7 @@ import logging
 from ..skel.tools import name_mapper
 from .. import tools
 from ..skel.tools import runner
-from ..skel.basic.ghdoc import ghdoc
 from .. import launcher
-from ..skel import builder
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

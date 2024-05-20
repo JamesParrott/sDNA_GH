@@ -36,30 +36,21 @@
 __authors__ = {'James Parrott', 'Crispin Cooper'}
 __version__ = '3.0.0.alpha_4'
 
-import os
-import sys
+
 import abc
 import logging
-import functools
-import subprocess
 import re
-import string
 import warnings
 import collections
-from time import asctime
 from numbers import Number
-import locale
 import math
-import shutil
 
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import Rhino
-import GhPython
 import System
 import System.Drawing #.Net / C# Class
             #System is also available in IronPython, but System.Drawing isn't
-import Grasshopper
 from Grasshopper.GUI.Gradient import GH_Gradient
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Colour  
@@ -79,19 +70,17 @@ from Grasshopper.Kernel.Parameters import (Param_Arc
 
 from ... import data_cruncher 
 from ...skel.basic.ghdoc import ghdoc
-from ...skel.tools.helpers import checkers
 from ...skel.tools.helpers import funcs
 from ...skel.tools.helpers import rhino_gh_geom
-from ...skel.tools import runner                                       
 from ...skel import add_params
-from ...skel import builder
 from ... import options_manager
-from ... import pyshp_wrapper
 from ... import logging_wrapper
 from ... import gdm_from_GH_Datatree
-from ... import launcher
 from ..sdna import sDNA_GH_Tool
 
+from .Parse_Data import (DataParser
+                        ,
+                        )       
 
 itertools = funcs.itertools #contains pairwise recipe if Python < 3.10
                             #and zip_longest if Python > 2
@@ -487,11 +476,12 @@ class ObjectsRecolourer(sDNA_GH_Tool):
                 legend_ymax = bbox_ymax
                 
 
-            self.logger.debug('leg_bounds == %s ' % [legend_xmin
-                                                    ,legend_ymin
-                                                    ,legend_xmax
-                                                    ,legend_ymax
-                                                    ]
+            self.logger.debug('leg_bounds == %s ' % ([legend_xmin
+                                                     ,legend_ymin
+                                                     ,legend_xmax
+                                                     ,legend_ymax
+                                                    ],
+                                                    )
                               )
 
             leg_frame = rhino_gh_geom.add_GH_rectangle(legend_xmin

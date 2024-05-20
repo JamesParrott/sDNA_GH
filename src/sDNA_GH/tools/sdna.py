@@ -40,27 +40,12 @@ import os
 import sys
 import abc
 import logging
-import functools
 import subprocess
 import re
-import string
 import warnings
 import collections
-from time import asctime
-from numbers import Number
-import locale
-import math
-import shutil
 
-import rhinoscriptsyntax as rs
-import scriptcontext as sc
-import Rhino
-import GhPython
-import System
-import System.Drawing #.Net / C# Class
-            #System is also available in IronPython, but System.Drawing isn't
-import Grasshopper
-from Grasshopper.GUI.Gradient import GH_Gradient
+
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Colour  
                                           ,Param_Curve
@@ -77,18 +62,13 @@ from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_GenericObject
                                           )
 
-from .. import data_cruncher 
-from ..skel.basic.ghdoc import ghdoc
-from ..skel.tools.helpers import checkers
 from ..skel.tools.helpers import funcs
-from ..skel.tools.helpers import rhino_gh_geom
 from ..skel.tools import runner                                       
 from ..skel import add_params
 from ..skel import builder
 from .. import options_manager
 from .. import pyshp_wrapper
 from .. import logging_wrapper
-from .. import gdm_from_GH_Datatree
 from .. import launcher
 
 
@@ -669,7 +649,6 @@ def import_sDNA(opts
     """
     
     metas = opts['metas']
-    options = opts['options']
 
     logger.debug('metas.sDNAUISpec == %s ' % metas.sDNAUISpec
                 +', metas.runsdnacommand == %s ' % metas.runsdnacommand 
@@ -740,7 +719,7 @@ def import_sDNA(opts
                                             )
     except launcher.InvalidArgsError as e:
         raise e
-    except:
+    except BaseException: # Masking is deliberate, to give user a fix
         msg = ("sDNA_GH failed to import the sDNA files specified in "
               +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
               +" from any of the folders in sDNA_paths."
@@ -789,9 +768,9 @@ def build_sDNA_GH_components(
     
     
     
-    dest = kwargs.setdefault('dest'
-                            ,built_user_objects_location
-                            )
+    kwargs.setdefault('dest'
+                     ,built_user_objects_location
+                     )
 
     logger.debug('README_md_path == %s' % readme_path)
 
@@ -801,7 +780,7 @@ def build_sDNA_GH_components(
 
     return builder.build_comps_with_docstring_from_readme(
                                  default_path = launcher_path
-                                ,icons_path = icons_path 
+                                ,icons_path = icons_location 
                                 ,path_dict = {}
                                 ,readme_path = readme_path
                                 ,row_height = None
@@ -820,15 +799,15 @@ def build_missing_sDNA_components(opts
     sDNAUISpec, _ = import_sDNA(opts)
     # = opts['options'].sDNAUISpec
 
-    dest = kwargs.setdefault('dest'
-                            ,built_user_objects_location  
-                            )
+    kwargs.setdefault('dest'
+                     ,built_user_objects_location  
+                     )
 
-    def ghuser_file_path(name, folder = user_objects_location):
+    def ghuser_file_path(name, folder = built_user_objects_location):
         #type(str)->str
         return os.path.join(folder, name + '.ghuser') 
 
-    components_folders = (user_objects_location
+    components_folders = (built_user_objects_location
                          ,built_user_objects_location
                          ,launcher.USER_INSTALLATION_FOLDER
                          )
@@ -1165,7 +1144,6 @@ class sDNA_ToolWrapper(sDNA_GH_Tool):
                 ):
         super(sDNA_ToolWrapper, self).__init__(opts) #self.opts = opts
 
-        metas = opts['metas']
         self.debug('Initialising Class.  Creating Class Logger.  ')
         self.tool_name = tool_name
         self.nick_name = nick_name

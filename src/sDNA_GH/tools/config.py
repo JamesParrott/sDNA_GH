@@ -1,3 +1,38 @@
+#! /usr/bin/awk NR==3
+# -*- coding: utf-8 -*-
+# This module requires Grasshopper Python (Rhino3D)
+
+# MIT License
+
+# Copyright (c) [2021] [Cardiff University, a body incorporated
+# by Royal Charter and a registered charity (number:
+# 1136855) whose administrative offices are at 7th floor 30-
+# 36 Newport Road, University CF24 0DE, Wales, UK]
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+__authors__ = {'James Parrott', 'Crispin Cooper'}
+__version__ = '3.0.0.alpha_4'
+
+
+import os
+from collections import OrderedDict
 
 from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_Colour  
@@ -22,7 +57,39 @@ from .sdna import (sDNA_GH_Tool
                   ,PythonOptions
                   ,import_sDNA
                   ,check_python
+                  ,package_root
                   )
+
+
+toml_no_tuples = options_manager.toml_types[:]
+if tuple in toml_no_tuples:
+    toml_no_tuples.remove(tuple)
+#Internally in sDNA_GH opts, tuples are read only.
+
+
+def parse_values_for_toml(x, supported_types = toml_no_tuples):
+    #type(type[any]) -> type[any]
+    """ Strips out keys and values for which the key is not a string 
+        or contains whitespace, or for which the value is not a 
+        supported type.  
+    """
+    if options_manager.isnamedtuple(x) and hasattr(x, '_asdict'):
+        x = x._asdict()
+    if isinstance(x, list):
+        return [parse_values_for_toml(y, supported_types) 
+                for y in x 
+                if isinstance(y, tuple(supported_types))
+               ]
+    if isinstance(x, dict):
+        return OrderedDict((key, parse_values_for_toml(val, supported_types)
+                           ) 
+                           for key, val in x.items() 
+                           if (isinstance(key, basestring) 
+                               and (options_manager.isnamedtuple(val) or 
+                                    isinstance(val, tuple(supported_types))))
+                          )
+    return x
+
 
 class ConfigManager(sDNA_GH_Tool):
 
@@ -43,8 +110,7 @@ class ConfigManager(sDNA_GH_Tool):
 
 
     class Metas(sDNAMetaOptions):
-        config = os.path.join(launcher.USER_INSTALLATION_FOLDER
-                             ,launcher.PACKAGE_NAME  
+        config = os.path.join(package_root 
                              ,'config.toml'
                              )
 
