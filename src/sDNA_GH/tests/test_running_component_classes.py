@@ -58,6 +58,7 @@ print('API_TEST_MODULES: %s' % API_TEST_MODULES)
 def make_test_running_component_class(package_location
                                      ,run_launcher_tests = None
                                      ,output_stream = sys.stderr
+                                     ,log_file = ''
                                      ,test_suite = ()
                                      ):
     #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
@@ -96,22 +97,18 @@ def make_test_running_component_class(package_location
 
             print('Starting RunScript')
 
-            log_file_dir = os.path.dirname(checkers.get_path(fallback = package_location))
-            if os.path.isfile(log_file_dir):
-                log_file_path = os.path.splitext(log_file_dir)[0]
-            else:
-                log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
-            test_log_file_path = log_file_path + tests_log_file_suffix + '.log'
-            test_log_file = open(test_log_file_path,'at')
 
-            output_double_stream = FileAndStream(
-                                         test_log_file
+            if log_file:
+                
+                file_ = open(log_file,'at')
+                output_stream = FileAndStream(
+                                         file_
                                         ,output_stream
                                         ,print_too = output_stream is not sys.stderr
                                         )
 
 
-            with output_double_stream as o:
+            with output_stream as o:
 
                 o.write('Unit test run started at: %s ... \n\n' % time.asctime())
 
@@ -147,6 +144,7 @@ def make_test_running_component_class(package_location
 def make_noninteractive_api_test_running_component_class(
                                                      package_location
                                                     ,test_name
+                                                    ,log_file_dir
                                                     ,port=9999
                                                     ,host='127.0.0.1'
                                                     ):
@@ -172,7 +170,16 @@ def make_noninteractive_api_test_running_component_class(
             test_suite.addTest(test_case)
 
     udp_stream = UDPStream(port, host)
+
+
+    if os.path.isfile(log_file_dir):
+        log_file_path = os.path.splitext(log_file_dir)[0]
+    else:
+        log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
+    log_file = log_file_path + tests_log_file_suffix + '.log'
+
     return make_test_running_component_class(package_location
                                             ,output_stream = udp_stream
+                                            ,log_file = log_file
                                             ,test_suite = test_suite
                                             )
