@@ -37,13 +37,16 @@ import time
 import itertools
 import importlib
 
-from ghpythonlib.componentbase import executingcomponent as component
+# from ghpythonlib.componentbase import executingcomponent as component
 
 import Cheetah_GH.unittest_runner
 
 from ..skel.tools.helpers import checkers
 from .. import launcher
-from .helpers import FileAndStream, UDPStream, exit_Rhino
+# from .helpers import (FileAndStream
+#                      ,UDPStream
+#                      ,exit_Rhino
+#                      )
 
 
 
@@ -94,7 +97,7 @@ def make_test_running_component_class(run_launcher_tests = None
     return TestRunningComponent
 
 def make_noninteractive_api_test_running_component_class(
-                                                    ,test_name
+                                                     test_name
                                                     ,log_file_dir
                                                     ,port=9999
                                                     ,host='127.0.0.1'
