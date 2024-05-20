@@ -38,6 +38,7 @@ __version__ = '3.0.0.alpha_4'
 from .sdna import (update_opts
                   ,sDNA_ToolWrapper
                   ,sDNA_key
+                  ,build_sDNA_GH_components
                   ,build_missing_sDNA_components
                   ,import_sDNA
                   ,list_of_param_infos

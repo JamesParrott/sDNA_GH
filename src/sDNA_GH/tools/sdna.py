@@ -689,7 +689,7 @@ def import_sDNA(opts
             folders[i] = os.path.dirname(folder)
 
     try:
-        sDNAUISpec, run_sDNA, _ = load_modules(
+        (sDNAUISpec, run_sDNA), _ = load_modules(
                                              m_names = requested_sDNA
                                             ,folders = folders
                                             ,logger = logger
@@ -807,10 +807,7 @@ def build_missing_sDNA_components(opts
         #type(str)->str
         return os.path.join(folder, name + '.ghuser') 
 
-    components_folders = (built_user_objects_location
-                         ,built_user_objects_location
-                         ,launcher.USER_INSTALLATION_FOLDER
-                         )
+    components_folders = [built_user_objects_location]
 
     missing_tools = []
     names = []
@@ -825,7 +822,8 @@ def build_missing_sDNA_components(opts
                                 ]
         names.insert(0, Tool.__name__)
         if not any(os.path.isfile(ghuser_file_path(name, folder)) 
-                   for name in names for folder in components_folders):
+                   for name in names 
+                   for folder in components_folders):
             #
             name_to_use = default_names[-1] if default_names else Tool.__name__
             logger.debug('Appending tool name to missing_tools: %s' 

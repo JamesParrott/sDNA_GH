@@ -196,6 +196,7 @@ def build_comps_with_docstring_from_readme(default_path
                                           ,name_map
                                           ,categories
                                           ,category_abbrevs
+                                          ,icons_path
                                           ,move_user_objects = False                              
                                           ,path_dict = {}                                          
                                           ,readme_path = None
@@ -203,7 +204,6 @@ def build_comps_with_docstring_from_readme(default_path
                                           ,row_width = None
                                           ,**kwargs
                                           ):
-    #type(str, list, dict, dict, dict, bool, dict, str, int, int) -> list
     # = (kwargs[k] for k in self.args)
     if isinstance(component_names, basestring):
         component_names = [component_names]
@@ -290,7 +290,7 @@ def build_comps_with_docstring_from_readme(default_path
                                         ,subcategory = subcategory
                                         ,description = summary
                                         ,position = position
-                                        ,icons_path = None  
+                                        ,icons_path = icons_path  
                                         ,locked = False  # all new compnts run
                                         ,move_user_object = move_user_objects
                                         ,**kwargs
