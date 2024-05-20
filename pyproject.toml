@@ -17,11 +17,11 @@ license = {file = "LICENSE.md"}
 classifiers = [
     "Programming Language :: Python",
 ]
-dependencies = [
-    "toml_tools",
-    "IronPyShp",
-    "Mapclassif-Iron",
-]
+# dependencies = [
+#     "toml_tools",
+#     "IronPyShp",
+#     "Mapclassif-Iron",
+# ]
 
 
 [tool.hatch.build.hooks.custom]

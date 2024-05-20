@@ -14,7 +14,7 @@ if not BUILDER_GH.is_file():
 class CustomHook(BuildHookInterface):
     def initialize(self, version, build_data):
         if self.target_name in ('wheel', 'bdist'):
-            subprocess.run(rf"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend")
+            subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend', shell=True)
     
     def finalize(self):
         src_components_dir = (REPO_DIR / 'src' 
