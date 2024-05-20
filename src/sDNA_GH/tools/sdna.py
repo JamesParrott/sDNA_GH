@@ -790,7 +790,7 @@ def build_sDNA_GH_components(
     
     
     dest = kwargs.setdefault('dest'
-                            ,sDNA_GH_user_objects_location
+                            ,built_user_objects_location
                             )
 
     logger.debug('README_md_path == %s' % readme_path)
@@ -821,7 +821,7 @@ def build_missing_sDNA_components(opts
     # = opts['options'].sDNAUISpec
 
     dest = kwargs.setdefault('dest'
-                            ,sDNA_GH_user_objects_location  
+                            ,built_user_objects_location  
                             )
 
     def ghuser_file_path(name, folder = user_objects_location):
@@ -829,7 +829,7 @@ def build_missing_sDNA_components(opts
         return os.path.join(folder, name + '.ghuser') 
 
     components_folders = (user_objects_location
-                         ,sDNA_GH_user_objects_location
+                         ,built_user_objects_location
                          ,launcher.USER_INSTALLATION_FOLDER
                          )
 

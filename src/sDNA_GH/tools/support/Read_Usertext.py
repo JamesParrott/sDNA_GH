@@ -90,6 +90,7 @@ from ... import pyshp_wrapper
 from ... import logging_wrapper
 from ... import gdm_from_GH_Datatree
 from ... import launcher
+from ..sdna import sDNA_GH_Tool
 
 
 itertools = funcs.itertools #contains pairwise recipe if Python < 3.10

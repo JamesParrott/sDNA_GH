@@ -36,11 +36,10 @@ __version__ = '3.0.0.alpha_4'
 # Import classes etc. from sub modules, to allow the existing imports 
 # (for old_tools.py) to be reused unchanged.
 from .sdna import (update_opts
-                  ,sDNA_Tool_Wrapper
+                  ,sDNA_ToolWrapper
                   ,sDNA_key
                   ,build_missing_sDNA_components
                   ,import_sDNA
-                  ,sDNA_GH_user_objects_location
                   ,list_of_param_infos
                   ,package_path
                   )

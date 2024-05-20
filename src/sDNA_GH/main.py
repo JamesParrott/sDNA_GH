@@ -1192,7 +1192,6 @@ class sDNA_GH_Component(smart_comp.SmartComponent):
                 ,category_abbrevs = self.metas.category_abbrevs
                 ,plug_in_name = dev_tools.plug_in_name #'sDNA'
                 ,plug_in_sub_folder = dev_tools.plug_in_sub_folder # 'sDNA_GH' 
-                ,user_objects_location = tools.sDNA_GH_user_objects_location
                 ,add_to_canvas = False
                 ,overwrite = True
                 ,move_user_objects = self.metas.move_user_objects
