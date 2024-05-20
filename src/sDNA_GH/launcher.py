@@ -281,7 +281,8 @@ def load_modules(m_names
                 ,logger = output
                 ,module_name_error_msg = 'Please supply valid names of modules to import, %s'
                 ,folders_error_msg = 'Please supply valid folders to import from. %s'
-                ,modules_not_found_msg = 'Specified modules not found in any folder, %s'):
+                ,modules_not_found_msg = 'Specified modules not found in any folder, %s'
+                ):
     #type(str/ Iterable, list, type[any], str, str) -> tuple / None
     """ Tries to import all modules in m_names, from the first folder in 
         folders to contain a .py or .pyc files with the same name as each 
@@ -391,31 +392,32 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         modules, sDNA_GH_path = load_modules(
              m_names = module_names
             ,folders = sDNA_GH_search_paths
-            ,folders_error_msg = 'Please unzip %s.zip '
-                                % ZIP_FILE_NAME
-                                +' in the folder %s '
-                                % Grasshopper.Folders.DefaultUserObjectFolder
-                                +'and ensure a subfolder called %s is created '
-                                % os.path.join(ZIP_FILE_NAME, PACKAGE_NAME)
-                                +'inside it, containing main.py ' 
-                                +'and all the sDNA_GH python files '
-                                +'including those within other subfolders. ' 
-            ,modules_not_found_msg = 'Some sDNA_GH files may be missing.  '
-                                    +('Please: 1) Copy %s.zip into: %s '
-                                    % (ZIP_FILE_NAME
-                                      ,Grasshopper.Folders.DefaultUserObjectFolder
-                                      ))
-                                    +'2) Unblock it if necessary. '
-                                    +'3) Right click '
-                                    +'it, select Extract All... and click Extract, '
-                                    +'to extract it to that location. '
-                                    +'4) Ensure that main.py and all sDNA_GH python' 
-                                    +(' files and subfolders are inside: %s '
-                                    % os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
-                                                  ,ZIP_FILE_NAME  
-                                                  ,PACKAGE_NAME
-                                                  ))
-                                    +'5) Reinitialise the component or restart Rhino.'
+            ,folders_error_msg = ('Please unzip %s.zip '
+                                 +' in the folder %s '
+                                 +'and ensure a subfolder called %s is created '
+                                 +'inside it, containing main.py ' 
+                                 +'and all the sDNA_GH python files '
+                                 +'including those within other subfolders. '
+                                 ) % (ZIP_FILE_NAME
+                                     ,Grasshopper.Folders.DefaultUserObjectFolder
+                                     ,os.path.join(ZIP_FILE_NAME, PACKAGE_NAME)
+                                     )
+            ,modules_not_found_msg = ('Some sDNA_GH files may be missing.  '
+                                     +'Please: 1) Copy %s.zip into: %s '
+                                     +'2) Unblock it if necessary. '
+                                     +'3) Right click '
+                                     +'it, select Extract All... and click Extract, '
+                                     +'to extract it to that location. '
+                                     +'4) Ensure that main.py and all sDNA_GH python' 
+                                     +' files and subfolders are inside: %s '
+                                     +'5) Reinitialise the component or restart Rhino.'
+                                     ) % (ZIP_FILE_NAME
+                                         ,Grasshopper.Folders.DefaultUserObjectFolder
+                                         ,os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                                      ,ZIP_FILE_NAME  
+                                                      ,PACKAGE_NAME
+                                                      )
+                                         )
             )
         sDNA_GH.main = modules[0]         
 
