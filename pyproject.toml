@@ -42,4 +42,4 @@ artifacts = [
 "license.md" = "sDNA_GH/license.md"
 "src/sDNA_GH/components/manually_built" = "sDNA_GH/components/manually_built"
 # To be built by hatch_build.py running dev/sDNA_GH_build_components.gh
-"src/sDNA_GH/components/automatically_built/*.ghuser" = "sDNA_GH/components/automatically_built"
+"src/sDNA_GH/components/automatically_built" = "sDNA_GH/components/automatically_built"

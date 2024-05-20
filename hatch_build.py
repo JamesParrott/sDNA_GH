@@ -16,7 +16,7 @@ class CustomHook(BuildHookInterface):
         if self.target_name in ('wheel', 'bdist'):
             subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend', shell=True)
     
-    def finalize(self):
+    def finalize(self, version, build_data, artifact_path):
         src_components_dir = (REPO_DIR / 'src' 
                                        / 'sDNA_GH' 
                                        / 'components'
