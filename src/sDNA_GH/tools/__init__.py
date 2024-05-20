@@ -42,6 +42,7 @@ from .sdna import (update_opts
                   ,import_sDNA
                   ,sDNA_GH_user_objects_location
                   ,list_of_param_infos
+                  ,package_path
                   )
 from .config import ConfigManager
 

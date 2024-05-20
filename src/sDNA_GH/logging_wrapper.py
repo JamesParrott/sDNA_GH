@@ -115,7 +115,7 @@ def get_existing_file_handler_or_add_new_one(logger, options = LoggingOptions):
     dir_name = os.path.join(options.working_folder, options.logs_dir)
 
     if not os.path.isdir(dir_name):
-        os.mkdir(dir_name)
+        os.makedirs(dir_name)
 
     file_name = os.path.join(dir_name, options.log_file)
 

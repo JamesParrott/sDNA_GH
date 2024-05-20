@@ -100,15 +100,44 @@ RELOAD_IF_ALREADY_IMPORTED = False
 REPOSITORY = os.path.dirname(os.path.dirname(ghdoc.Path)) if ghdoc.Path else None
 # Assume we are in repo_folder/dev/sDNA_build_components.gh
 
-USER_INSTALLATION_FOLDER = os.path.join(
-                                    Grasshopper.Folders.DefaultUserObjectFolder
-                                   ,ZIP_FILE_NAME
-                                   )
 SELFTEST = 'selftest'
 APITEST_PREFIX = 'sDNA_GH_API_test_'
 DEPS = ['toml_tools', 'shapefile', 'mapclassif_Iron']
 
+def get_dir_of_python_package_containing_ghuser():
+    # This could be foiled by multiple sDNA_GH installations.
 
+    gh_comp_server = Grasshopper.Kernel.GH_ComponentServer()
+
+    for file_ in gh_comp_server.ExternalFiles(True, True):
+        path = file_.FilePath
+        if PACKAGE_NAME in path:
+            break
+        #
+    else: # for loop did not break
+        return None
+
+    dir_ = os.path.dirname(path)
+
+    while PACKAGE_NAME in dir_:
+        dir_ = os.path.dirname(dir_)
+
+    return dir_
+
+
+
+nick_name = ghenv.Component.NickName #type: ignore
+
+
+# builder can only load sDNA_GH from its parent directory, 
+# e.g. if in a dir one level up in the main repo
+# such as sDNA_build_components.gh.
+if (REPOSITORY and 
+    nick_name == 'Build_components'):
+    #
+    sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
+else:
+    sDNA_GH_search_paths = get_dir_of_python_package_containing_ghuser()
 
 class Output(object): 
 
@@ -329,24 +358,7 @@ def load_modules(m_names
                               ,logger = logger
                               )
 
-def get_dir_of_python_package_containing_ghuser():
 
-    gh_comp_server = Grasshopper.Kernel.GH_ComponentServer()
-
-    for file_ in gh_comp_server.ExternalFiles(True, True):
-        path = file_.FilePath
-        if PACKAGE_NAME in path:
-            break
-        #
-    else: # for loop did not break
-        return None
-
-    dir_ = os.path.dirname(path)
-
-    while PACKAGE_NAME in dir_:
-        dir_ = os.path.dirname(dir_)
-
-    return dir_
 
 
 if __name__ == '__main__': # False in a compiled component.  But then the user
@@ -355,22 +367,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     # Grasshopper will look for class MyComponent(component) in global scope
     # so a main function is a little tricky to define.
 
-    nick_name = ghenv.Component.NickName #type: ignore
-
-    sDNA_GH_search_paths = [USER_INSTALLATION_FOLDER]
-
-
-    other_package_path = get_dir_of_python_package()
-    if other_package_path:
-        sDNA_GH_search_paths.append(other_package_path)
-
-    # builder can only load sDNA_GH from its parent directory, 
-    # e.g. if in a dir one level up in the main repo
-    # such as sDNA_build_components.gh.
-    if (REPOSITORY and 
-        nick_name == 'Build_components'):
-        #
-        sDNA_GH_search_paths.insert(0, REPOSITORY) 
 
 
     sc.doc = ghdoc #type: ignore

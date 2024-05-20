@@ -60,23 +60,8 @@ try:
 except NameError:
     basestring = str
 
-ghuser_folder = os.path.join('components', 'automatically_built')
 
-def default_args(plug_in_sub_folder
-                ,user_objects_location
-                ,plug_in_name
-                ):
-    #type(str, str, str) -> str, str
-    if plug_in_sub_folder is None:
-        plug_in_sub_folder = plug_in_name
 
-    if user_objects_location is None:
-        user_objects_location = os.path.join(
-                                   Grasshopper.Folders.DefaultUserObjectFolder
-                                  ,plug_in_sub_folder
-                                  ,ghuser_folder
-                                  )
-    return plug_in_sub_folder, user_objects_location
 
 def update_compnt_and_make_user_obj(component
                                    ,name
@@ -85,9 +70,9 @@ def update_compnt_and_make_user_obj(component
                                    ,description
                                    ,position
                                    ,plug_in_name
-                                   ,plug_in_sub_folder = None
-                                   ,user_objects_location = None
+                                   ,dest
                                    ,icons_path = None
+                                   ,icon = None
                                    ,locked = False
                                    ,overwrite = False
                                    ,add_to_canvas = True
@@ -96,14 +81,6 @@ def update_compnt_and_make_user_obj(component
                                    ):
     # type(type[any], str, str, str, str, list, str, str, str, str, bool, bool, bool, bool, bool) -> int
 
-    plug_in_sub_folder, user_objects_location = default_args(
-                                                         plug_in_sub_folder
-                                                        ,user_objects_location
-                                                        ,plug_in_name
-                                                        )
-    
-    if not os.path.isdir(user_objects_location):
-        os.mkdir(user_objects_location)
 
 
     user_object = Grasshopper.Kernel.GH_UserObject()
@@ -112,17 +89,15 @@ def update_compnt_and_make_user_obj(component
 
     component.Attributes.Pivot = System.Drawing.PointF.Add(component.Attributes.Pivot, sizeF)
 
-    if icons_path is None:
-        icons_path = os.path.join(os.path.dirname(user_objects_location), 'icons')
+    if icon is None:
+        if (isinstance(icons_path, basestring) and 
+            isinstance(tool_name, basestring)):
+            #
+            icon = os.path.join(icons_path, tool_name + '.png')
 
-    if isinstance(tool_name, basestring) and isinstance(icons_path, basestring):
-        icon_path = os.path.join(icons_path, tool_name + '.png')
-        if os.path.isfile(icon_path):
-            logger.debug('Adding icon: %s to user_object: %s' % (icon_path, name))
-            user_object.Icon = System.Drawing.Bitmap(icon_path)
-        else:
-            logger.debug("'Icon path' is not a path: %s, for user_object %s." % (icon_path, name))
-
+    if icon is not None:
+        logger.debug('Adding icon: %s to user_object: %s' % (icon_path, name))
+        user_object.Icon = System.Drawing.Bitmap(icon)
 
     user_object.BaseGuid = component.ComponentGuid
     component.Description = user_object.Description.Description = description
@@ -150,11 +125,13 @@ def update_compnt_and_make_user_obj(component
     user_object.SaveToFile()
  
     if move_user_object:
-        if not os.path.isdir(user_objects_location):
-            os.mkdir(user_objects_location)
+        if not dest:
+            raise ValueError('No destination specified to move user objects to. ')
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
         elif overwrite:
             # Avoid OSError on Windows, in shutil.move below
-            dest_file = os.path.join(user_objects_location
+            dest_file = os.path.join(dest
                                     ,os.path.basename(user_object.Path)
                                     )
             if os.path.isfile(dest_file):
@@ -168,7 +145,7 @@ def update_compnt_and_make_user_obj(component
         # "On Windows, if dst already exists, 
         # OSError will be raised even if it is a file "
         # https://docs.python.org/2.7/library/os.html#os.rename
-        shutil.move(user_object.Path, user_objects_location)
+        shutil.move(user_object.Path, dest)
     else:
         logger.debug('Not moving user object %s ' % user_object.Description.Name)
 

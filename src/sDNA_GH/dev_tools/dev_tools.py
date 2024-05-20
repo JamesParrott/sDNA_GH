@@ -91,10 +91,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         self.debug('Starting class logger. ')
         self.logger.debug('opts.keys() == %s ' % opts.keys())
 
-
-        user_objects_location = os.path.join(launcher.REPOSITORY
-                                            ,builder.ghuser_folder #\components\automatically_built
-                                            )
+      
 
 
         sDNAUISpec, _ = tools.import_sDNA(opts
@@ -134,12 +131,15 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
         self.logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        kwargs = dict(user_objects_location = user_objects_location
-                     ,add_to_canvas = False
+        repo_root = os.path.dir_name(tools.package_path)  # Go below /src
+        readme_path = os.path.join(repo_root,'README.md')
+
+        kwargs = dict(add_to_canvas = False
                      ,move_user_objects = True
                      ,category_abbrevs = metas.category_abbrevs
                      ,plug_in_name = launcher.PLUG_IN_NAME #'sDNA'
                      ,plug_in_sub_folder = plug_in_sub_folder # 'sDNA_GH'
+                     ,readme_path = readme_path
                      )
 
         names_built = tools.build_sDNA_GH_components(

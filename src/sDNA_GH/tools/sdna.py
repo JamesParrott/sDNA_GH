@@ -761,45 +761,49 @@ def import_sDNA(opts
 
     return sDNAUISpec, run_sDNA
 
+ghuser_folder = os.path.join('components', '')
 
-sDNA_GH_user_objects_location = os.path.join(launcher.USER_INSTALLATION_FOLDER
-                                            ,launcher.PACKAGE_NAME
-                                            ,builder.ghuser_folder
-                                            )
+package_root = os.path.dir_name(os.path.dir_name(__file__))
+
+package_path = os.path.dir_name(package_root)
+
+components_folder = os.path.join(
+                        package_root
+                       ,'components'
+                       )
+
+built_user_objects_location = os.path.join(components_folder
+                                          ,'automatically_built'
+                                          )
+     
+icons_location = os.path.join(components_folder
+                             ,'icons'
+                             )
 
 
-def build_sDNA_GH_components(**kwargs):
+def build_sDNA_GH_components(
+     readme_path = os.path.join(package_root, 'README.md')
+    ,**kwargs
+    ):
     #type(kwargs) -> list
     
     
     
-    user_objects_location = kwargs.setdefault('user_objects_location'
-                                             ,sDNA_GH_user_objects_location
-                                             )
+    dest = kwargs.setdefault('dest'
+                            ,sDNA_GH_user_objects_location
+                            )
 
-    sDNA_GH_path = user_objects_location
-    while os.path.basename(sDNA_GH_path) != launcher.PACKAGE_NAME:
-        sDNA_GH_path = os.path.dirname(sDNA_GH_path)
-
-    README_md_path = os.path.join(sDNA_GH_path, 'README.md')
-    if not os.path.isfile(README_md_path):
-        README_md_path = os.path.join(os.path.dirname(sDNA_GH_path), 'README.md')
-        # Readme.md is a level higher in the repo than in the sDNA_GH
-        # folder in a user installation - it is moved intentionally
-        # by create_release_sDNA_GH_zip.bat 
+    logger.debug('README_md_path == %s' % readme_path)
 
 
-
-    logger.debug('README_md_path == %s' % README_md_path)
-
-
-    launcher_path = os.path.join(sDNA_GH_path, 'launcher.py')
+    launcher_path = os.path.join(package_root, 'launcher.py')
 
 
     return builder.build_comps_with_docstring_from_readme(
                                  default_path = launcher_path
+                                ,icons_path = icons_path 
                                 ,path_dict = {}
-                                ,readme_path = README_md_path
+                                ,readme_path = readme_path
                                 ,row_height = None
                                 ,row_width = None
                                 ,**kwargs
@@ -816,9 +820,9 @@ def build_missing_sDNA_components(opts
     sDNAUISpec, _ = import_sDNA(opts)
     # = opts['options'].sDNAUISpec
 
-    user_objects_location = kwargs.setdefault('user_objects_location'
-                                             ,sDNA_GH_user_objects_location  
-                                             )
+    dest = kwargs.setdefault('dest'
+                            ,sDNA_GH_user_objects_location  
+                            )
 
     def ghuser_file_path(name, folder = user_objects_location):
         #type(str)->str

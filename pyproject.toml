@@ -37,5 +37,8 @@ artifacts = [
 
 
 [tool.hatch.build.targets.wheel.force-include]
-"components/automatically_built" = "components/automatically_built"
-"components\manually_built" = "components\manually_built"
+"dist/components/automatically_built" = "sDNA_GH/components/automatically_built"
+"dist/components/manually_built" = "sDNA_GH/components/manually_built"
+"README.md" = "sDNA_GH/README.md"
+"README.pdf" = "sDNA_GH/README.pdf"
+"license.md" = "sDNA_GH/license.md"
