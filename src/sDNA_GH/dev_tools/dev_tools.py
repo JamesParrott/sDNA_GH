@@ -131,7 +131,7 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
 
         self.logger.debug('unique_component_names == %s ' % unique_component_names)
 
-        repo_root = os.path.dir_name(tools.package_path)  # Go below /src
+        repo_root = os.path.dirname(tools.package_path)  # Go below /src
         readme_path = os.path.join(repo_root,'README.md')
 
         kwargs = dict(add_to_canvas = False

@@ -77,18 +77,18 @@ from Grasshopper.Kernel.Parameters import (Param_Arc
                                           ,Param_GenericObject
                                           )
 
-from . import data_cruncher 
-from .skel.basic.ghdoc import ghdoc
-from .skel.tools.helpers import checkers
-from .skel.tools.helpers import funcs
-from .skel.tools.helpers import rhino_gh_geom
-from .skel.tools import runner                                       
-from .skel import add_params
-from .skel import builder
-from . import options_manager
-from . import pyshp_wrapper
-from . import logging_wrapper
-from . import gdm_from_GH_Datatree
+from .. import data_cruncher 
+from ..skel.basic.ghdoc import ghdoc
+from ..skel.tools.helpers import checkers
+from ..skel.tools.helpers import funcs
+from ..skel.tools.helpers import rhino_gh_geom
+from ..skel.tools import runner                                       
+from ..skel import add_params
+from ..skel import builder
+from .. import options_manager
+from .. import pyshp_wrapper
+from .. import logging_wrapper
+from .. import gdm_from_GH_Datatree
 from .. import launcher
 
 
@@ -763,9 +763,9 @@ def import_sDNA(opts
 
 ghuser_folder = os.path.join('components', '')
 
-package_root = os.path.dir_name(os.path.dir_name(__file__))
+package_root = os.path.dirname(os.path.dirname(__file__))
 
-package_path = os.path.dir_name(package_root)
+package_path = os.path.dirname(package_root)
 
 components_folder = os.path.join(
                         package_root
