@@ -39,6 +39,8 @@ import importlib
 
 from ghpythonlib.componentbase import executingcomponent as component
 
+import Cheetah_GH.unittest_runner
+
 from ..skel.tools.helpers import checkers
 from .. import launcher
 from .helpers import FileAndStream, UDPStream, exit_Rhino
@@ -55,11 +57,11 @@ API_TEST_MODULES = [os.path.splitext(file_)[0]
 
 print('API_TEST_MODULES: %s' % API_TEST_MODULES)
 
-def make_test_running_component_class(package_location
-                                     ,run_launcher_tests = None
-                                     ,output_stream = sys.stderr
+def make_test_running_component_class(run_launcher_tests = None
                                      ,log_file = ''
                                      ,test_suite = ()
+                                     ,port=9999
+                                     ,host='127.0.0.1'
                                      ):
     #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
     """ Class Decorator to add in package location and replace 
@@ -69,27 +71,6 @@ def make_test_running_component_class(package_location
 
     if run_launcher_tests is None:
 
-        output_stream.write('Exit Rhino after tests: %s (env var CHEETAH_GH_NON_INTERACTIVE)'
-                           % ('Yes' if os.getenv('CHEETAH_GH_NON_INTERACTIVE', '') else 'No')
-                           )
-
-        exit = False if os.getenv('CHEETAH_GH_NON_INTERACTIVE', '').lower() in ('', '0', 'false') else True
-
-
-        start_dir = package_location #os.path.join(package_location, launcher.package_name)
-
-        if not test_suite:
-
-            output_stream.write('Loading unit tests from: %s \n' % start_dir)
-            test_suite = unittest.TestLoader().discover(start_dir = start_dir
-                                                        # Non standard pattern ensures 
-                                                        # tests requiring Grasshopper are
-                                                        # skipped by the default discovery 
-                                                        ,pattern = '*test*.py'
-                                                        )
-        else:
-            print('Using test_suite: %s' % test_suite)
-
         def run_launcher_tests(self, *args):
             """ Set MyComponent.RunScript to this function to run
                 unit tests in Grasshopper. 
@@ -97,42 +78,13 @@ def make_test_running_component_class(package_location
 
             print('Starting RunScript')
 
+            Cheetah_GH.unittest_runner.start(log_file = log_file
+                                            ,test_suite = test_suite
+                                            ,port = port
+                                            ,host = host
+                                            )
 
-            if log_file:
-                
-                file_ = open(log_file,'at')
-                output_stream = FileAndStream(
-                                         file_
-                                        ,output_stream
-                                        ,print_too = output_stream is not sys.stderr
-                                        )
-
-
-            with output_stream as o:
-
-                o.write('Unit test run started at: %s ... \n\n' % time.asctime())
-
-                result = unittest.TextTestRunner(o, verbosity=2).run(test_suite)
-                
-                o.write('Test Summary\n')
-                o.write('Errors: %s\n' % (result.errors,))
-                o.write('Failures: %s\n' % (result.failures,))
-
-                if not result.wasSuccessful():
-                    # Special string to tell run_api_tests to return non-zero exit code
-                    o.write('TESTS_FAILED')
-
-
-            if exit and result.wasSuccessful():
-                exit_Rhino()
-                # exit_Rhino(23)
-                # exit_Rhino(not result.wasSuccessful())
-                
-            
-            # return (False, ) + tuple(repeat(None, len(self.Params.Output) - 1))
-            # False is for "ok" not "output"
             return tuple(itertools.repeat(None, len(self.Params.Output) - 1))
-
 
 
     class TestRunningComponent(component):
@@ -142,7 +94,6 @@ def make_test_running_component_class(package_location
     return TestRunningComponent
 
 def make_noninteractive_api_test_running_component_class(
-                                                     package_location
                                                     ,test_name
                                                     ,log_file_dir
                                                     ,port=9999
@@ -169,8 +120,6 @@ def make_noninteractive_api_test_running_component_class(
         for test_case in test_case_generator():
             test_suite.addTest(test_case)
 
-    udp_stream = UDPStream(port, host)
-
 
     if os.path.isfile(log_file_dir):
         log_file_path = os.path.splitext(log_file_dir)[0]
@@ -178,8 +127,6 @@ def make_noninteractive_api_test_running_component_class(
         log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
     log_file = log_file_path + tests_log_file_suffix + '.log'
 
-    return make_test_running_component_class(package_location
-                                            ,output_stream = udp_stream
-                                            ,log_file = log_file
+    return make_test_running_component_class(log_file = log_file
                                             ,test_suite = test_suite
                                             )

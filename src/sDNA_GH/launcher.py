@@ -450,7 +450,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         log_file_dir = os.path.dirname(checkers.get_path(fallback = sDNA_GH_path))
 
         MyComponent = test_runners.make_noninteractive_api_test_running_component_class(
-                 package_location = sDNA_GH_path
                 ,test_name = nick_name.partition(APITEST_PREFIX)[2]
                 ,log_file_dir = log_file_dir
                 )
