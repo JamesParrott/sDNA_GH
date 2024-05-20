@@ -126,22 +126,6 @@ def get_dir_of_python_package_containing_ghuser():
 
 
 
-nick_name = ghenv.Component.NickName #type: ignore
-
-main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
-
-# builder can only load sDNA_GH from its parent directory, 
-# e.g. if in a dir one level up in the main repo
-# such as sDNA_build_components.gh.
-if (REPOSITORY and 
-    nick_name == 'Build_components'):
-    #
-    sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
-    module_names = [main_sDNA_GH_module]
-else:
-    sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
-    module_names = [main_sDNA_GH_module] + [DEPS]
-
 class Output(object): 
 
     def set_logger(self, logger, flush = True):
@@ -368,8 +352,24 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                            # can't add or remove Params to the component.  
     
     # Grasshopper will look for class MyComponent(component) in global scope
-    # so a main function is a little tricky to define.
+    # so a main() guard function is a little tricky to define.
 
+
+    nick_name = ghenv.Component.NickName #type: ignore
+
+    main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
+
+    # builder can only load sDNA_GH from its parent directory, 
+    # e.g. if in a dir one level up in the main repo
+    # such as sDNA_build_components.gh.
+    if (REPOSITORY and 
+        nick_name == 'Build_components'):
+        #
+        sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
+        module_names = [main_sDNA_GH_module]
+    else:
+        sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
+        module_names = [main_sDNA_GH_module] + [DEPS]
 
 
     sc.doc = ghdoc #type: ignore
