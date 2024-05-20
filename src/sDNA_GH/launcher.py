@@ -128,6 +128,7 @@ def get_dir_of_python_package_containing_ghuser():
 
 nick_name = ghenv.Component.NickName #type: ignore
 
+main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
 
 # builder can only load sDNA_GH from its parent directory, 
 # e.g. if in a dir one level up in the main repo
@@ -136,8 +137,10 @@ if (REPOSITORY and
     nick_name == 'Build_components'):
     #
     sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
+    module_names = [main_sDNA_GH_module]
 else:
-    sDNA_GH_search_paths = get_dir_of_python_package_containing_ghuser()
+    sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
+    module_names = [main_sDNA_GH_module] + [DEPS]
 
 class Output(object): 
 
@@ -376,7 +379,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     class sDNA_GH(object):
         pass
 
-    main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
 
     if main_sDNA_GH_module in sys.modules:
         sDNA_GH.main = sys.modules[main_sDNA_GH_module]
@@ -385,7 +387,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         sDNA_GH_path = os.path.dirname(os.path.dirname(sDNA_GH.main.__file__))
     else:
         modules, sDNA_GH_path = load_modules(
-             m_names = [main_sDNA_GH_module] + [DEPS]
+             m_names = module_names
             ,folders = sDNA_GH_search_paths
             ,folders_error_msg = 'Please unzip %s.zip '
                                 % ZIP_FILE_NAME
@@ -407,7 +409,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                     +'to extract it to that location. '
                                     +'4) Ensure that main.py and all sDNA_GH python' 
                                     +(' files and subfolders are inside: %s '
-                                    % os.path.join(USER_INSTALLATION_FOLDER
+                                    % os.path.join(Grasshopper.Folders.DefaultUserObjectFolder
+                                                  ,ZIP_FILE_NAME  
                                                   ,PACKAGE_NAME
                                                   ))
                                     +'5) Reinitialise the component or restart Rhino.'
