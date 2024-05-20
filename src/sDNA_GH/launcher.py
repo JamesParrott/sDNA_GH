@@ -336,11 +336,10 @@ def load_modules(m_names
             #
             logger.debug('Importing %s' % repr(m_names))
 
-            return (tuple(strict_import(name, folder, '', logger = logger) 
-                          for name in m_names
-                         )
-                   ,folder
-                   )
+            return tuple(strict_import(name, folder, '', logger = logger) 
+                         for name in m_names
+                        ) + (folder,)
+                   
             # tuple of modules, followed by the path to them
     raise ModulesNotFoundError(message_fmt = modules_not_found_msg
                               ,m_names = m_names
@@ -358,6 +357,10 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     # so a main() guard function is a little tricky to define.
 
 
+
+
+
+
     nick_name = ghenv.Component.NickName #type: ignore
 
     main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
@@ -368,11 +371,23 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if (REPOSITORY and 
         nick_name == 'Build_components'):
         #
+        build_env_custom_deps = os.getenv('SDNA_GH_BUILD_DEPS')
+        #
+        load_modules(
+             m_names = DEPS
+            ,folders = build_env_custom_deps
+            ,folders_error_msg = ('Could not find deps: %s in folder: %s'
+                                 % (DEPS, build_env_custom_deps)
+                                 )
+            ,modules_not_found_msg = (
+                                 'Failed to import deps: %s from folder: %s'
+                                 % (DEPS, build_env_custom_deps)
+                                 )
+            )
         sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
-        module_names = [main_sDNA_GH_module]
     else:
         sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
-        module_names = [main_sDNA_GH_module] + [DEPS]
+    
 
 
     sc.doc = ghdoc #type: ignore
@@ -389,8 +404,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         # Our fake module class sDNA_GH has no .__path__
         sDNA_GH_path = os.path.dirname(os.path.dirname(sDNA_GH.main.__file__))
     else:
-        modules, sDNA_GH_path = load_modules(
-             m_names = module_names
+        sDNA_GH.main, sDNA_GH_path = load_modules(
+             m_names = main_sDNA_GH_module
             ,folders = sDNA_GH_search_paths
             ,folders_error_msg = ('Please unzip %s.zip '
                                  +' in the folder %s '
@@ -419,7 +434,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                                       )
                                          )
             )
-        sDNA_GH.main = modules[0]         
 
 
     logger = sDNA_GH.main.logger.getChild('launcher')

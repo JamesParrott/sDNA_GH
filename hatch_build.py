@@ -1,3 +1,5 @@
+import os
+import sys
 import subprocess
 import pathlib
 
@@ -13,15 +15,22 @@ if not BUILDER_GH.is_file():
 
 class CustomHook(BuildHookInterface):
     def initialize(self, version, build_data):
+        env = os.environ.copy()
+        env['SDNA_GH_BUILD_DEPS'] = sys.path[-1]
         if self.target_name in ('wheel', 'bdist'):
-            subprocess.run(rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend', shell=True)
+            subprocess.run(
+                # rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend'
+                rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enterend'
+               ,shell=True
+               ,env = env
+               )
     
-    def finalize(self, version, build_data, artifact_path):
-        src_components_dir = (REPO_DIR / 'src' 
-                                       / 'sDNA_GH' 
-                                       / 'components'
-                                       / 'automatically_built'
-                             )
-        for path in src_components_dir.glob('*.ghuser'):
-            path.unlink()
+    # def finalize(self, version, build_data, artifact_path):
+    #     src_components_dir = (REPO_DIR / 'src' 
+    #                                    / 'sDNA_GH' 
+    #                                    / 'components'
+    #                                    / 'automatically_built'
+    #                          )
+    #     for path in src_components_dir.glob('*.ghuser'):
+    #         path.unlink()
         

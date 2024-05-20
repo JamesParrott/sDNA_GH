@@ -689,34 +689,40 @@ def import_sDNA(opts
             folders[i] = os.path.dirname(folder)
 
     try:
-        (sDNAUISpec, run_sDNA), _ = load_modules(
-                                             m_names = requested_sDNA
-                                            ,folders = folders
-                                            ,logger = logger
-                                            ,module_name_error_msg = "Invalid file names: %s, %s " % requested_sDNA 
-                                                                    +"Please supply valid names of 'sDNAUISpec.py' "
-                                                                    +"and 'runsdnacommand.py' files in "
-                                                                    +"sDNAUISpec and runsdnacommand "
-                                                                    +"respectively. " # names not strings error
-                                            ,folders_error_msg = "sDNA_GH could not find a valid folder to look for sDNA in. " 
-                                                                +"Please supply the "
-                                                                +"correct name of the path to the sDNA folder you "
-                                                                +"wish to use with sDNA_GH, in "
-                                                                +"sDNA_paths.  This folder should contain the files named in "
-                                                                +"sDNAUISpec: %s.py and runsdnacommand: %s.py. " % requested_sDNA
-                                                                # not existing folders error
-                                            ,modules_not_found_msg = "sDNA_GH failed to find an sDNA file specified in "
-                                                                    +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
-                                                                    +" in any of the folders in sDNA_paths. "
-                                                                    +" Please either ensure a folder in "
-                                                                    +" sDNA_paths contains both the valid "
-                                                                    +"'sDNAUISpec.py' named %s and " % requested_sDNA[0]
-                                                                    +"'runsdnacommand.py' named %s " % requested_sDNA[0]
-                                                                    +"from your chosen sDNA installation, or adjust the "
-                                                                    +" file names specified in sDNAUISpec and runsdnacommand"
-                                                                    +" to their equivalent files in it (to use more than "
-                                                                    +" one sDNA you must rename these files in any extra). "
-                                            )
+        sDNAUISpec, run_sDNA, _ = load_modules(
+             m_names = requested_sDNA
+            ,folders = folders
+            ,logger = logger
+            ,module_name_error_msg = (
+                 "Invalid file names: %s, %s " % requested_sDNA 
+                +"Please supply valid names of 'sDNAUISpec.py' "
+                +"and 'runsdnacommand.py' files in "
+                +"sDNAUISpec and runsdnacommand "
+                +"respectively. " # names not strings error
+                )
+            ,folders_error_msg = (
+                 "sDNA_GH could not find a valid folder to look for sDNA in. " 
+                +"Please supply the "
+                +"correct name of the path to the sDNA folder you "
+                +"wish to use with sDNA_GH, in "
+                +"sDNA_paths.  This folder should contain the files named in "
+                +"sDNAUISpec: %s.py and runsdnacommand: %s.py. " % requested_sDNA
+                # not existing folders error
+                )
+            ,modules_not_found_msg = (
+                 "sDNA_GH failed to find an sDNA file specified in "
+                +"sDNAUISpec (%s.py) or runsdnacommand (%s.py)" % requested_sDNA
+                +" in any of the folders in sDNA_paths. "
+                +" Please either ensure a folder in "
+                +" sDNA_paths contains both the valid "
+                +"'sDNAUISpec.py' named %s and " % requested_sDNA[0]
+                +"'runsdnacommand.py' named %s " % requested_sDNA[0]
+                +"from your chosen sDNA installation, or adjust the "
+                +" file names specified in sDNAUISpec and runsdnacommand"
+                +" to their equivalent files in it (to use more than "
+                +" one sDNA you must rename these files in any extra). "
+                )
+            )
     except launcher.InvalidArgsError as e:
         raise e
     except BaseException: # Masking is deliberate, to give user a fix

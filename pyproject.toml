@@ -17,11 +17,11 @@ license = {file = "LICENSE.md"}
 classifiers = [
     "Programming Language :: Python",
 ]
-# dependencies = [
-#     "toml_tools",
-#     "IronPyShp",
-#     "Mapclassif-Iron",
-# ]
+dependencies = [
+    "toml_tools",
+    "IronPyShp",
+    "Mapclassif-Iron",
+]
 
 
 [tool.hatch.build.hooks.custom]
@@ -33,13 +33,14 @@ artifacts = [
 ]
 
 
-
+[tool.hatch.build.targets.wheel]
+require-runtime-dependencies = true
 
 
 [tool.hatch.build.targets.wheel.force-include]
 "README.md" = "sDNA_GH/README.md"
 "README.pdf" = "sDNA_GH/README.pdf"
 "license.md" = "sDNA_GH/license.md"
-"src/sDNA_GH/components/manually_built" = "sDNA_GH/components/manually_built"
+# "src/sDNA_GH/components/manually_built" = "sDNA_GH/components/manually_built"
 # To be built by hatch_build.py running dev/sDNA_GH_build_components.gh
 "src/sDNA_GH/components/automatically_built" = "sDNA_GH/components/automatically_built"
