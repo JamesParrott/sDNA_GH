@@ -38,7 +38,11 @@ import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
-from Cheetah.helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
+from Cheetah_GH.helpers import (
+                            run_comp,
+                            get_user_obj_comp_from_or_add_to_canvas,
+                            GH_DOC_COMPONENTS
+                            )
 from Anteater_GH.fuzzers import random_Geometry, random_int
 
 from ...skel.basic.ghdoc import ghdoc
