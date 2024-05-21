@@ -25,12 +25,12 @@ class CustomHook(BuildHookInterface):
                ,env = env
                )
     
-    # def finalize(self, version, build_data, artifact_path):
-    #     src_components_dir = (REPO_DIR / 'src' 
-    #                                    / 'sDNA_GH' 
-    #                                    / 'components'
-    #                                    / 'automatically_built'
-    #                          )
-    #     for path in src_components_dir.glob('*.ghuser'):
-    #         path.unlink()
+    def finalize(self, version, build_data, artifact_path):
+        src_components_dir = (REPO_DIR / 'src' 
+                                       / 'sDNA_GH' 
+                                       / 'components'
+                                       / 'automatically_built'
+                             )
+        for path in src_components_dir.glob('*.ghuser'):
+            path.unlink()
         
