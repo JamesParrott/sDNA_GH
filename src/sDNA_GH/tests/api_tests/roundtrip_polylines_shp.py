@@ -38,13 +38,11 @@ import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
-from ...skel.basic.ghdoc import ghdoc
-
-from . import make_unit_test_TestCase_instance_generator
-from ..helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
+from Cheetah.helpers import run_comp, get_user_obj_comp_from_or_add_to_canvas, GH_DOC_COMPONENTS
 from Anteater_GH.fuzzers import random_Geometry, random_int
 
-
+from ...skel.basic.ghdoc import ghdoc
+from . import make_unit_test_TestCase_instance_generator
 
 if Rhino.RhinoDoc.ActiveDoc.Name:
     raise Exception("These tests require a clean Rhino Document to test in. "

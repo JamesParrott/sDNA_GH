@@ -39,16 +39,15 @@ import Rhino
 import scriptcontext as sc
 import rhinoscriptsyntax as rs
 
-from ...skel.tools.helpers.funcs import recycle_file
-
-from . import make_unit_test_TestCase_instance_generator
-from ..helpers import (run_comp,
+from Cheetah_GH.helpers import (
+                       run_comp,
                        get_user_obj_comp_from_or_add_to_canvas,
                        GH_DOC_COMPONENTS,
                        save_doc_to_,
                        DIR
                       )
-from Anteater_GH.fuzzers import (random_Geometry,
+from Anteater_GH.fuzzers import (
+                       random_Geometry,
                        random_int,
                        random_nurbs_curve,
                        random_string,
@@ -56,7 +55,8 @@ from Anteater_GH.fuzzers import (random_Geometry,
                        OBJECT_GENERATORS
                       )
 
-
+from ...skel.tools.helpers.funcs import recycle_file
+from . import make_unit_test_TestCase_instance_generator
 
 if Rhino.RhinoDoc.ActiveDoc.Name:
     raise Exception("These tests require a clean Rhino Document to test in. "
