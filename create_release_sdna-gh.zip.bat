@@ -4,13 +4,27 @@ set repo_path=%~dp0
 set cwd=%CD%
 set zip_name=sdna-gh
 set target=%cwd%\%zip_name%
+set dist=%repo_path%\dist
 
 mkdir %target%
+
+
+
+@REM Attempt to clear the pip backend build cache.  Rarely successful.
+python -m pip cache purge
+
+@REM Delete all previosuly built releases and wheels.
+rmdir /s /q %dist% 
+
+call .\build_components.bat
+
 @REM pip will also install the deps into the target 
 @REM that've now been refactored own repos, 
 @REM and are now distributed via PyPi (no more static linking):
 @REM IronPyShp, toml_tools, Mapclassif-Iron, Cheetah_GH and Anteater_GH
-python -m pip install --target=%target% -e .
+@REM
+@REM This loop should only find one wheel (as we deleted dist above).
+For %%A in (%dist%"\*.whl") do python -m pip install --target=%target% %%~fA --upgrade --upgrade-strategy=eager
 
 @REM Zipping up the 'venv' (any directory pip installed into with --target)
 @REM is not a recommended distribution technique for Python libraries.

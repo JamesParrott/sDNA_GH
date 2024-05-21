@@ -451,20 +451,23 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     test_runners, __ = load_modules('%s.tests.test_running_component_classes' % PACKAGE_NAME
                                    ,sDNA_GH_path
                                    )
+    checkers, __ = load_modules('%s.skel.tools.helpers.checkers' % PACKAGE_NAME
+                               ,sDNA_GH_path
+                               )
+    log_file_dir = os.path.dirname(checkers.get_path(fallback = sDNA_GH_path))
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
         MyComponent = test_runners.make_test_running_component_class(
-                                            package_location = sDNA_GH_path
+                                            log_file_dir = log_file_dir
                                             )
     elif nick_name.startswith(APITEST_PREFIX):
 
-        if not os.getenv('NUM_SDNA_GH_API_TESTS'):
-            raise Exception('The environment variable: NUM_SDNA_GH_API_TESTS must be set. ')
+        if not os.getenv('NUM_TESTS'):
+            raise Exception('The environment variable: NUM_TESTS must be set. ')
 
         checkers, __ = load_modules('%s.skel.tools.helpers.checkers' % PACKAGE_NAME
                                    ,sDNA_GH_path
                                    )
-        log_file_dir = os.path.dirname(checkers.get_path(fallback = sDNA_GH_path))
 
         MyComponent = test_runners.make_noninteractive_api_test_running_component_class(
                  test_name = nick_name.partition(APITEST_PREFIX)[2]

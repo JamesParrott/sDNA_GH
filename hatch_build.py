@@ -20,7 +20,12 @@ class CustomHook(BuildHookInterface):
         if self.target_name in ('wheel', 'bdist'):
             Cheetah_GH.run_GH_file(
                  gh_file=BUILDER_GH
-                ,extra_env_vars = {'SDNA_GH_BUILD_DEPS' : sys.path[-1]}
+                ,extra_env_vars = {
+                     # Pass in the path to sDNA_GH's deps 
+                     # installed by pip in its build environment
+                     'SDNA_GH_BUILD_DEPS' : sys.path[-1]
+                    # ,'CHEETAH_GH_NON_INTERACTIVE' : 'False'
+                    }
                 )
 
 

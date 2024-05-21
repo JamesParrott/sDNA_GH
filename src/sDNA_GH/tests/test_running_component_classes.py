@@ -37,7 +37,7 @@ import time
 import itertools
 import importlib
 
-# from ghpythonlib.componentbase import executingcomponent as component
+from ghpythonlib.componentbase import executingcomponent as component
 
 import Cheetah_GH.unittest_runner
 
@@ -61,7 +61,7 @@ API_TEST_MODULES = [os.path.splitext(file_)[0]
 print('API_TEST_MODULES: %s' % API_TEST_MODULES)
 
 def make_test_running_component_class(run_launcher_tests = None
-                                     ,log_file = ''
+                                     ,log_file_dir = ''
                                      ,test_suite = ()
                                      ,port=9999
                                      ,host='127.0.0.1'
@@ -72,6 +72,12 @@ def make_test_running_component_class(run_launcher_tests = None
     """
 
 
+    if os.path.isfile(log_file_dir):
+        log_file_path = os.path.splitext(log_file_dir)[0]
+    else:
+        log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
+    log_file = log_file_path + tests_log_file_suffix + '.log'
+
     if run_launcher_tests is None:
 
         def run_launcher_tests(self, *args):
@@ -80,7 +86,7 @@ def make_test_running_component_class(run_launcher_tests = None
             """            
 
             print('Starting RunScript')
-
+            os.setenv('CHEETAH_GH_NON_INTERACTIVE', 'False')
             Cheetah_GH.unittest_runner.start(log_file = log_file
                                             ,test_suite = test_suite
                                             ,port = port
@@ -124,12 +130,7 @@ def make_noninteractive_api_test_running_component_class(
             test_suite.addTest(test_case)
 
 
-    if os.path.isfile(log_file_dir):
-        log_file_path = os.path.splitext(log_file_dir)[0]
-    else:
-        log_file_path =  os.path.join(log_file_dir, launcher.PACKAGE_NAME)
-    log_file = log_file_path + tests_log_file_suffix + '.log'
 
-    return make_test_running_component_class(log_file = log_file
+    return make_test_running_component_class(log_file_dir = log_file_dir
                                             ,test_suite = test_suite
                                             )

@@ -157,12 +157,12 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
         if sDNA_names_built:
             names_built += sDNA_names_built
 
-        Cheetah_GH.helpers.exit_Rhino()
+        # Cheetah_GH.helpers.exit_Rhino()
 
-        # retcode = 0
+        retcode = 0
 
-        # locs = locals().copy()
-        # return tuple(locs[retval] for retval in self.retvals)
+        locs = locals().copy()
+        return tuple(locs[retval] for retval in self.retvals)
 
     retvals = ('retcode', 'names_built')
     component_outputs = ()
