@@ -7,7 +7,7 @@ def make_unit_test_TestCase_instance_generator(
     ):
 
     def API_unittest_TestCase_instances(
-            N = int(os.getenv('NUM_SDNA_GH_API_TESTS', '5')),
+            N = int(os.getenv('NUM_TESTS', '5')),
             ):
 
         class APITestCase(unittest.TestCase):

@@ -34,6 +34,8 @@ __version__ = '3.0.0.alpha_4'
 import os
 import logging
 
+import Cheetah_GH.helpers
+
 from ..skel.tools import name_mapper
 from .. import tools
 from ..skel.tools import runner
@@ -150,13 +152,17 @@ class sDNA_GH_Builder(tools.sDNA_GH_Tool):
                                                               ,**kwargs
                                                               )
 
+
+
         if sDNA_names_built:
             names_built += sDNA_names_built
 
-        retcode = 0
+        Cheetah_GH.helpers.exit_Rhino()
 
-        locs = locals().copy()
-        return tuple(locs[retval] for retval in self.retvals)
+        # retcode = 0
+
+        # locs = locals().copy()
+        # return tuple(locs[retval] for retval in self.retvals)
 
     retvals = ('retcode', 'names_built')
     component_outputs = ()

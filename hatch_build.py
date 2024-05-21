@@ -3,6 +3,8 @@ import sys
 import subprocess
 import pathlib
 
+import Cheetah_GH
+
 # https://discuss.python.org/t/custom-build-steps-moving-bokeh-off-setup-py/16128/3
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -15,14 +17,13 @@ if not BUILDER_GH.is_file():
 
 class CustomHook(BuildHookInterface):
     def initialize(self, version, build_data):
-        env = os.environ.copy()
-        env['SDNA_GH_BUILD_DEPS'] = sys.path[-1]
         if self.target_name in ('wheel', 'bdist'):
-            subprocess.run(
-                rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend'
-               ,shell=True
-               ,env = env
-               )
+            Cheetah_GH.run_GH_file(
+                 gh_file=BUILDER_GH
+                ,extra_env_vars = {'SDNA_GH_BUILD_DEPS' : sys.path[-1]}
+                )
+
+
     
     def finalize(self, version, build_data, artifact_path):
         src_components_dir = (REPO_DIR / 'src' 
