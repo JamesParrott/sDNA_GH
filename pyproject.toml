@@ -21,6 +21,8 @@ dependencies = [
     "toml_tools",
     "IronPyShp",
     "Mapclassif-Iron",
+    "Cheetah_GH",
+    "Anteater_GH",
 ]
 
 
