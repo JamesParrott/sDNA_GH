@@ -19,8 +19,7 @@ class CustomHook(BuildHookInterface):
         env['SDNA_GH_BUILD_DEPS'] = sys.path[-1]
         if self.target_name in ('wheel', 'bdist'):
             subprocess.run(
-                # rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend'
-                rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enterend'
+                rf'"C:\Program Files\Rhino 8\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open {BUILDER_GH} _enter _exit _enterend'
                ,shell=True
                ,env = env
                )
