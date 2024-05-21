@@ -86,7 +86,6 @@ def make_test_running_component_class(run_launcher_tests = None
             """            
 
             print('Starting RunScript')
-            os.setenv('CHEETAH_GH_NON_INTERACTIVE', 'False')
             Cheetah_GH.unittest_runner.start(log_file = log_file
                                             ,test_suite = test_suite
                                             ,port = port
