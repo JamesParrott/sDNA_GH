@@ -3,7 +3,7 @@ Authors
 * James Parrott
 * Crispin Cooper (Cardiff University)
 
-sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper providing components that run the tools from a local [sDNA](https://github.com/fiftysevendegreesofrad/sdna_open/releases) installation, on Rhino and Grasshopper geometry and data.  
+sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper providing components that run the tools from a local [sDNA](https://github.com/fiftysevendegreesofrad/sdna_open/releases) installation, on Rhino and Grasshopper geometry and data.  Currently requires Windows.
 
 Shenzhen University and Hong Kong University funded the initial and subsequent development phases respectively.  Wedderburn Transport Planning and Alain Chiaradia worked on defining the idea, and staunchly supported the project along with Cardiff University.  Sara Nalaskowska, Siddharth Khakhar and Fan Zitian, all provided invaluable help during development and testing.  Huge thanks to all.
 
@@ -95,6 +95,20 @@ __version__ = '3.0.0'
 4. 1.2 GB disk space. 
 
 ### Installation.
+
+#### Experimental installation via pip
+`pip install --target=\Grasshopper\UserObjects\sdna-gh sDNA_GH`
+There are few modules in sDNA_GH that can be run outside of Grasshopper, let alone Rhino.  The
+wheels (bdist releases) contain launcher components, and import the main sDNA_GH package.  
+Therefore for most users, installation should target a folder from which Grasshopper will
+find the sDNA_GH components, not in a venv or standard CPython installation.  The folder 
+above is the same as for a standard installation.
+
+#### Experimental installation in CPython 3 components (Rhino 8's Grasshopper, also via pip)
+`#r: sDNA_GH`
+
+
+#### Standard installation.
 1. Ensure you have an installation of [Rhino 3D](https://www.rhino3d.com/download/) including Grasshopper (versions 6 and 7 are supported).
 
 sDNA_GH provides some functionality without sDNA installed, e.g. Selecting real Rhino objects, User Text components, reading and writing shapefiles, parsing data, and recolouring objects.  But to use the sDNA components, an installation of sDNA is required.
@@ -260,7 +274,7 @@ A field specifying an originating Rhino object's UUID `uuid_field` will be omitt
 
 
 #### sDNA Tools
-By default, sDNA components run the Write_Shp tool before, and Read_Shp tool after, the actual sDNA tool of the component, passing in and out the names of the special temporary shapefiles.  To prevent this, e.g. if using seperate Write_Shp or Read_Shp components, set `auto_write_Shp` or `auto_read_Shp` to false respectively.
+By default, sDNA components run the Write_Shp tool before, and Read_Shp tool after, the actual sDNA tool of the component, passing in and out the names of the special temporary shapefiles.  To prevent this, e.g. if using separate Write_Shp or Read_Shp components, set `auto_write_Shp` or `auto_read_Shp` to false respectively.
 
 ##### Analysis tools
  - sDNA tools run sDNA from the command line, using the Python interpreter in `python`.  
@@ -271,7 +285,7 @@ By default, sDNA components run the Write_Shp tool before, and Read_Shp tool aft
 
 ###### Auto-run tool rules.
 The `auto_` options control automatic insertion of extra support tools, into an sDNA component's list of tools.  These extra tools
-can allow sDNA components to do anything between simply being pure wrappers around the sDNA command line interface, to carrying out an entire workflow from Rhino geometry and User Text, finshing with recolouring the Rhino Geometry with the sDNA results.  Running tools within a single component should be faster and require less memory, as the Data and Geometry is all kept as the internal data structure (a `gdm`) between tools, instead of being transformed into Grasshopper native form after each component runs, and into Python `gdm` form again when the next component runs. 
+can allow sDNA components to do anything between simply being pure wrappers around the sDNA command line interface, to carrying out an entire workflow from Rhino geometry and User Text, finishing with recolouring the Rhino Geometry with the sDNA results.  Running tools within a single component should be faster and require less memory, as the Data and Geometry is all kept as the internal data structure (a `gdm`) between tools, instead of being transformed into Grasshopper native form after each component runs, and into Python `gdm` form again when the next component runs. 
 
 If `auto_read_User_Text` is true, all sDNA components attempt to check, if any read_User_Text components are already connected to its inputs (upstream).  If not, the sDNA component will insert the read_User_Text tool before all instances of the auto_write_Shp tool (which is run before each sDNA tool if `auto_write_Shp` is true, as above).  Similarly, if `auto_get_Geom` is true, Read_Geom is run before all instances of read_User_Text.  So if all `auto_` options are true, an sDNA component will take in geometry from Rhino directly, write it to a shapefile, run the analysis in sDNA, read in the output shapefile (data and shapes), parse the data, and recolour the original Rhino polylines.  **WARNING!  If a valid file path was not specified in `file` or `input` on a preceding Write_Shp component, and that file was used by an sDNA tool, sDNA components will delete input shapefiles with default names if `strict_no_del` = false, `overwrite_shp` = false, and `del_after_sDNA` = true.**   
 The sDNA tool descriptions below are copied almost verbatim from the [sDNA manual](https://sdna-open.readthedocs.io/en/latest/guide_to_individual_tools.html#skim-matrix):
@@ -546,14 +560,14 @@ sDNA_GH has two fundamentally different modes of operation controlled by the Boo
 To set all components to synchronised, set `sync` = true on a Config component, leave `save_to` unconnected, and set `go` = true.
 This writes `sync` = true to the installation wide options file (`config.toml`).  As long as no higher priority options source (Params, project specific options files, or local metas from other components) sets `sync` = false, all desynchronised components will then resynchronise the next time they run.
 
-###### Applying sychronisation changes.
+###### Applying synchronisation changes.
  Finally, one of three alternatives is necessary to make these changes take effect, as synchronised components only read the installation wide options file on start up:
 a) Restart Rhino, 
 b) Set `unload = true` on an Unload_sDNA component, set `unload = false` on it immediately afterwards, then manually re-initialise each component (double click its name or icon to see its source code and click OK, or delete it and replace it from the sDNA_GH ribbon).
 c) Set the `config` on each component to be resynchronised to the file path of the installation wide options file (e.g.  `%appdata%\Grasshopper\UserObjects\sdna-gh\sDNA_GH\config.toml` - expand `%appdata%` in a File Explorer).
 
-###### Desynchronisation.
-Components are already desynchronised by default.  Global desynchronisation is only necessary if you have already synchronised them, e.g.to save options from other components to a `config.toml` file, and wish to undo this.
+###### De-synchronisation.
+Components are already desynchronised by default.  Global de-synchronisation is only necessary if you have already synchronised them, e.g.to save options from other components to a `config.toml` file, and wish to undo this.
 
 To desynchronise all synchronised components, set `sync` = false on a Config component, leave `save_to` unconnected, and set `go` = true.  This writes `sync` = false to the sDNA_GH `config.toml`.  
 
@@ -593,14 +607,15 @@ grasshopper.sdna@gmail.com
 ## Developer manual.  
 
 ### Dependencies.
-sDNA_GH 3.0.0.alpha_1 includes static copies of the following Python packages:
-
 [IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
-[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in Python 3.11) and tomli_w, with a few small extras.
+[toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in Python 3.11 and later) and tomli_w, with a few small extras.
 
-[mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a tested, striped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
+[mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a stripped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
 
+[Cheetah_GH (MIT License)](https://github.com/JamesParrott/Cheetah_GH).  A framework that can place, virtually connect, and runs Grasshopper components to the canvas, in code (e.g. test code).  Also runs Grasshopper definitions from the command line, pipes output from the internal Grasshopper env run using Cheetah_GH (e.g. unittest) back to the command line, and if few changes are made to the Grasshopper definition, quit Rhino and return to the command line.
+
+[Anteater_GH (MIT License)](https://github.com/JamesParrott/Anteater_GH).  Fuzz testing helper functions for testing within Grasshopper and Rhino.
 
 ### Testing.
 
@@ -610,12 +625,12 @@ However the code in data_cruncher.py is a little more complex, and so is importa
 unit tests can be run within Grasshopper by placing a self_test component (with a test tube icon under Extras).
 
 #### API Tests.
-The API Tests can be run locally from within Rhino by opening `test_cases\Rhino_8_API_tests.gh`.  They can also be run locally from the cmd command line by running `python .\test_cases\run_api_tests.py` (Python >= 3.8 required), a script which launches Rhino, listens over UDP for 'stderr' output from the unittest process within Rhino, and attempts to return an error code indicating success or failure of the tests.  Test output is also saved to `test_cases\sDNA_GH_unit_test_results.log`.
+The API Tests can be run locally from within Rhino by opening `test_cases\Rhino_8_API_tests.gh`.  They can also be run locally from the cmd command line by running `Cheetah_GH .\src\sDNA_GH\Rhino_8_API_tests.gh NUM_TESTS 5` (Python >= 3.8 and Cheetah_GH required in the test env).  Cheetah_GH will listen over UDP for 'stderr' output from the unittest process Cheetah is also running within Rhino/  It also attempts to return an error code indicating success or failure of the tests.  Test output is also saved to `src\sDNA_GH\sDNA_GH_unit_test_results.log`.
 
 If RhinoCompute allows command line access, this could potentially be developed into a cloud CI pipeline.  
 
 #### Iteration.
-When working on the source tree outside of Rhino, if no changes to `.\launcher.py` have been made (that would neccessitate running `.\build_components.bat`), then `.\create_install_and_test_release.bat` can be run to create a release from the current source tree (and whatever component launcher files are there from a previous build), install it, and run the API tests on it.
+When working on the source tree outside of Rhino, if no changes to `.\launcher.py` have been made (that would necessitate running `.\build_components.bat`), then `.\create_install_and_test_release.bat` can be run to create a release from the current source tree (and whatever component launcher files are there from a previous build), install it, and run the API tests on it.
 
 #### Other Tests.
 Grasshopper is a visual programming language.  It has been challenging to run a test framework within it
