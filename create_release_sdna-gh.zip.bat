@@ -6,6 +6,9 @@ set zip_name=sdna-gh
 set target=%cwd%\%zip_name%
 set dist=%repo_path%\dist
 
+@REM Delete prebuilt release zip file
+del %cwd%\%zip_name%.zip
+
 mkdir %target%
 
 

@@ -39,4 +39,5 @@ require-runtime-dependencies = true
 "README.pdf" = "sDNA_GH/README.pdf"
 "license.md" = "sDNA_GH/license.md"
 # To be built by hatch_build.py running dev/sDNA_GH_build_components.gh
-# "src/sDNA_GH/components/automatically_built" = "sDNA_GH/components/automatically_built"
+# Specify them explicitly here if any required .ghuser files are untracked (in .gitignore)
+"src/sDNA_GH/components/automatically_built" = "sDNA_GH/components/automatically_built"

@@ -79,7 +79,7 @@ def update_compnt_and_make_user_obj(component
                                    ,move_user_object = False
                                    ,update = False
                                    ):
-    # type(type[any], str, str, str, str, list, str, str, str, str, bool, bool, bool, bool, bool) -> int
+    # type(type[any], str, str, str, str, list, str, str, str, str, bool, bool, bool, bool, bool) -> type[any]
 
 
 
@@ -116,9 +116,8 @@ def update_compnt_and_make_user_obj(component
 
     if add_to_canvas:
         GH_doc = ghdoc.Component.Attributes.Owner.OnPingDocument()
-        success = GH_doc.AddObject(docObject = component, update = update)
-    else:
-        success = True  # could improve this.
+        GH_doc.AddObject(docObject = component, update = update)
+
     
     user_object.SetDataFromObject(component)
     user_object.CreateDefaultPath(True)
@@ -137,7 +136,7 @@ def update_compnt_and_make_user_obj(component
             if os.path.isfile(dest_file):
                 os.remove(dest_file)
 
-        logger.debug('Moving user object %s' % user_object.Description.Name)
+        logger.debug('Moving user object %s to %s' % (user_object.Description.Name, dest))
 
         # "If the destination already exists but is not a directory, it may 
         # be overwritten depending on os.rename() semantics."
@@ -145,11 +144,17 @@ def update_compnt_and_make_user_obj(component
         # "On Windows, if dst already exists, 
         # OSError will be raised even if it is a file "
         # https://docs.python.org/2.7/library/os.html#os.rename
+
+        path = os.path.join(dest, os.path.basename(user_object.Path))
+
         shutil.move(user_object.Path, dest)
+
     else:
+        path = user_object.Path
         logger.debug('Not moving user object %s ' % user_object.Description.Name)
 
-    return success
+
+    return user_object, path
 
 def text_file_to_str(file, extra_new_line_char = '', encoding = 'utf-8', **kwargs):
     #type(str, str) -> str
@@ -226,7 +231,7 @@ def build_comps_with_docstring_from_readme(default_path
 
     logger.debug('readme[:20] == %s' % readme[:20])
 
-
+    logger.info('User objects (.ghuser files) dest: %s' % kwargs['dest'])
 
     user_obj_paths = []
 
@@ -283,7 +288,7 @@ def build_comps_with_docstring_from_readme(default_path
         #gh_python_comp.Params.Clear()
 
 
-        user_obj_path = update_compnt_and_make_user_obj(
+        user_obj, path = update_compnt_and_make_user_obj(
                                          component = gh_python_comp
                                         ,name = nick_name
                                         ,tool_name = tool_name
@@ -295,8 +300,16 @@ def build_comps_with_docstring_from_readme(default_path
                                         ,move_user_object = move_user_objects
                                         ,**kwargs
                                         )
-        if user_obj_path:
-            user_obj_paths += [user_obj_path]
+
+        logger.info('Successfully created User Object: %s' % user_obj.Description.NickName)
+
+        if path:
+            user_obj_paths.append(path)
+
+    logger.info('User objects located at: %s' % set(os.path.dirname(path) 
+                                                    for path in user_obj_paths
+                                                   )
+               )
 
     return user_obj_paths
 
