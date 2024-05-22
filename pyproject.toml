@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+
+
+[project]
+name = "sDNA_GH"
+version = "3.0.0.alpha_4"
+authors = [{name = "James Parrott", email = "james.parrott@proton.me"}, {name = 'Crispin Cooper', email = 'sdna@cardiff.ac.uk'}]
+description = "sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper, that runs sDNA on Rhino and Grasshopper geometry and data. "
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=2.7"
+keywords = ["Rhino", "Grasshopper", "control", "components", "runner", "tests"]
+license = {file = "LICENSE.md"}
+classifiers = [
+    "Programming Language :: Python",
+]
+dependencies = [
+    "toml_tools",
+    "IronPyShp",
+    "Mapclassif-Iron",
+    "Cheetah_GH",
+    "Anteater_GH",
+]
+
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+
+[tool.hatch.build.targets.wheel]
+require-runtime-dependencies = true
+
+
+[tool.hatch.build.targets.wheel.force-include]
+"README.md" = "sDNA_GH/README.md"
+"README.pdf" = "sDNA_GH/README.pdf"
+"license.md" = "sDNA_GH/license.md"
+# To be built by hatch_build.py running dev/sDNA_GH_build_components.gh
+# Specify them explicitly here if any required .ghuser files are untracked (in .gitignore)
+"src/sDNA_GH/components/automatically_built" = "sDNA_GH/components/automatically_built"

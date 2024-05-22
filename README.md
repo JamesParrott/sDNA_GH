@@ -21,7 +21,7 @@ sDNA_GH:
  - Allows easy adding of a native Legend.
 
 ## User manual.  
-__version__ = '3.0.0.alpha_3'
+__version__ = '3.0.0.alpha_4'
 
 ## Table of contents
 
@@ -476,15 +476,16 @@ The next sDNA_GH component to run after this one (that's not also an Unload_sDNA
 ###### Self_test (selftest)
 Runs the unit tests of the sDNA_GH module and launcher.py.  
 
-
 Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will
 cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests of the functions in the launcher, can also be added to the launcher code. 
 
 
 ###### sDNA_GH_API_test_xxxx
+These components are not formally provided with releases (except inside `src\sDNA_GH\Rhino_8_API_tests.gh` - to debug this
+file add `'CHEETAH_GH_NON_INTERACTIVE' : 'False'` to the dict set to the kwarg `extra_env_vars` in `hatch_build.py`). 
+But for developers, launcher components whose names start with `sDNA_GH_API_test_` (defined in `launcher.py:APITEST_PREFIX`), named `sDNA_GH_API_test_xxxx` will run API test "xxxx".  "xxxx" can also be "all" 
+to run all the API tests.
 
-These components are not provided with releases. But for developers, launcher components with 
-this name will run API test "xxxx" (xxxx can be "all" to run all of them)
 
 
 <!--
@@ -630,9 +631,9 @@ These forks were created after the original release of sDNA_GH.  Their copyright
 parent projects.  James maintains these forks.
 toml_tools in particular has high test coverage (thanks to tomli and tomli_w's tests), and new features are being proposed for TOML, so is particularly suitable for future development.
 #### sDNA_GH
-Contributions to sDNA_GH must not fail any regression tests.  Unfortunately the test cases are Grasshopper definitions that must each be run manually.  Automating these tests in some way
-would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
-that would let Read_Shp and Write_Shp support Points shapefile types.
+Rhino/Grasshopper Python development is a plentiful source of bugs.  Contributions to sDNA_GH must not fail any regression tests.  Unfortunately many other tests (in '/test_cases', other than the Unit tests and API tests mentioned above) are Grasshopper definitions that must each be run manually.  Automating the remainder of 
+these tests in some way, e.g. also using Cheetah_GH would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
+that would let Read_Shp and Write_Shp support Points shapefile types.  But beware the 
 Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the copyright holder, for Cardiff University to be able to include them.
 
 
