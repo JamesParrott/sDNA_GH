@@ -97,7 +97,7 @@ __version__ = '3.0.0'
 ### Installation.
 
 #### Experimental installation via pip
-`pip install --target=\Grasshopper\UserObjects\sdna-gh sDNA_GH`
+`pip install --target=%APPDATA%\Grasshopper\UserObjects\sdna-gh sDNA_GH`
 There are few modules in sDNA_GH that can be run outside of Grasshopper, let alone Rhino.  The
 wheels (bdist releases) contain launcher components, and import the main sDNA_GH package.  
 Therefore for most users, installation should target a folder from which Grasshopper will
