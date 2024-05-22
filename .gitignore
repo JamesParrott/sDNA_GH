@@ -25,7 +25,7 @@ make_gephi_edges_csv.csv
 *.3dm.rhl
 
 # Automatically rebuildable components
-src\sDNA_GH\components\automatically_built\*.ghuser
+src/sDNA_GH/components/automatically_built/*.ghuser
 
 #Release files
 *.zip
