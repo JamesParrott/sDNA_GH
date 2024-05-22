@@ -458,7 +458,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
         MyComponent = test_runners.make_test_running_component_class(
-                                            log_file_dir = log_file_dir
+                                             log_file_dir = log_file_dir
+                                            ,start_dir = sDNA_GH_path
                                             )
     elif nick_name.startswith(APITEST_PREFIX):
 

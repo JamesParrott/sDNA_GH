@@ -63,6 +63,7 @@ print('API_TEST_MODULES: %s' % API_TEST_MODULES)
 def make_test_running_component_class(run_launcher_tests = None
                                      ,log_file_dir = ''
                                      ,test_suite = ()
+                                     ,start_dir = ''
                                      ,port=9999
                                      ,host='127.0.0.1'
                                      ):
@@ -88,6 +89,7 @@ def make_test_running_component_class(run_launcher_tests = None
             print('Starting RunScript')
             Cheetah_GH.unittest_runner.start(log_file = log_file
                                             ,test_suite = test_suite
+                                            ,start_dir = start_dir
                                             ,port = port
                                             ,host = host
                                             )
