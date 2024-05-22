@@ -30,6 +30,9 @@ dependencies = [
 path = "hatch_build.py"
 
 
+[tool.hatch.build.targets.sdist]
+require-runtime-dependencies = true
+
 [tool.hatch.build.targets.wheel]
 require-runtime-dependencies = true
 

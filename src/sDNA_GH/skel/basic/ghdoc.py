@@ -42,7 +42,11 @@ if 'ghdoc' not in globals():
         raise ValueError('sc.doc == Rhino.RhinoDoc.ActiveDoc. '
                         +'Switch sc.doc = ghdoc and re-import module. '
                         )
+    
+    # TODO:  Fix in a CPython3 components, in which
+    # type(sc.doc)=<class 'RhinoCodePlatform.Rhino3D.GH1.Legacy.ProxyDocument'>
     if isinstance(sc.doc, GhPython.DocReplacement.GrasshopperDocument):
+
         ghdoc = sc.doc  # Normally a terrible idea!  But the check conditions
                         # are strong, and we need to get the `magic variable'
                         # ghdoc in this 
