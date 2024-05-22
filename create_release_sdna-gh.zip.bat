@@ -1,18 +1,50 @@
 @ECHO OFF
 
+set repo_path=%~dp0
+set cwd=%CD%
 set zip_name=sdna-gh
-set package_name=sDNA_GH
+set target=%cwd%\%zip_name%
+set dist=%repo_path%\dist
 
-mkdir %zip_name%
-copy README.md %zip_name%
-copy README.pdf %zip_name%
-copy license.md %zip_name%
-xcopy %package_name% %zip_name%\%package_name% /I /S /E /Y
-cd %zip_name%
-tar -caf ..\%zip_name%.zip *
-cd ..
-rmdir /s /q %zip_name%
-rem del README.md
-rem del README.pdf
-rem del license.md
+@REM Delete prebuilt release zip file
+del %cwd%\%zip_name%.zip
 
+mkdir %target%
+
+
+
+@REM Attempt to clear the pip backend build cache.  Seldom successful.
+python -m pip cache purge
+
+@REM Delete all previously built releases and wheels.
+rmdir /s /q %dist% 
+
+call .\build_components.bat
+
+@REM pip will also install the deps into the target 
+@REM that've now been refactored own repos, 
+@REM and are now distributed via PyPi (no more static linking):
+@REM IronPyShp, toml_tools, Mapclassif-Iron, Cheetah_GH and Anteater_GH
+@REM
+@REM This loop should only find one wheel (as we deleted dist above).
+For %%A in (%dist%"\*.whl") do python -m pip install --target=%target% %%~fA --upgrade --upgrade-strategy=eager
+
+@REM Zipping up the 'venv' (any directory pip installed into with --target)
+@REM is not a recommended distribution technique for Python libraries.
+@REM It is not even common (yet?) for Rhino plug-ins.  But more normal
+@REM installs from the wheel are also possible via: 
+@REM pip install --target=%app_data%\Grasshopper\UserObjects\ %repo_path%\dist\sdna_gh-*-py2.py3-none-any.whl
+@REM and a zip file allows: 
+@REM i) shipping known versions of the deps, 
+@REM ii) giving Rhino users a zip file like many other plug-ins, 
+@REM (they are familiar with unblocking and unzipping),
+@REM iii) backwards compatibility with the sDNA_GH v1 & v2 installation process 
+@REM iv) while also allowing sDNA_GH to be installable and runnable (at
+@REM least in code) from Rhino 8 CPython 3 components, simply using the new auto magical syntax:  
+@REM #r: sDNA_GH
+cd %target%
+tar -caf %cwd%\%zip_name%.zip *
+
+@REM Clean up tmp build artefacts.
+cd %cwd%
+rmdir /s /q %target%

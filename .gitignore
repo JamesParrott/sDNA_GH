@@ -15,14 +15,22 @@
 *.dbf
 *.shx
 
-#sDNA
+# sDNA
 *.names.csv
 
-#Rhino lock file
+# Gephi demo output
+make_gephi_edges_csv.csv
+
+# Rhino lock files
 *.3dm.rhl
+
+# Automatically rebuildable components
+src/sDNA_GH/components/automatically_built/*.ghuser
 
 #Release files
 *.zip
+*.tar.gz
+*.whl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

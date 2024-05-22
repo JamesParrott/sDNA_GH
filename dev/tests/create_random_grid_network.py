@@ -6,7 +6,7 @@
 # Copyright (c) [2021] [Cardiff University, a body incorporated
 # by Royal Charter and a registered charity (number:
 # 1136855) whose administrative offices are at 7th floor 30-
-# 36 Newport Road, UniversityCF24 0DE, Wales, UK]
+# 36 Newport Road, University CF24 0DE, Wales, UK]
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,8 @@
 # SOFTWARE.
 
 
-__author__ = 'James Parrott'
-__version__ = '2.10.0'
+__authors__ = {'James Parrott', 'Crispin Cooper'}
+__version__ = '3.0.0.alpha_4'
 
 from random import random as random_num
 from math import trunc as floor  # for an int, not a float.  math.floor(2.33) == 2.0;  math.trunc(2.33) == 2

@@ -21,7 +21,7 @@ sDNA_GH:
  - Allows easy adding of a native Legend.
 
 ## User manual.  
-__version__ = '2.10.0'
+__version__ = '3.0.0.alpha_4'
 
 ## Table of contents
 
@@ -476,9 +476,16 @@ The next sDNA_GH component to run after this one (that's not also an Unload_sDNA
 ###### Self_test (selftest)
 Runs the unit tests of the sDNA_GH module and launcher.py.  
 
-
 Not a tool in the same sense as the others (this has no tool function in sDNA).  The name `Self_test` (and variations to case and spacing) are recognised by the launcher code, not the main package tools factory.  In a component named "Self_test", the launcher will
 cache it, then replace the normal RunScript method in a Grasshopper component class entirely, with a function (`unit_tests_sDNA_GH.run_launcher_tests`) that runs all the package's unit tests (using the Python unittest module).  Unit tests of the functions in the launcher, can also be added to the launcher code. 
+
+
+###### sDNA_GH_API_test_xxxx
+These components are not formally provided with releases (except inside `src\sDNA_GH\Rhino_8_API_tests.gh` - to debug this
+file add `'CHEETAH_GH_NON_INTERACTIVE' : 'False'` to the dict set to the kwarg `extra_env_vars` in `hatch_build.py`). 
+But for developers, launcher components whose names start with `sDNA_GH_API_test_` (defined in `launcher.py:APITEST_PREFIX`), named `sDNA_GH_API_test_xxxx` will run API test "xxxx".  "xxxx" can also be "all" 
+to run all the API tests.
+
 
 
 <!--
@@ -586,13 +593,34 @@ grasshopper.sdna@gmail.com
 ## Developer manual.  
 
 ### Dependencies.
-sDNA_GH v 2.5.2 includes static copies of the following Python packages:
+sDNA_GH 3.0.0.alpha_1 includes static copies of the following Python packages:
 
 [IronPyShp (MIT License)](https://github.com/JamesParrott/IronPyShp/) v2.3.1, an Iron Python cross-port of Joel Lawhead and Karim Baghat et al's PyShp.
 
 [toml_tools (MIT License)](https://github.com/JamesParrott/toml_tools)  v2.0.0, a Python 2 back-port and Iron Python cross-port of Taneli Hukkinen's tomli (behind tomllib in Python 3.11) and tomli_w, with a few small extras.
 
 [mapclassif-Iron (BSD 3-Clause License)](https://github.com/JamesParrott/mapclassif-Iron/tree/85acb111f6c9271d131fd5dcacb00cb16833352e), a tested, striped down minimal fork of mapclassify, only containing a pure Python Fisher-Jenks classifier.
+
+
+### Testing.
+
+#### Unit tests.
+Most of the code in sDNA_GH is coupled with the APIs of sDNA and Rhino and Grasshopper, and does not carry out calculations of significant complexity (to avoid unnecessarily slowing the user's machine).  
+However the code in data_cruncher.py is a little more complex, and so is important to test.  Its 
+unit tests can be run within Grasshopper by placing a self_test component (with a test tube icon under Extras).
+
+#### API Tests.
+The API Tests can be run locally from within Rhino by opening `test_cases\Rhino_8_API_tests.gh`.  They can also be run locally from the cmd command line by running `python .\test_cases\run_api_tests.py` (Python >= 3.8 required), a script which launches Rhino, listens over UDP for 'stderr' output from the unittest process within Rhino, and attempts to return an error code indicating success or failure of the tests.  Test output is also saved to `test_cases\sDNA_GH_unit_test_results.log`.
+
+If RhinoCompute allows command line access, this could potentially be developed into a cloud CI pipeline.  
+
+#### Iteration.
+When working on the source tree outside of Rhino, if no changes to `.\launcher.py` have been made (that would neccessitate running `.\build_components.bat`), then `.\create_install_and_test_release.bat` can be run to create a release from the current source tree (and whatever component launcher files are there from a previous build), install it, and run the API tests on it.
+
+#### Other Tests.
+Grasshopper is a visual programming language.  It has been challenging to run a test framework within it
+it from a local command line, let alone a modern CI/CD system.  So unfortunately all other test Grasshopper definitions must be opened manually.  They are included as examples for the end user.
+
 
 
 ### Contributions.
@@ -603,9 +631,9 @@ These forks were created after the original release of sDNA_GH.  Their copyright
 parent projects.  James maintains these forks.
 toml_tools in particular has high test coverage (thanks to tomli and tomli_w's tests), and new features are being proposed for TOML, so is particularly suitable for future development.
 #### sDNA_GH
-Contributions to sDNA_GH must not fail any regression tests.  Unfortunately the test cases are Grasshopper definitions that must each be run manually.  Automating these tests in some way
-would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
-that would let Read_Shp and Write_Shp support Points shapefile types.
+Rhino/Grasshopper Python development is a plentiful source of bugs.  Contributions to sDNA_GH must not fail any regression tests.  Unfortunately many other tests (in '/test_cases', other than the Unit tests and API tests mentioned above) are Grasshopper definitions that must each be run manually.  Automating the remainder of 
+these tests in some way, e.g. also using Cheetah_GH would be an excellent and most welcome contribution.  Very simple contributions may be accepted on a discretionary basis, e.g. that add entries to the dictionaries the factories refer to,
+that would let Read_Shp and Write_Shp support Points shapefile types.  But beware the 
 Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the copyright holder, for Cardiff University to be able to include them.
 
 

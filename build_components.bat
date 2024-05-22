@@ -1,6 +1,10 @@
 @ECHO OFF
-cd dev
-set REPO_PATH=%~dp0
-start " " "C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open %REPO_PATH%\dev\sDNA_build_components.gh _enter _exit _enterend"
-REM start " " "C:\Program Files\Rhino 7\System\Rhino.exe" /nosplash /runscript="-_grasshopper _editor _load _document _open C:\Users\James\Documents\Rhino\Grasshopper\sDNA\source\repos\GHsDNAv0.01\dev\sDNA_build_components.gh _enter _exit _enterend"
-cd ..
+set repo_path=%~dp0
+cd %repo_path%
+@REM PyPA's Build must be installed in the default Python environment.
+@REM https://build.pypa.io/en/stable/installation.html
+@REM
+@REM outdir = {SRC_DIR}\dist is the default.  
+@REM It is specified for the avoidance of doubt
+@REM for compatibility with create_release_sdna-gh.zip.bat
+python -m build --wheel --outdir=%repo_path%\dist .
