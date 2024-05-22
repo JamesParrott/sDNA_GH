@@ -43,13 +43,12 @@ from ghpythonlib import treehelpers
 from ...skel.basic.ghdoc import ghdoc 
 from ... import main
 from ... import launcher
-from .. import tools
+from ... import tools
 from ...skel.tools.helpers import checkers
 
-from .. import data_cruncher
-from .. import gdm_from_GH_Datatree
+from ... import data_cruncher
+from ... import gdm_from_GH_Datatree
 
-from ..helpers import FileAndStream
 
 
 
