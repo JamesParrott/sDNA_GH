@@ -10,10 +10,10 @@ mkdir %target%
 
 
 
-@REM Attempt to clear the pip backend build cache.  Rarely successful.
+@REM Attempt to clear the pip backend build cache.  Seldom successful.
 python -m pip cache purge
 
-@REM Delete all previosuly built releases and wheels.
+@REM Delete all previously built releases and wheels.
 rmdir /s /q %dist% 
 
 call .\build_components.bat
