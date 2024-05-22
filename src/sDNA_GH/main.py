@@ -43,7 +43,7 @@
 """
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.0.alpha_4'
+__version__ = '3.0.0'
 
 
 import os
