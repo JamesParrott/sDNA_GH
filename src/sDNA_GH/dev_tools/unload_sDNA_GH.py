@@ -55,7 +55,13 @@ class MyComponent(component):
                 sys.modules['logging'].shutdown()
             shared_cached_modules_etc = sys.modules.copy().keys()
             for y in shared_cached_modules_etc:
-                if 'sdna' in y.lower():
+                if any(s in y.lower() for s in ['sdna'
+                                               ,'shapefile'
+                                               ,'toml_tools' 
+                                               ,'mapclassif'
+                                               ,'anteater'
+                                               ,'cheetah'
+                                               ]):
                     del sys.modules[y]
         
         
