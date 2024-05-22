@@ -653,6 +653,8 @@ Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the c
 
 
 ### Build instructions.
+0. If building using `python -m build`, the deps are installed in the build environment, and the path to these deps
+in the build environment (`sys.path[-1]`) is passed by the build hook (`hatch_build.py`) into the builder tool running within Rhino and Grasshopper.
 1. If sDNA_GH has not automatically found the sDNA installation you wish to build components for, place a Config component (the one with a lightbulb icon) and add its path to `sDNA_paths`.
 2. Run `build_components.bat` (if necessary open it and adjust the paths to your local folders, and the paths in `\dev\sDNA_build_components.gh`).
 3. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: [print, PD Consulting  VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print).  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
