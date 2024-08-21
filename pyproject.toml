@@ -13,7 +13,7 @@ description = "sDNA is a world leading tool for Spatial Design Network Analysis.
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=2.7"
 keywords = ["Rhino", "Grasshopper", "control", "components", "runner", "tests"]
-license = {file = "LICENSE.md"}
+license = {file = "license.md"}
 classifiers = [
     "Programming Language :: Python",
 ]
