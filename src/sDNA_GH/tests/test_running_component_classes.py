@@ -37,10 +37,11 @@ import time
 import itertools
 import importlib
 
-from ghpythonlib.componentbase import executingcomponent as component
 
 import Cheetah_GH.unittest_runner
 
+from ..skel.basic.smart_comp import NonObsoleteGHPythonComponent
+from ..skel.basic.ghdoc import ghdoc
 from ..skel.tools.helpers import checkers
 from .. import launcher
 # from .helpers import (FileAndStream
@@ -67,7 +68,6 @@ def make_test_running_component_class(run_launcher_tests = None
                                      ,port=9999
                                      ,host='127.0.0.1'
                                      ):
-    #type(ghpythonlib.componentbase.executingcomponent, str, Callable) -> TestRunningComponent
     """ Class Decorator to add in package location and replace 
         RunScript with a test launcher. 
     """
@@ -97,7 +97,7 @@ def make_test_running_component_class(run_launcher_tests = None
             return tuple(itertools.repeat(None, len(self.Params.Output) - 1))
 
 
-    class TestRunningComponent(component):
+    class TestRunningComponent(NonObsoleteGHPythonComponent):
         RunScript = run_launcher_tests
 
 
