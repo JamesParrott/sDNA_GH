@@ -78,6 +78,8 @@ except NameError:
 
 from ghpythonlib.componentbase import executingcomponent as component
 
+from .ghdoc import ghdoc
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -378,7 +380,19 @@ def custom_inputs_class_deco(BaseComponent
     return Decorated
 
 
-class MyComponentWithMainABC(component, ABC):
+class NonObsoleteGHPythonComponent(component):
+    def __init__(self, *args, **kwargs):
+        super(NonObsoleteGHPythonComponent, self).__init__(*args, **kwargs)
+        ghdoc.Component.ToggleObsolete(False)
+
+
+class MyComponentWithMainABC(NonObsoleteGHPythonComponent, ABC):
+
+
+    def __init__(self, *args, **kwargs):
+        super(MyComponentWithMainABC, self).__init__(*args, **kwargs)
+
+
     """Framework for a 'smart' grasshopper component, supporting kwargs type 
        inputs from user-customisable Input Params, default values,
        and returning suitable
@@ -419,6 +433,7 @@ class MyComponentWithMainABC(component, ABC):
 CustomInputsComponentABC = custom_inputs_class_deco(MyComponentWithMainABC)
 
 SmartComponent = custom_inputs_class_deco(MyComponentWithMainABC)
+# Avoid yet another level of inheritance.
 SmartComponent.component_Outputs = component_Outputs
 
 
