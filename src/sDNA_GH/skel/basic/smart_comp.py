@@ -383,8 +383,10 @@ def custom_inputs_class_deco(BaseComponent
 class NonObsoleteGHPythonComponent(component):
     def __init__(self, *args, **kwargs):
         super(NonObsoleteGHPythonComponent, self).__init__(*args, **kwargs)
-        ghdoc.Component.ToggleObsolete(False)
-
+        try:
+            ghdoc.Component.ToggleObsolete(False)
+        except AttributeError:
+            pass
 
 class MyComponentWithMainABC(NonObsoleteGHPythonComponent, ABC):
 
