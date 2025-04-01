@@ -41,7 +41,6 @@ import importlib
 import Cheetah_GH.unittest_runner
 
 from ..skel.basic.smart_comp import NonObsoleteGHPythonComponent
-from ..skel.basic.ghdoc import ghdoc
 from ..skel.tools.helpers import checkers
 from .. import launcher
 # from .helpers import (FileAndStream
