@@ -368,8 +368,8 @@ def load_modules(m_names
         folder = find_complete_installation_dir(
             m_names,
             folders,
-            folders_error_msg,
             logger,
+            folders_error_msg,
             )
 
     # tuple of modules, and the path to them all
