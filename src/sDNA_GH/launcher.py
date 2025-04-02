@@ -439,7 +439,10 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     output.debug(sDNA_GH_search_paths)
 
 
-    modules, sDNA_GH_path = load_modules(
+    class sDNA_GH(object):
+        pass
+
+    sDNA_GH.main, checkers, test_runners, sDNA_GH_path = load_modules(
              m_names = [main_sDNA_GH_module,
                         checkers_module_name,
                         test_runners_module_name,
@@ -474,11 +477,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
             )
 
     
-    class sDNA_GH(object):
-        main = modules[0]
-
-    checkers = modules[1]
-    test_runners = modules[2]
 
 
 
