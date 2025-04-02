@@ -41,6 +41,7 @@ if hasattr(collections, 'Callable'):
 else:
     import collections.abc  
     Callable = collections.abc.Callable
+import glob
 import inspect
 from uuid import UUID # Only used for checking str format. 
                       # Iron Python/GhPython System.Guid is an option in .Net
@@ -112,6 +113,13 @@ def windows_installation_paths(names):
         yield os.path.join(os.getenv('PROGRAMFILES(X86)'), name)
         yield os.path.join(os.getenv('PROGRAMFILES'), name)
         yield os.path.join(os.getenv('SYSTEMDRIVE'), os.sep, name)# r'C:\' + name
+        for tool_venvs in [os.path.join(os.getenv('APPDATA'),'uv','tools')
+                          ,os.path.join(os.getenv('USERPROFILE'),'pipx','venvs')
+                          ]:
+            if not os.path.isdir(tool_venvs):
+                continue
+            for tool_venv in glob.glob(os.path.join(tool_venvs,'*%s*' % name.lower())):
+                yield os.path.join(tool_venv,'Lib','site-packages',name)
         # os.sep is needed.  os.getenv('SYSTEMDRIVE') returns c: on Windows.
         #                    assert os.path.join('c:', 'foo') == 'c:foo'
         # e.g. for one user: C:\Users\James\AppData\Local\Programs\sDNA\

@@ -657,6 +657,11 @@ Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the c
  - Install [build](https://pypi.org/project/build/) either as a tool (in its own venv automatically, 
  e.g. via `uv tool install build`), or in the currently activated Python environment (best practise is a 
  venv, but build creates venvs itself for its builds by default anyway, so I use a global Python env on Windows).
+ - Install sdna_open or sdna_plus.  This is solely to get copies of `sDNAUIspec.py` and `runsdnacommand.py` for
+   the builder to know which sDNA tools to build components for.  If sDNA is in a non-standard location, if the
+   sDNA_GH builder cannot find sDNA automatically (via a non-exhaustive list of hardcoded directories), it will 
+   the path of the parent dir of those two files  specifiying in `sDNA_paths`.
+
  - Make a local clone of sDNA_GH (at the branch and commit a rlease is to be built from).
 
 #### Steps.
