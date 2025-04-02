@@ -396,8 +396,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     nick_name = ghenv.Component.NickName #type: ignore
 
     main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
-    checkers_module_name = '%s.skel.tools.helpers.checkers' % PACKAGE_NAME,
-    test_runners_module_name = '%s.tests.test_running_component_classes' % PACKAGE_NAME,
+    checkers_module_name = '%s.skel.tools.helpers.checkers' % PACKAGE_NAME
+    test_runners_module_name = '%s.tests.test_running_component_classes' % PACKAGE_NAME
 
     # builder can only load sDNA_GH from its parent directory, 
     # e.g. if in a dir one level up in the main repo
