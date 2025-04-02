@@ -105,7 +105,13 @@ APITEST_PREFIX = 'sDNA_GH_API_test_'
 DEPS = ['toml_tools', 'shapefile', 'mapclassif_Iron']
 
 def get_dir_of_python_package_containing_ghuser():
-    # This could be foiled by multiple sDNA_GH installations.
+    # Assume this is run from a Grasshopper component in a .ghuser file, in some
+    # sub-directory called PACAKGE_NAME.
+    #
+    # Tries to find the root dir of PACKAGE_NAME, in case the plug-in's zip file 
+    # was extracted somewhere other than C:\Users\...\AppData\Roaming\Grasshopper\UserObjects
+    #
+    # False positives are possible if there are multiple sDNA_GH installations.
 
     gh_comp_server = Grasshopper.Kernel.GH_ComponentServer()
 
@@ -272,9 +278,55 @@ def strict_import(module_name = ''
     return module       
 
 
+
+
 class ModulesNotFoundError(InvalidArgsError):
     message_fmt = 'Modules not found in any location %s'
 
+def find_complete_installation_dir(
+    m_names,
+    dirs,
+    logger = output,
+    folders_error_msg = 'Please supply valid folders to import from. %s',
+    ):
+    #type(list[str], list[str], type[any], str) -> str
+
+    logger.debug('Testing paths : %s ' % folders)
+    
+    if isinstance(dirs, basestring):
+        dirs = [dirs]
+
+
+    if not any(os.path.isdir(folder) or os.path.isdir(os.path.dirname(folder)) 
+               for folder in dirs
+              ):
+        raise FilePathError(message_fmt = folders_error_msg
+                           ,m_names = m_names
+                           ,logger = logger
+                           )
+
+    for dir_ in dirs:
+        logger.debug('Type(dir_) : %s' % type(dir_).__name__)
+        logger.debug('Type(path) : %s path == %s' %(type(dir_).__name__, dir_))
+
+        if os.path.isfile(dir_):
+            dir_ = os.path.dirname(dir_)
+        if all( any(os.path.isfile(os.path.join(dir_, name.replace('.', os.sep) + ending)) 
+                    for ending in ['.py','.pyc', '%s__init__.py' % os.sep ] 
+                   )
+                for name in m_names
+              ):
+            #
+            logger.debug('Importing %s' % repr(m_names))
+            return dir_
+
+    # No directory found in dirs containing all modules
+    raise ModulesNotFoundError(
+                     message_fmt = modules_not_found_msg
+                    ,m_names = m_names
+                    ,folders = dirs
+                    ,logger = logger
+                    )
 
 def load_modules(m_names
                 ,folders
@@ -297,57 +349,37 @@ def load_modules(m_names
                              ,logger = logger
                              )
 
+    if isinstance(m_names, basestring):
+        m_names = [m_names] 
+
     if any( not isinstance(m_name, basestring) for m_name in m_names ):
-        # if m_names is a basestring, the error is not raised 
         raise ModuleNameError(message_fmt = module_name_error_msg
                              ,m_names = m_names
                              ,logger = logger
                              )
     
-    if isinstance(m_names, basestring):
-        m_names = [m_names] 
-
     logger.debug('m_names == %s of type : %s' % (m_names, type(m_names).__name__))
 
-    logger.debug('Testing paths : %s ' % folders)
-    
-    if isinstance(folders, basestring):
-        folders = [folders]
+    if all(m_name in sys.modules for m_name in m_names):
+        last_module_name = m_names[-1]
+        last_module = sys.modules[last_module_name]
+        folder = os.path.dirname(os.path.dirname(last_module.__file__))
+    else:
+        folder = find_complete_installation_dir(
+            m_names,
+            folders,
+            folders_error_msg,
+            logger,
+            )
 
-    if not any(os.path.isdir(folder) or os.path.isdir(os.path.dirname(folder)) 
-               for folder in folders
-              ):
-        raise FilePathError(message_fmt = folders_error_msg
-                           ,m_names = m_names
-                           ,logger = logger
-                           )
-
-    for folder in folders:
-        logger.debug('Type(folder) : %s' % type(folder).__name__)
-        logger.debug('Type(path) : %s path == %s' %(type(folder).__name__, folder))
-
-        if os.path.isfile(folder):
-            folder = os.path.dirname(folder)
-        if all( any(os.path.isfile(os.path.join(folder, name.replace('.', os.sep) + ending)) 
-                    for ending in ['.py','.pyc', '%s__init__.py' % os.sep ] 
-                   )
-                for name in m_names
-              ):
-            #
-            logger.debug('Importing %s' % repr(m_names))
-
-            return tuple(strict_import(name, folder, '', logger = logger) 
-                         for name in m_names
-                        ) + (folder,)
-                   
-            # tuple of modules, followed by the path to them
-    raise ModulesNotFoundError(message_fmt = modules_not_found_msg
-                              ,m_names = m_names
-                              ,folders = folders
-                              ,logger = logger
-                              )
+    # tuple of modules, and the path to them all
+    return tuple(strict_import(name, folder, '', logger = logger) 
+                    for name in m_names
+                ) + (folder,)
 
 
+class MissingEnvironmentVariable(Exception):
+    pass
 
 
 if __name__ == '__main__': # False in a compiled component.  But then the user
@@ -364,6 +396,8 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     nick_name = ghenv.Component.NickName #type: ignore
 
     main_sDNA_GH_module = '%s.main' % PACKAGE_NAME
+    checkers_module_name = '%s.skel.tools.helpers.checkers' % PACKAGE_NAME,
+    test_runners_module_name = '%s.tests.test_running_component_classes' % PACKAGE_NAME,
 
     # builder can only load sDNA_GH from its parent directory, 
     # e.g. if in a dir one level up in the main repo
@@ -371,41 +405,45 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
     if (REPOSITORY and 
         nick_name == 'Build_components'):
         #
-        build_env_custom_deps = os.getenv('SDNA_GH_BUILD_DEPS')
+        build_env_custom_deps = os.getenv('SDNA_GH_BUILD_DEPS', None)
+
+        if build_env_custom_deps is None:
+            raise MissingEnvironmentVariable(
+                'The environment variable SDNA_GH_BUILD_DEPS must be set '
+                'to a directory containing the dependencies: ' + ', '.join(DEPS) +
+                '. Run the components builder via "build_components.bat'
+                ', or by building a Python wheel from the source repo. '
+                ) 
         #
-        load_modules(
+
+        sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
+    else:
+        build_env_custom_deps = get_dir_of_python_package_containing_ghuser()
+        sDNA_GH_search_paths = [build_env_custom_deps]
+        
+    
+    load_modules(
              m_names = DEPS
             ,folders = build_env_custom_deps
             ,folders_error_msg = ('Could not find deps: %s in folder: %s'
-                                 % (DEPS, build_env_custom_deps)
-                                 )
+                                    % (DEPS, build_env_custom_deps)
+                                    )
             ,modules_not_found_msg = (
-                                 'Failed to import deps: %s from folder: %s'
-                                 % (DEPS, build_env_custom_deps)
-                                 )
+                                    'Failed to import deps: %s from folder: %s'
+                                    % (DEPS, build_env_custom_deps)
+                                    )
             )
-        sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
-    else:
-        sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
-    
-
 
     sc.doc = ghdoc #type: ignore
 
     output.debug(sDNA_GH_search_paths)
 
-    class sDNA_GH(object):
-        pass
 
-
-    if main_sDNA_GH_module in sys.modules:
-        sDNA_GH.main = sys.modules[main_sDNA_GH_module]
-
-        # Our fake module class sDNA_GH has no .__path__
-        sDNA_GH_path = os.path.dirname(os.path.dirname(sDNA_GH.main.__file__))
-    else:
-        sDNA_GH.main, sDNA_GH_path = load_modules(
-             m_names = main_sDNA_GH_module
+    modules, sDNA_GH_path = load_modules(
+             m_names = [main_sDNA_GH_module,
+                        checkers_module_name,
+                        test_runners_module_name,
+                       ]
             ,folders = sDNA_GH_search_paths
             ,folders_error_msg = ('Please unzip %s.zip '
                                  +' in the folder %s '
@@ -435,6 +473,15 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
                                          )
             )
 
+    
+    class sDNA_GH(object):
+        main = modules[0]
+
+    checkers = modules[1]
+    test_runners = modules[2]
+
+
+
 
     logger = sDNA_GH.main.logger.getChild('launcher')
     output.set_logger(logger, flush = True)
@@ -442,18 +489,12 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
     class MyComponent(component):
         pass  # Required.  Idiomatic to Grasshopper.  Must be called "MyComponent"  
-            # too (it is looked for by the parser or scope checker?) otherwise 
-            # Grasshopper may not find the subclass of on 
-            # component.  Even though we overwrite this class on the next line
-            # immediately below.  
+              # too (it is looked for by the parser or scope checker?) otherwise 
+              # Grasshopper may not find the subclass of on 
+              # component.  Even though we overwrite this class on the next line
+              # immediately below.  
 
-    
-    test_runners, __ = load_modules('%s.tests.test_running_component_classes' % PACKAGE_NAME
-                                   ,sDNA_GH_path
-                                   )
-    checkers, __ = load_modules('%s.skel.tools.helpers.checkers' % PACKAGE_NAME
-                               ,sDNA_GH_path
-                               )
+
     log_file_dir = os.path.dirname(checkers.get_path(fallback = sDNA_GH_path))
 
     if nick_name.replace(' ','').replace('_','').lower() == SELFTEST:  
@@ -465,10 +506,6 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
         if not os.getenv('NUM_TESTS'):
             raise Exception('The environment variable: NUM_TESTS must be set. ')
-
-        checkers, __ = load_modules('%s.skel.tools.helpers.checkers' % PACKAGE_NAME
-                                   ,sDNA_GH_path
-                                   )
 
         MyComponent = test_runners.make_noninteractive_api_test_running_component_class(
                  test_name = nick_name.partition(APITEST_PREFIX)[2]

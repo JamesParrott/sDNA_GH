@@ -41,12 +41,12 @@ from ghpythonlib.componentbase import executingcomponent as component
 
 ghenv.Component.ToggleObsolete(False)
 
-IMPORTS_TO_UNLOAD = {'sdna'
+IMPORTS_TO_UNLOAD = {'sdna_gh'
                     ,'shapefile'
                     ,'toml_tools' 
-                    ,'mapclassif'
-                    ,'anteater'
-                    ,'cheetah'
+                    ,'mapclassif_iron'
+                    ,'anteater_gh'
+                    ,'cheetah_gh'
                     }   
 
 class MyComponent(component):
