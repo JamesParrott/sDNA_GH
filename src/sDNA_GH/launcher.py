@@ -291,14 +291,14 @@ def find_complete_installation_dir(
     ):
     #type(list[str], list[str], type[any], str) -> str
 
-    logger.debug('Testing paths : %s ' % folders)
+    logger.debug('Testing paths : %s ' % dirs)
     
     if isinstance(dirs, basestring):
         dirs = [dirs]
 
 
-    if not any(os.path.isdir(folder) or os.path.isdir(os.path.dirname(folder)) 
-               for folder in dirs
+    if not any(os.path.isdir(dir_) or os.path.isdir(os.path.dirname(dir_)) 
+               for dir_ in dirs
               ):
         raise FilePathError(message_fmt = folders_error_msg
                            ,m_names = m_names
