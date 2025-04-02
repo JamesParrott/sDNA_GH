@@ -39,6 +39,8 @@ __version__ = '3.0.0'
 from ghpythonlib.componentbase import executingcomponent as component
 
 
+ghenv.Component.ToggleObsolete(False)
+
 IMPORTS_TO_UNLOAD = {'sdna'
                     ,'shapefile'
                     ,'toml_tools' 
