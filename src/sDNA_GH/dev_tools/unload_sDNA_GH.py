@@ -38,6 +38,15 @@ __version__ = '3.0.0'
 
 from ghpythonlib.componentbase import executingcomponent as component
 
+
+IMPORTS_TO_UNLOAD = {'sdna'
+                    ,'shapefile'
+                    ,'toml_tools' 
+                    ,'mapclassif'
+                    ,'anteater'
+                    ,'cheetah'
+                    }   
+
 class MyComponent(component):
     
     def RunScript(self, unload, update):
@@ -55,13 +64,7 @@ class MyComponent(component):
                 sys.modules['logging'].shutdown()
             shared_cached_modules_etc = sys.modules.copy().keys()
             for y in shared_cached_modules_etc:
-                if any(s in y.lower() for s in ['sdna'
-                                               ,'shapefile'
-                                               ,'toml_tools' 
-                                               ,'mapclassif'
-                                               ,'anteater'
-                                               ,'cheetah'
-                                               ]):
+                if any(s in y.lower() for s in IMPORTS_TO_UNLOAD):
                     del sys.modules[y]
         
         
