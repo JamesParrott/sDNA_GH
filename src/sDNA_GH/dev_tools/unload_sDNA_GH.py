@@ -33,10 +33,21 @@
 """
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 
 
 from ghpythonlib.componentbase import executingcomponent as component
+
+
+ghenv.Component.ToggleObsolete(False)
+
+IMPORTS_TO_UNLOAD = {'sdna_gh'
+                    ,'shapefile'
+                    ,'toml_tools' 
+                    ,'mapclassif_iron'
+                    ,'anteater_gh'
+                    ,'cheetah_gh'
+                    }   
 
 class MyComponent(component):
     
@@ -55,13 +66,7 @@ class MyComponent(component):
                 sys.modules['logging'].shutdown()
             shared_cached_modules_etc = sys.modules.copy().keys()
             for y in shared_cached_modules_etc:
-                if any(s in y.lower() for s in ['sdna'
-                                               ,'shapefile'
-                                               ,'toml_tools' 
-                                               ,'mapclassif'
-                                               ,'anteater'
-                                               ,'cheetah'
-                                               ]):
+                if any(s in y.lower() for s in IMPORTS_TO_UNLOAD):
                     del sys.modules[y]
         
         

@@ -43,7 +43,7 @@
 """
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 
 
 import os
@@ -59,6 +59,17 @@ import locale
 from Grasshopper.Kernel.Parameters import Param_ScriptVariable, Param_Boolean
 
 from . import launcher
+
+deps_path = launcher.get_dir_of_python_package_containing_ghuser()
+
+for dep in ('toml_tools'
+           ,'shapefile'
+           ,'mapclassif_Iron'
+           ,'Cheetah_GH'
+           ,'Anteater_GH'
+           ): 
+    launcher._import(dep, deps_path, strict=False)
+
 from . import options_manager
 from . import logging_wrapper
 from . import data_cruncher 

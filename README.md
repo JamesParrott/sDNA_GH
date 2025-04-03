@@ -21,7 +21,7 @@ sDNA_GH:
  - Allows easy adding of a native Legend.
 
 ## User manual.  
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 
 ## Table of contents
 
@@ -653,10 +653,21 @@ Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the c
 
 
 ### Build instructions.
-0. If building using `python -m build`, the deps are installed in the build environment, and the path to these deps
-in the build environment (`sys.path[-1]`) is passed by the build hook (`hatch_build.py`) into the builder tool running within Rhino and Grasshopper.
+#### Build env.
+ - Install [build](https://pypi.org/project/build/) either as a tool (in its own venv automatically, 
+ e.g. via `uv tool install build`), or in the currently activated Python environment (best practise is a 
+ venv, but build creates venvs itself for its builds by default anyway, so I use a global Python env on Windows).
+ - Install sdna_open or sdna_plus.  This is solely to get copies of `sDNAUIspec.py` and `runsdnacommand.py` for
+   the builder to know which sDNA tools to build components for.  If sDNA is in a non-standard location, if the
+   sDNA_GH builder cannot find sDNA automatically (via a non-exhaustive list of hardcoded directories), it will 
+   the path of the parent dir of those two files  specifiying in `sDNA_paths`.
+
+ - Make a local clone of sDNA_GH (at the branch and commit a rlease is to be built from).
+
+#### Steps.
+0. The deps are installed in the build environment, and the path to these deps in the build environment (`sys.path[-1]`) is passed by the build hook (`hatch_build.py`) into the builder tool running within Rhino and Grasshopper (so to simply run `dev\sDNA_build_components.gh` as before, the environment variable SDNA_GH_BUILD_DEPS must be set).
 1. If sDNA_GH has not automatically found the sDNA installation you wish to build components for, place a Config component (the one with a lightbulb icon) and add its path to `sDNA_paths`.
-2. Run `build_components.bat` (if necessary open it and adjust the paths to your local folders, and the paths in `\dev\sDNA_build_components.gh`).
+2. In the repository's root dir, run `build_components.bat` (if necessary open it and adjust the paths to your local folders, and the paths in `\dev\sDNA_build_components.gh`).
 3. For non-Github users, a good quality pdf of this file (`README.md`) can be created in VS Code with the extension: [print, PD Consulting  VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=pdconsec.vscode-print).  This will render the markdown file in your web browser.  Print it to a pdf with the name `README.pdf` in the same directory (using Save to Pdf in Mozilla instead of Microsoft Print to Pdf will preserve the URLs in the links).  
 4. Manually create `Unload_sDNA_GH` and `Readme.txt` components if required (the latter can use `readme_component.gh`; the former is in `sDNA_build_components.gh`), and the cluster components in `Shp_Data_Tree_component.gh` and `unpack_network_radii.gh`.  Copy these to `\sDNA_GH\components\manually_built`.
 5. Run `create_release_sDNA_GH_zip.bat` to create the zip file for release.
