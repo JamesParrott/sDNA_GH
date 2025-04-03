@@ -218,11 +218,12 @@ class FilePathError(InvalidArgsError):
 
 
 # We only know the sDNA version to import as a string.  This is more secure too.
-def strict_import(module_name = ''
+def _import(module_name = ''
                  ,folder = ''
                  ,sub_folder = ''
                  ,logger = output
                  ,reload_already_imported = RELOAD_IF_ALREADY_IMPORTED
+                 ,strict=True
                  ):
 
     # type: (str, str, str, type[any], bool) -> type[any]
@@ -256,16 +257,22 @@ def strict_import(module_name = ''
     #
     search_path = os.path.join(folder, sub_folder)
 
+    old_sys_dot_path = sys.path
+
     if (search_path 
         and isinstance(search_path, basestring) 
         and os.path.isdir(search_path)):
         #
         logger.debug('Search path == %s' % search_path)
-        #if search_folder_only:
-        #    sys.path = [search_path]
+
         if search_path not in sys.path:
-            logger.warning('Prepending sys.path with: %s' % search_path)
-            sys.path.insert(0, search_path)
+            if strict:
+                logger.warning('Prepending sys.path with: %s' % search_path)
+                sys.path.insert(0, search_path)
+            else:
+                logger.warning('Appending sys.path with: %s' % search_path)
+                sys.path.append(search_path)
+
     else:
         raise FilePathError(module_name = module_name
                            ,search_path = search_path
@@ -273,9 +280,13 @@ def strict_import(module_name = ''
                            )
 
     logger.debug('Trying import... ')
-    module = import_module(module_name, '')           
+    try:
+        module = import_module(module_name, '')
+        return module       
+    finally:
+        sys.path = old_sys_dot_path
 
-    return module       
+    raise Exception('Could not import module: %s from: %s' % (module_name, search_path))
 
 
 
@@ -373,7 +384,7 @@ def load_modules(m_names
             )
 
     # tuple of modules, and the path to them all
-    return tuple(strict_import(name, folder, '', logger = logger) 
+    return tuple(_import(name, folder, '', logger = logger) 
                     for name in m_names
                 ) + (folder,)
 
@@ -417,22 +428,23 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
         #
 
         sDNA_GH_search_paths = [os.path.join(REPOSITORY, 'src')]
+
+        
+        load_modules(
+                m_names = DEPS
+                ,folders = build_env_custom_deps
+                ,folders_error_msg = ('Could not find deps: %s in folder: %s'
+                                        % (DEPS, build_env_custom_deps)
+                                        )
+                ,modules_not_found_msg = (
+                                        'Failed to import deps: %s from folder: %s'
+                                        % (DEPS, build_env_custom_deps)
+                                        )
+                )
     else:
-        build_env_custom_deps = get_dir_of_python_package_containing_ghuser()
-        sDNA_GH_search_paths = [build_env_custom_deps]
+        sDNA_GH_search_paths = [get_dir_of_python_package_containing_ghuser()]
         
     
-    load_modules(
-             m_names = DEPS
-            ,folders = build_env_custom_deps
-            ,folders_error_msg = ('Could not find deps: %s in folder: %s'
-                                    % (DEPS, build_env_custom_deps)
-                                    )
-            ,modules_not_found_msg = (
-                                    'Failed to import deps: %s from folder: %s'
-                                    % (DEPS, build_env_custom_deps)
-                                    )
-            )
 
     sc.doc = ghdoc #type: ignore
 
