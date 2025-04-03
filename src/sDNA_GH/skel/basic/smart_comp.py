@@ -61,15 +61,9 @@ if hasattr(collections, 'Sequence'):
 else:
     import collections.abc  
     Sequence, Callable = collections.abc.Sequence, collections.abc.Callable
-import abc
 
-if hasattr(abc, 'ABC'):
-    ABC = abc.ABC
-else:
-    class ABC(object):
-        __metaclass__ = abc.ABCMeta
+
 OrderedDict = collections.OrderedDict
-abstractmethod = abc.abstractmethod
 
 try:
     basestring #type: ignore
@@ -388,21 +382,20 @@ class NonObsoleteGHPythonComponent(component):
         except AttributeError:
             pass
 
-class MyComponentWithMainABC(NonObsoleteGHPythonComponent, ABC):
+class MyComponentWithMain(NonObsoleteGHPythonComponent):
 
 
     def __init__(self, *args, **kwargs):
-        super(MyComponentWithMainABC, self).__init__(*args, **kwargs)
+        super(MyComponentWithMain, self).__init__(*args, **kwargs)
 
 
     """Framework for a 'smart' grasshopper component, supporting kwargs type 
        inputs from user-customisable Input Params, default values,
        and returning suitable
        outputs based on the user specified Output Params.  """
-    @abstractmethod
     def script(self, *args, **kwargs):
         """ Specify the main script / method here instead of RunScript. 
-            In an instance of CustomInputsComponentABC or in a class produced
+            In an instance of CustomInputsComponent or in a class produced
             by the custom_inputs_class_deco decorator, RunScript now inspects 
             the call signature of this method, then parses the components 
             input Param's matching them up accordingly, then calls this method.
@@ -422,19 +415,18 @@ class MyComponentWithMainABC(NonObsoleteGHPythonComponent, ABC):
             the Output Param you want it on, and assign the primitive to it."""
         return kwargs
 
-    @abstractmethod
     def RunScript(self, *args):
         """The normal method called by Grasshopper when Param Inputs update 
            etc.  A normal component RunScript method can be renamed and saved, 
            then overridden using the custom_inputs_class_deco decorator on the 
-           class, in order to use allow the normal RunScript MEthod to adjust 
+           class, in order to use allow the normal RunScript Method to adjust 
            its args according to custom Param inputs, and utilise them akin 
            to **kwargs"""
     # type (bool, str, Rhino Geometry, datatree, tuple(namedtuple,namedtuple), *dict)->bool, str, Rhino_Geom, datatree, str
 
-CustomInputsComponentABC = custom_inputs_class_deco(MyComponentWithMainABC)
+CustomInputsComponent = custom_inputs_class_deco(MyComponentWithMain)
 
-SmartComponent = custom_inputs_class_deco(MyComponentWithMainABC)
+SmartComponent = custom_inputs_class_deco(MyComponentWithMain)
 # Avoid yet another level of inheritance.
 SmartComponent.component_Outputs = component_Outputs
 
