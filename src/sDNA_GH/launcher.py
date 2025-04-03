@@ -431,7 +431,7 @@ if __name__ == '__main__': # False in a compiled component.  But then the user
 
         
         load_modules(
-                m_names = DEPS
+                 m_names = DEPS
                 ,folders = build_env_custom_deps
                 ,folders_error_msg = ('Could not find deps: %s in folder: %s'
                                         % (DEPS, build_env_custom_deps)
