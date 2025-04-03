@@ -37,6 +37,24 @@ import GhPython
 import scriptcontext as sc
 
 
+def possible_ghdoc_types():
+
+    try: 
+        import RhinoCodePlatform.Rhino3D.Languages.GH1.Legacy
+    except ImportError:
+        pass
+    else:
+        yield RhinoCodePlatform.Rhino3D.Languages.GH1.Legacy.ProxyDocument
+        return
+
+    try:
+        yield GhPython.DocReplacement.GrasshopperDocument
+    except AttributeError:
+        pass
+    else:
+        return
+
+
 if 'ghdoc' not in globals():
     if sc.doc == Rhino.RhinoDoc.ActiveDoc:
         raise ValueError('sc.doc == Rhino.RhinoDoc.ActiveDoc. '
@@ -44,16 +62,18 @@ if 'ghdoc' not in globals():
                         )
     
     # TODO:  Fix in a CPython3 components, in which
-    # type(sc.doc)=<class 'RhinoCodePlatform.Rhino3D.GH1.Legacy.ProxyDocument'>
-    if isinstance(sc.doc, GhPython.DocReplacement.GrasshopperDocument):
+    # type(sc.doc)=<class 'RhinoCodePlatform.Rhino3D.Languages.GH1.Legacy.ProxyDocument'>
+
+    ghdoc_type = next(possible_ghdoc_types())
+    print(ghdoc_type)
+    if isinstance(sc.doc, ghdoc_type):
 
         ghdoc = sc.doc  # Normally a terrible idea!  But the check conditions
                         # are strong, and we need to get the `magic variable'
                         # ghdoc in this 
                         # namespace as a global, from launcher and GH.
     else:
-        raise TypeError('sc.doc is not of type: '
-                       +'GhPython.DocReplacement.GrasshopperDocument '
+        raise TypeError(('sc.doc is not of type: %s ' % ghdoc_type.__name__)
                        +'Ensure sc.doc == ghdoc and re-import module.'
                        )
 
