@@ -65,7 +65,6 @@ if 'ghdoc' not in globals():
     # type(sc.doc)=<class 'RhinoCodePlatform.Rhino3D.Languages.GH1.Legacy.ProxyDocument'>
 
     ghdoc_type = next(possible_ghdoc_types())
-    print(ghdoc_type)
     if isinstance(sc.doc, ghdoc_type):
 
         ghdoc = sc.doc  # Normally a terrible idea!  But the check conditions

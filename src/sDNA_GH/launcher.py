@@ -104,9 +104,10 @@ SELFTEST = 'selftest'
 APITEST_PREFIX = 'sDNA_GH_API_test_'
 DEPS = ['toml_tools', 'shapefile', 'mapclassif_Iron']
 
+
 def get_dir_of_python_package_containing_ghuser():
     # Assume this is run from a Grasshopper component in a .ghuser file, in some
-    # sub-directory called PACAKGE_NAME.
+    # sub-directory called PACKAGE_NAME.
     #
     # Tries to find the root dir of PACKAGE_NAME, in case the plug-in's zip file 
     # was extracted somewhere other than C:\Users\...\AppData\Roaming\Grasshopper\UserObjects
@@ -219,12 +220,12 @@ class FilePathError(InvalidArgsError):
 
 # We only know the sDNA version to import as a string.  This is more secure too.
 def _import(module_name = ''
-                 ,folder = ''
-                 ,sub_folder = ''
-                 ,logger = output
-                 ,reload_already_imported = RELOAD_IF_ALREADY_IMPORTED
-                 ,strict=True
-                 ):
+           ,folder = ''
+           ,sub_folder = ''
+           ,logger = output
+           ,reload_already_imported = RELOAD_IF_ALREADY_IMPORTED
+           ,strict=True
+           ):
 
     # type: (str, str, str, type[any], bool) -> type[any]
     """ Imports the named module from the specified folder\subfolder only, 
@@ -273,7 +274,7 @@ def _import(module_name = ''
                 logger.warning('Appending sys.path with: %s' % search_path)
                 sys.path.append(search_path)
 
-    else:
+    elif strict:
         raise FilePathError(module_name = module_name
                            ,search_path = search_path
                            ,logger = logger

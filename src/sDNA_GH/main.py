@@ -62,12 +62,15 @@ from . import launcher
 
 deps_path = launcher.get_dir_of_python_package_containing_ghuser()
 
+# deps were already imported in launcher
+# Import deps now to get them in sys.modules for later normal imports,
+# as deps_path could not be on sys.path
 for dep in ('toml_tools'
-           ,'shapefile'
-           ,'mapclassif_Iron'
-           ,'Cheetah_GH'
-           ,'Anteater_GH'
-           ): 
+        ,'shapefile'
+        ,'mapclassif_Iron'
+        ,'Cheetah_GH'
+        ,'Anteater_GH'
+        ): 
     launcher._import(dep, deps_path, strict=False)
 
 from . import options_manager
