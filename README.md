@@ -653,13 +653,17 @@ Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the c
 
 
 ### Build instructions.
-An env is needed for sDNA_GH's Python deps from PyPi, and an sDNA installation is needed (these can be the same
-env if sdna_plus is installed from PyPi - if so, `python` needs to be the venv's Python for the sDNA subprocess
-to find PyShp).
+A Python env is needed with pyproject-build (build) installed, to kick off the whole show.
+Build will create a venv for sDNA_GH's Python deps from PyPi.  An an sDNA installation is also needed, 
+so that the build process knows which sDNA components to build (otherwise the user must build their
+own using a Config component).   The sDNA env can now be any venv in which sdna_plus is installed 
+from PyPi.  If so, when using sDNA_GH, `python` needs to be the venv's Python for the sDNA Python
+subprocess to find PyShp.
 #### Build env.
  - Install [build](https://pypi.org/project/build/) either as a tool (in its own venv automatically, 
  e.g. via `uv tool install build`), or in the currently activated Python environment (best practise is a 
- venv, but build creates venvs itself for its builds by default anyway, so I use a global Python env on Windows).
+ venv, but pyproject-build creates venvs itself for its builds by default anyway, so I use a global 
+ Python env on Windows).
  - Install sdna_open or sdna_plus.  This is solely to get copies of `sDNAUIspec.py` and `runsdnacommand.py` for
    the builder to know which sDNA tools to build components for.  If sDNA is in a non-standard location, if the
    sDNA_GH builder cannot find sDNA automatically (via a non-exhaustive list of hardcoded directories), it will 
