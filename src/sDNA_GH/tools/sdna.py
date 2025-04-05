@@ -39,11 +39,12 @@ __version__ = '3.0.1'
 import os
 import sys
 import abc
+import collections
 import logging
 import subprocess
 import re
+import glob
 import warnings
-import collections
 
 
 from Grasshopper.Kernel.Parameters import (Param_Arc
