@@ -653,6 +653,9 @@ Contributors may also need to satisfy IP transfer requirements (t.b.c.) of the c
 
 
 ### Build instructions.
+An env is needed for sDNA_GH's Python deps from PyPi, and an sDNA installation is needed (these can be the same
+env if sdna_plus is installed from PyPi - if so, `python` needs to be the venv's Python for the sDNA subprocess
+to find PyShp).
 #### Build env.
  - Install [build](https://pypi.org/project/build/) either as a tool (in its own venv automatically, 
  e.g. via `uv tool install build`), or in the currently activated Python environment (best practise is a 
