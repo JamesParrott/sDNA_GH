@@ -360,7 +360,48 @@ def get_tool_opts(opts, nick_name, tool_name = None, sDNA = None, val = None):
     return nested_set_default_or_get(d = opts, keys = keys, last_default = val)
 
 
+def sDNA_plus_installation_site_env_lib_and_python():
+    
+    where_sDNA = subprocess.check_output(["where","sDNA"])
+    
+    if len(where_sDNA) <= 1:
+        return None, None
+    
+    found_path = where_sDNA[0].upper() + where_sDNA[1:].rstrip()
+    expected_path =  os.path.join(os.getenv("USERPROFILE"),'.local','bin','sdna.exe')
+    
+    if found_path == expected_path:
+        for tool_venvs in [os.path.join(os.getenv('APPDATA'),'uv','tools')
+                          ,os.path.join(os.getenv('USERPROFILE'),'pipx','venvs')
+                          ]:
+            if not os.path.isdir(tool_venvs):
+                continue
+            for tool_venv in glob.glob(os.path.join(tool_venvs,'*sdna*')):
+                sDNA_venv_lib = os.path.join(tool_venv,'Lib','site-packages','sDNA')
+                if not (os.path.isfile(os.path.join(sDNA_venv_lib, 'sDNAUISpec.py')) and 
+                        os.path.isfile(os.path.join(sDNA_venv_lib, 'runsdnacommand.py'))):
+                    continue
+                python = os.path.join(tool_venv, 'Scripts', 'python.exe')
+                if not os.path.isfile(python):
+                    continue
+                try:
+                    subprocess.check_output([python, "--version"])
+                    return sDNA_venv_lib, python
+                except:
+                    continue
+                
 
+    return None, None
+
+site_env, python = sDNA_plus_installation_site_env_lib_and_python()
+
+if site_env is not None and python is not None:
+    
+    class sDNAMetaOptions(object):
+        """All options needed to import sDNA. """
+
+        sDNAUISpec = 'sDNAUISpec'
+        runsdnacommand = 'runsdnacommand'
 
 class sDNAMetaOptions(object):
     """All options needed to import sDNA. """
@@ -369,7 +410,6 @@ class sDNAMetaOptions(object):
     runsdnacommand = 'runsdnacommand'
     sDNA_paths = list( funcs.windows_installation_paths('sDNA') )
 
-sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 
 
 class PythonOptions(object):
@@ -391,6 +431,10 @@ class PythonOptions(object):
     python_exes = ['python.exe', 'python3.exe', 'py27.exe']
     python = '' 
 
+
+
+
+sDNA_meta_options = options_manager.namedtuple_from_class(sDNAMetaOptions)
 python_options = options_manager.namedtuple_from_class(PythonOptions)
 
 
