@@ -393,43 +393,54 @@ def sDNA_plus_installation_site_env_lib_and_python():
 
     return None, None
 
-site_env, python = sDNA_plus_installation_site_env_lib_and_python()
+site_env_lib, python = sDNA_plus_installation_site_env_lib_and_python()
 
-if site_env is not None and python is not None:
+if site_env_lib is not None and python is not None:
     
     class sDNAMetaOptions(object):
         """All options needed to import sDNA. """
 
         sDNAUISpec = 'sDNAUISpec'
         runsdnacommand = 'runsdnacommand'
+        sDNA_paths = [site_env_lib]
 
-class sDNAMetaOptions(object):
-    """All options needed to import sDNA. """
+    
+    class PythonOptions(object):
+        """All options needed to specify a Python interpreter, or search for one. """
 
-    sDNAUISpec = 'sDNAUISpec'
-    runsdnacommand = 'runsdnacommand'
-    sDNA_paths = list( funcs.windows_installation_paths('sDNA') )
+        python_paths = []
+        python_exes = []
+        python = python
+
+else:
+
+    class sDNAMetaOptions(object):
+        """All options needed to import sDNA. """
+
+        sDNAUISpec = 'sDNAUISpec'
+        runsdnacommand = 'runsdnacommand'
+        sDNA_paths = list( funcs.windows_installation_paths('sDNA') )
 
 
 
-class PythonOptions(object):
-    """All options needed to specify a Python interpreter, or search for one. """
+    class PythonOptions(object):
+        """All options needed to specify a Python interpreter, or search for one. """
 
-    python_paths = list( funcs.windows_installation_paths(tuple('Python3%s' % i 
-                                                                for i in range(12, 8, -1)
-                                                               )  
-                                                         +('Python3'
-                                                          ,'Python_3'
-                                                          ,'Python'
-                                                          ,'Python27'
-                                                          ,'Python_27'
-                                                          ,'Python_2.7'
-                                                          ,'Python2.7'
-                                                          )
-                                                         )
-                       )
-    python_exes = ['python.exe', 'python3.exe', 'py27.exe']
-    python = '' 
+        python_paths = list( funcs.windows_installation_paths(tuple('Python3%s' % i 
+                                                                    for i in range(12, 8, -1)
+                                                                )  
+                                                            +('Python3'
+                                                            ,'Python_3'
+                                                            ,'Python'
+                                                            ,'Python27'
+                                                            ,'Python_27'
+                                                            ,'Python_2.7'
+                                                            ,'Python2.7'
+                                                            )
+                                                            )
+                        )
+        python_exes = ['python.exe', 'python3.exe', 'py27.exe']
+        python = '' 
 
 
 
