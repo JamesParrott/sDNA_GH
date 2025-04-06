@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.4'
+__version__ = '3.0.5'
 
 import logging
 import collections

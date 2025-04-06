@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sDNA_GH"
-version = "3.0.4"
+version = "3.0.5"
 authors = [{name = "James Parrott", email = "james.parrott@proton.me"}, {name = 'Crispin Cooper', email = 'sdna@cardiff.ac.uk'}]
 description = "sDNA is a world leading tool for Spatial Design Network Analysis.  sDNA_GH is a plug-in for Grasshopper, that runs sDNA on Rhino and Grasshopper geometry and data. "
 readme = {file = "README.md", content-type = "text/markdown"}
