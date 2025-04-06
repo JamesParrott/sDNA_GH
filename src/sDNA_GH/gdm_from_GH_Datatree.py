@@ -31,9 +31,10 @@
 __authors__ = {'James Parrott', 'Crispin Cooper'}
 __version__ = '3.0.3'
 
+import sys
 import logging
 import itertools
-import .skel.tools.helpers.python2_collections as collections
+import collections
 
 import warnings
 
