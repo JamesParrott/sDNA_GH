@@ -364,11 +364,16 @@ def get_tool_opts(opts, nick_name, tool_name = None, sDNA = None, val = None):
 def sDNA_plus_installation_site_env_lib_and_python():
     
     where_sDNA = subprocess.check_output(["where","sDNA"])
+
+    if isinstance(where_sDNA, bytes) and not isinstance(where_sDNA, str):
+        where_sDNA_str = where_sDNA.decode()
+    else:
+        where_sDNA_str = where_sDNA
     
-    if len(where_sDNA) <= 1:
+    if len(where_sDNA_str) <= 1:
         return None, None
     
-    found_path = where_sDNA[0].upper() + where_sDNA[1:].rstrip()
+    found_path = where_sDNA_str[0].upper() + where_sDNA_str[1:].rstrip()
     expected_path =  os.path.join(os.getenv("USERPROFILE"),'.local','bin','sdna.exe')
     
     if found_path == expected_path:
