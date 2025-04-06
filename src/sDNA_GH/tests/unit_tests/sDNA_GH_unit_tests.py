@@ -29,7 +29,7 @@
 
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.2'
+__version__ = '3.0.3'
 
 import sys
 import os

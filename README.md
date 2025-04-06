@@ -21,7 +21,7 @@ sDNA_GH:
  - Allows easy adding of a native Legend.
 
 ## User manual.  
-__version__ = '3.0.2'
+__version__ = '3.0.3'
 
 ## Table of contents
 
