@@ -733,6 +733,10 @@ def spike_isolating_quantile(data
     if ordered_counter is None:
         ordered_counter = OrderedCounter(data)
     logger.debug(ordered_counter)
+
+    keys = tuple(ordered_counter.keys())
+
+
     num_inter_class_bounds = num_classes - 1
     if num_inter_class_bounds <= 0:
         return []
@@ -756,8 +760,8 @@ def spike_isolating_quantile(data
             logger.debug('num_classes - 1 == %s' % (num_classes - 1))
             logger.debug('index_a (in OrderedCounter)== %s' % spike_interval.index_a)
             logger.debug('index_b (in OrderedCounter) == %s' % spike_interval.index_b)
-            spike_data_index_a = data.index(ordered_counter.keys()[spike_interval.index_a])
-            spike_data_index_b = tuple(reversed(data)).index(ordered_counter.keys()[spike_interval.index_b])
+            spike_data_index_a = data.index(keys[spike_interval.index_a])
+            spike_data_index_b = tuple(reversed(data)).index(keys[spike_interval.index_b])
             spike_data_index_b = len(data) - 1 - spike_data_index_b
             logger.debug('spike_data_index_a == %s' % spike_data_index_a)
             logger.debug('spike_data_index_b == %s' % spike_data_index_b)
