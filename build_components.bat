@@ -8,4 +8,4 @@ cd %repo_path%
 @REM It is specified for the avoidance of doubt
 @REM for compatibility with create_release_sdna-gh.zip.bat
 @REM
-pyproject-build  --wheel --outdir=%repo_path%\dist .
+pyproject-build --outdir=%repo_path%\dist .
