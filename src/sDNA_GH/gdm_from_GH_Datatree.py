@@ -31,15 +31,10 @@
 __authors__ = {'James Parrott', 'Crispin Cooper'}
 __version__ = '3.0.3'
 
-
 import logging
 import itertools
-import collections
-if hasattr(collections, 'Iterable'):
-    Iterable = collections.Iterable 
-else:
-    import collections.abc
-    Iterable = collections.abc.Iterable
+import .skel.tools.helpers.python2_collections as collections
+
 import warnings
 
 import Rhino
@@ -55,7 +50,16 @@ try:
 except NameError:
     basestring = str
     
-OrderedDict = collections.OrderedDict
+if sys.version_info < (3,):
+    OrderedDict = collections.OrderedDict
+else:    
+    class OrderedDict(collections.OrderedDict):
+        def keys(self):
+            return list(super(OrderedDict, self).keys())
+        def items(self):
+            return list(super(OrderedDict, self).items())
+        def values(self):
+            return list(super(OrderedDict, self).values())
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -105,6 +109,7 @@ class GeomDataMapping(OrderedDict):
             objects referred to by the keys is a desired side effect).
         """
         super(GeomDataMapping, self).__init__(keys_and_vals)
+
 
 
     @staticmethod
@@ -197,6 +202,7 @@ class GeomDataMapping(OrderedDict):
 
 
         return GeomDataMapping(component_inputs_gen_exp) 
+
 
 
 

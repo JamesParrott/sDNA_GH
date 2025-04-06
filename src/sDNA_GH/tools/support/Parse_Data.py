@@ -105,7 +105,12 @@ try:
 except NameError:
     basestring = str
 
-OrderedDict, Counter = collections.OrderedDict, collections.Counter
+# Import backwards compatible patched subclass, 
+# (on which .keys, .values and .items return lists on Python3)
+OrderedDict = gdm_from_GH_Datatree.OrderedDict
+
+Counter = collections.Counter
+
 if hasattr(collections, 'Iterable'):
     Iterable = collections.Iterable 
 else:
