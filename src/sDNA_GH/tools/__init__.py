@@ -30,7 +30,7 @@
 
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.3'
+__version__ = '3.0.4'
 
 
 # Import classes etc. from sub modules, to allow the existing imports 

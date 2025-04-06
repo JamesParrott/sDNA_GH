@@ -29,7 +29,7 @@
 
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.3'
+__version__ = '3.0.4'
 
 import os
 import logging
