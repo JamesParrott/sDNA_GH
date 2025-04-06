@@ -28,7 +28,7 @@
 # SOFTWARE.
 
 __authors__ = {'James Parrott', 'Crispin Cooper'}
-__version__ = '3.0.1'
+__version__ = '3.0.2'
 
 import os
 import sys
