@@ -35,7 +35,11 @@ import sys
 import logging
 import itertools
 import collections
-
+if hasattr(collections, 'Iterable'):
+    Iterable = collections.Iterable 
+else:
+    import collections.abc
+    Iterable = collections.abc.Iterable
 import warnings
 
 import Rhino

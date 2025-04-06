@@ -3,8 +3,6 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 
-
-
 [project]
 name = "sDNA_GH"
 version = "3.0.4"
