@@ -24,6 +24,10 @@ dependencies = [
     "Cheetah_GH>=0.1.10",
     "Anteater_GH",
 ]
+[project.urls]   
+"Homepage" = "https://github.com/JamesParrott/sDNA_GH"
+"Bug Tracker" = "https://github.com/JamesParrott/sDNA_GH/issues"
+
 
 
 [tool.hatch.build.hooks.custom]
