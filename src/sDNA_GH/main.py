@@ -42,7 +42,7 @@
     passed to sDNA_Tool_Wrapper instances, the only things that call it.
 """
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 

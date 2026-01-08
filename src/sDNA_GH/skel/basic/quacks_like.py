@@ -1,6 +1,6 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 

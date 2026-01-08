@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 """
 Functions to override namedtuples, from dicts, toml files 

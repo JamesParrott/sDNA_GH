@@ -32,7 +32,7 @@
     options including a project specific config.toml, without otherwise having to restart Rhino to clear its cache.
 """
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 

@@ -33,7 +33,7 @@
     Except Dev tools.  They're in dev_tools.py  
 """
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 

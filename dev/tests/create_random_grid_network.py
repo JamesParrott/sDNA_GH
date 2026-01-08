@@ -27,7 +27,7 @@
 # SOFTWARE.
 
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 from random import random as random_num

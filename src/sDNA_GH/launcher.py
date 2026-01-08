@@ -63,7 +63,7 @@
     launcher.py can also run unit tests in a component named "selftest" 
 """
 
-__authors__ = {'James Parrott', 'Crispin Cooper'}
+__authors__ = {'James Parrott', 'Crispin Cooper', 'Fan Zitian'}
 __version__ = '3.0.5'
 
 
